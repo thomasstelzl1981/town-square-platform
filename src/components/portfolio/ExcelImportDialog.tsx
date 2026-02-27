@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { FileUploader } from '@/components/shared/FileUploader';
-import { Loader2, FileSpreadsheet, CheckCircle2, Upload, Sparkles, Brain, TrendingUp, Building2, Landmark } from 'lucide-react';
+import { Loader2, FileSpreadsheet, CheckCircle2, Upload, Sparkles, Brain, TrendingUp, Building2, Landmark, AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { getXlsx } from '@/lib/lazyXlsx';
 import { cn } from '@/lib/utils';
@@ -56,12 +56,23 @@ interface AiSummary {
   issues?: string[];
 }
 
+interface ImportRowResult {
+  code: string;
+  address: string;
+  loan_status: 'created' | 'skipped' | 'failed' | 'n/a';
+  loan_error?: string;
+  property_status: 'created' | 'matched' | 'failed';
+}
+
+export type ImportMode = 'full' | 'loan-only';
+
 interface ExcelImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tenantId: string;
   initialFile?: File | null;
   contextId?: string | null;
+  mode?: ImportMode;
 }
 
 const formatCurrency = (val: number | null | undefined) =>
@@ -77,7 +88,7 @@ const ANALYSIS_STEPS = [
 
 type ParseStep = 'idle' | 'reading' | 'ai-analyzing' | 'ai-finance' | 'ai-properties' | 'ai-loans' | 'done';
 
-export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile, contextId }: ExcelImportDialogProps) {
+export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile, contextId, mode = 'full' }: ExcelImportDialogProps) {
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [aiRows, setAiRows] = useState<AiPropertyRow[]>([]);
@@ -87,6 +98,8 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile, c
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [parseStep, setParseStep] = useState<ParseStep>('idle');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [importResults, setImportResults] = useState<ImportRowResult[]>([]);
+  const [showProtocol, setShowProtocol] = useState(false);
 
   // Auto-process initialFile when dialog opens with a pre-selected file
   useEffect(() => {
@@ -120,6 +133,8 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile, c
   const parseAndMapExcel = useCallback(async (excelFile: File) => {
     setIsParsing(true);
     setParseStep('reading');
+    setImportResults([]);
+    setShowProtocol(false);
 
     try {
       // Step 1: Parse Excel with SheetJS
@@ -235,10 +250,15 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile, c
     }
 
     setIsImporting(true);
-    let successCount = 0;
+    setImportResults([]);
+    let propertyCount = 0;
+    let loanCreated = 0;
+    let loanFailed = 0;
+    const results: ImportRowResult[] = [];
 
     try {
       const { data: session } = await supabase.auth.getSession();
+      const isLoanOnly = mode === 'loan-only';
 
       for (const row of rowsToImport) {
         try {
@@ -281,33 +301,89 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile, c
                 'Authorization': `Bearer ${session.session?.access_token}`,
               },
               body: JSON.stringify({
-                action: 'create',
+                action: isLoanOnly ? 'loan-upsert' : 'create',
                 data: propertyData,
               }),
             }
           );
 
-          if (response.ok) {
-            successCount++;
+          const resBody = await response.json().catch(() => ({}));
+
+          if (response.ok || (isLoanOnly && resBody.matched)) {
+            propertyCount++;
+            const loanStatus = resBody.loan_status || 'n/a';
+            if (loanStatus === 'created') loanCreated++;
+            if (loanStatus === 'failed') loanFailed++;
+
+            results.push({
+              code: row.code,
+              address: row.adresse,
+              property_status: isLoanOnly ? 'matched' : 'created',
+              loan_status: loanStatus,
+              loan_error: resBody.loan_error || undefined,
+            });
           } else {
-            const err = await response.json().catch(() => ({}));
-            console.warn(`Import failed for ${row.code}:`, err);
+            results.push({
+              code: row.code,
+              address: row.adresse,
+              property_status: 'failed',
+              loan_status: 'n/a',
+              loan_error: resBody.error || 'Unbekannter Fehler',
+            });
+            console.warn(`Import failed for ${row.code}:`, resBody);
           }
         } catch (error) {
           console.error('Import row error:', error);
+          results.push({
+            code: row.code,
+            address: row.adresse,
+            property_status: 'failed',
+            loan_status: 'n/a',
+            loan_error: String(error),
+          });
         }
       }
 
-      if (successCount > 0) {
-        toast.success(`${successCount} Objekt(e) erfolgreich importiert`);
+      setImportResults(results);
+
+      // Differentiated toast
+      if (propertyCount > 0) {
+        if (loanFailed > 0) {
+          toast.warning(
+            mode === 'loan-only'
+              ? `${loanCreated} Darlehen übernommen, ${loanFailed} fehlgeschlagen`
+              : `${propertyCount} Objekte angelegt, aber ${loanFailed} Darlehen nicht gespeichert`,
+            { duration: 8000 }
+          );
+          setShowProtocol(true);
+        } else if (loanCreated > 0) {
+          toast.success(
+            mode === 'loan-only'
+              ? `${loanCreated} Darlehen erfolgreich nachgezogen`
+              : `${propertyCount} Objekte, ${loanCreated} Darlehen übernommen`
+          );
+        } else {
+          toast.success(
+            mode === 'loan-only'
+              ? `${propertyCount} Objekte gematcht, keine Darlehensdaten vorhanden`
+              : `${propertyCount} Objekt(e) erfolgreich importiert`
+          );
+        }
+
         queryClient.invalidateQueries({ queryKey: ['properties'] });
         queryClient.invalidateQueries({ queryKey: ['portfolio-units-annual'] });
         queryClient.invalidateQueries({ queryKey: ['context-property-assignments'] });
         queryClient.invalidateQueries({ queryKey: ['landlord-contexts'] });
-        onOpenChange(false);
-        resetState();
+        queryClient.invalidateQueries({ queryKey: ['unit-dossier'] });
+        queryClient.invalidateQueries({ queryKey: ['loans'] });
+
+        if (!loanFailed) {
+          onOpenChange(false);
+          resetState();
+        }
       } else {
         toast.error('Import fehlgeschlagen – keine Objekte angelegt');
+        setShowProtocol(true);
       }
     } catch (error) {
       toast.error('Import fehlgeschlagen');
@@ -323,6 +399,8 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile, c
     setSelectedRows(new Set());
     setParseStep('idle');
     setElapsedSeconds(0);
+    setImportResults([]);
+    setShowProtocol(false);
   };
 
   const confidenceColor = (c: number) =>
@@ -330,6 +408,8 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile, c
 
   const currentStepInfo = ANALYSIS_STEPS.find(s => s.key === parseStep);
   const currentProgress = currentStepInfo?.progress ?? 0;
+
+  const isLoanOnly = mode === 'loan-only';
 
   return (
     <Dialog
@@ -342,255 +422,327 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile, c
       <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5" />
-            KI-gestützter Portfolio Import
+            {isLoanOnly ? (
+              <>
+                <RefreshCw className="h-5 w-5" />
+                Darlehen nachziehen
+              </>
+            ) : (
+              <>
+                <FileSpreadsheet className="h-5 w-5" />
+                KI-gestützter Portfolio Import
+              </>
+            )}
             <Badge variant="secondary" className="text-xs">
               <Sparkles className="h-3 w-3 mr-1" />
               Gemini Pro
             </Badge>
           </DialogTitle>
           <DialogDescription>
-            Die KI analysiert jede Zahl in Ihrer Excel-Datei und ordnet sie korrekt zu — Adressen, Mieten, Darlehen, Marktwerte.
+            {isLoanOnly
+              ? 'Bestehende Objekte werden per Adresse gematcht. Nur die Darlehensdaten werden neu eingelesen.'
+              : 'Die KI analysiert jede Zahl in Ihrer Excel-Datei und ordnet sie korrekt zu — Adressen, Mieten, Darlehen, Marktwerte.'
+            }
           </DialogDescription>
         </DialogHeader>
 
-        {/* Upload Zone — ChatGPT-style */}
-        {!file ? (
-          <div className="py-8">
-            <FileUploader onFilesSelected={handleFileSelect} accept=".xlsx,.xls,.csv">
-              {(isDragOver: boolean) => (
-                <div className={cn(
-                  'border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer',
-                  isDragOver
-                    ? 'border-primary bg-primary/5 scale-[1.02] shadow-lg'
-                    : 'border-muted-foreground/20 hover:border-primary/40 hover:bg-muted/20'
-                )}>
-                  <div className={cn(
-                    'mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-colors',
-                    isDragOver ? 'bg-primary/10' : 'bg-muted'
-                  )}>
-                    <Upload className={cn('h-8 w-8 transition-colors', isDragOver ? 'text-primary' : 'text-muted-foreground')} />
-                  </div>
-                  <p className="text-lg font-semibold mb-1">Excel-Datei hier ablegen</p>
-                  <p className="text-sm text-muted-foreground mb-3">oder klicken zum Auswählen</p>
-                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant="outline" className="text-[10px] px-2 py-0">.xlsx</Badge>
-                    <Badge variant="outline" className="text-[10px] px-2 py-0">.xls</Badge>
-                    <Badge variant="outline" className="text-[10px] px-2 py-0">.csv</Badge>
-                    <span className="text-muted-foreground/50">·</span>
-                    <span>Beliebige Spaltenstruktur</span>
-                  </div>
-                </div>
-              )}
-            </FileUploader>
-          </div>
-        ) : isParsing ? (
-          /* Analysis Progress — detailed multi-step */
-          <div className="py-8 px-4">
-            <div className="max-w-md mx-auto space-y-6">
-              {/* Progress bar */}
-              <div className="space-y-2">
-                <Progress value={currentProgress} className="h-2" />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{elapsedSeconds}s</span>
-                  <span>{currentProgress}%</span>
-                </div>
-              </div>
-
-              {/* Steps timeline */}
-              <div className="space-y-3">
-                {ANALYSIS_STEPS.map((step, idx) => {
-                  const stepIdx = ANALYSIS_STEPS.findIndex(s => s.key === parseStep);
-                  const isActive = step.key === parseStep;
-                  const isDone = idx < stepIdx;
-                  const isFuture = idx > stepIdx;
-                  const StepIcon = step.icon;
-
-                  return (
-                    <div
-                      key={step.key}
-                      className={cn(
-                        'flex items-center gap-3 rounded-lg p-3 transition-all',
-                        isActive && 'bg-primary/5 border border-primary/20',
-                        isDone && 'opacity-60',
-                        isFuture && 'opacity-30'
-                      )}
-                    >
-                      <div className={cn(
-                        'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
-                        isActive && 'bg-primary/10',
-                        isDone && 'bg-green-100 dark:bg-green-950',
-                        isFuture && 'bg-muted'
-                      )}>
-                        {isDone ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        ) : isActive ? (
-                          <StepIcon className="h-4 w-4 text-primary animate-pulse" />
-                        ) : (
-                          <StepIcon className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={cn(
-                          'text-sm font-medium',
-                          isActive && 'text-primary',
-                          isFuture && 'text-muted-foreground'
-                        )}>
-                          {step.label}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">{step.detail}</p>
-                      </div>
-                      {isActive && <Loader2 className="h-4 w-4 animate-spin text-primary flex-shrink-0" />}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <p className="text-center text-xs text-muted-foreground">
-                Die KI liest jede Zahl und ordnet sie dem richtigen Feld zu · {file.name}
-              </p>
+        {/* Import Protocol — shown after import with issues */}
+        {showProtocol && importResults.length > 0 ? (
+          <div className="space-y-3 flex-1 overflow-auto">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              Import-Protokoll
             </div>
-          </div>
-        ) : parseStep === 'done' && aiRows.length > 0 ? (
-          <>
-            {/* Summary — enhanced with portfolio totals */}
-            <div className="flex items-center gap-3 py-2 flex-wrap">
-              <Badge variant="secondary" className="text-sm">
-                {aiRows.length} Objekte erkannt
-              </Badge>
-              <Badge variant="default" className="text-sm bg-green-600">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                {selectedRows.size} ausgewählt
-              </Badge>
-              {aiSummary?.avgConfidence != null && (
-                <Badge variant="outline" className="text-xs">
-                  Ø Konfidenz: {Math.round(aiSummary.avgConfidence * 100)}%
-                </Badge>
-              )}
-              {aiSummary?.totalPortfolioValue != null && (
-                <Badge variant="outline" className="text-xs">
-                  Portfoliowert: {formatCurrency(aiSummary.totalPortfolioValue)}
-                </Badge>
-              )}
-              {aiSummary?.totalAnnualIncome != null && (
-                <Badge variant="outline" className="text-xs">
-                  Mieteinnahmen/a: {formatCurrency(aiSummary.totalAnnualIncome)}
-                </Badge>
-              )}
-              {aiSummary?.totalDebt != null && (
-                <Badge variant="outline" className="text-xs">
-                  Darlehen: {formatCurrency(aiSummary.totalDebt)}
-                </Badge>
-              )}
-            </div>
-
-            {/* AI Issues */}
-            {aiSummary?.issues && aiSummary.issues.length > 0 && (
-              <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 text-sm">
-                <p className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">Hinweise der KI:</p>
-                <ul className="list-disc list-inside text-yellow-700 dark:text-yellow-300 text-xs space-y-0.5">
-                  {aiSummary.issues.map((issue, i) => (
-                    <li key={i}>{issue}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Preview Table */}
-            <ScrollArea className="flex-1 border rounded-md">
+            <ScrollArea className="max-h-[400px] border rounded-md">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-10">
-                      <Checkbox
-                        checked={selectedRows.size === aiRows.length}
-                        onCheckedChange={toggleAll}
-                      />
-                    </TableHead>
                     <TableHead>Code</TableHead>
-                    <TableHead>Art</TableHead>
                     <TableHead>Adresse</TableHead>
-                    <TableHead>Ort</TableHead>
-                    <TableHead className="text-right">m²</TableHead>
-                    <TableHead className="text-right">Marktwert</TableHead>
-                    <TableHead className="text-right">Miete/M</TableHead>
-                    <TableHead className="text-right">Restschuld</TableHead>
-                    <TableHead className="text-center">Bank</TableHead>
-                    <TableHead className="text-center">Konfidenz</TableHead>
+                    <TableHead className="text-center">Objekt</TableHead>
+                    <TableHead className="text-center">Darlehen</TableHead>
+                    <TableHead>Fehler</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {aiRows.map((row, idx) => (
-                    <TableRow
-                      key={idx}
-                      className={!selectedRows.has(idx) ? 'opacity-50' : ''}
-                    >
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedRows.has(idx)}
-                          onCheckedChange={() => toggleRow(idx)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{row.code}</TableCell>
-                      <TableCell>{row.art}</TableCell>
-                      <TableCell className="max-w-[180px] truncate" title={row.adresse}>
-                        {row.adresse}
-                      </TableCell>
-                      <TableCell>{row.ort}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {row.qm?.toLocaleString('de-DE') ?? '–'}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-xs">
-                        {formatCurrency(row.marktwert)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-xs">
-                        {row.kaltmiete != null
-                          ? formatCurrency(row.kaltmiete)
-                          : row.jahresmiete != null
-                          ? formatCurrency(Math.round(row.jahresmiete / 12))
-                          : '–'}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-xs">
-                        {formatCurrency(row.restschuld)}
-                      </TableCell>
-                      <TableCell className="text-center text-xs truncate max-w-[80px]" title={row.bank || ''}>
-                        {row.bank || '–'}
+                  {importResults.map((r, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="font-mono text-xs">{r.code}</TableCell>
+                      <TableCell className="text-xs max-w-[180px] truncate">{r.address}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant={r.property_status === 'failed' ? 'destructive' : 'default'} className="text-[10px]">
+                          {r.property_status === 'created' ? '✓' : r.property_status === 'matched' ? '⟷' : '✗'}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className={`text-xs font-medium ${confidenceColor(row.confidence)}`}>
-                          {Math.round(row.confidence * 100)}%
-                        </span>
+                        <Badge
+                          variant={r.loan_status === 'created' ? 'default' : r.loan_status === 'failed' ? 'destructive' : 'secondary'}
+                          className="text-[10px]"
+                        >
+                          {r.loan_status === 'created' ? '✓' : r.loan_status === 'failed' ? '✗' : '–'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-destructive max-w-[200px] truncate" title={r.loan_error}>
+                        {r.loan_error || '–'}
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </ScrollArea>
-
-            {/* Notes from AI */}
-            {aiRows.some((r) => r.notes) && (
-              <div className="text-xs text-muted-foreground space-y-0.5 pt-1">
-                {aiRows.filter((r) => r.notes).map((r, i) => (
-                  <p key={i}>
-                    <span className="font-mono">{r.code}:</span> {r.notes}
-                  </p>
-                ))}
+          </div>
+        ) : (
+          <>
+            {/* Upload Zone */}
+            {!file ? (
+              <div className="py-8">
+                <FileUploader onFilesSelected={handleFileSelect} accept=".xlsx,.xls,.csv">
+                  {(isDragOver: boolean) => (
+                    <div className={cn(
+                      'border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer',
+                      isDragOver
+                        ? 'border-primary bg-primary/5 scale-[1.02] shadow-lg'
+                        : 'border-muted-foreground/20 hover:border-primary/40 hover:bg-muted/20'
+                    )}>
+                      <div className={cn(
+                        'mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-colors',
+                        isDragOver ? 'bg-primary/10' : 'bg-muted'
+                      )}>
+                        <Upload className={cn('h-8 w-8 transition-colors', isDragOver ? 'text-primary' : 'text-muted-foreground')} />
+                      </div>
+                      <p className="text-lg font-semibold mb-1">Excel-Datei hier ablegen</p>
+                      <p className="text-sm text-muted-foreground mb-3">oder klicken zum Auswählen</p>
+                      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant="outline" className="text-[10px] px-2 py-0">.xlsx</Badge>
+                        <Badge variant="outline" className="text-[10px] px-2 py-0">.xls</Badge>
+                        <Badge variant="outline" className="text-[10px] px-2 py-0">.csv</Badge>
+                        <span className="text-muted-foreground/50">·</span>
+                        <span>Beliebige Spaltenstruktur</span>
+                      </div>
+                    </div>
+                  )}
+                </FileUploader>
               </div>
-            )}
+            ) : isParsing ? (
+              /* Analysis Progress */
+              <div className="py-8 px-4">
+                <div className="max-w-md mx-auto space-y-6">
+                  <div className="space-y-2">
+                    <Progress value={currentProgress} className="h-2" />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{elapsedSeconds}s</span>
+                      <span>{currentProgress}%</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {ANALYSIS_STEPS.map((step, idx) => {
+                      const stepIdx = ANALYSIS_STEPS.findIndex(s => s.key === parseStep);
+                      const isActive = step.key === parseStep;
+                      const isDone = idx < stepIdx;
+                      const isFuture = idx > stepIdx;
+                      const StepIcon = step.icon;
+
+                      return (
+                        <div
+                          key={step.key}
+                          className={cn(
+                            'flex items-center gap-3 rounded-lg p-3 transition-all',
+                            isActive && 'bg-primary/5 border border-primary/20',
+                            isDone && 'opacity-60',
+                            isFuture && 'opacity-30'
+                          )}
+                        >
+                          <div className={cn(
+                            'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
+                            isActive && 'bg-primary/10',
+                            isDone && 'bg-green-100 dark:bg-green-950',
+                            isFuture && 'bg-muted'
+                          )}>
+                            {isDone ? (
+                              <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            ) : isActive ? (
+                              <StepIcon className="h-4 w-4 text-primary animate-pulse" />
+                            ) : (
+                              <StepIcon className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn(
+                              'text-sm font-medium',
+                              isActive && 'text-primary',
+                              isFuture && 'text-muted-foreground'
+                            )}>
+                              {step.label}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">{step.detail}</p>
+                          </div>
+                          {isActive && <Loader2 className="h-4 w-4 animate-spin text-primary flex-shrink-0" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <p className="text-center text-xs text-muted-foreground">
+                    Die KI liest jede Zahl und ordnet sie dem richtigen Feld zu · {file.name}
+                  </p>
+                </div>
+              </div>
+            ) : parseStep === 'done' && aiRows.length > 0 ? (
+              <>
+                {/* Summary */}
+                <div className="flex items-center gap-3 py-2 flex-wrap">
+                  <Badge variant="secondary" className="text-sm">
+                    {aiRows.length} Objekte erkannt
+                  </Badge>
+                  <Badge variant="default" className="text-sm bg-green-600">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    {selectedRows.size} ausgewählt
+                  </Badge>
+                  {aiSummary?.avgConfidence != null && (
+                    <Badge variant="outline" className="text-xs">
+                      Ø Konfidenz: {Math.round(aiSummary.avgConfidence * 100)}%
+                    </Badge>
+                  )}
+                  {aiSummary?.totalPortfolioValue != null && (
+                    <Badge variant="outline" className="text-xs">
+                      Portfoliowert: {formatCurrency(aiSummary.totalPortfolioValue)}
+                    </Badge>
+                  )}
+                  {aiSummary?.totalAnnualIncome != null && (
+                    <Badge variant="outline" className="text-xs">
+                      Mieteinnahmen/a: {formatCurrency(aiSummary.totalAnnualIncome)}
+                    </Badge>
+                  )}
+                  {aiSummary?.totalDebt != null && (
+                    <Badge variant="outline" className="text-xs">
+                      Darlehen: {formatCurrency(aiSummary.totalDebt)}
+                    </Badge>
+                  )}
+                  {isLoanOnly && (
+                    <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-700">
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Nur Darlehen
+                    </Badge>
+                  )}
+                </div>
+
+                {/* AI Issues */}
+                {aiSummary?.issues && aiSummary.issues.length > 0 && (
+                  <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 text-sm">
+                    <p className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">Hinweise der KI:</p>
+                    <ul className="list-disc list-inside text-yellow-700 dark:text-yellow-300 text-xs space-y-0.5">
+                      {aiSummary.issues.map((issue, i) => (
+                        <li key={i}>{issue}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Preview Table */}
+                <ScrollArea className="flex-1 border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={selectedRows.size === aiRows.length}
+                            onCheckedChange={toggleAll}
+                          />
+                        </TableHead>
+                        <TableHead>Code</TableHead>
+                        <TableHead>Art</TableHead>
+                        <TableHead>Adresse</TableHead>
+                        <TableHead>Ort</TableHead>
+                        <TableHead className="text-right">m²</TableHead>
+                        <TableHead className="text-right">Marktwert</TableHead>
+                        <TableHead className="text-right">Miete/M</TableHead>
+                        <TableHead className="text-right">Restschuld</TableHead>
+                        <TableHead className="text-center">Bank</TableHead>
+                        <TableHead className="text-center">Konfidenz</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {aiRows.map((row, idx) => (
+                        <TableRow
+                          key={idx}
+                          className={!selectedRows.has(idx) ? 'opacity-50' : ''}
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedRows.has(idx)}
+                              onCheckedChange={() => toggleRow(idx)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{row.code}</TableCell>
+                          <TableCell>{row.art}</TableCell>
+                          <TableCell className="max-w-[180px] truncate" title={row.adresse}>
+                            {row.adresse}
+                          </TableCell>
+                          <TableCell>{row.ort}</TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {row.qm?.toLocaleString('de-DE') ?? '–'}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-xs">
+                            {formatCurrency(row.marktwert)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-xs">
+                            {row.kaltmiete != null
+                              ? formatCurrency(row.kaltmiete)
+                              : row.jahresmiete != null
+                              ? formatCurrency(Math.round(row.jahresmiete / 12))
+                              : '–'}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-xs">
+                            {formatCurrency(row.restschuld)}
+                          </TableCell>
+                          <TableCell className="text-center text-xs truncate max-w-[80px]" title={row.bank || ''}>
+                            {row.bank || '–'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className={`text-xs font-medium ${confidenceColor(row.confidence)}`}>
+                              {Math.round(row.confidence * 100)}%
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+
+                {/* Notes from AI */}
+                {aiRows.some((r) => r.notes) && (
+                  <div className="text-xs text-muted-foreground space-y-0.5 pt-1">
+                    {aiRows.filter((r) => r.notes).map((r, i) => (
+                      <p key={i}>
+                        <span className="font-mono">{r.code}:</span> {r.notes}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : null}
           </>
-        ) : null}
+        )}
 
         <DialogFooter>
+          {showProtocol && (
+            <Button variant="outline" onClick={() => { setShowProtocol(false); }}>
+              Zurück zur Vorschau
+            </Button>
+          )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Abbrechen
+            {showProtocol ? 'Schließen' : 'Abbrechen'}
           </Button>
-          {parseStep === 'done' && aiRows.length > 0 && (
+          {parseStep === 'done' && aiRows.length > 0 && !showProtocol && (
             <Button onClick={handleImport} disabled={isImporting || selectedRows.size === 0}>
               {isImporting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Wird importiert…
+                  {isLoanOnly ? 'Darlehen werden nachgezogen…' : 'Wird importiert…'}
                 </>
+              ) : isLoanOnly ? (
+                `Darlehen für ${selectedRows.size} Objekte nachziehen`
               ) : (
                 `${selectedRows.size} Objekte übernehmen`
               )}

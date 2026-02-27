@@ -29,7 +29,7 @@ import {
 } from '@/components/shared/PropertyTable';
 import { 
   Loader2, Building2, TrendingUp, Wallet, PiggyBank, 
-  Plus, Upload, Eye, Calculator, Table2, ChevronDown
+  Plus, Upload, Eye, Calculator, Table2, ChevronDown, Landmark
 } from 'lucide-react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, 
@@ -107,6 +107,8 @@ export function PortfolioTab() {
   // Auto-open create dialog if ?create=1 is present
   const [showCreateDialog, setShowCreateDialog] = useState(() => searchParams.get('create') === '1');
   const [showCreateContextDialog, setShowCreateContextDialog] = useState(false);
+  const [showLoanRerunDialog, setShowLoanRerunDialog] = useState(false);
+  const [pendingLoanExcelFile, setPendingLoanExcelFile] = useState<File | null>(null);
   
   // FIX: Clear the create param via useEffect (not useState side-effect)
   useEffect(() => {
@@ -1058,7 +1060,7 @@ export function PortfolioTab() {
 
       {/* Excel Import Zone */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="p-4 space-y-3">
           <FileUploader
             onFilesSelected={handleExcelFile}
             accept=".xlsx,.xls,.csv"
@@ -1076,6 +1078,29 @@ export function PortfolioTab() {
               </div>
             )}
           </FileUploader>
+          {/* Loan re-run button */}
+          {hasData && (
+            <div className="flex items-center justify-end">
+              <FileUploader
+                onFilesSelected={(files) => {
+                  if (files.length > 0) {
+                    setPendingLoanExcelFile(files[0]);
+                    setShowLoanRerunDialog(true);
+                  }
+                }}
+                accept=".xlsx,.xls,.csv"
+              >
+                {() => (
+                  <Button variant="outline" size="sm" className="gap-2 cursor-pointer" asChild>
+                    <span>
+                      <Landmark className="h-4 w-4" />
+                      Darlehen neu aus Excel auslesen
+                    </span>
+                  </Button>
+                )}
+              </FileUploader>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -1232,6 +1257,21 @@ export function PortfolioTab() {
           tenantId={activeOrganization.id}
           initialFile={pendingExcelFile}
           contextId={selectedContextId}
+        />
+      )}
+
+      {/* Loan Re-Run Dialog */}
+      {activeOrganization && (
+        <ExcelImportDialog
+          open={showLoanRerunDialog}
+          onOpenChange={(open) => {
+            setShowLoanRerunDialog(open);
+            if (!open) setPendingLoanExcelFile(null);
+          }}
+          tenantId={activeOrganization.id}
+          initialFile={pendingLoanExcelFile}
+          contextId={selectedContextId}
+          mode="loan-only"
         />
       )}
 
