@@ -63,7 +63,23 @@ export function PosteingangTab() {
     enabled: !!activeTenantId,
   });
 
-  const hasActiveContract = !!activeMandate;
+  // Check if AI extraction toggle is enabled (Testphase bypass)
+  const { data: aiExtractionEnabled = false } = useQuery({
+    queryKey: ['ai-extraction-enabled', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return false;
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('ai_extraction_enabled')
+        .eq('id', activeTenantId)
+        .single();
+      if (error) throw error;
+      return data?.ai_extraction_enabled ?? false;
+    },
+    enabled: !!activeTenantId,
+  });
+
+  const hasActiveContract = !!activeMandate || aiExtractionEnabled;
 
   // Mailbox address — only when contract active
   const { data: mailboxAddress } = useQuery({
