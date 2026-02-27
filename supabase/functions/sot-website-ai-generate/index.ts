@@ -87,13 +87,13 @@ Texte sollen professionell, überzeugend und SEO-optimiert sein. Deutsche Sprach
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: "Du generierst Website-Strukturen als reines JSON. Keine Markdown-Formatierung, kein Code-Block, nur valides JSON." },
           { role: "user", content: prompt },
         ],
         temperature: 0.7,
-        max_tokens: 2000,
+        max_tokens: 8000,
       }),
     });
 

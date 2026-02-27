@@ -102,12 +102,12 @@ Die E-Mail sollte unser Interesse klar kommunizieren und die nächsten Schritte 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'google/gemini-2.5-pro',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        max_tokens: 500,
+        max_tokens: 4000,
         temperature: 0.7,
       }),
     });

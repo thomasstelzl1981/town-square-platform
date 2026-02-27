@@ -31,7 +31,7 @@ Antworte NUR mit dem Tool-Call, keine zusätzliche Erklärung.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: freeText },

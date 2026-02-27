@@ -2855,7 +2855,7 @@ async function executeAction(
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "google/gemini-2.5-flash",
+              model: "google/gemini-2.5-pro",
               messages: [
                 {
                   role: "system",
@@ -2883,7 +2883,7 @@ ${contactHint}`
                   content: `${conversationContext ? `Bisheriges Gespräch:\n${conversationContext}\n\n` : ''}Anweisung: ${instruction}`
                 }
               ],
-              max_tokens: 1000,
+              max_tokens: 4000,
             }),
           });
 
@@ -3120,12 +3120,12 @@ async function generateExplainResponse(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: message },
         ],
-        max_tokens: 800,
+        max_tokens: 4000,
       }),
     });
 
@@ -3179,12 +3179,12 @@ REGELN:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Erstelle folgenden Entwurf: ${message}` },
         ],
-        max_tokens: 1000,
+        max_tokens: 4000,
       }),
     });
     
@@ -3260,12 +3260,12 @@ DOKUMENT: "${documentContext.filename}" (${documentContext.content_type})`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `DOKUMENTINHALT:\n\n${extractedText}\n\n---\n\nFRAGE DES USERS: ${userPrompt}` },
         ],
-        max_tokens: 2000,
+        max_tokens: 4000,
       }),
     });
 
@@ -3580,7 +3580,7 @@ STIL:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           ...request.messages
@@ -3684,7 +3684,7 @@ Antworte mit dem Tool "audit_result".`;
           method: "POST",
           headers: { "Authorization": `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
+            model: "google/gemini-2.5-pro",
             messages: [
               { role: "system", content: "Du bist ein Social-Media-Personality-Analyst. Analysiere Audit-Antworten und erstelle ein Personality Profile." },
               { role: "user", content: analysisPrompt },

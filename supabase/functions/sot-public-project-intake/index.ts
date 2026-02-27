@@ -155,7 +155,7 @@ async function handleAnalyze(
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'google/gemini-2.5-flash',
+              model: 'google/gemini-2.5-pro',
               messages: [
                 {
                   role: 'system',
@@ -173,7 +173,7 @@ Antworte NUR mit JSON:
                   ]
                 }
               ],
-              max_tokens: 2000,
+              max_tokens: 8000,
             }),
           });
 
@@ -224,7 +224,7 @@ Antworte NUR mit JSON:
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'google/gemini-2.5-flash',
+              model: 'google/gemini-2.5-pro',
               messages: [
                 { role: 'system', content: PRICELIST_SYSTEM_PROMPT },
                 {
@@ -237,7 +237,7 @@ Antworte NUR mit JSON:
               ],
               tools: [EXTRACT_UNITS_TOOL],
               tool_choice: { type: 'function' as const, function: { name: 'extract_units' } },
-              max_tokens: 4000,
+              max_tokens: 8000,
             }),
           });
 

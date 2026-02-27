@@ -50,12 +50,12 @@ serve(async (req) => {
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: `Du bist ein Social-Media-Copywriter. Überarbeite den gegebenen ${platform || 'Social Media'}-Post.\nPersönlichkeit: ${JSON.stringify(personality)}\nGib NUR den überarbeiteten Text zurück, keine Erklärungen.` },
           { role: "user", content: `${actionPrompt}\n\nOriginal:\n${content}` },
         ],
-        max_tokens: 1000,
+        max_tokens: 4000,
       }),
     });
 

@@ -92,13 +92,13 @@ Schreibe NUR den Brieftext (ohne Briefkopf/Datum/Adressblock). Beginne direkt mi
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: 4000,
       }),
     });
 

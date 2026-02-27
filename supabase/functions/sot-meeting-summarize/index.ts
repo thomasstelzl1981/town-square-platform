@@ -54,14 +54,15 @@ serve(async (req) => {
     }
 
     // Summarize with Lovable AI (Gemini)
-    const aiResponse = await fetch("https://lovable.dev/api/chat", {
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${supabaseKey}`,
+        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
+        max_tokens: 8000,
         messages: [
           {
             role: "system",

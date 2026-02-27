@@ -846,7 +846,7 @@ Antworte NUR mit validem JSON:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -858,7 +858,7 @@ Antworte NUR mit validem JSON:
           },
         ],
         temperature: 0.1,
-        max_tokens: 16000,
+        max_tokens: 32000,
       }),
     });
 
@@ -917,7 +917,7 @@ Antworte NUR mit validem JSON:
         extraction_key_data: parsed.key_data,
         extracted_at: new Date().toISOString(),
         pages_extracted: pages.length,
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
       },
     }).eq("id", documentId);
 

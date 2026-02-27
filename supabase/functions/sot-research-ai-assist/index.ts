@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
       case 'suggest_filters': {
         const { intent_text } = params
         const aiResponse = await callLovableAI({
-          model: 'google/gemini-3-flash-preview',
+      model: 'google/gemini-2.5-pro',
           messages: [
             {
               role: 'system',
@@ -43,7 +43,7 @@ Output Format: {"branche": "...", "region": "...", "role": "...", "keywords": ["
       case 'optimize_plan': {
         const { intent_text, icp_json } = params
         const aiResponse = await callLovableAI({
-          model: 'google/gemini-3-flash-preview',
+      model: 'google/gemini-2.5-pro',
           messages: [
             {
               role: 'system',
@@ -69,7 +69,7 @@ Output Format: {"firecrawl": true/false, "epify": true/false, "apollo": true/fal
         if (!results?.length) return jsonResponse({ scored: [] })
 
         const aiResponse = await callLovableAI({
-          model: 'google/gemini-3-flash-preview',
+      model: 'google/gemini-2.5-pro',
           messages: [
             {
               role: 'system',
@@ -108,7 +108,7 @@ Output: JSON Array mit [{id, confidence_score, red_flags: []}]`
           .limit(100)
 
         const aiResponse = await callLovableAI({
-          model: 'google/gemini-3-flash-preview',
+          model: 'google/gemini-2.5-pro',
           messages: [
             {
               role: 'system',
