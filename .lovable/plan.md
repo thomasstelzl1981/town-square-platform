@@ -1,65 +1,57 @@
 
 
-# Redesign Ncore Business Consulting — Von Schwarz-Emerald zu Hell-Cool-Tech
+# Otto² Advisory & Ncore online bringen
 
-## Analyse
+## Status
 
-**Aktuell:** Reines Schwarz (`bg-black`) mit Emerald-Akzenten. Alle 8 Seiten sind dunkel, kalt, text-heavy, keine Bilder. Wirkt wie ein SaaS-Startup, nicht wie eine Unternehmensberatung mit Netzwerk und Personen.
+Beide Websites sind **code-seitig fertig** — Routing, Layout, Seiten, Domain-Mapping (`domainMap.ts`), und Lead-Edge-Functions sind implementiert. Die Seiten sind bereits über die Preview erreichbar unter `/website/otto-advisory` und `/website/ncore`.
 
-**Ziel:** Heller, aber weiterhin cool und technisch. Nicht weiß wie Otto², sondern ein elegantes Slate-950 → Slate-50 mit Emerald-Akzenten. Bilder von Tech, Beratungssituationen, Netzwerk, Personen. Eigene Schriftart (Inter oder Space Grotesk — modern, tech-cool). Mehr visuell, weniger text-wall.
+Um sie unter ihren eigenen Domains live zu bekommen, sind **drei Schritte** nötig:
 
-## Design-System (Neu)
+## Schritt 1: Custom Domains in Lovable verbinden
+
+In **Project Settings → Domains** müssen folgende Domains hinzugefügt werden:
+
+**Otto² Advisory:**
+- `otto2advisory.com` (Primary)
+- `www.otto2advisory.com`
+- Optional: `finanzdienstleistungen.gmbh`, `zl-beratung.de`, `zl-finanzen.de` + jeweilige www-Varianten
+
+**Ncore:**
+- `ncore.online` (Primary)
+- `www.ncore.online`
+- Optional: `thomasstelzl.com`, `thomas-stelzl.com`, `thomasstelzl.de` + jeweilige www-Varianten
+
+## Schritt 2: DNS bei IONOS konfigurieren
+
+Für jede Domain bei IONOS:
 
 ```text
-Hintergrund:     #0F172A (slate-900) als Basis, #F8FAFC (slate-50) für helle Sektionen
-                 Wechsel zwischen dunklen und hellen Sektionen für Rhythmus
-Header/Footer:   #0F172A (slate-900) mit Emerald-Akzenten
-Primärfarbe:     #10B981 (emerald-500) — bleibt als Markenfarbe
-Akzent-Hell:     #ECFDF5 (emerald-50) für helle Sektionen
-Text dunkel:     #F1F5F9 (slate-100) auf dunklem Grund
-Text hell:       #1E293B (slate-800) auf hellem Grund
-Karten hell:     bg-white border-slate-200 shadow-sm
-Karten dunkel:   bg-slate-800/50 border-emerald-900/30
-Schriftart:      'Space Grotesk' (Google Fonts) — modern, tech, cool
+Typ    Name    Wert
+A      @       185.158.133.1
+A      www     185.158.133.1
+TXT    _lovable   lovable_verify=<wird von Lovable angezeigt>
 ```
 
-## AI-generierte Bilder (4 Stück)
+Die TXT-Verify-Werte werden dir angezeigt, nachdem du die Domains in Schritt 1 hinzugefügt hast.
 
-1. **Hero:** Futuristisches Netzwerk-Visualization mit verbundenen Punkten, emerald-teal Farbschema, abstrakt
-2. **Beratung:** Zwei Personen am Laptop in modernem Office, Glaswände, natürliches Licht
-3. **Tech/KI:** Abstraktes KI-Konzeptbild, neuronales Netz, emerald Farbton
-4. **Netzwerk:** Handshake/Meeting-Situation, professionell, modern, diverse Personen
+## Schritt 3: Projekt publizieren
 
-## Betroffene Dateien (8 Stück)
+Nach DNS-Propagation (bis zu 72h, meist schneller) den **Publish**-Button klicken, damit die Frontend-Änderungen (Redesign) live gehen.
 
-| Datei | Änderung |
-|-------|----------|
-| `NcoreLayout.tsx` | Heller Header (glassmorphism), Space Grotesk Font, Hell/Dunkel-Rhythmus im Footer |
-| `NcoreHome.tsx` | Hero mit AI-Bild als Background, helle 3-Pillars-Sektion, Bilder in Why-Ncore Section |
-| `NcoreDigitalisierung.tsx` | Hell/Dunkel-Sektionswechsel, KI-Bild einfügen |
-| `NcoreStiftungen.tsx` | Hell/Dunkel-Sektionswechsel |
-| `NcoreGeschaeftsmodelle.tsx` | Hell/Dunkel-Sektionswechsel |
-| `NcoreNetzwerk.tsx` | Beratungsbild einfügen, hellere Karten |
-| `NcoreGruender.tsx` | Persönlicheres Design mit Bild-Platzhalter |
-| `NcoreKontakt.tsx` | Helles Formular auf hellem Hintergrund |
+## Was ich hier tun kann
 
-## Kern-Konzept: Alternierende Sektionen
+Da Custom Domains über die **Project Settings UI** konfiguriert werden müssen (nicht per Code), kann ich das nicht automatisch machen. Aber ich kann dir den Weg zeigen:
 
-Statt durchgehend schwarz wechseln Sektionen zwischen:
-- **Dunkel:** `bg-slate-900 text-slate-100` (Hero, CTA, Footer)
-- **Hell:** `bg-slate-50 text-slate-800` (Content-Sektionen, Karten, FAQ)
+**Desktop:** Klick auf den Projektnamen oben links → Settings → Domains → Connect Domain
 
-Das erzeugt visuellen Rhythmus und Modernität, bleibt aber cool und tech.
+Dort trägst du nacheinander die Domains ein. Lovable zeigt dir dann die DNS-Records an, die du bei IONOS setzen musst.
 
-## Implementierungsschritte
+## Was bereits funktioniert (kein Code-Aufwand)
 
-1. Layout redesignen (Font, Header glassmorphism, Footer hell/dunkel)
-2. AI-Bilder generieren (4 Stück via Edge Function)
-3. NcoreHome komplett redesignen mit Bildern und alternierenden Sektionen
-4. Alle Unterseiten auf Hell/Dunkel-Wechsel umstellen
-5. Kontaktformular auf helles Design umstellen
-
-## Kein Impact auf andere Brands
-
-Alles auf `src/pages/zone3/ncore/*` beschränkt. Font wird nur im Ncore-Layout geladen.
+- Domain-Router in `domainMap.ts` ist konfiguriert
+- Routing in `routesManifest.ts` ist konfiguriert
+- Alle Seiten (Home, Kontakt, Impressum, Datenschutz, etc.) sind implementiert
+- Lead-Edge-Functions (`sot-ncore-lead-submit`, `sot-futureroom-public-submit`) sind deployed
+- PIN-Gate ist aktiv (Code 2710) — kann bei Bedarf deaktiviert werden
 
