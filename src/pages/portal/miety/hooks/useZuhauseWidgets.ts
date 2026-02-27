@@ -193,8 +193,11 @@ export function useZuhauseWidgets() {
     });
   }, [allWidgetIds, userId]);
 
-  // Reset hydration flag when user changes
+  // Reset hydration flag when user actually changes (not on initial mount)
+  const prevUserIdRef = useRef<string | undefined>(userId);
   useEffect(() => {
+    if (prevUserIdRef.current === userId) return;
+    prevUserIdRef.current = userId;
     hydratedRef.current = false;
     setOrder([]);
     setHiddenIds(new Set());
