@@ -7,7 +7,7 @@
     "manifests": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "path": "src/manifests/*", "reason": "Re-frozen after Armstrong E-Mail-Assistent global actions" },
     "shared_investment": { "frozen": true, "frozen_at": "2026-02-26T22:00:00.000Z", "path": "src/components/investment/*", "reason": "Re-frozen after full Expose SSOT consolidation (5/5 pages)" },
     "shared_listings": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/components/listings/*", "reason": "Production freeze" },
-    "edge_functions": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "path": "supabase/functions/*", "reason": "Re-frozen after Excel Import + Property CRUD loan extension" },
+    "edge_functions": { "frozen": false, "frozen_at": "2026-02-28T00:10:00.000Z", "path": "supabase/functions/*", "reason": "Unfrozen for Miete p.a. intake fix" },
     "validation": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/validation/*", "reason": "Production freeze" }
   }
 }
