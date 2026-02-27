@@ -1,38 +1,40 @@
 
 
-# Ncore Impressum + Datenschutz -- Vollstaendige Neufassung
+# Otto² Advisory Datenschutz — Vollstaendige Neufassung
 
-## Problem
-Beide Dateien enthalten noch die Urversion: falscher Firmenname, TMG statt DDG, kein Komplementaer, keine USt-IdNr, veralteter OS-Link.
+## Ist-Zustand
+Die aktuelle `OttoDatenschutz.tsx` enthaelt veraltete Daten: falsche Adresse (Deisenhofen statt Bogen), falscher Firmenname ("Komplett ZL"), kein IONOS-Hosting, keine TTDSG-Referenz, unvollstaendige Betroffenenrechte, fehlende Rechtsgrundlagen.
 
-## Aenderungen
+## Aenderung: `src/pages/zone3/otto/OttoDatenschutz.tsx` — Komplett neu
 
-### 1. `NcoreImpressum.tsx` -- Komplett neu
+Struktur gemaess Aufgabe:
 
-- Ueberschrift: "Angaben gemaess § 5 DDG"
-- Diensteanbieter: **Ncore Business Consulting UG (haftungsbeschraenkt) & Co. KG**
-- Adresse: Sauerlacher Strasse 30, 82041 Oberhaching (Deisenhofen)
-- Kontakt: Telefon +49 (0)30 424 314 70, Mobil +49 (0)160 901 17 358, E-Mail, Web
-- Komplementaer-Block: Ncore Consulting UG (haftungsbeschraenkt), HRB 307081, GF Thomas Stelzl
-- Register KG: HRA 121933, AG Muenchen
-- USt-IdNr: DE459006252, Steuernummer: 9143/551/20741
-- Inhaltlich Verantwortlicher: § 18 Abs. 2 MStV, Thomas Stelzl
-- OS-Plattform: Hinweis dass seit 20.07.2025 eingestellt, KEIN Link
-- Streitbeilegung: nicht bereit, nicht verpflichtet
-- Haftung Inhalte/Links/Urheberrecht: DDG-Referenzen (§§ 7-10 DDG statt TMG)
+1. **Einleitung mit 5 offenen Fragen** (als Hinweisbox am Seitenanfang):
+   - Cookie-Consent-Banner/Tool?
+   - Webanalyse/Tracking?
+   - Marketing-Pixel?
+   - Kontaktformular — wohin Daten?
+   - Externe Inhalte (Fonts, Maps, reCAPTCHA, Embeds)?
 
-### 2. `NcoreDatenschutz.tsx` -- Komplett neu
+2. **Pflichtbausteine** (13 Sektionen):
+   - §1 Verantwortlicher: ZL Finanzdienstleistungen GmbH, Ruselstrasse 16, 94327 Bogen, +49 (0)9422 4845, otto.stelzl@otto2advisory.com
+   - §2 Hosting bei IONOS SE: AVV Art. 28, Server-Logfiles (IP, Zeitstempel, Request, Referrer, User-Agent), Art. 6(1)(f), Speicherdauer 14 Tage (als pruefbar markiert)
+   - §3 Zugriffsdaten/Serverlogs: Datenarten, Zweck Betrieb/Sicherheit, Rechtsgrundlage, Speicherdauer
+   - §4 Kontaktaufnahme per E-Mail/Telefon: Art. 6(1)(b)/(f)
+   - §5 Kontaktformular/Finanzierungsanfragen: Art. 6(1)(b), Daten intern verarbeitet
+   - §6 Cookies: nur technisch notwendig, §25 Abs. 2 TTDSG, kein Banner noetig
+   - §7-§9 **Optionale Module** (klar als "NUR WENN GENUTZT — sonst entfernen" markiert):
+     - Webanalyse/Tracking
+     - Marketing-Pixel
+     - Externe Inhalte (Fonts/Maps/Captcha/Embeds)
+   - §10 Empfaenger/Kategorien
+   - §11 Drittlandtransfer (Art. 44 ff.) — nur falls Tools ausserhalb EU
+   - §12 Speicherdauer allgemein
+   - §13 Betroffenenrechte: Art. 15-21 + Widerruf Art. 7(3)
+   - §14 Beschwerderecht: zustaendige Aufsichtsbehoerde am Sitz (BayLDA als Beispiel)
+   - §15 Sicherheitsmassnahmen (TOMs)
+   - §16 Stand: 27.02.2026
 
-- Verantwortliche Stelle: voller KG-Name + Komplementaer + GF
-- Hosting-Block: **IONOS SE**, Elgendorfer Str. 57, 56410 Montabaur, AVV nach Art. 28 DSGVO, Server-Logfiles, Speicherdauer 7 Tage (als Platzhalter markiert)
-- Rechtsgrundlage Hosting: Art. 6 Abs. 1 lit. f DSGVO
-- Kontaktformular: Daten an Backend/Lead-Inbox, Art. 6 Abs. 1 lit. b/f
-- Betroffenenrechte komplett
-- Aufsichtsbehoerde: BayLDA Ansbach
-- SSL/TLS
-- Footer-Hinweis: "DDG/DSGVO/TTDSG" statt "TMG/DSGVO"
-- **Offene-Punkte-Box** am Ende: Die 11 Fragen (Cookies, Analytics, externe Inhalte, Newsletter) als sichtbare Checkliste
-
-### Keine weiteren Dateien betroffen
-Zone 3 Ncore-Seiten sind nicht eingefroren -- kein Freeze-Konflikt.
+### Nur eine Datei betroffen
+Keine weiteren Aenderungen noetig.
 
