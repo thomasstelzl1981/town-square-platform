@@ -166,6 +166,7 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [devAiLoading, setDevAiLoading] = useState(false);
   const [descOpen, setDescOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
   // ── Developer Context (Anbieter/Impressum) – editable state ──
@@ -390,6 +391,43 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
       }
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  // ── Anbieter aus Exposé laden (Re-Analyse) ──
+  const loadDeveloperFromExpose = async () => {
+    if (isDemo || !projectId || !fullProject) return;
+    const exposeFilePath = (intake?.files as Record<string, any>)?.expose
+      || (intake?.reviewed_data as Record<string, any>)?.exposePath
+      || (intake?.storage_paths as Record<string, any>)?.expose;
+    if (!exposeFilePath) {
+      toast.error('Kein Exposé gefunden', { description: 'Dieses Projekt hat keine gespeicherte Exposé-Datei.' });
+      return;
+    }
+    setDevAiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-project-intake', {
+        body: { mode: 'analyze', storagePaths: { expose: exposeFilePath } },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const ext = data?.extractedData || data;
+      if (ext?.developer) { setDevName(ext.developer); markDirty(); }
+      if (ext?.developerLegalForm) { setDevLegalForm(ext.developerLegalForm); markDirty(); }
+      if (ext?.developerManagingDirector) { setDevManagingDirector(ext.developerManagingDirector); markDirty(); }
+      if (ext?.developerStreet) { setDevStreet(ext.developerStreet); markDirty(); }
+      if (ext?.developerHouseNumber) { setDevHouseNumber(ext.developerHouseNumber); markDirty(); }
+      if (ext?.developerPostalCode) { setDevPostalCode(ext.developerPostalCode); markDirty(); }
+      if (ext?.developerCity) { setDevCity(ext.developerCity); markDirty(); }
+      if (ext?.developerHrb) { setDevHrb(ext.developerHrb); markDirty(); }
+      if (ext?.developerUstId) { setDevUstId(ext.developerUstId); markDirty(); }
+
+      toast.success('Anbieter-Daten aus Exposé geladen', { description: 'Bitte prüfen und mit "Speichern" bestätigen.' });
+    } catch (err: any) {
+      toast.error('Exposé-Analyse fehlgeschlagen', { description: err?.message || 'Unbekannter Fehler' });
+    } finally {
+      setDevAiLoading(false);
     }
   };
 
@@ -734,9 +772,23 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
         {/* ── Projektgesellschaft / Anbieter (editierbar) ── */}
         {(devCtxId || !isDemo) && (
           <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-              <Landmark className="h-3.5 w-3.5" /> Projektgesellschaft / Anbieter
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <Landmark className="h-3.5 w-3.5" /> Projektgesellschaft / Anbieter
+              </p>
+              {!isDemo && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadDeveloperFromExpose}
+                  disabled={devAiLoading}
+                  className="gap-1.5 h-7 text-xs"
+                >
+                  {devAiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  {devAiLoading ? 'Analysiert…' : 'Anbieter aus Exposé laden'}
+                </Button>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <FormField label="Firma" icon={Building2}>
                 <Input value={devName} onChange={e => { setDevName(e.target.value); markDirty(); }}
