@@ -37,7 +37,7 @@
 
 | Phase | Beschreibung | Status |
 |-------|-------------|--------|
-| **2** | Otto²Advisory Content aus Quellprojekt adaptieren + FutureRoom-Finanzierungsflow | ⬜ |
+| **2** | Otto²Advisory Content aus Quellprojekt adaptieren + FutureRoom-Finanzierungsflow | ✅ DONE |
 | **3** | Ncore Content-Überarbeitung (kein SoT-Link, konsolidiert) | ⬜ |
 | **4** | Lead-Routing (sot-lead-inbox + sot-futureroom-public-submit) | ⬜ |
 | **5** | Zone 1 Desk-Seiten (Lead-Pool, Zuweisung, Monitor) | ⬜ |
