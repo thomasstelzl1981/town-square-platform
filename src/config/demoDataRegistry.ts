@@ -233,6 +233,42 @@ export const DEMO_DATA_SOURCES: readonly DemoDataSource[] = [
     entities: ['profile'],
     exports: ['CSV'],
   },
+  // ─── Armstrong Knowledge Base CSVs ─────────────────────────
+  {
+    path: 'public/demo-data/demo_kb_vehicles.csv',
+    module: 'MOD-17',
+    type: 'hardcoded',
+    entities: ['kb_vehicles'],
+    exports: ['CSV'],
+  },
+  {
+    path: 'public/demo-data/demo_kb_pet_services.csv',
+    module: 'MOD-22',
+    type: 'hardcoded',
+    entities: ['kb_pet_services'],
+    exports: ['CSV'],
+  },
+  {
+    path: 'public/demo-data/demo_kb_education.csv',
+    module: 'MOD-15',
+    type: 'hardcoded',
+    entities: ['kb_education'],
+    exports: ['CSV'],
+  },
+  {
+    path: 'public/demo-data/demo_kb_tenant_rights.csv',
+    module: 'MOD-20',
+    type: 'hardcoded',
+    entities: ['kb_tenant_rights'],
+    exports: ['CSV'],
+  },
+  {
+    path: 'public/demo-data/demo_kb_photovoltaik_extended.csv',
+    module: 'MOD-19',
+    type: 'hardcoded',
+    entities: ['kb_photovoltaik'],
+    exports: ['CSV'],
+  },
   // ─── Seed Engine (Phase 2) ─────────────────────────────────
   {
     path: 'src/hooks/useDemoSeedEngine.ts',
