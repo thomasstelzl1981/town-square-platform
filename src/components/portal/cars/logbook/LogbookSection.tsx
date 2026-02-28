@@ -89,23 +89,19 @@ export function LogbookSection() {
     <div className="space-y-4">
       <Separator className="my-6" />
       
-      {/* Section Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <BookOpen className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold">Fahrtenbuch</h2>
-            <p className="text-sm text-muted-foreground">
-              Fahrtenbücher für Ihre Fahrzeuge verwalten
-            </p>
-          </div>
+      {/* Section Header — ModulePageHeader pattern */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight uppercase">Fahrtenbuch</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Fahrtenbücher für Ihre Fahrzeuge verwalten
+          </p>
         </div>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowCreate(!showCreate)}>
-          <Plus className="h-3.5 w-3.5" />
-          Fahrtenbuch anlegen
-        </Button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Button variant="glass" size="icon-round" onClick={() => setShowCreate(!showCreate)}>
+            <Plus className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       {/* Create Flow */}
@@ -116,23 +112,7 @@ export function LogbookSection() {
         <div className="text-sm text-muted-foreground py-8 text-center">
           Fahrtenbücher werden geladen…
         </div>
-      ) : logbooks.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="py-8 text-center">
-            <BookOpen className="h-8 w-8 mx-auto mb-3 text-muted-foreground/50" />
-            <p className="text-sm text-muted-foreground mb-3">
-              Noch keine Fahrtenbücher angelegt
-            </p>
-            <p className="text-xs text-muted-foreground/70 mb-4">
-              Erstellen Sie ein Fahrtenbuch und verbinden Sie einen GPS-Tracker für automatisches Tracking
-            </p>
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowCreate(true)}>
-              <Plus className="h-3.5 w-3.5" />
-              Erstes Fahrtenbuch anlegen
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
+      ) : logbooks.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {logbooks.map((lb: Logbook) => (
             <LogbookWidget
@@ -144,7 +124,7 @@ export function LogbookSection() {
             />
           ))}
         </div>
-      )}
+      ) : null}
 
       {/* Expanded Detail (inline below grid) */}
       {expandedId && (
@@ -153,6 +133,50 @@ export function LogbookSection() {
           onClose={() => setExpandedId(null)}
         />
       )}
+
+      {/* GPS-Tracker Promotion — always visible */}
+      <Card className="overflow-hidden">
+        <CardContent className="p-5">
+          <div className="flex flex-col md:flex-row md:items-start gap-4">
+            <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
+              <Cpu className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold">Seeworld R58L — 4G OBD2 GPS Tracker</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Einfach in den OBD2-Port stecken — keine Installation nötig. 24/7 GPS-Tracking mit automatischer Fahrtenerkennung für Ihr rechtssicheres Fahrtenbuch.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="text-right">
+                    <span className="text-lg font-bold">59,90 €</span>
+                    <span className="text-xs text-muted-foreground block">+ 14,90 €/Monat</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> Echtzeit-Ortung</span>
+                <span className="flex items-center gap-1"><Car className="h-3 w-3" /> Automatische Fahrterkennung</span>
+                <span className="flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Geo-Fence Alerts</span>
+                <span className="flex items-center gap-1"><Cpu className="h-3 w-3" /> OBD2-Fahrzeugdiagnose</span>
+              </div>
+              <div className="pt-1">
+                <a
+                  href="https://www.seeworldgps.com/product/vehicle-gps-tracker/car-gps-tracker/r58l/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button variant="outline" size="sm" className="text-xs">
+                    Mehr erfahren
+                  </Button>
+                </a>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
