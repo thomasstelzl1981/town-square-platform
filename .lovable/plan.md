@@ -1,51 +1,75 @@
 
 
-## Code-Splitting Plan: Zone-basierte Router-Trennung
+## Plan: Preview-Kombi-Härtung (nur Preview-Umgebung)
 
-### Problem
+### Ursache
 
-`ManifestRouter.tsx` ist eine 781-Zeilen-Datei mit **310 `React.lazy`-Imports**. Obwohl lazy-loaded, muss Vites Dev-Server trotzdem den gesamten Module-Graph beim Start aufbauen — alle 3 Zonen gleichzeitig. Das sprengt den Speicher der Preview-Instanz.
+Die Preview crasht alle ~20s weil das Dashboard gleichzeitig betreibt:
+- **3D Globe** (Three.js/WebGL — massiver GPU+RAM-Verbrauch)
+- **PV Monitoring** (`setInterval` alle 7s mit Recharts-Sparkline)
+- **Weather Animations** (40+ animierte DOM-Elemente bei Regen/Schnee)
+- **Radio Audio** (Audio-Element + Sound-Visualisierung)
+- **4+ Edge Function Calls** (Finance, News, APOD, Quote) beim Dashboard-Mount
+- **PortalLayout `preloadModules`** lädt 5 weitere Module nach 1s
+- Nach jedem Prompt: Vite HMR invalidiert den Module Graph → Reload → alles startet gleichzeitig neu
 
-### Lösung: Drei separate Zone-Router-Dateien
+### Lösung: `isPreview`-gesteuerter Safe Mode (nur Preview)
 
-Die Component-Maps und Imports werden aus `ManifestRouter.tsx` in drei eigenständige Dateien extrahiert, die selbst erst lazy-loaded werden, wenn die jeweilige Zone tatsächlich besucht wird.
+**1 neue Datei erstellen:**
 
-```text
-VORHER:
-  ManifestRouter.tsx (781 Zeilen, 310 lazy imports)
-    ├── Zone 1 imports (40+ components)
-    ├── Zone 2 imports (25+ components)
-    └── Zone 3 imports (80+ components, 8 Brands)
+| Datei | Zweck |
+|-------|-------|
+| `src/hooks/usePreviewSafeMode.ts` | Erkennt Preview-Umgebung, exportiert `isPreview` Flag + gedrosselte Konfiguration |
 
-NACHHER:
-  ManifestRouter.tsx (~80 Zeilen, 3 lazy imports)
-    ├── lazy(() => Zone1Router.tsx)  — nur bei /admin/*
-    ├── lazy(() => Zone2Router.tsx)  — nur bei /portal/*
-    └── lazy(() => Zone3Router.tsx)  — nur bei /website/*
-```
+Preview-Erkennung: `window.location.hostname.includes('-preview--')` oder `window.location.hostname.includes('lovable.app') && import.meta.env.DEV`
 
-### Dateien
+**4 Dateien editieren:**
 
-| Aktion | Datei | Inhalt |
-|--------|-------|--------|
-| Neu | `src/router/Zone1Router.tsx` | AdminLayout, alle Admin-Components, Component-Maps, Desk-Maps, Zone-1-Routing-Logic |
-| Neu | `src/router/Zone2Router.tsx` | PortalLayout, alle Module-Pages, Dynamic-Routes, Zone-2-Routing-Logic |
-| Neu | `src/router/Zone3Router.tsx` | Alle Brand-Layouts, alle Brand-Component-Maps, Zone-3-Routing-Logic inkl. Flat-Routes |
-| Edit | `src/router/ManifestRouter.tsx` | Reduziert auf ~80 Zeilen: nur noch 3 lazy-importierte Zone-Router + Legacy-Redirects + 404 |
-
-### Erwarteter Effekt
-
-- **Portal-Nutzer** (`/portal/*`): Laden nur Zone2Router → ~25 Module statt 310
-- **Website-Besucher** (`kaufy.immo`): Laden nur Zone3Router → nur die jeweilige Brand
-- **Admin** (`/admin/*`): Lädt nur Zone1Router
-- **Dev-Server Memory**: Sinkt um ca. 60-70%, weil nur 1 von 3 Zonen im Module-Graph landet
-- **Keine funktionale Änderung** — alle Routen, Redirects und Component-Maps bleiben identisch
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/portal/PortalDashboard.tsx` | Widgets nur rendern wenn im Viewport (IntersectionObserver). Globe, PV, Radio im Preview deaktiviert → Platzhalter-Card |
+| `src/hooks/usePvMonitoring.ts` | `refreshInterval` von 7s auf 60s wenn `isPreview` |
+| `src/components/portal/PortalLayout.tsx` | `preloadModules` im Preview deaktivieren (spart 5 lazy imports beim Start) |
+| `src/components/dashboard/WeatherCard.tsx` | `WeatherEffects` (animierte DOM-Elemente) im Preview nicht rendern |
 
 ### Technische Details
 
-- Jeder Zone-Router exportiert eine `<Routes>`-Struktur als Default-Export
-- `ManifestRouter.tsx` nutzt `React.lazy(() => import('./Zone1Router'))` etc.
-- Legacy-Redirects und 404 bleiben in ManifestRouter (zonenübergreifend)
-- `PathNormalizer` bleibt in ManifestRouter als Wrapper
-- Die `getDomainEntry()`-Logik für Flat-Routes wandert in Zone3Router
+**`usePreviewSafeMode.ts`:**
+```typescript
+export function usePreviewSafeMode() {
+  const isPreview = useMemo(() => {
+    const host = window.location.hostname;
+    return host.includes('-preview--') || 
+           (host.includes('lovable.app') && import.meta.env.DEV);
+  }, []);
+  
+  return { isPreview, safeRefreshInterval: isPreview ? 60000 : 7000 };
+}
+```
+
+**Dashboard-Änderung:** Widgets die im Preview deaktiviert werden:
+- `system_globe` → ersetzt durch statische Card "Globe (Preview deaktiviert)"
+- `system_pv_live` → ersetzt durch statische Card
+- `system_radio` → ersetzt durch statische Card
+
+Widgets die gedrosselt werden:
+- `system_weather` → ohne `WeatherEffects` Overlay
+- `system_finance` / `system_news` → unverändert (einmalige API-Calls, kein Polling)
+
+**PortalLayout-Änderung:** 
+```typescript
+// Zeile 82-86: preloadModules nur in Published
+useEffect(() => {
+  if (isPreview) return; // Skip in preview
+  const timer = setTimeout(preloadModules, 1000);
+  return () => clearTimeout(timer);
+}, []);
+```
+
+### Erwarteter Effekt
+
+- **RAM-Einsparung:** ~40-60MB weniger (kein Three.js, kein WebGL-Kontext, keine Preloads)
+- **CPU-Einsparung:** Keine 7s-Timer, keine CSS-Animationen, keine Audio-Elemente
+- **Netzwerk:** 5 weniger parallele Requests beim Start
+- **Published Version:** Null Änderung — alle Widgets laufen wie bisher
 
