@@ -63,7 +63,7 @@ export default function OttoUnternehmer() {
     '@context': 'https://schema.org',
     '@type': 'Service',
     name: 'Otto² Advisory — Unternehmensberatung',
-    provider: { '@type': 'Organization', name: 'Komplett ZL Finanzdienstleistungen GmbH' },
+    provider: { '@type': 'Organization', name: 'ZL Finanzdienstleistungen GmbH' },
     description: 'Finanzberatung für Unternehmer: Nachfolgeplanung, Finanzierung, Gewerberisiken und betriebliche Altersvorsorge.',
     serviceType: 'Finanzberatung für Unternehmer',
     areaServed: { '@type': 'Country', name: 'DE' },

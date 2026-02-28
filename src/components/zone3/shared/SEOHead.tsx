@@ -80,7 +80,7 @@ export const BRAND_SEO_CONFIG: Record<string, BrandSEOConfig> = {
   },
   otto: {
     name: 'Otto² Advisory',
-    legalName: 'Komplett ZL Finanzdienstleistungen GmbH',
+    legalName: 'ZL Finanzdienstleistungen GmbH',
     domain: 'https://otto2advisory.com',
     tagline: 'Erst Analyse, dann Zielbild. Finanzberatung für Unternehmer und Privathaushalte.',
     logo: '/icons/sot-logo.png',

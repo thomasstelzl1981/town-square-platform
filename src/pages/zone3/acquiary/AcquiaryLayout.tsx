@@ -163,7 +163,7 @@ export default function AcquiaryLayout() {
             <h4 className="aq-footer-title">Kontakt</h4>
             <ul className="aq-footer-links">
               <li>info@acquiary.de</li>
-              <li>+49 89 123456789</li>
+              <li>089 66667788</li>
             </ul>
           </div>
         </div>

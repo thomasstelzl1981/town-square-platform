@@ -18,13 +18,13 @@ export default function OttoDatenschutz() {
         <div className="mx-auto max-w-3xl">
           <h1 className="mb-8 text-3xl font-bold">Datenschutzerklärung</h1>
 
-          <div className="space-y-8 text-sm text-white/60 leading-relaxed">
+          <div className="space-y-8 text-sm text-slate-600 leading-relaxed">
 
             {/* Einleitung entfernt — interne Checkliste darf nicht öffentlich erscheinen */}
 
             {/* ── § 1 VERANTWORTLICHER ── */}
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;1 Verantwortlicher</h2>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">§&nbsp;1 Verantwortlicher</h2>
               <p>
                 Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) ist:
               </p>
@@ -35,7 +35,7 @@ export default function OttoDatenschutz() {
               </p>
               <p className="mt-2">
                 Telefon: +49 (0)9422 4845<br />
-                E-Mail: otto.stelzl@otto2advisory.com
+                E-Mail: info@otto2advisory.com
               </p>
               <p className="mt-2">
                 Die ZL Finanzdienstleistungen GmbH ist als Versicherungsvertreter mit Erlaubnis nach §&nbsp;34d Abs.&nbsp;1 GewO tätig.
@@ -44,14 +44,14 @@ export default function OttoDatenschutz() {
 
             {/* ── § 2 HOSTING ── */}
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;2 Hosting</h2>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">§&nbsp;2 Hosting</h2>
               <p>
                 Diese Website wird bei der IONOS SE, Elgendorfer Str.&nbsp;57, 56410 Montabaur, Deutschland, gehostet.
                 IONOS verarbeitet personenbezogene Daten in unserem Auftrag. Die Verarbeitung erfolgt auf Grundlage
                 eines Auftragsverarbeitungsvertrags gemäß Art.&nbsp;28 DSGVO.
               </p>
               <p className="mt-2">
-                <strong className="text-white/70">Server-Logfiles:</strong> Beim Aufruf unserer Website erhebt IONOS automatisch
+                <strong className="text-slate-700">Server-Logfiles:</strong> Beim Aufruf unserer Website erhebt IONOS automatisch
                 folgende Daten in sogenannten Server-Logfiles:
               </p>
               <ul className="mt-2 list-disc list-inside space-y-1">
@@ -66,14 +66,14 @@ export default function OttoDatenschutz() {
               <p className="mt-2">
                 Rechtsgrundlage: Art.&nbsp;6 Abs.&nbsp;1 lit.&nbsp;f DSGVO (berechtigtes Interesse an der sicheren und
                 effizienten Bereitstellung der Website). Die Server-Logfiles werden nach
-                <strong className="text-white/70"> 14 Tagen</strong> automatisch gelöscht.
+                <strong className="text-slate-700"> 14 Tagen</strong> automatisch gelöscht.
               </p>
               {/* Interner Hinweis entfernt */}
             </div>
 
             {/* ── § 3 ZUGRIFFSDATEN ── */}
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;3 Zugriffsdaten und Serverlogs</h2>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">§&nbsp;3 Zugriffsdaten und Serverlogs</h2>
               <p>
                 Die unter §&nbsp;2 genannten Daten werden ausschließlich zum Zweck des störungsfreien Betriebs der
                 Website, zur Erkennung und Abwehr von Angriffen sowie zur statistischen Auswertung der Nutzung
@@ -91,7 +91,7 @@ export default function OttoDatenschutz() {
 
             {/* ── § 4 KONTAKTAUFNAHME E-MAIL/TELEFON ── */}
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;4 Kontaktaufnahme per E-Mail und Telefon</h2>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">§&nbsp;4 Kontaktaufnahme per E-Mail und Telefon</h2>
               <p>
                 Wenn Sie uns per E-Mail oder Telefon kontaktieren, werden Ihre Angaben (Name, E-Mail-Adresse,
                 Telefonnummer, Inhalt der Anfrage) zum Zweck der Bearbeitung Ihrer Anfrage verarbeitet und gespeichert.
@@ -109,7 +109,7 @@ export default function OttoDatenschutz() {
 
             {/* ── § 5 KONTAKTFORMULAR / FINANZIERUNGSANFRAGEN ── */}
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;5 Kontaktformular und Finanzierungsanfragen</h2>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">§&nbsp;5 Kontaktformular und Finanzierungsanfragen</h2>
               <p>
                 Über das Kontaktformular und die Finanzierungsanfrage auf dieser Website können Sie uns Ihre
                 Angaben (u.&nbsp;a. Name, E-Mail, Telefon, Nachricht, Bonitätsdaten) übermitteln. Diese Daten
@@ -128,7 +128,7 @@ export default function OttoDatenschutz() {
 
             {/* ── § 6 COOKIES ── */}
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;6 Cookies und ähnliche Technologien</h2>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">§&nbsp;6 Cookies und ähnliche Technologien</h2>
               <p>
                 Diese Website verwendet ausschließlich technisch notwendige Cookies, die für den Betrieb der
                 Seite erforderlich sind (z.&nbsp;B. Session-Cookies). Diese Cookies werden nach §&nbsp;25 Abs.&nbsp;2 TTDSG
@@ -148,7 +148,7 @@ export default function OttoDatenschutz() {
 
             {/* ── § 10 EMPFÄNGER ── */}
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;10 Empfänger und Kategorien von Empfängern</h2>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">§&nbsp;10 Empfänger und Kategorien von Empfängern</h2>
               <p>
                 Eine Weitergabe Ihrer personenbezogenen Daten an Dritte erfolgt nur, soweit dies zur
                 Vertragserfüllung erforderlich ist, wir gesetzlich dazu verpflichtet sind oder Sie
@@ -164,7 +164,7 @@ export default function OttoDatenschutz() {
 
             {/* ── § 11 DRITTLANDTRANSFER ── */}
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;11 Datenübermittlung in Drittländer</h2>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">§&nbsp;11 Datenübermittlung in Drittländer</h2>
               <p>
                 Personenbezogene Daten werden grundsätzlich ausschließlich innerhalb der EU/des EWR verarbeitet.
               </p>
@@ -179,7 +179,7 @@ export default function OttoDatenschutz() {
 
             {/* ── § 12 SPEICHERDAUER ── */}
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;12 Speicherdauer</h2>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">§&nbsp;12 Speicherdauer</h2>
               <p>
                 Personenbezogene Daten werden nur so lange gespeichert, wie es für den jeweiligen
                 Verarbeitungszweck erforderlich ist oder gesetzliche Aufbewahrungsfristen bestehen.
@@ -190,15 +190,15 @@ export default function OttoDatenschutz() {
 
             {/* ── § 13 BETROFFENENRECHTE ── */}
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;13 Ihre Rechte als betroffene Person</h2>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">§&nbsp;13 Ihre Rechte als betroffene Person</h2>
               <p>Ihnen stehen folgende Rechte gegenüber dem Verantwortlichen zu:</p>
               <ul className="mt-2 list-disc list-inside space-y-1">
-                <li><strong className="text-white/70">Auskunft</strong> über Ihre gespeicherten Daten (Art.&nbsp;15 DSGVO)</li>
-                <li><strong className="text-white/70">Berichtigung</strong> unrichtiger Daten (Art.&nbsp;16 DSGVO)</li>
-                <li><strong className="text-white/70">Löschung</strong> Ihrer Daten (Art.&nbsp;17 DSGVO)</li>
-                <li><strong className="text-white/70">Einschränkung</strong> der Verarbeitung (Art.&nbsp;18 DSGVO)</li>
-                <li><strong className="text-white/70">Datenübertragbarkeit</strong> (Art.&nbsp;20 DSGVO)</li>
-                <li><strong className="text-white/70">Widerspruch</strong> gegen die Verarbeitung (Art.&nbsp;21 DSGVO)</li>
+                <li><strong className="text-slate-700">Auskunft</strong> über Ihre gespeicherten Daten (Art.&nbsp;15 DSGVO)</li>
+                <li><strong className="text-slate-700">Berichtigung</strong> unrichtiger Daten (Art.&nbsp;16 DSGVO)</li>
+                <li><strong className="text-slate-700">Löschung</strong> Ihrer Daten (Art.&nbsp;17 DSGVO)</li>
+                <li><strong className="text-slate-700">Einschränkung</strong> der Verarbeitung (Art.&nbsp;18 DSGVO)</li>
+                <li><strong className="text-slate-700">Datenübertragbarkeit</strong> (Art.&nbsp;20 DSGVO)</li>
+                <li><strong className="text-slate-700">Widerspruch</strong> gegen die Verarbeitung (Art.&nbsp;21 DSGVO)</li>
               </ul>
               <p className="mt-3">
                 Sofern die Verarbeitung auf Ihrer Einwilligung beruht, haben Sie das Recht, diese
@@ -206,13 +206,13 @@ export default function OttoDatenschutz() {
                 der bis zum Widerruf erfolgten Verarbeitung bleibt davon unberührt.
               </p>
               <p className="mt-2">
-                Zur Ausübung Ihrer Rechte wenden Sie sich bitte an: otto.stelzl@otto2advisory.com
+                Zur Ausübung Ihrer Rechte wenden Sie sich bitte an: info@otto2advisory.com
               </p>
             </div>
 
             {/* ── § 14 BESCHWERDERECHT ── */}
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;14 Beschwerderecht bei einer Aufsichtsbehörde</h2>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">§&nbsp;14 Beschwerderecht bei einer Aufsichtsbehörde</h2>
               <p>
                 Unbeschadet eines anderweitigen verwaltungsrechtlichen oder gerichtlichen Rechtsbehelfs
                 steht Ihnen das Recht auf Beschwerde bei einer Aufsichtsbehörde zu, wenn Sie der Ansicht sind,
@@ -230,7 +230,7 @@ export default function OttoDatenschutz() {
 
             {/* ── § 15 SICHERHEITSMASSNAHMEN ── */}
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;15 Sicherheitsmaßnahmen</h2>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">§&nbsp;15 Sicherheitsmaßnahmen</h2>
               <p>
                 Wir setzen technische und organisatorische Maßnahmen (TOMs) ein, um Ihre personenbezogenen
                 Daten gegen zufällige oder vorsätzliche Manipulation, Verlust, Zerstörung oder den Zugriff
@@ -245,13 +245,13 @@ export default function OttoDatenschutz() {
 
             {/* ── § 16 STAND ── */}
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;16 Aktualität und Änderung dieser Datenschutzerklärung</h2>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">§&nbsp;16 Aktualität und Änderung dieser Datenschutzerklärung</h2>
               <p>
                 Wir behalten uns vor, diese Datenschutzerklärung anzupassen, um sie an geänderte Rechtslagen
                 oder bei Änderungen des Dienstes bzw. der Datenverarbeitung anzupassen.
               </p>
               <p className="mt-2">
-                <strong className="text-white/70">Stand: 27. Februar 2026</strong>
+                <strong className="text-slate-700">Stand: 27. Februar 2026</strong>
               </p>
             </div>
 
