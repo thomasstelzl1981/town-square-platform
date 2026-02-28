@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { ManagerApplicationForm } from '@/components/zone3/shared/ManagerApplicationForm';
 import type { QualificationField } from '@/components/zone3/shared/ManagerApplicationForm';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
 const qualificationFields: QualificationField[] = [
   {
@@ -38,6 +39,14 @@ export default function AcquiaryKarriere() {
 
   return (
     <>
+      <SEOHead
+        brand="acquiary"
+        page={{
+          title: 'Karriere — Akquisemanager werden',
+          description: 'Werden Sie Akquisemanager bei ACQUIARY. Ortsunabhängig arbeiten, attraktive Provisionen und Zugang zu einem exklusiven Investorennetzwerk.',
+          path: '/karriere',
+        }}
+      />
       {/* Hero */}
       <section className="aq-hero" style={{ padding: '6rem 1.5rem 7rem' }}>
         <div className="aq-hero-content">

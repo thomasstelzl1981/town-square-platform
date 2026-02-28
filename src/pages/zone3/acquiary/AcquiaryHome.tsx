@@ -4,10 +4,19 @@
  */
 import { Link } from 'react-router-dom';
 import { ChevronRight, Search, BarChart3, Handshake, Brain } from 'lucide-react';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
 export default function AcquiaryHome() {
   return (
     <>
+      <SEOHead
+        brand="acquiary"
+        page={{
+          title: 'Institutionelle Immobilienakquise — KI-gestützt',
+          description: 'ACQUIARY verbindet KI-gestützte Marktanalyse mit einem exklusiven Netzwerk erfahrener Akquisemanager für systematische und vertrauliche Objektbeschaffung.',
+          path: '/',
+        }}
+      />
       {/* Hero */}
       <section className="aq-hero">
         <div className="aq-hero-content">

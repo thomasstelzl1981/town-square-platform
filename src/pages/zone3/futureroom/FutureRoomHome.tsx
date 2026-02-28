@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Brand } from '@/components/ui/brand';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
 export default function FutureRoomHome() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -92,6 +93,14 @@ export default function FutureRoomHome() {
 
   return (
     <div>
+      <SEOHead
+        brand="futureroom"
+        page={{
+          title: 'Digitale Immobilienfinanzierung — KI-Orchestrierung',
+          description: 'FutureRoom orchestriert Ihre Immobilienfinanzierung: KI-gestützte Dokumentenaufbereitung, 400+ Bankpartner, digitaler Datenraum. Vom Bonitätscheck bis zur Auszahlung.',
+          path: '/',
+        }}
+      />
       {/* Hero Section */}
       <section className="fr-hero">
         <div className="fr-hero-content">

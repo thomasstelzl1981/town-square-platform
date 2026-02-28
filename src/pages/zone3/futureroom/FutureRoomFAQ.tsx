@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/accordion";
 import { HelpCircle, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
 export default function FutureRoomFAQ() {
   const faqItems = [
@@ -56,6 +57,15 @@ export default function FutureRoomFAQ() {
 
   return (
     <div className="py-16" style={{ background: 'hsl(210 25% 97%)' }}>
+      <SEOHead
+        brand="futureroom"
+        page={{
+          title: 'Häufige Fragen (FAQ) zur Immobilienfinanzierung',
+          description: 'Antworten auf häufige Fragen zu FutureRoom: Finanzierungsablauf, Kosten, Unterlagen, Bankpartner und Datenschutz.',
+          path: '/faq',
+        }}
+        faq={faqItems.map(item => ({ question: item.question, answer: item.answer }))}
+      />
       <div className="container mx-auto px-4 max-w-3xl">
         {/* Header */}
         <div className="text-center mb-10">

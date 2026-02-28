@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useSearchProviders, type SearchProvider } from '@/hooks/usePetProviderSearch';
 import { DEMO_LENNOX_SEARCH_PROVIDER } from '@/engines/demoData/petManagerDemo';
 import { LENNOX as C, SERVICE_TAG_LABELS } from './lennoxTheme';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import heroImage from '@/assets/lennox/hero_alpine_chic.jpg';
 import cozyImage from '@/assets/lennox/section_cozy.jpg';
 import lennoxPatch from '@/assets/logos/lennox_logo_patch.jpeg';
@@ -53,6 +54,14 @@ export default function LennoxStartseite() {
 
   return (
     <div style={{ background: C.cream }}>
+      <SEOHead
+        brand="lennox"
+        page={{
+          title: 'Startseite — Geprüfte Hundeprofis in deiner Nähe',
+          description: 'Lennox & Friends: Dein Netzwerk für geprüfte Hundeprofis. Hundebetreuung, Gassi-Service und Premium-Zubehör — von den Alpen bis zur Küste.',
+          path: '/',
+        }}
+      />
       {/* ═══════════════════ HERO ═══════════════════ */}
       <section className="relative overflow-hidden" style={{ minHeight: '50vh' }}>
         <div className="absolute inset-0">

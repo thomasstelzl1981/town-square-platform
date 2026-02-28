@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { InvestmentExposeView } from '@/components/investment';
 import { useExposeListing } from '@/hooks/useExposeListing';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import KaufyFinanceRequestSheet, { type KaufyListingData, type KaufyEngineParams } from '@/components/zone3/KaufyFinanceRequestSheet';
 
 export default function Kaufy2026Expose() {
@@ -109,6 +110,16 @@ export default function Kaufy2026Expose() {
   ) : null;
 
   return (
+    <>
+    <SEOHead
+      brand="kaufy"
+      page={{
+        title: listing ? `${listing.title} — Exposé` : 'Immobilien-Exposé',
+        description: listing ? `Kapitalanlage: ${listing.title}. Detaillierte Renditeberechnung, Steueroptimierung und Finanzierungsanfrage.` : 'Detailliertes Immobilien-Exposé mit KI-Renditeberechnung.',
+        path: `/immobilien/${publicId || ''}`,
+        noIndex: !listing,
+      }}
+    />
     <InvestmentExposeView
       listing={listing ?? null}
       isLoading={isLoading}
@@ -141,5 +152,6 @@ export default function Kaufy2026Expose() {
       afterContent={afterContent}
       notFoundContent={notFoundContent}
     />
+    </>
   );
 }

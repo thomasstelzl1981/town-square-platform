@@ -29,6 +29,7 @@ import {
   Globe, Handshake,
 } from 'lucide-react';
 import { KaufySubpageHero } from '@/components/zone3/kaufy2026/KaufySubpageHero';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import verkaeuferHero from '@/assets/kaufy2026/verkaeufer-hero.jpg';
 
 // ── Demo Project Data ───────────────────────────────────────────────────────
@@ -270,6 +271,18 @@ export default function Kaufy2026Verkaeufer() {
 
   return (
     <div>
+      <SEOHead
+        brand="kaufy"
+        page={{
+          title: 'Für Bauträger & Eigentümer — Projekt vermarkten',
+          description: 'Laden Sie Ihr Exposé hoch — unsere KI erstellt automatisch ein professionelles Inserat. In 5 Minuten auf dem KAUFY-Marktplatz.',
+          path: '/verkaeufer',
+        }}
+        services={[{
+          name: 'Magic Intake — KI-Projektaufbereitung',
+          description: 'Automatische Exposé-Analyse und Inserat-Erstellung für Bauträger und Projektentwickler.',
+        }]}
+      />
       {/* ═══ HERO ═══ */}
       <KaufySubpageHero
         backgroundImage={verkaeuferHero}

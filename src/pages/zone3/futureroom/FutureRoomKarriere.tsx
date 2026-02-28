@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { ManagerApplicationForm } from '@/components/zone3/shared/ManagerApplicationForm';
 import type { QualificationField } from '@/components/zone3/shared/ManagerApplicationForm';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
 const ACCENT = 'hsl(165, 70%, 36%)';
 
@@ -65,6 +66,14 @@ export default function FutureRoomKarriere() {
 
   return (
     <div>
+      <SEOHead
+        brand="futureroom"
+        page={{
+          title: 'Finanzierungsmanager werden — Karriere',
+          description: 'Werden Sie Finanzierungsmanager bei FutureRoom. Fertiges Tooling, vorbereitete Bankzugänge und digitale Orchestrierung. §34i GewO.',
+          path: '/karriere',
+        }}
+      />
       {/* Hero */}
       <section className="fr-hero">
         <div className="fr-hero-content">

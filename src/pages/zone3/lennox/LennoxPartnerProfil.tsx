@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
 import { LENNOX as C, SERVICE_TAG_LABELS } from './lennoxTheme';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
 export default function LennoxPartnerProfil() {
   const { slug } = useParams<{ slug: string }>();
@@ -73,6 +74,15 @@ export default function LennoxPartnerProfil() {
 
   return (
     <div className="max-w-4xl mx-auto px-5 py-8 space-y-8">
+      <SEOHead
+        brand="lennox"
+        page={{
+          title: provider ? `${provider.company_name} — Partner-Profil` : 'Partner-Profil',
+          description: provider ? `${provider.company_name}: Geprüfter Lennox & Friends Partner. Leistungen, Bewertungen und Buchung.` : 'Lennox & Friends Partner-Profil.',
+          path: `/partner/${slug || ''}`,
+          noIndex: !provider,
+        }}
+      />
       {/* Back */}
       <Link to="/website/tierservice" className="inline-flex items-center gap-1 text-sm" style={{ color: C.barkMuted }}>
         <ArrowLeft className="h-4 w-4" /> Zurück
