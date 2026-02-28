@@ -5607,6 +5607,47 @@ export type Database = {
           },
         ]
       }
+      content_topics: {
+        Row: {
+          brand: string
+          category: string
+          created_at: string
+          id: string
+          published_article_id: string | null
+          status: string
+          title_prompt: string
+          updated_at: string
+        }
+        Insert: {
+          brand: string
+          category?: string
+          created_at?: string
+          id?: string
+          published_article_id?: string | null
+          status?: string
+          title_prompt: string
+          updated_at?: string
+        }
+        Update: {
+          brand?: string
+          category?: string
+          created_at?: string
+          id?: string
+          published_article_id?: string | null
+          status?: string
+          title_prompt?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_topics_published_article_id_fkey"
+            columns: ["published_article_id"]
+            isOneToOne: false
+            referencedRelation: "brand_articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       context_members: {
         Row: {
           birth_date: string | null
