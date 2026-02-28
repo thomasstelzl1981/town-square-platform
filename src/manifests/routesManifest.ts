@@ -638,6 +638,8 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "faq", component: "Kaufy2026FAQ", title: "FAQ" },
       { path: "impressum", component: "Kaufy2026Impressum", title: "Impressum" },
       { path: "datenschutz", component: "Kaufy2026Datenschutz", title: "Datenschutz" },
+      { path: "ratgeber", component: "KaufyRatgeber", title: "Ratgeber — KAUFY" },
+      { path: "ratgeber/:slug", component: "KaufyRatgeberArticle", title: "Ratgeber Artikel", dynamic: true },
     ],
   },
   futureroom: {
@@ -653,6 +655,8 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "kontakt", component: "FutureRoomKontakt", title: "Kontakt" },
       { path: "impressum", component: "FutureRoomImpressum", title: "Impressum" },
       { path: "datenschutz", component: "FutureRoomDatenschutz", title: "Datenschutz" },
+      { path: "ratgeber", component: "FutureRoomRatgeber", title: "Ratgeber — Future Room" },
+      { path: "ratgeber/:slug", component: "FutureRoomRatgeberArticle", title: "Ratgeber Artikel", dynamic: true },
     ],
   },
   sot: {
@@ -702,6 +706,8 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "faq", component: "AcquiaryFAQ", title: "FAQ" },
       { path: "impressum", component: "AcquiaryImpressum", title: "Impressum" },
       { path: "datenschutz", component: "AcquiaryDatenschutz", title: "Datenschutz" },
+      { path: "ratgeber", component: "AcquiaryRatgeber", title: "Ratgeber — ACQUIARY" },
+      { path: "ratgeber/:slug", component: "AcquiaryRatgeberArticle", title: "Ratgeber Artikel", dynamic: true },
     ],
   },
   lennox: {
@@ -718,6 +724,8 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "faq", component: "LennoxFAQ", title: "FAQ" },
       { path: "impressum", component: "LennoxImpressum", title: "Impressum" },
       { path: "datenschutz", component: "LennoxDatenschutz", title: "Datenschutz" },
+      { path: "ratgeber", component: "LennoxRatgeber", title: "Ratgeber — Lennox & Friends" },
+      { path: "ratgeber/:slug", component: "LennoxRatgeberArticle", title: "Ratgeber Artikel", dynamic: true },
     ],
   },
   // =========================================================================
@@ -751,6 +759,8 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "kontakt", component: "NcoreKontakt", title: "Kontakt — Ncore Business Consulting" },
       { path: "impressum", component: "NcoreImpressum", title: "Impressum — Ncore Business Consulting" },
       { path: "datenschutz", component: "NcoreDatenschutz", title: "Datenschutz — Ncore Business Consulting" },
+      { path: "ratgeber", component: "NcoreRatgeber", title: "Ratgeber — Ncore Business Consulting" },
+      { path: "ratgeber/:slug", component: "NcoreRatgeberArticle", title: "Ratgeber Artikel", dynamic: true },
     ],
   },
   // =========================================================================
@@ -768,6 +778,8 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "faq", component: "OttoFAQ", title: "FAQ — Otto² Advisory" },
       { path: "impressum", component: "OttoImpressum", title: "Impressum — Otto² Advisory" },
       { path: "datenschutz", component: "OttoDatenschutz", title: "Datenschutz — Otto² Advisory" },
+      { path: "ratgeber", component: "OttoRatgeber", title: "Ratgeber — Otto² Advisory" },
+      { path: "ratgeber/:slug", component: "OttoRatgeberArticle", title: "Ratgeber Artikel", dynamic: true },
     ],
   },
 };
