@@ -26,6 +26,7 @@
 | 16 | **Storage Extraction** | Macht den gesamten Datenraum fuer Armstrong durchsuchbar (Bulk) | Dateimanager · Armstrong | 1 Credit/Doc |
 | 17 | **Konto-Matching Engine** | Ordnet Kontobewegungen automatisch Immobilien, PV-Anlagen und Vertraegen zu | Konten · Immobilien · PV | Free |
 | 18 | **KI-Browser Engine** | Armstrong navigiert kontrolliert im Web, extrahiert und belegt Inhalte | KI-Browser (MOD-21) | 1-4 Credits/Session |
+| 19 | **Trip Engine** | Erkennt Fahrten aus GPS/Telematics-Daten fuer das Fahrtenbuch | Fahrzeuge (MOD-17) | Free |
 
 ---
 
@@ -48,6 +49,7 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 | ENG-VVSTEUER | V+V Steuer-Engine | MOD-04 | ✅ Live | `src/engines/vvSteuer/spec.ts` |
 | ENG-KONTOMATCH | Konto-Matching Engine | MOD-04, MOD-18, MOD-19 | ⚡ Teilweise | `src/engines/kontoMatch/spec.ts`, `engine.ts`, `recurring.ts` |
 | ENG-MKTDIR | Market Directory Engine | Zone 1 | ✅ Live | `src/engines/marketDirectory/spec.ts`, `engine.ts` |
+| ENG-TRIP | Trip Engine (Fahrtenbuch) | MOD-17 | ⚡ Teilweise | `src/engines/tripEngine/spec.ts`, `engine.ts` |
 
 ### Daten (4 Engines)
 
@@ -113,3 +115,4 @@ Jede Engine hat eine `engineVersion` die in `armstrong_action_runs.engine_versio
 |-------|-----------|
 | 2026-02-25 | v1.1 — ENG-DOCINT auf v3 aktualisiert: Universeller Parser mit XLSX/CSV/PDF-Support via `_shared/tabular-parser.ts`. `sot-pdf-to-csv` entfernt (Logik in `sot-document-parser` konsolidiert). Upload-Sanitization systemweit homogenisiert (`sanitizeFileName` + `UPLOAD_BUCKET`). |
 | 2026-02-18 | v1.0 — Initiale Konsolidierung aller 15 Engines aus UI-Registry und Code-Specs |
+| 2026-02-28 | v1.2 — ENG-TRIP (Trip Engine) fuer MOD-17 Fahrtenbuch hinzugefuegt. Pure TS Functions fuer Fahrterkennung aus GPS/Telematics (Standard A + B). |

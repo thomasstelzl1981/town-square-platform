@@ -3295,6 +3295,161 @@ export type Database = {
           },
         ]
       }
+      cars_device_external_refs: {
+        Row: {
+          created_at: string
+          device_id: string
+          external_device_id: string
+          id: string
+          source_type: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          external_device_id: string
+          id?: string
+          source_type?: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          external_device_id?: string
+          id?: string
+          source_type?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_device_external_refs_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "cars_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_device_external_refs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cars_device_status: {
+        Row: {
+          device_id: string
+          is_online: boolean
+          last_attributes: Json | null
+          last_course: number | null
+          last_lat: number | null
+          last_lon: number | null
+          last_position_at: string | null
+          last_signal_at: string | null
+          last_speed: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          device_id: string
+          is_online?: boolean
+          last_attributes?: Json | null
+          last_course?: number | null
+          last_lat?: number | null
+          last_lon?: number | null
+          last_position_at?: string | null
+          last_signal_at?: string | null
+          last_speed?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          device_id?: string
+          is_online?: boolean
+          last_attributes?: Json | null
+          last_course?: number | null
+          last_lat?: number | null
+          last_lon?: number | null
+          last_position_at?: string | null
+          last_signal_at?: string | null
+          last_speed?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_device_status_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: true
+            referencedRelation: "cars_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_device_status_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cars_devices: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          imei: string | null
+          integration_level: string
+          is_online: boolean
+          last_signal_at: string | null
+          manufacturer: string | null
+          protocol_type: string
+          source_type: string
+          tenant_id: string
+          updated_at: string
+          upload_interval_sec: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          imei?: string | null
+          integration_level?: string
+          is_online?: boolean
+          last_signal_at?: string | null
+          manufacturer?: string | null
+          protocol_type?: string
+          source_type?: string
+          tenant_id: string
+          updated_at?: string
+          upload_interval_sec?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          imei?: string | null
+          integration_level?: string
+          is_online?: boolean
+          last_signal_at?: string | null
+          manufacturer?: string | null
+          protocol_type?: string
+          source_type?: string
+          tenant_id?: string
+          updated_at?: string
+          upload_interval_sec?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_devices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cars_financing: {
         Row: {
           contract_number: string | null
@@ -3526,6 +3681,109 @@ export type Database = {
           },
         ]
       }
+      cars_logbook_locks: {
+        Row: {
+          id: string
+          integrity_hash: string | null
+          locked_at: string
+          locked_by: string
+          logbook_id: string
+          month: string
+          tenant_id: string
+        }
+        Insert: {
+          id?: string
+          integrity_hash?: string | null
+          locked_at?: string
+          locked_by: string
+          logbook_id: string
+          month: string
+          tenant_id: string
+        }
+        Update: {
+          id?: string
+          integrity_hash?: string | null
+          locked_at?: string
+          locked_by?: string
+          logbook_id?: string
+          month?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_logbook_locks_logbook_id_fkey"
+            columns: ["logbook_id"]
+            isOneToOne: false
+            referencedRelation: "cars_logbooks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_logbook_locks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cars_logbooks: {
+        Row: {
+          created_at: string
+          device_id: string | null
+          id: string
+          policy_config: Json | null
+          start_date: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          policy_config?: Json | null
+          start_date?: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          policy_config?: Json | null
+          start_date?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_logbooks_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "cars_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_logbooks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_logbooks_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "cars_vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cars_offers: {
         Row: {
           active: boolean
@@ -3612,60 +3870,271 @@ export type Database = {
           },
         ]
       }
+      cars_positions_raw: {
+        Row: {
+          accuracy: number | null
+          altitude: number | null
+          attributes: Json | null
+          course: number | null
+          device_id: string
+          id: string
+          lat: number
+          lon: number
+          received_at: string
+          recorded_at: string
+          source_position_id: string | null
+          source_type: string
+          speed: number | null
+          tenant_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          altitude?: number | null
+          attributes?: Json | null
+          course?: number | null
+          device_id: string
+          id?: string
+          lat: number
+          lon: number
+          received_at?: string
+          recorded_at: string
+          source_position_id?: string | null
+          source_type?: string
+          speed?: number | null
+          tenant_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          altitude?: number | null
+          attributes?: Json | null
+          course?: number | null
+          device_id?: string
+          id?: string
+          lat?: number
+          lon?: number
+          received_at?: string
+          recorded_at?: string
+          source_position_id?: string | null
+          source_type?: string
+          speed?: number | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_positions_raw_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "cars_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_positions_raw_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cars_trip_audit: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          field_changed: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          reason: string | null
+          tenant_id: string
+          trip_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          field_changed: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          reason?: string | null
+          tenant_id: string
+          trip_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          field_changed?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          reason?: string | null
+          tenant_id?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_trip_audit_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_trip_audit_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "cars_trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cars_trip_detection_runs: {
+        Row: {
+          created_at: string
+          device_id: string | null
+          error: string | null
+          from_ts: string
+          id: string
+          logbook_id: string | null
+          positions_ingested: number
+          status: string
+          tenant_id: string
+          to_ts: string
+          trips_created: number
+        }
+        Insert: {
+          created_at?: string
+          device_id?: string | null
+          error?: string | null
+          from_ts: string
+          id?: string
+          logbook_id?: string | null
+          positions_ingested?: number
+          status?: string
+          tenant_id: string
+          to_ts: string
+          trips_created?: number
+        }
+        Update: {
+          created_at?: string
+          device_id?: string | null
+          error?: string | null
+          from_ts?: string
+          id?: string
+          logbook_id?: string | null
+          positions_ingested?: number
+          status?: string
+          tenant_id?: string
+          to_ts?: string
+          trips_created?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_trip_detection_runs_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "cars_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_trip_detection_runs_logbook_id_fkey"
+            columns: ["logbook_id"]
+            isOneToOne: false
+            referencedRelation: "cars_logbooks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_trip_detection_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cars_trips: {
         Row: {
+          business_partner: string | null
           classification: Database["public"]["Enums"]["car_trip_classification"]
           connection_id: string | null
           created_at: string
           customer_name: string | null
+          device_id: string | null
           distance_km: number
+          distance_source: string
           end_address: string | null
           end_at: string | null
+          end_lat: number | null
+          end_lon: number | null
           external_trip_id: string | null
           id: string
+          is_locked: boolean
+          lock_version: number
+          logbook_id: string | null
           purpose: string | null
           source: Database["public"]["Enums"]["car_trip_source"]
           source_payload: Json | null
           start_address: string | null
           start_at: string
+          start_lat: number | null
+          start_lon: number | null
           tenant_id: string
           updated_at: string
           vehicle_id: string
         }
         Insert: {
+          business_partner?: string | null
           classification?: Database["public"]["Enums"]["car_trip_classification"]
           connection_id?: string | null
           created_at?: string
           customer_name?: string | null
+          device_id?: string | null
           distance_km?: number
+          distance_source?: string
           end_address?: string | null
           end_at?: string | null
+          end_lat?: number | null
+          end_lon?: number | null
           external_trip_id?: string | null
           id?: string
+          is_locked?: boolean
+          lock_version?: number
+          logbook_id?: string | null
           purpose?: string | null
           source?: Database["public"]["Enums"]["car_trip_source"]
           source_payload?: Json | null
           start_address?: string | null
           start_at: string
+          start_lat?: number | null
+          start_lon?: number | null
           tenant_id: string
           updated_at?: string
           vehicle_id: string
         }
         Update: {
+          business_partner?: string | null
           classification?: Database["public"]["Enums"]["car_trip_classification"]
           connection_id?: string | null
           created_at?: string
           customer_name?: string | null
+          device_id?: string | null
           distance_km?: number
+          distance_source?: string
           end_address?: string | null
           end_at?: string | null
+          end_lat?: number | null
+          end_lon?: number | null
           external_trip_id?: string | null
           id?: string
+          is_locked?: boolean
+          lock_version?: number
+          logbook_id?: string | null
           purpose?: string | null
           source?: Database["public"]["Enums"]["car_trip_source"]
           source_payload?: Json | null
           start_address?: string | null
           start_at?: string
+          start_lat?: number | null
+          start_lon?: number | null
           tenant_id?: string
           updated_at?: string
           vehicle_id?: string
@@ -3676,6 +4145,20 @@ export type Database = {
             columns: ["connection_id"]
             isOneToOne: false
             referencedRelation: "cars_logbook_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_trips_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "cars_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_trips_logbook_id_fkey"
+            columns: ["logbook_id"]
+            isOneToOne: false
+            referencedRelation: "cars_logbooks"
             referencedColumns: ["id"]
           },
           {

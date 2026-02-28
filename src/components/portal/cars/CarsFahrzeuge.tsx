@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { CarServiceFlow } from './CarServiceFlow';
+import { LogbookSection } from './logbook/LogbookSection';
 import { useImageSlotUpload } from '@/hooks/useImageSlotUpload';
 import { useDropzone } from 'react-dropzone';
 
@@ -439,11 +440,8 @@ export default function CarsFahrzeuge() {
               <p className="text-sm text-muted-foreground">Keine Schäden erfasst</p>
             </AkteSection>
 
-            <Separator />
 
-            <VimcarLogbook />
 
-            <Separator />
 
             <AkteSection icon={FolderOpen} title="Datenraum">
               {activeTenantId ? (
@@ -460,6 +458,9 @@ export default function CarsFahrzeuge() {
           </CardContent>
         </Card>
       )}
+
+      {/* Fahrtenbuch-Sektion — eigenständiges System */}
+      <LogbookSection />
     </PageShell>
   );
 }
@@ -599,22 +600,4 @@ function EditableAkteSection({ icon: Icon, title, vehicleId, isDemo, fields, onS
   );
 }
 
-function VimcarLogbook() {
-  return (
-    <AkteSection icon={BookOpen} title="Fahrtenbuch">
-      <div className="flex items-center gap-2 mb-3">
-        <Badge variant="outline" className="text-[10px] bg-status-success/10 text-status-success border-status-success/20">
-          <Wifi className="h-3 w-3 mr-1" /> GPS verbunden
-        </Badge>
-      </div>
-      <div className="border border-border/50 rounded-lg overflow-hidden">
-        <div className="grid grid-cols-6 gap-0 bg-muted/30 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">
-          <span>Datum</span><span>Start</span><span>Ziel</span><span className="text-right">km</span><span>Zweck</span><span>Kunde</span>
-        </div>
-        <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-          Keine Fahrten erfasst — Vimcar-Integration aktivieren für automatisches Tracking
-        </div>
-      </div>
-    </AkteSection>
-  );
-}
+// VimcarLogbook removed — replaced by LogbookSection
