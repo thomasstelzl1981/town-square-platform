@@ -69,9 +69,9 @@ describe('Zone 2: Portal Modules', () => {
     expect(zone2Portal.dashboard?.component).toBe('PortalDashboard');
   });
 
-  it('should have 22 modules (MOD-00 to MOD-20 + MOD-22)', () => {
+  it('should have 23 modules (MOD-00 to MOD-22, excl. MOD-21 hidden but active)', () => {
     const modules = Object.keys(zone2Portal.modules || {});
-    expect(modules.length).toBe(22);
+    expect(modules.length).toBe(23);
   });
 
   it('should have modules sorted by display_order ascending', () => {
@@ -84,7 +84,7 @@ describe('Zone 2: Portal Modules', () => {
   // Current tile counts per manifest (2026-02-18)
   const expectedTileCounts: Record<string, number> = {
     'MOD-00': 0,
-    'MOD-01': 6,
+    'MOD-01': 5,
     'MOD-02': 7,
     'MOD-03': 5,
     'MOD-04': 4,
@@ -96,7 +96,7 @@ describe('Zone 2: Portal Modules', () => {
     'MOD-10': 5,
     'MOD-11': 5,
     'MOD-12': 6,
-    'MOD-13': 5,
+    'MOD-13': 6,
     'MOD-14': 4,
     'MOD-15': 4,
     'MOD-16': 5,
@@ -104,6 +104,7 @@ describe('Zone 2: Portal Modules', () => {
     'MOD-18': 9,
     'MOD-19': 4,
     'MOD-20': 4,
+    'MOD-21': 5,
     'MOD-22': 7,
   };
 
@@ -139,8 +140,8 @@ describe('Zone 2: Portal Modules', () => {
 // ZONE 3: WEBSITES
 // =============================================================================
 describe('Zone 3: Websites', () => {
-  it('should have 5 website definitions', () => {
-    expect(Object.keys(zone3Websites).length).toBe(5);
+  it('should have 8 website definitions', () => {
+    expect(Object.keys(zone3Websites).length).toBe(8);
   });
 
   it('should have Kaufy website', () => {
@@ -236,8 +237,8 @@ describe('Route Counts', () => {
   it('should calculate total Zone 2 tile routes', () => {
     const modules = Object.values(zone2Portal.modules || {});
     const tileCount = modules.reduce((sum, m) => sum + m.tiles.length, 0);
-    // Sum of all tile counts from expectedTileCounts (updated: MOD-01=6, MOD-10=5, MOD-12=6, MOD-13=5)
-    expect(tileCount).toBe(106);
+    // Sum of all tile counts from expectedTileCounts (updated: MOD-01=5, MOD-13=6)
+    expect(tileCount).toBe(111);
   });
 
   it('should calculate total Zone 3 routes', () => {

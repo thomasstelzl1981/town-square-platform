@@ -1,22 +1,21 @@
 # ================================================================================
-# ROUTES MANIFEST — SINGLE SOURCE OF TRUTH
+# ROUTES MANIFEST — DEPRECATED / REFERENCE ONLY
 # ================================================================================
 # 
-# Version: 1.1.0
-# Aktualisiert: 2026-02-02
-# Status: SYNCHRONIZED with routesManifest.ts
+# ⚠️  STATUS: DEPRECATED (seit 2026-02-28)
+# 
+# Die Runtime-SSOT ist: src/manifests/routesManifest.ts
+# Diese YAML-Datei wird von KEINER Runtime-Komponente importiert.
+# Sie dient nur noch als historische Referenz und wird NICHT mehr gepflegt.
+# Abweichungen zum TS-Manifest sind bekannt und erwartet.
 #
-# REGELN:
-# 1. Keine Route existiert, die nicht hier deklariert ist
-# 2. App.tsx MUSS mit diesem Manifest synchron sein
-# 3. Änderungen erfordern explizite Freigabe
-# 4. 4-Tile-Pattern ist verbindlich für alle Module (außer MOD-20: 6 Tiles)
+# Letzte synchrone Version: 1.1.0 (2026-02-02)
 #
 # ================================================================================
 
 version: "1.1.0"
 generated: "2026-02-02"
-status: "synchronized"
+status: "deprecated"
 
 # ==============================================================================
 # ZONE 1: ADMIN PORTAL
