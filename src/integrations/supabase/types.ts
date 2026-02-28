@@ -4779,6 +4779,7 @@ export type Database = {
           action_items: Json
           armstrong_notified_at: string | null
           assistant_id: string
+          billed_credits: number | null
           created_at: string
           direction: string
           duration_sec: number | null
@@ -4793,12 +4794,15 @@ export type Database = {
           to_number_e164: string | null
           transcript_text: string | null
           twilio_call_sid: string | null
+          twilio_price: number | null
+          twilio_price_unit: string | null
           user_id: string
         }
         Insert: {
           action_items?: Json
           armstrong_notified_at?: string | null
           assistant_id: string
+          billed_credits?: number | null
           created_at?: string
           direction?: string
           duration_sec?: number | null
@@ -4813,12 +4817,15 @@ export type Database = {
           to_number_e164?: string | null
           transcript_text?: string | null
           twilio_call_sid?: string | null
+          twilio_price?: number | null
+          twilio_price_unit?: string | null
           user_id: string
         }
         Update: {
           action_items?: Json
           armstrong_notified_at?: string | null
           assistant_id?: string
+          billed_credits?: number | null
           created_at?: string
           direction?: string
           duration_sec?: number | null
@@ -4833,6 +4840,8 @@ export type Database = {
           to_number_e164?: string | null
           transcript_text?: string | null
           twilio_call_sid?: string | null
+          twilio_price?: number | null
+          twilio_price_unit?: string | null
           user_id?: string
         }
         Relationships: [
