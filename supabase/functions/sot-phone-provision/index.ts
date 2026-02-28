@@ -130,15 +130,37 @@ Deno.serve(async (req) => {
         ? `SoT-Brand-${brand_key}`
         : `SoT-PhoneAssistant-${userId.slice(0, 8)}`;
 
+      // Fetch registered address from Twilio (required for DE numbers)
+      let addressSid = "";
+      try {
+        const addrUrl = `https://${selectedHost}/2010-04-01/Accounts/${TWILIO_SID}/Addresses.json?PageSize=1`;
+        const addrRes = await fetch(addrUrl, {
+          headers: { Authorization: `Basic ${twilioAuth}` },
+        });
+        if (addrRes.ok) {
+          const addrData = await addrRes.json();
+          if (addrData.addresses?.length) {
+            addressSid = addrData.addresses[0].sid;
+            console.log("Using AddressSid:", addressSid);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not fetch Twilio addresses:", e);
+      }
+
       const buyUrl = `https://${selectedHost}/2010-04-01/Accounts/${TWILIO_SID}/IncomingPhoneNumbers.json`;
-      const buyBody = new URLSearchParams({
+      const buyParams: Record<string, string> = {
         PhoneNumber: number.phone_number,
         VoiceUrl: `${webhookBaseUrl}/sot-phone-inbound`,
         VoiceMethod: "POST",
         StatusCallback: `${webhookBaseUrl}/sot-phone-postcall`,
         StatusCallbackMethod: "POST",
         FriendlyName: friendlyName,
-      });
+      };
+      if (addressSid) {
+        buyParams.AddressSid = addressSid;
+      }
+      const buyBody = new URLSearchParams(buyParams);
 
       console.log("purchasing number:", number.phone_number);
       const buyRes = await fetch(buyUrl, {
