@@ -44,6 +44,21 @@ serve(async (req) => {
       );
     }
 
+    if (action === "setup-otto") {
+      const OTTO_ID = "f3456165-e065-4df1-85c4-65d7fed08f21";
+      const OTTO_PASSWORD = "ZLwohnbau2025!Sot";
+
+      await supabase.auth.admin.updateUserById(OTTO_ID, {
+        password: OTTO_PASSWORD,
+        email_confirm: true,
+      });
+
+      return new Response(
+        JSON.stringify({ success: true, userId: OTTO_ID, email: "otto.stelzl@zl-wohnbau.de", message: "Otto password set" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Default: setup demo account
     const DEMO_EMAIL = "demo@systemofatown.com";
     const DEMO_PASSWORD = "DemoSoT2026!public";
