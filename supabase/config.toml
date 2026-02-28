@@ -271,3 +271,12 @@ verify_jwt = false
 
 [functions.sot-page-view]
 verify_jwt = false
+
+[functions.sot-phone-provision]
+verify_jwt = false
+
+[functions.sot-phone-inbound]
+verify_jwt = false
+
+[functions.sot-phone-postcall]
+verify_jwt = false
