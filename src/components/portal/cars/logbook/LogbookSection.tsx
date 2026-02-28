@@ -12,12 +12,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   BookOpen, Plus, ChevronDown, ChevronUp, Wifi, WifiOff,
-  MapPin, Clock, Car, AlertCircle
+  MapPin, Clock, Car, AlertCircle, Cpu, Lock, Download, History
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { LogbookCreateFlow } from './LogbookCreateFlow';
+import { LogbookDeviceInfo } from './LogbookDeviceInfo';
+import { LogbookOpenTrips } from './LogbookOpenTrips';
+import { LogbookTripList } from './LogbookTripList';
+import { LogbookMonthClose } from './LogbookMonthClose';
+import { LogbookExport } from './LogbookExport';
+import { LogbookAuditLog } from './LogbookAuditLog';
 
 interface Logbook {
   id: string;
@@ -37,6 +45,7 @@ interface Logbook {
 export function LogbookSection() {
   const { activeTenantId } = useAuth();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   const { data: logbooks = [], isLoading } = useQuery({
     queryKey: ['cars-logbooks', activeTenantId],
@@ -93,11 +102,14 @@ export function LogbookSection() {
             </p>
           </div>
         </div>
-        <Button size="sm" variant="outline" className="gap-1.5">
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowCreate(!showCreate)}>
           <Plus className="h-3.5 w-3.5" />
           Fahrtenbuch anlegen
         </Button>
       </div>
+
+      {/* Create Flow */}
+      {showCreate && <LogbookCreateFlow onClose={() => setShowCreate(false)} />}
 
       {/* Logbook Widgets */}
       {isLoading ? (
@@ -114,7 +126,7 @@ export function LogbookSection() {
             <p className="text-xs text-muted-foreground/70 mb-4">
               Erstellen Sie ein Fahrtenbuch und verbinden Sie einen GPS-Tracker für automatisches Tracking
             </p>
-            <Button size="sm" variant="outline" className="gap-1.5">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowCreate(true)}>
               <Plus className="h-3.5 w-3.5" />
               Erstes Fahrtenbuch anlegen
             </Button>
@@ -137,7 +149,7 @@ export function LogbookSection() {
       {/* Expanded Detail (inline below grid) */}
       {expandedId && (
         <LogbookExpandedView
-          logbookId={expandedId}
+          logbook={logbooks.find((lb: Logbook) => lb.id === expandedId)!}
           onClose={() => setExpandedId(null)}
         />
       )}
@@ -216,10 +228,10 @@ function LogbookWidget({ logbook, openTrips, isExpanded, onToggle }: {
   );
 }
 
-// ── Expanded View (Placeholder — wird in Phase 3 ausgebaut) ──────
+// ── Expanded View with 6 Tabs ──────────────────────────────────────
 
-function LogbookExpandedView({ logbookId, onClose }: {
-  logbookId: string;
+function LogbookExpandedView({ logbook, onClose }: {
+  logbook: Logbook;
   onClose: () => void;
 }) {
   return (
@@ -228,38 +240,54 @@ function LogbookExpandedView({ logbookId, onClose }: {
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-primary" />
-            Fahrtenbuch-Details
+            Fahrtenbuch — {[logbook.vehicle?.brand, logbook.vehicle?.model].filter(Boolean).join(' ')}
           </h3>
           <Button size="sm" variant="ghost" onClick={onClose} className="h-7 px-2 text-xs">
             Schließen
           </Button>
         </div>
 
-        <Separator />
+        <Tabs defaultValue="open" className="w-full">
+          <TabsList className="w-full flex-wrap h-auto gap-1 p-1">
+            <TabsTrigger value="device" className="gap-1 text-xs">
+              <Cpu className="h-3 w-3" /> Gerät
+            </TabsTrigger>
+            <TabsTrigger value="open" className="gap-1 text-xs">
+              <AlertCircle className="h-3 w-3" /> Offene Fahrten
+            </TabsTrigger>
+            <TabsTrigger value="list" className="gap-1 text-xs">
+              <MapPin className="h-3 w-3" /> Übersicht
+            </TabsTrigger>
+            <TabsTrigger value="lock" className="gap-1 text-xs">
+              <Lock className="h-3 w-3" /> Monatsabschluss
+            </TabsTrigger>
+            <TabsTrigger value="export" className="gap-1 text-xs">
+              <Download className="h-3 w-3" /> Export
+            </TabsTrigger>
+            <TabsTrigger value="audit" className="gap-1 text-xs">
+              <History className="h-3 w-3" /> Protokoll
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Section Tabs */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-          {[
-            { icon: Wifi, label: 'Gerät' },
-            { icon: AlertCircle, label: 'Offene Fahrten' },
-            { icon: MapPin, label: 'Übersicht' },
-            { icon: Clock, label: 'Monatsabschluss' },
-            { icon: BookOpen, label: 'Export' },
-            { icon: BookOpen, label: 'Protokoll' },
-          ].map(({ icon: Icon, label }) => (
-            <div
-              key={label}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
-            >
-              <Icon className="h-4 w-4 text-muted-foreground" />
-              <span className="text-[10px] font-medium text-muted-foreground">{label}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="text-sm text-muted-foreground text-center py-4">
-          Fahrtenbuch-Detailansicht wird in Phase 3 implementiert
-        </div>
+          <TabsContent value="device">
+            <LogbookDeviceInfo deviceId={logbook.device_id} />
+          </TabsContent>
+          <TabsContent value="open">
+            <LogbookOpenTrips logbookId={logbook.id} />
+          </TabsContent>
+          <TabsContent value="list">
+            <LogbookTripList logbookId={logbook.id} />
+          </TabsContent>
+          <TabsContent value="lock">
+            <LogbookMonthClose logbookId={logbook.id} />
+          </TabsContent>
+          <TabsContent value="export">
+            <LogbookExport logbookId={logbook.id} />
+          </TabsContent>
+          <TabsContent value="audit">
+            <LogbookAuditLog logbookId={logbook.id} />
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
