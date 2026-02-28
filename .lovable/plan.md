@@ -1,18 +1,17 @@
 
 
-## Problem
-Die Edge Function nutzt `TWILIO_ACCOUNT_SID:TWILIO_AUTH_TOKEN` für Basic Auth. Der User hat stattdessen einen **Twilio API Key** bereitgestellt (`SK...` + Secret). Bei Twilio API Keys ist die Basic Auth: `ApiKeySid:ApiKeySecret`, aber die Account SID (`AC...`) wird weiterhin in den URL-Pfaden benötigt.
+## Plan: Twilio Auth Token korrigieren und Region fixieren
 
-## Plan
+### Ursache
+Der gespeicherte `TWILIO_AUTH_TOKEN` stimmte nicht mit dem Live Auth Token überein. Der Screenshot bestätigt den korrekten Wert: `3d2f711a55c3db2726b8a69f1a03ff5f`. Zusätzlich ist der Account in der **IE1 (Ireland) Region**, weshalb wir die Region als Secret setzen sollten, damit der Code direkt den richtigen Host verwendet.
 
-### 1. Neue Secrets anlegen
-- `TWILIO_API_KEY_SID` = `SK8676e98953f1b921eaaf52bbd1d6c92f`
-- `TWILIO_API_KEY_SECRET` = `JqzweJEVIhKgL1AqECHfcqzsvjM5FZ0z`
+### Schritte
 
-### 2. sot-phone-provision: Auth auf API Key umstellen
-- Basic Auth ändern von `TWILIO_SID:TWILIO_TOKEN` zu `TWILIO_API_KEY_SID:TWILIO_API_KEY_SECRET`
-- `TWILIO_ACCOUNT_SID` weiterhin für URL-Pfade verwenden (bleibt unverändert)
-- Gleiche Änderung in `sot-phone-inbound` und `sot-phone-postcall` falls diese auch Twilio-API-Calls machen
+1. **Secret `TWILIO_AUTH_TOKEN` aktualisieren** auf den bestätigten Wert `3d2f711a55c3db2726b8a69f1a03ff5f`
 
-### 3. Redeploy + Test
+2. **Neues Secret `TWILIO_REGION` setzen** auf `ie1` — damit verwendet die Edge Function direkt `api.ie1.twilio.com` ohne Fallback-Versuche auf den falschen Host
+
+3. **Edge Function `sot-phone-provision` redeployen** und testen
+
+Keine Code-Änderungen nötig — die Edge Function unterstützt bereits `TWILIO_REGION` und `TWILIO_AUTH_TOKEN`. Es fehlen nur die korrekten Secret-Werte.
 
