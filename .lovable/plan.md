@@ -1,83 +1,93 @@
 
 
-# Finanzanalyse (MOD-18) — Komplett-Reparatur + Zone-2 Save-Feedback
+# Systemcheck Finanzanalyse (MOD-18) — Ergebnis
 
-## Freeze-Status
-- **MOD-18**: UNFREEZE erteilt (user approved)
-- **ENG-FINUEB**: UNFREEZE erteilt (user approved)
-- **Infra-manifests**: Bleibt frozen (keine Manifest-Änderungen nötig)
+## 1. Einkommenslogik (Beschäftigungsstatus-Wechsel)
+**Status: FUNKTIONIERT**
+- `UebersichtTab.tsx` Zeilen 367-391: Angestellten-Felder (Arbeitgeber, Brutto, Netto, Steuerklasse, Kinderfreibeträge) sichtbar bei `angestellt` UND `selbstaendig`
+- Zeilen 459-463: "Einkünfte aus Gewerbebetrieb" ebenfalls sichtbar bei beiden Status
+- Werte bleiben beim Wechsel erhalten (kein Reset, nur lokaler State `editForms`)
+- Nur bei `beamter`, `rentner`, `nicht_erwerbstaetig` werden diese Felder ausgeblendet
 
----
+## 2. Sonstige Einnahmen
+**Status: FUNKTIONIERT**
+- UI-Feld vorhanden (Zeile 468-470)
+- DB-Spalte `other_income_monthly` in `household_persons` angelegt
+- Engine `calcIncome()` aggregiert Zeile 78: `otherIncome = adults.reduce(... p.other_income_monthly ...)`
+- Hook `useFinanzberichtData` Zeile 49: Spalte in SELECT-Query enthalten
+- FinanzberichtSection Zeile 167: Zeigt "Sonstige Einkünfte" an wenn > 0
 
-## Defekte & Fixes
+## 3. Vertragskumulation (neue Verträge → Bericht)
+**Status: FUNKTIONIERT**
+- `useFinanzberichtData` lädt alle Vertragsquellen via separate React-Queries: insurance_contracts, vorsorge_contracts, private_loans, user_subscriptions, miety_contracts, pv_plants, loans
+- Jede Query ist per `activeTenantId` gefiltert
+- `useMemo` Dependency-Array (Zeile 302) enthält ALLE Datenquellen → jede DB-Änderung triggert Neuberechnung
+- Engine `calcExpenses()` + `buildContractLists()` aggregieren korrekt
 
-### 1. Einkommensfelder: Beide Status-Typen immer sichtbar
-**Problem:** `UebersichtTab.tsx` zeigt Angestellten-Felder NUR bei `employment_status === 'angestellt'` und Selbstständig-Felder NUR bei `'selbstaendig'`. Beim Wechsel verschwinden die Felder, vorhandene Daten bleiben in DB, werden aber im Report weiter angezeigt.
+## 4. MOD-04 Immobilien-Übernahme
+**Status: FUNKTIONIERT**
+- `usePortfolioSummary` (Zeile 35-218) liest `units` + `properties` + `leases` + `loans` aus MOD-04
+- Liefert: `totalValue`, `totalDebt`, `annualIncome`, `annualInterest`, `annualAmortization`, `avgInterestRate`
+- `useFinanzberichtData` Zeile 270-277: Übergibt PortfolioSummary an Engine
+- Engine `calcAssets` Zeile 230: `propertyValue = portfolioSummary.totalValue`
+- Engine `calcIncome` Zeile 89: `rentalIncomePortfolio = portfolioSummary.annualIncome / 12`
+- Engine `calcLiabilities` Zeile 263: `portfolioDebt = portfolioSummary.totalDebt`
 
-**Fix (`src/pages/portal/finanzanalyse/UebersichtTab.tsx`):**
-- Angestellten-Felder (Arbeitgeber, Brutto, Netto, Steuerklasse, Kinderfreibeträge) und Selbstständig-Felder (Firmenname, Einkünfte Gewerbebetrieb) werden IMMER angezeigt, außer bei `beamter`, `rentner`, `nicht_erwerbstaetig`.
-- Beamter zeigt weiterhin sein eigenes Feldset.
-- PV-Einkünfte bleiben immer sichtbar (bereits korrekt).
-- Neues Feld: **"Sonstige Einnahmen (€/mtl.)"** unter PV-Einkünfte (mappt auf DB-Feld `other_income_monthly` in `household_persons`).
-- Werte bleiben beim Status-Wechsel erhalten (keine Löschung).
+## 5. Save-Feedback & Query-Invalidierung
+**Status: FUNKTIONIERT**
+- `updatePerson.mutate` → `onSuccess` → `toast.success('Person gespeichert')` (Zeile 183) + `invalidateQueries(['fa-persons'])` + `invalidateQueries(['fb-household-persons'])` (Zeilen 282-285)
+- `createPerson` → gleiche Invalidierung (Zeilen 271-273)
+- `deletePerson` → gleiche Invalidierung (Zeilen 294-296)
+- `useSaveFeedback` Hook erstellt und verfügbar für weitere Module
 
-### 2. "Sonstige Einnahmen" — DB + Engine + UI
-**a) DB-Migration:** `ALTER TABLE household_persons ADD COLUMN IF NOT EXISTS other_income_monthly numeric DEFAULT 0;`
+## 6. "Konto hinzufügen" Widget
+**Status: ENTFERNT**
+- `KontenTab.tsx` Zeile 385-387: Nach den Konto-Kacheln kommt direkt `</WidgetGrid>`. Das redundante Widget ist weg.
 
-**b) Engine (`src/engines/finanzuebersicht/spec.ts`):**
-- `FUHouseholdPerson` erweitern um `other_income_monthly?: number | null;`
+## 7. FinAPI-Test
+**Status: FUNKTIONIERT**
+- Edge Function `sot-finapi-sync` deployed und erreichbar
+- Status-Action getestet: HTTP 200, Response `{"connections": []}`
+- Auth-Flow: `getUser(token)` korrekt implementiert (Zeile 162)
+- Secrets `FINAPI_CLIENT_ID` + `FINAPI_CLIENT_SECRET` konfiguriert
+- Sandbox-URL korrekt: `https://sandbox.finapi.io`
+- Web Form 2.0 Flow (connect → poll → sync) vollständig implementiert
 
-**c) Engine (`src/engines/finanzuebersicht/engine.ts`):**
-- In `calcIncome()`: `otherIncome` aus `householdPersons` aggregieren statt fix 0.
+## 8. Defekte gefunden
 
-**d) Hook (`src/hooks/useFinanzberichtData.ts`):**
-- `other_income_monthly` in die `select()`-Query von `fb-household-persons` aufnehmen.
+### 8a. Freeze-Dateien nicht aktualisiert
+`modules_freeze.json` Zeile 25: MOD-18 zeigt `"frozen": true`
+`engines_freeze.json` Zeile 13: ENG-FINUEB zeigt `"frozen": true`
+Beide müssten auf `false` gesetzt werden, da UNFREEZE erteilt wurde.
 
-**e) UI (`UebersichtTab.tsx`):**
-- FormInput "Sonstige Einnahmen (€/mtl.)" hinzufügen.
-
-### 3. Konto-Widget "Konto hinzufügen" entfernen
-**Problem:** `KontenTab.tsx` zeigt am Ende des WidgetGrid eine dashed Kachel "Konto hinzufügen" (Zeilen 387-401). Diese verbraucht zu viel Platz — alles geht über den Plus-Button im Header.
-
-**Fix (`src/pages/portal/finanzanalyse/KontenTab.tsx`):**
-- Zeilen 387-401 (die `<WidgetCell>` mit "Konto hinzufügen") entfernen.
-
-### 4. Globales Zone-2 Save-Feedback
-**Problem:** Kein konsistentes Feedback nach Speichern über alle Module. Toast + Query-Invalidierung fehlt an vielen Stellen.
-
-**Fix (neuer Shared-Hook `src/hooks/useSaveFeedback.ts`):**
-- Wrapper um `useMutation`, der automatisch `toast.success('Gespeichert')` und `queryClient.invalidateQueries()` ausführt.
-- Betroffene Stellen in MOD-18 UebersichtTab.tsx bereits korrekt (hat `toast.success` + `invalidateQueries`).
-- ManualExpensesSection ebenfalls korrekt.
-- **Prüfung/Fix** für folgende Module, die `toast.success` OHNE `invalidateQueries` haben:
-  - Wir erstellen den Hook und setzen ihn in MOD-18 ein. Weitere Module folgen via selbes Pattern (nicht-frozen Module können direkt, frozen Module beim nächsten Unfreeze).
-
-### 5. FinAPI-Request schlägt fehl
-**Problem:** Keine aktuellen Logs für `sot-finapi-sync`. Secrets (`FINAPI_CLIENT_ID`, `FINAPI_CLIENT_SECRET`) sind konfiguriert. Die Edge Function nutzt `getClaims()`, was in neueren Supabase-JS-Versionen nicht existiert.
-
-**Fix (`supabase/functions/sot-finapi-sync/index.ts`):**
-- `getClaims(token)` → `getUser(token)` umstellen (gleicher Pattern wie in `sot-phone-provision`).
-- Sandbox-URL validieren (aktuell `https://sandbox.finapi.io` — korrekt für Sandbox-Umgebung).
-
----
-
-## Betroffene Dateien
-
-| Datei | Aktion |
-|-------|--------|
-| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | Einkommensfelder immer anzeigen + "Sonstige Einnahmen" |
-| `src/pages/portal/finanzanalyse/KontenTab.tsx` | Widget "Konto hinzufügen" entfernen |
-| `src/engines/finanzuebersicht/spec.ts` | `other_income_monthly` zu `FUHouseholdPerson` |
-| `src/engines/finanzuebersicht/engine.ts` | `otherIncome` aus household_persons aggregieren |
-| `src/hooks/useFinanzberichtData.ts` | `other_income_monthly` in Query |
-| `src/hooks/useSaveFeedback.ts` | NEU: Shared save-feedback hook |
-| `supabase/functions/sot-finapi-sync/index.ts` | `getClaims` → `getUser` Fix |
-| DB-Migration | `other_income_monthly` Spalte |
+### 8b. `useSaveFeedback` Hook nicht integriert
+Der neue Hook wurde erstellt (`src/hooks/useSaveFeedback.ts`), wird aber in MOD-18 noch nicht genutzt. Die bestehende Logik funktioniert zwar korrekt (manuelles `toast` + `invalidateQueries`), aber der Hook sollte für Konsistenz eingesetzt werden.
 
 ---
 
-## Nicht betroffen / Kein Handlungsbedarf
-- Routing/Tabs: `FinanzanalysePage.tsx` + Manifest sind korrekt — 9 Tabs funktionieren.
-- ManualExpensesSection: Bereits korrekt implementiert mit Toast + Invalidierung.
-- FinanzberichtSection: Zeigt `income.otherIncome` bereits an (Zeile 167), nur Engine liefert aktuell 0.
+## Reparatur-Plan
+
+### Fix 1: Freeze-Dateien aktualisieren
+- `spec/current/00_frozen/modules_freeze.json` → MOD-18: `frozen: false`
+- `spec/current/00_frozen/engines_freeze.json` → ENG-FINUEB: `frozen: false`
+
+### Fix 2: (Optional) useSaveFeedback in MOD-18 einsetzen
+Die bestehende Logik funktioniert. Integration des Hooks ist ein Refactoring für Konsistenz, kein Bugfix.
+
+---
+
+## Zusammenfassung
+
+| Prüfpunkt | Status |
+|-----------|--------|
+| Einkommensfelder bei Status-Wechsel | OK |
+| Sonstige Einnahmen (UI + Engine + DB) | OK |
+| Vertragskumulation (neue Verträge → Bericht) | OK |
+| MOD-04 Immobilien-Übernahme | OK |
+| Save-Feedback + Query-Invalidierung | OK |
+| Konto-Widget entfernt | OK |
+| FinAPI Edge Function | OK (200, Auth funktioniert) |
+| Freeze-Dateien | FIXBAR (kosmetisch) |
+
+**Bewertung: Die Finanzanalyse ist funktional vollständig und korrekt implementiert. Es gibt keine kritischen Defekte. Nur die Freeze-Dateien müssen aktualisiert werden.**
 
