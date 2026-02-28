@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePvPlants } from '@/hooks/usePvPlants';
 import { usePvMonitoring } from '@/hooks/usePvMonitoring';
+import { usePreviewSafeMode } from '@/hooks/usePreviewSafeMode';
 import { Card, CardContent } from '@/components/ui/card';
 import { Sun, Zap, TrendingUp, WifiOff } from 'lucide-react';
 import {
@@ -18,7 +19,8 @@ import {
 export function PVLiveWidget() {
   const navigate = useNavigate();
   const { plants } = usePvPlants();
-  const { totalPowerW, totalEnergyTodayKwh, offlineCount, liveData } = usePvMonitoring(plants);
+  const { safeRefreshInterval } = usePreviewSafeMode();
+  const { totalPowerW, totalEnergyTodayKwh, offlineCount, liveData } = usePvMonitoring(plants, safeRefreshInterval);
 
   // Biggest plant by kWp for sparkline
   const biggestPlant = useMemo(
