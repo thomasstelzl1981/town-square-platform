@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Route, Routes, Navigate } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { zone2Portal } from '@/manifests/routesManifest';
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import PortalDashboard from '@/pages/portal/PortalDashboard';
@@ -127,8 +127,7 @@ export default function Zone2Router() {
           </React.Suspense>
         } />
 
-        {/* Legacy redirect: /portal/leads → /portal/provisionen */}
-        <Route path="leads/*" element={<Navigate to="/portal/provisionen" replace />} />
+        {/* Legacy redirects handled by legacyRoutes in routesManifest.ts (leads→lead-manager, provisionen→lead-manager) */}
       </Route>
     </Routes>
   );

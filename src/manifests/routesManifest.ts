@@ -1,12 +1,13 @@
 /**
- * ROUTES MANIFEST — SINGLE SOURCE OF TRUTH
+ * ROUTES MANIFEST — SINGLE SOURCE OF TRUTH (Runtime-SSOT)
  * 
- * This TypeScript version is generated from manifests/routes_manifest.yaml
+ * Diese Datei ist die alleinige, verbindliche Quelle für alle Routen.
+ * Die YAML-Dateien (manifests/routes_manifest.yaml, tile_catalog.yaml) sind DEPRECATED.
  * ALL routes must be declared here. App.tsx delegates to ManifestRouter.
  * 
  * RULES:
  * 1. No route exists unless declared here
- * 2. Tile count varies per module (see zone2_modules.json for SSOT). MOD-20 Miety: 4 tiles.
+ * 2. Tile count varies per module (no fixed 4-tile rule)
  * 3. Changes require explicit approval
  */
 

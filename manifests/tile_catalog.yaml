@@ -1,19 +1,15 @@
 # ================================================================================
-# TILE CATALOG — Visibility & Activation Layer
+# TILE CATALOG — DEPRECATED / REFERENCE ONLY
 # ================================================================================
 #
-# Version: 1.1.0
-# Aktualisiert: 2026-02-02
-# Status: SYNCHRONIZED with routesManifest.ts
+# ⚠️  STATUS: DEPRECATED (seit 2026-02-28)
 #
-# ZWECK:
-# Dieses Manifest definiert die Tile-Struktur für die Portal-Navigation.
-# Es arbeitet ZUSÄTZLICH zur DB-Tabelle tile_catalog (Hybrid-Modus).
+# Die Runtime-SSOT für Tiles ist: src/manifests/routesManifest.ts
+# Diese YAML-Datei wird von KEINER Runtime-Komponente importiert.
+# Die ehemalige "4-Tile-Regel" gilt nicht mehr (12 Module haben >4 Tiles).
+# Abweichungen zum TS-Manifest sind bekannt und erwartet.
 #
-# REGELN:
-# 1. Jedes Modul hat EXAKT 4 Sub-Tiles (4-Tile-Pattern) — außer MOD-20 (6 Tiles)
-# 2. Icons müssen aus lucide-react sein
-# 3. Routes müssen in routes_manifest.yaml existieren
+# Letzte synchrone Version: 1.1.0 (2026-02-02)
 #
 # ================================================================================
 
