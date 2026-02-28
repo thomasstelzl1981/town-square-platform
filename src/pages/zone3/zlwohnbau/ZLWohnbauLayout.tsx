@@ -38,7 +38,7 @@ export default function ZLWohnbauLayout() {
       <SEOHead
         brand="zlwohnbau"
         page={{
-          title: 'Wohnraum für Mitarbeiter',
+          title: 'ZL Wohnbau',
           description: 'ZL Wohnbau GmbH — Wir schaffen Wohnraum für Unternehmen in Bayern. Langfristig, nachhaltig, partnerschaftlich.',
           path: location.pathname.replace('/website/zl-wohnbau', '') || '/',
         }}

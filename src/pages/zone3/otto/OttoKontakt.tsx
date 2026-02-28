@@ -189,7 +189,8 @@ export default function OttoKontakt() {
                     <h3 className="font-semibold mb-1 text-slate-800">Standort</h3>
                     <p className="text-sm text-slate-500">
                       ZL Finanzdienstleistungen GmbH<br />
-                      Deutschland
+                      Ruselstraße 16<br />
+                      94327 Bogen
                     </p>
                   </div>
                 </div>

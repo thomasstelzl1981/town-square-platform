@@ -111,9 +111,21 @@ const BRAND_CONFIGS: Record<string, { domain: string; routes: SitemapRoute[] }> 
     routes: [
       { loc: "/", changefreq: "weekly", priority: "1.0" },
       { loc: "/unternehmer", changefreq: "monthly", priority: "0.9" },
-      { loc: "/privathaushalte", changefreq: "monthly", priority: "0.9" },
+      { loc: "/private-haushalte", changefreq: "monthly", priority: "0.9" },
       { loc: "/finanzierung", changefreq: "monthly", priority: "0.8" },
       { loc: "/faq", changefreq: "monthly", priority: "0.7" },
+      { loc: "/kontakt", changefreq: "monthly", priority: "0.6" },
+      { loc: "/ratgeber", changefreq: "weekly", priority: "0.7" },
+      { loc: "/impressum", changefreq: "yearly", priority: "0.3" },
+      { loc: "/datenschutz", changefreq: "yearly", priority: "0.3" },
+    ],
+  },
+  zlwohnbau: {
+    domain: "https://zl-wohnbau.de",
+    routes: [
+      { loc: "/", changefreq: "weekly", priority: "1.0" },
+      { loc: "/leistungen", changefreq: "monthly", priority: "0.9" },
+      { loc: "/portfolio", changefreq: "monthly", priority: "0.9" },
       { loc: "/kontakt", changefreq: "monthly", priority: "0.6" },
       { loc: "/impressum", changefreq: "yearly", priority: "0.3" },
       { loc: "/datenschutz", changefreq: "yearly", priority: "0.3" },
@@ -150,7 +162,7 @@ serve(async (req) => {
 
   if (!brand || !BRAND_CONFIGS[brand]) {
     return new Response(
-      JSON.stringify({ error: "Invalid brand. Use: sot, kaufy, futureroom, acquiary, lennox, ncore, otto" }),
+      JSON.stringify({ error: "Invalid brand. Use: sot, kaufy, futureroom, acquiary, lennox, ncore, otto, zlwohnbau" }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
