@@ -10,7 +10,7 @@
     "ENG-PROJEKT": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/projektCalc/*", "reason": "Production freeze" },
     "ENG-NK": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/nkAbrechnung/*", "reason": "Production freeze" },
     "ENG-DEMODATA": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/demoData/*", "reason": "Production freeze" },
-    "ENG-FINUEB": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "path": "src/engines/finanzuebersicht/*", "reason": "Re-frozen after manual expenses extension" },
+    "ENG-FINUEB": { "frozen": false, "frozen_at": "2026-02-28T23:50:00.000Z", "path": "src/engines/finanzuebersicht/*", "reason": "Unfrozen for other_income_monthly aggregation fix" },
     "ENG-VORSORGE": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/vorsorgeluecke/*", "reason": "Production freeze" },
     "ENG-VVSTEUER": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/vvSteuer/*", "reason": "Production freeze" },
     "ENG-KONTOMATCH": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/kontoMatch/*", "reason": "Production freeze" },
