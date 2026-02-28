@@ -1,63 +1,38 @@
 
 
-## Plan: Traccar-Integration für Teltonika FMM003 fertigstellen
+## Plan: Fahrtenbuch-Integration fertigstellen (ohne Server)
 
-### Voraussetzungen (deine Seite)
-1. Traccar-Server aufsetzen (z.B. Docker auf VPS)
-2. Teltonika FMM003 per Configurator auf den Server konfigurieren (IP, Port 5027)
-3. SIM-Karte einlegen, Tracker ins Auto stecken
-4. Traccar-Gerät im Dashboard erscheint → Device-ID notieren
+Alles, was wir jetzt bauen können, funktioniert sofort in der UI. Traccar-Verbindung wird erst aktiv, wenn du bei Strato die Server-URL hast — dann trägst du nur noch 2 Werte ein und alles läuft.
 
-### Schritt 1: Secrets hinterlegen
-- `TRACCAR_BASE_URL` — z.B. `https://traccar.deine-domain.de`
-- `TRACCAR_API_TOKEN` — Base64 von `user:passwort` des Traccar-Admin-Accounts
+### Was jetzt gemacht wird
 
-### Schritt 2: LogbookCreateFlow erweitern
-- Teltonika FMM003 als explizite Hersteller-Option hinzufügen (aktuell nur generisches "Teltonika")
-- `integration_level: 'B'` ist bereits korrekt gesetzt (Zündung + Odometer via OBD)
-- IMEI-Feld wird zur Registrierung in `cars_device_external_refs` genutzt
+**1. LogbookCreateFlow verbessern**
+- "Teltonika FMM003" als eigene Auswahl-Option hinzufügen (statt nur generisch "Teltonika")
+- Hersteller-Liste erweitern: `Teltonika FMM003`, `Seeworld R58L`, `Andere`
+- `integration_level` automatisch setzen: FMM003 → `B` (OBD2), Seeworld → `A` (GPS-only)
 
-### Schritt 3: Device-Auto-Registration
-- Neue Action `register_device` in `sot-telematics-sync` hinzufügen
-- Gerät automatisch in Traccar anlegen via REST API (`POST /api/devices`)
-- Rückgabe der Traccar-Device-ID → Update in `cars_device_external_refs`
-- Damit entfällt das manuelle Nachschlagen der Device-ID
+**2. `register_device` Action in die Backend-Funktion einbauen**
+- Neue Action in `sot-telematics-sync`: nimmt IMEI + Gerätename, registriert das Gerät automatisch in Traccar via REST API (`POST /api/devices`)
+- Speichert die zurückgegebene Traccar-Device-ID in `cars_device_external_refs`
+- Wird automatisch beim Erstellen eines Fahrtenbuchs aufgerufen (wenn Tracker ausgewählt)
+- Funktioniert erst, wenn Secrets hinterlegt sind — bis dahin wird das Gerät lokal gespeichert und die Traccar-Registrierung übersprungen
 
-### Schritt 4: Sync testen
-- `sot-telematics-sync` aufrufen → prüfen ob Positionen aus Traccar ankommen
-- Trip Engine validieren: Fahrt-Erkennung basierend auf Zündung (Standard B)
+**3. Secrets vorbereiten (noch NICHT anlegen)**
+- Zwei Secrets werden benötigt: `TRACCAR_BASE_URL` und `TRACCAR_API_TOKEN`
+- Diese legen wir erst an, wenn du deine Strato-Zugangsdaten hast
+- Der Code prüft, ob die Secrets vorhanden sind und überspringt die Traccar-Kommunikation, wenn nicht
 
-### Schritt 5: Cron-Job für Auto-Sync
-- Scheduled Function (alle 5 Min) für kontinuierlichen Positions-Pull
-- Bereits vorbereitet im Edge Function Code, muss nur aktiviert werden
+### Was du später machst (nach Strato-Setup)
+1. Traccar auf dem Strato-Server installieren (Docker-Befehl, den ich dir dann gebe)
+2. Admin-Account erstellen
+3. Mir die URL + Zugangsdaten geben → ich lege die 2 Secrets an
+4. FMM003 einstecken → Geräte-Registrierung läuft automatisch
 
 ### Technische Details
 
-**Traccar Docker-Setup (Empfehlung für deinen Server):**
-```text
-docker run -d \
-  --name traccar \
-  -p 8082:8082 \   ← Web UI
-  -p 5027:5027 \   ← Teltonika Protokoll
-  -v /opt/traccar/data:/opt/traccar/data \
-  traccar/traccar:latest
-```
+**Dateien die geändert werden:**
+- `src/components/portal/cars/logbook/LogbookCreateFlow.tsx` — Hersteller-Optionen erweitern, auto-register Aufruf
+- `supabase/functions/sot-telematics-sync/index.ts` — Neue `register_device` Action hinzufügen
 
-**FMM003 Configurator-Einstellungen:**
-```text
-Server: deine-server-ip
-Port: 5027
-APN: je nach SIM-Anbieter
-```
-
-**Datenfluss:**
-```text
-FMM003 (OBD2/LTE) → Traccar Server (Port 5027)
-                          ↓
-              sot-telematics-sync (Edge Function, Cron 5min)
-                          ↓
-              cars_positions_raw → Trip Engine → cars_trips
-                          ↓
-              LogbookSection UI (Fahrten-Liste, Klassifizierung)
-```
+**Kein Docker, kein ngrok nötig.** Die UI funktioniert sofort, Fahrten können auch manuell angelegt werden. Die automatische Erkennung startet erst mit Server-Verbindung.
 
