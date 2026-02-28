@@ -157,12 +157,17 @@ export default function NcoreLayout() {
                   <li><Link to="/website/ncore/gruender" className="text-sm hover:text-emerald-600 transition-colors">Der Gründer</Link></li>
                   <li><Link to="/website/ncore/netzwerk" className="text-sm hover:text-emerald-600 transition-colors">Netzwerk</Link></li>
                   <li><Link to="/website/ncore/kontakt" className="text-sm hover:text-emerald-600 transition-colors">Kontakt</Link></li>
+                  <li><Link to="/website/ncore/impressum" className="text-sm hover:text-emerald-600 transition-colors">Impressum</Link></li>
+                  <li><Link to="/website/ncore/datenschutz" className="text-sm hover:text-emerald-600 transition-colors">Datenschutz</Link></li>
                 </ul>
               </div>
             </div>
             <div className="mt-12 pt-8 border-t border-slate-200 flex flex-col items-center justify-between gap-4 md:flex-row">
               <p className="text-xs text-slate-400">© {new Date().getFullYear()} Ncore Business Consulting. Alle Rechte vorbehalten.</p>
-              <p className="text-xs text-slate-400">Made with Intelligence.</p>
+              <div className="flex items-center gap-4">
+                <Link to="/website/ncore/impressum" className="text-xs text-slate-400 hover:text-emerald-600 transition-colors">Impressum</Link>
+                <Link to="/website/ncore/datenschutz" className="text-xs text-slate-400 hover:text-emerald-600 transition-colors">Datenschutz</Link>
+              </div>
             </div>
           </div>
         </footer>
