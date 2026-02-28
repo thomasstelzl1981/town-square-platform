@@ -260,6 +260,7 @@ export default function Kaufy2026Layout() {
               <div>
                 <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Rechtliches</h4>
                 <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
+                  <li><Link to="/website/kaufy/faq" className="hover:text-[hsl(220,20%,10%)] transition-colors">FAQ</Link></li>
                   <li><Link to="/website/kaufy/impressum" className="hover:text-[hsl(220,20%,10%)] transition-colors">Impressum</Link></li>
                   <li><Link to="/website/kaufy/datenschutz" className="hover:text-[hsl(220,20%,10%)] transition-colors">Datenschutz</Link></li>
                 </ul>
@@ -270,6 +271,7 @@ export default function Kaufy2026Layout() {
                 <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Kontakt</h4>
                 <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
                   <li><a href="mailto:info@kaufy.immo" className="hover:text-[hsl(220,20%,10%)] transition-colors">info@kaufy.immo</a></li>
+                  <li><Link to="/website/kaufy/kontakt" className="hover:text-[hsl(220,20%,10%)] transition-colors">Kontaktformular</Link></li>
                   <li><Link to="/auth" className="hover:text-[hsl(220,20%,10%)] transition-colors">Registrieren</Link></li>
                 </ul>
               </div>
