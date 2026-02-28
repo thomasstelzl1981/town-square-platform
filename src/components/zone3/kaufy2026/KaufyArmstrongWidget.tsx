@@ -20,7 +20,7 @@ import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useArmstrongVoice } from '@/hooks/useArmstrongVoice';
-import { VoiceButton } from '@/components/armstrong/VoiceButton';
+import { VoiceButton } from '@/components/shared/VoiceButton';
 
 // ============================================================================
 // TYPES

@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Send, X, ChevronDown, ChevronUp, Mic, MicOff } from 'lucide-react';
-import { VoiceButton } from '@/components/armstrong/VoiceButton';
+import { VoiceButton } from '@/components/shared/VoiceButton';
 import { useArmstrongVoice } from '@/hooks/useArmstrongVoice';
 
 interface ComposeEmailDialogProps {

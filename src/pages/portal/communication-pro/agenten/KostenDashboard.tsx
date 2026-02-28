@@ -9,7 +9,7 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DollarSign, TrendingUp, Zap, CreditCard } from 'lucide-react';
 import { useMemo } from 'react';
-import { CreditTopUpDialog } from '@/components/armstrong/CreditTopUpDialog';
+import { CreditTopUpDialog } from '@/components/shared/CreditTopUpDialog';
 
 export function KostenDashboard() {
   const { data: events = [], isLoading } = useQuery({

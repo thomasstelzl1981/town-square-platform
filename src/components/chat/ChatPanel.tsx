@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { VoiceButton } from "@/components/armstrong/VoiceButton";
+import { VoiceButton } from "@/components/shared/VoiceButton";
 import { useArmstrongVoice } from "@/hooks/useArmstrongVoice";
 import { useArmstrongAdvisor } from "@/hooks/useArmstrongAdvisor";
 import { useArmstrongDocUpload } from "@/hooks/useArmstrongDocUpload";

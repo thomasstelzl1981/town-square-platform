@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileUploader } from '@/components/shared/FileUploader';
 import { UploadResultCard } from '@/components/shared/UploadResultCard';
-import { VoiceButton } from '@/components/armstrong/VoiceButton';
+import { VoiceButton } from '@/components/shared/VoiceButton';
 import { MessageRenderer } from '@/components/chat/MessageRenderer';
 import { ThinkingSteps, getStepsForAction, type ThinkingStep } from '@/components/chat/ThinkingSteps';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';

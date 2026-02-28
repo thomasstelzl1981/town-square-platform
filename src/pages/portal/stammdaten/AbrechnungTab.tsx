@@ -12,7 +12,7 @@ import { DESIGN } from '@/config/designManifest';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
-import { CreditTopUpDialog } from '@/components/armstrong/CreditTopUpDialog';
+import { CreditTopUpDialog } from '@/components/shared/CreditTopUpDialog';
 
 export function AbrechnungTab() {
   const { activeTenantId } = useAuth();
