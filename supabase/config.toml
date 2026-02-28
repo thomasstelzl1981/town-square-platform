@@ -259,3 +259,6 @@ verify_jwt = false
 
 [functions.sot-finance-prepare]
 verify_jwt = false
+
+[functions.sot-telematics-sync]
+verify_jwt = false
