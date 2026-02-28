@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
 type Step = 'contact' | 'object' | 'request' | 'calculator' | 'household' | 'bonitat' | 'decision';
 
@@ -285,6 +286,14 @@ export default function FutureRoomBonitat() {
 
   return (
     <div className="py-12" style={{ background: 'hsl(210 25% 97%)' }}>
+      <SEOHead
+        brand="futureroom"
+        page={{
+          title: 'Finanzierung starten — Bonitätsprüfung',
+          description: 'Starten Sie Ihre Immobilienfinanzierung: Digitale Selbstauskunft, KI-Bonitätsprüfung und automatische Bankeinreichung. Kostenlos und unverbindlich.',
+          path: '/bonitat',
+        }}
+      />
       <div className="container mx-auto px-4 max-w-3xl">
         {/* Header */}
         <div className="text-center mb-8">

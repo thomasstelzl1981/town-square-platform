@@ -9,6 +9,7 @@ import {
 import { ManagerApplicationForm } from '@/components/zone3/shared/ManagerApplicationForm';
 import type { QualificationField } from '@/components/zone3/shared/ManagerApplicationForm';
 import { KaufySubpageHero } from '@/components/zone3/kaufy2026/KaufySubpageHero';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import partnerHero from '@/assets/kaufy2026/partner-hero.jpg';
 
 const qualificationFields: QualificationField[] = [
@@ -62,6 +63,18 @@ export default function Kaufy2026Vertrieb() {
 
   return (
     <div>
+      <SEOHead
+        brand="kaufy"
+        page={{
+          title: 'Vertriebspartner werden — Provisionen bis 3%',
+          description: 'Werden Sie KAUFY Vertriebspartner. Vermitteln Sie exklusive Kapitalanlagen mit bis zu 3% Provision. Mentoring, Schulungen und Objektzugang inklusive.',
+          path: '/vertrieb',
+        }}
+        services={[{
+          name: 'KAUFY Partnerprogramm',
+          description: 'Vertriebspartnerschaft für Kapitalanlageimmobilien mit attraktiven Provisionsmodellen.',
+        }]}
+      />
       {/* Hero */}
       <KaufySubpageHero
         backgroundImage={partnerHero}

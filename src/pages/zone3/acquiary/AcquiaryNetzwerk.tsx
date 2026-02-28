@@ -6,10 +6,19 @@ import {
   ChevronRight, Users, Building2, Briefcase, Globe,
   UserCheck, Shield, Handshake
 } from 'lucide-react';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
 export default function AcquiaryNetzwerk() {
   return (
     <>
+      <SEOHead
+        brand="acquiary"
+        page={{
+          title: 'Netzwerk & Partner — Exklusiver Zugang',
+          description: 'Zugang zu einem exklusiven Netzwerk aus institutionellen Investoren, Family Offices und erfahrenen Akquisemanagern für diskrete Immobilientransaktionen.',
+          path: '/netzwerk',
+        }}
+      />
       {/* Hero */}
       <section className="aq-hero" style={{ padding: '6rem 1.5rem 7rem' }}>
         <div className="aq-hero-content">

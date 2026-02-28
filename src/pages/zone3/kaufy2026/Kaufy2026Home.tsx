@@ -22,6 +22,7 @@ import {
   type SearchParams,
   type ClassicSearchParams,
 } from '@/components/zone3/kaufy2026';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
 interface PublicListing {
   listing_id: string;
@@ -353,6 +354,14 @@ export default function Kaufy2026Home() {
 
   return (
     <div>
+      <SEOHead
+        brand="kaufy"
+        page={{
+          title: 'Investment-Suche — Kapitalanlageimmobilien finden',
+          description: 'Finden Sie renditestarke Kapitalanlageimmobilien mit KI-gestützter Analyse. Individuelle Belastungsberechnung, Steueroptimierung und 30-Jahres-Cashflow.',
+          path: '/',
+        }}
+      />
       {/* Hero with Floating Search */}
       <Kaufy2026Hero
         onInvestmentSearch={handleInvestmentSearch}

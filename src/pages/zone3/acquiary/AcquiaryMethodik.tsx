@@ -6,10 +6,23 @@ import {
   ChevronRight, Brain, FileSearch, BarChart3, Shield,
   Zap, Target, TrendingUp, MonitorSmartphone, Lock, Database
 } from 'lucide-react';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
 export default function AcquiaryMethodik() {
   return (
     <>
+      <SEOHead
+        brand="acquiary"
+        page={{
+          title: 'Methodik & Technologie — Systematische Akquise',
+          description: 'Unsere Methodik: KI-gestützte Marktanalyse, systematisches Deal-Sourcing und proprietäre Bewertungsmodelle für institutionelle Immobilieninvestments.',
+          path: '/methodik',
+        }}
+        services={[{
+          name: 'KI-gestütztes Deal-Sourcing',
+          description: 'Systematische Identifikation und Bewertung von Off-Market-Immobilien mit proprietären KI-Modellen.',
+        }]}
+      />
       {/* Hero */}
       <section className="aq-hero" style={{ padding: '6rem 1.5rem 7rem' }}>
         <div className="aq-hero-content">

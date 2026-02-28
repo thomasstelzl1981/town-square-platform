@@ -9,6 +9,7 @@ import {
   CheckCircle2, ArrowRight,
 } from 'lucide-react';
 import { KaufySubpageHero } from '@/components/zone3/kaufy2026/KaufySubpageHero';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import vermieterHero from '@/assets/kaufy2026/vermieter-hero.jpg';
 
 const features = [
@@ -29,6 +30,18 @@ const benefits = [
 export default function Kaufy2026Vermieter() {
   return (
     <div>
+      <SEOHead
+        brand="kaufy"
+        page={{
+          title: 'Für Vermieter — Digitale Mietverwaltung',
+          description: 'Digitale Nebenkostenabrechnung, Mieterkommunikation und Objektverwaltung. Sparen Sie 80% Zeit bei der Vermietung Ihrer Kapitalanlage.',
+          path: '/vermieter',
+        }}
+        services={[{
+          name: 'Digitale Mietverwaltung',
+          description: 'Automatisierte Nebenkostenabrechnung, Mieteingang-Tracking und Mieterkommunikation für private Vermieter.',
+        }]}
+      />
       {/* Hero */}
       <KaufySubpageHero
         backgroundImage={vermieterHero}

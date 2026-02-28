@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import { useActiveShopProducts } from '@/hooks/usePetShopProducts';
 import { ReactNode } from 'react';
 import { LENNOX as C } from './lennoxTheme';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import shopHero from '@/assets/lennox/section_cozy.jpg';
 
 const SHOP_SECTIONS: { key: string; label: string; desc: string; isAffiliate?: boolean; intro?: ReactNode }[] = [
@@ -116,6 +117,14 @@ function ProductSection({ categoryKey, label, desc, isAffiliate, intro }: { cate
 export default function LennoxShop() {
   return (
     <div className="space-y-10">
+      <SEOHead
+        brand="lennox"
+        page={{
+          title: 'Shop — Premium Hundezubehör',
+          description: 'Kuratiertes Hundezubehör von Lennox & Friends: Premium-Futter, Halsbänder, Accessoires und GPS-Tracker für deinen Vierbeiner.',
+          path: '/shop',
+        }}
+      />
       {/* ═══ HERO ═══ */}
       <section className="relative overflow-hidden" style={{ minHeight: '50vh' }}>
         <div className="absolute inset-0">

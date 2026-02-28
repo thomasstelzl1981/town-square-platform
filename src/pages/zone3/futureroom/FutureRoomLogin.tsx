@@ -9,6 +9,7 @@ import { Landmark, Mail, Lock, UserPlus, LogIn, AlertCircle } from 'lucide-react
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
 export default function FutureRoomLogin() {
   const navigate = useNavigate();
@@ -91,6 +92,15 @@ export default function FutureRoomLogin() {
 
   return (
     <div className="py-16" style={{ background: 'hsl(210 25% 97%)' }}>
+      <SEOHead
+        brand="futureroom"
+        page={{
+          title: 'Login — Meine Finanzierungsakte',
+          description: 'Melden Sie sich an, um Ihre Finanzierungsakte einzusehen, Dokumente hochzuladen und den Status Ihrer Anfrage zu verfolgen.',
+          path: '/login',
+          noIndex: true,
+        }}
+      />
       <div className="container mx-auto px-4 max-w-md">
         {/* Header */}
         <div className="text-center mb-8">

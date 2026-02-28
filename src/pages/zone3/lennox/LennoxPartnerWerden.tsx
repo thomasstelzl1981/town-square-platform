@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { LENNOX as C } from './lennoxTheme';
 import { ManagerApplicationForm } from '@/components/zone3/shared/ManagerApplicationForm';
 import type { QualificationField } from '@/components/zone3/shared/ManagerApplicationForm';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import partnerHero from '@/assets/lennox/partner_hero.jpg';
 
 const BENEFITS = [
@@ -38,6 +39,14 @@ const qualificationFields: QualificationField[] = [
 export default function LennoxPartnerWerden() {
   return (
     <div className="space-y-0">
+      <SEOHead
+        brand="lennox"
+        page={{
+          title: 'Partner werden — Exklusiver Hundeprofis-Partner',
+          description: 'Werden Sie exklusiver Lennox & Friends Partner in Ihrer Region. Buchungen über die Plattform, professionelle Sichtbarkeit und wachsende Community.',
+          path: '/partner-werden',
+        }}
+      />
       {/* ═══ HERO ═══ */}
       <section className="relative overflow-hidden" style={{ minHeight: '50vh' }}>
         <div className="absolute inset-0">

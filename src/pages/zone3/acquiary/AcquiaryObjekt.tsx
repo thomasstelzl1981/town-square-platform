@@ -3,6 +3,7 @@
  */
 import * as React from 'react';
 import { Send, CheckCircle } from 'lucide-react';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
 export default function AcquiaryObjekt() {
   const [submitted, setSubmitted] = React.useState(false);
@@ -64,6 +65,14 @@ export default function AcquiaryObjekt() {
 
   return (
     <>
+      <SEOHead
+        brand="acquiary"
+        page={{
+          title: 'Objekt anbieten — Off-Market Immobilien',
+          description: 'Bieten Sie Ihr Objekt diskret über ACQUIARY an. Zugang zu qualifizierten institutionellen Käufern und KI-gestützte Bewertung.',
+          path: '/objekt',
+        }}
+      />
       {/* Hero */}
       <section className="aq-hero" style={{ padding: '5rem 1.5rem 4rem' }}>
         <div className="aq-hero-content">
