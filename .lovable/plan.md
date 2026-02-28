@@ -1,37 +1,89 @@
 
-Ziel: Root-Domain-Redirect für ZL Wohnbau stabil machen und /portal auf Brand-Domains verhindern.
 
-1) Verifiziert (Live-Test)
-- `https://zl-wohnbau.de` → landet auf Portal-Login
-- `https://zl-wohnbau.de/website/zl-wohnbau` → ZL Wohnbau Website lädt korrekt
-- `https://zl-gruppe.com` → ZL Wohnbau Website lädt korrekt
-- Interne Route für die Website: `/website/zl-wohnbau` (Home), plus z. B. `/website/zl-wohnbau/leistungen`, `/portfolio`, `/kontakt`
+# SEO & LLM Audit + Maschinenlesbarkeit: ZL Wohnbau + Otto² Advisory
 
-2) Fehlerbild eingrenzen
-- `domainMap.ts` enthält `zl-wohnbau.de` korrekt.
-- Zone-3-Routen für `zlwohnbau` sind vorhanden.
-- Das Problem ist nicht die Zielroute, sondern der Einstieg über `/` (Root), der bei `zl-wohnbau.de` in `/portal` endet.
+## Audit-Ergebnis
 
-3) Umsetzungsplan (Code-Fix, robust)
-- In `App.tsx` Root-Redirect robust machen:
-  - Hostname normalisieren (`trim`, lowercase, trailing dot entfernen).
-  - Domain-Auflösung über normalisierten Host.
-- Zusätzlich Guard einbauen:
-  - Wenn Brand-Domain erkannt und Pfad mit `/portal` startet, sofort auf `domainEntry.base` (`/website/zl-wohnbau`) umleiten.
-  - Damit wird Fehlrouting auf Login zuverlässig abgefangen, selbst wenn extern `/portal` angesprungen wird.
-- Optional in `useDomainRouter.ts`:
-  - zentrale `normalizeHostname()` Funktion ergänzen und in Hook + Non-Hook-Version verwenden.
+### ZL Wohnbau — Defizite
 
-4) Verifikation nach Umsetzung
-- Test 1: `https://zl-wohnbau.de` → muss direkt Website-Home zeigen
-- Test 2: `https://zl-wohnbau.de/portal` → muss automatisch auf `/website/zl-wohnbau` gehen
-- Test 3: `https://www.zl-wohnbau.de` dito
-- Test 4: Regression-Check für `zl-gruppe.com` und `systemofatown.com`
-- Test 5: Deep links wie `/website/zl-wohnbau/portfolio` bleiben funktionsfähig
+| Bereich | Status | Problem |
+|---------|--------|---------|
+| LLM-Datei | FEHLT | Keine `llms-zlwohnbau.txt` vorhanden |
+| robots.txt | FEHLT | ZL Wohnbau nicht in robots.txt eingetragen |
+| Sitemap | FEHLT | Kein `zlwohnbau` Brand im Sitemap-Generator |
+| Sitemap-Eintrag | FEHLT | Keine `Sitemap:` Zeile in robots.txt |
+| Kontaktformular | FEHLT | Nur statische Kontaktdaten, kein Formular mit Lead-Submission |
+| Header-Bilder Unterseiten | FEHLT | Leistungen, Portfolio, Kontakt haben nur Text-Header (bg-slate-50) |
+| Browser-Titel | FALSCH | Zeigt "Wohnraum für Mitarbeiter \| ZL Wohnbau" statt "ZL Wohnbau" als Basis |
+| Ratgeber | FEHLT | Keine /ratgeber Route registriert (andere Brands haben das) |
+| Content Engine | FEHLT | ZL Wohnbau nicht im Content-Engine-Cron registriert |
 
-5) Technische Details
-- Betroffene Dateien:
-  - `src/App.tsx`
-  - `src/hooks/useDomainRouter.ts`
-- Keine Datenbankänderung erforderlich.
-- Keine Backend-Funktion erforderlich.
+### Otto² Advisory — Defizite
+
+| Bereich | Status | Problem |
+|---------|--------|---------|
+| LLM-Datei | OK | `llms-otto.txt` existiert |
+| robots.txt | OK | Otto eingetragen |
+| Sitemap | TEILWEISE | Routen-Pfade falsch: `/privathaushalte` statt `/private-haushalte` |
+| Kontaktformular | OK | Formular mit Lead-Submission vorhanden |
+| Header-Bilder Unterseiten | FEHLT | Unternehmer und Privathaushalte haben nur Text-Header ohne Bild |
+| Ratgeber | OK | /ratgeber Route vorhanden |
+| Adresse Kontakt | UNVOLLSTÄNDIG | Standort zeigt nur "Deutschland", keine Straße |
+
+---
+
+## Umsetzungsplan
+
+### 1. LLM-Datei für ZL Wohnbau erstellen
+- Neue Datei: `public/llms-zlwohnbau.txt`
+- Inhalt: Unternehmen, Leistungen, Portfolio, Kontaktdaten, FAQ — analog zu `llms-otto.txt`
+
+### 2. robots.txt aktualisieren
+- `Allow: /llms-zlwohnbau.txt` bei Googlebot, GPTBot, PerplexityBot, ClaudeBot hinzufügen
+
+### 3. Sitemap-Generator erweitern
+- `supabase/functions/sot-sitemap-generator/index.ts`: Brand `zlwohnbau` mit Domain `https://zl-wohnbau.de` und allen 6 Routen hinzufügen
+- Fehler-Meldung aktualisieren (valid brands)
+- `robots.txt`: `Sitemap: https://zl-wohnbau.de/sitemap-zlwohnbau.xml` hinzufügen
+
+### 4. Otto² Sitemap-Routen korrigieren
+- `/privathaushalte` → `/private-haushalte` (muss mit tatsächlicher Route übereinstimmen)
+- `/kontakt` und `/faq` mit `/ratgeber` ergänzen
+
+### 5. Kontaktformular für ZL Wohnbau
+- `ZLWohnbauKontakt.tsx` komplett überarbeiten: Formular mit Name, E-Mail, Telefon, Nachricht, Interesse (Wohnraum anfragen / Objekt anbieten / Allgemein)
+- Submission an `sot-ncore-lead-submit` Edge Function mit `brand: 'zlwohnbau'`
+- JSON-LD ContactPage Schema hinzufügen
+
+### 6. Header-Bilder für Unterseiten (ZL Wohnbau)
+- Leistungen, Portfolio, Kontakt: Bestehende Hero-Bilder (`heroImg`, `townImg`, `energyImg`) als subtile Hintergrundbilder in den Header-Sektionen einsetzen (wie auf der Home-Page)
+- Gradient-Overlay für Lesbarkeit
+
+### 7. Header-Bilder für Unterseiten (Otto² Advisory)
+- Unternehmer-Seite: `advisoryImg` als Header-Hintergrund
+- Privathaushalte-Seite: `heroFamilyImg` als Header-Hintergrund
+
+### 8. Browser-Titel korrigieren (ZL Wohnbau Layout)
+- Layout SEOHead: `title` von "Wohnraum für Mitarbeiter" auf "ZL Wohnbau" ändern, damit der Fallback-Titel `ZL Wohnbau | ZL Wohnbau` korrekt ist
+- Einzelseiten überschreiben den Titel ohnehin spezifisch
+
+### 9. Otto² Kontakt-Adresse vervollständigen
+- Vollständige Adresse (Ruselstraße 16, 94327 Bogen) in OttoKontakt.tsx ergänzen
+
+### 10. Ratgeber-Route für ZL Wohnbau registrieren
+- Route `/ratgeber` und `/ratgeber/:slug` in routesManifest.ts für ZL Wohnbau hinzufügen
+- Shared RatgeberListPage/RatgeberArticlePage verwenden (wie bei anderen Brands)
+
+### Betroffene Dateien
+- `public/llms-zlwohnbau.txt` (NEU)
+- `public/robots.txt`
+- `supabase/functions/sot-sitemap-generator/index.ts`
+- `src/pages/zone3/zlwohnbau/ZLWohnbauKontakt.tsx`
+- `src/pages/zone3/zlwohnbau/ZLWohnbauLeistungen.tsx`
+- `src/pages/zone3/zlwohnbau/ZLWohnbauPortfolio.tsx`
+- `src/pages/zone3/zlwohnbau/ZLWohnbauLayout.tsx`
+- `src/pages/zone3/otto/OttoKontakt.tsx`
+- `src/pages/zone3/otto/OttoUnternehmer.tsx`
+- `src/pages/zone3/otto/OttoPrivateHaushalte.tsx`
+- `src/manifests/routesManifest.ts` (Ratgeber-Route ZL Wohnbau)
+
