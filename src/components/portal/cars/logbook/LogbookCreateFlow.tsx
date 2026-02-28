@@ -30,13 +30,25 @@ export function LogbookCreateFlow({ onClose }: Props) {
   const [imei, setImei] = useState('');
   const [manufacturer, setManufacturer] = useState('generic');
 
+  // Derive integration_level and protocol from manufacturer
+  const getDeviceConfig = (mfr: string) => {
+    switch (mfr) {
+      case 'teltonika_fmm003':
+        return { protocol_type: 'teltonika', integration_level: 'B', device_name_prefix: 'FMM003' };
+      case 'seeworld_r58l':
+        return { protocol_type: 'seeworld', integration_level: 'A', device_name_prefix: 'R58L' };
+      default:
+        return { protocol_type: 'generic', integration_level: 'A', device_name_prefix: 'Tracker' };
+    }
+  };
+
   const { data: vehicles = [] } = useQuery({
     queryKey: ['cars-vehicles-select', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
       const { data, error } = await supabase
         .from('cars_vehicles')
-        .select('id, brand, model, license_plate')
+        .select('id, make, model, license_plate')
         .eq('tenant_id', activeTenantId)
         .eq('status', 'active')
         .order('license_plate');
@@ -54,14 +66,15 @@ export function LogbookCreateFlow({ onClose }: Props) {
 
       // Create device + external ref if tracker requested
       if (withTracker && imei.trim()) {
+        const config = getDeviceConfig(manufacturer);
         const { data: device, error: devErr } = await supabase
           .from('cars_devices')
           .insert({
             tenant_id: activeTenantId,
             imei: imei.trim(),
             manufacturer,
-            protocol_type: manufacturer === 'teltonika' ? 'teltonika' : manufacturer === 'seeworld' ? 'seeworld' : 'generic',
-            integration_level: manufacturer === 'teltonika' ? 'B' : 'A',
+            protocol_type: config.protocol_type,
+            integration_level: config.integration_level,
             source_type: 'traccar',
           })
           .select('id')
@@ -83,6 +96,24 @@ export function LogbookCreateFlow({ onClose }: Props) {
           tenant_id: activeTenantId,
           is_online: false,
         });
+
+        // Try to register device in Traccar (graceful — skips if secrets not configured)
+        try {
+          const selectedVehicle = vehicles.find((v: any) => v.id === vehicleId);
+          const deviceName = `${config.device_name_prefix} – ${selectedVehicle?.license_plate || imei.trim()}`;
+          await supabase.functions.invoke('sot-telematics-sync', {
+            body: {
+              action: 'register_device',
+              device_id: deviceId,
+              imei: imei.trim(),
+              device_name: deviceName,
+              tenant_id: activeTenantId,
+            },
+          });
+        } catch {
+          // Traccar registration will be retried when secrets are available
+          console.log('Traccar registration skipped (secrets not configured yet)');
+        }
       }
 
       // Create logbook
@@ -130,7 +161,7 @@ export function LogbookCreateFlow({ onClose }: Props) {
                 <SelectItem key={v.id} value={v.id}>
                   <span className="flex items-center gap-2">
                     <Car className="h-3 w-3" />
-                    {v.license_plate || `${v.brand} ${v.model}`}
+                    {v.license_plate || `${v.make} ${v.model}`}
                   </span>
                 </SelectItem>
               ))}
@@ -165,8 +196,8 @@ export function LogbookCreateFlow({ onClose }: Props) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="teltonika">Teltonika</SelectItem>
-                  <SelectItem value="seeworld">Seeworld</SelectItem>
+                  <SelectItem value="teltonika_fmm003">Teltonika FMM003 (OBD2)</SelectItem>
+                  <SelectItem value="seeworld_r58l">Seeworld R58L 4G</SelectItem>
                   <SelectItem value="generic">Andere</SelectItem>
                 </SelectContent>
               </Select>

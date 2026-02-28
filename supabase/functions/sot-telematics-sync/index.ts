@@ -171,17 +171,93 @@ Deno.serve(async (req: Request) => {
   try {
     const TRACCAR_BASE_URL = Deno.env.get('TRACCAR_BASE_URL');
     const TRACCAR_API_TOKEN = Deno.env.get('TRACCAR_API_TOKEN');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Parse body for action-based routing
+    let body: Record<string, unknown> = {};
+    try { body = await req.json(); } catch { /* no body = sync action */ }
+    const action = body.action as string | undefined;
+
+    // ─── Action: register_device ───
+    if (action === 'register_device') {
+      const { device_id, imei, device_name, tenant_id } = body as {
+        device_id: string; imei: string; device_name: string; tenant_id: string;
+      };
+
+      if (!device_id || !imei) {
+        return new Response(
+          JSON.stringify({ error: 'device_id and imei are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // If Traccar secrets not configured, skip registration but return success
+      if (!TRACCAR_BASE_URL || !TRACCAR_API_TOKEN) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            traccar_registered: false,
+            message: 'Traccar secrets not configured — device saved locally. Registration will happen when secrets are set.',
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Register device in Traccar via REST API
+      const traccarResp = await fetch(`${TRACCAR_BASE_URL}/api/devices`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${TRACCAR_API_TOKEN}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          name: device_name || `Device ${imei}`,
+          uniqueId: imei,
+          category: 'car',
+        }),
+      });
+
+      if (!traccarResp.ok) {
+        const errText = await traccarResp.text();
+        console.error(`Traccar register failed: ${traccarResp.status} ${errText}`);
+        return new Response(
+          JSON.stringify({ ok: false, traccar_registered: false, error: `Traccar API: ${traccarResp.status}`, details: errText }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const traccarDevice = await traccarResp.json();
+      const traccarDeviceId = String(traccarDevice.id);
+
+      // Update external ref with actual Traccar device ID
+      await supabase
+        .from('cars_device_external_refs')
+        .update({ external_device_id: traccarDeviceId })
+        .eq('device_id', device_id)
+        .eq('source_type', 'traccar')
+        .eq('tenant_id', tenant_id);
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          traccar_registered: true,
+          traccar_device_id: traccarDeviceId,
+          traccar_name: traccarDevice.name,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ─── Default action: sync positions ───
     if (!TRACCAR_BASE_URL || !TRACCAR_API_TOKEN) {
       return new Response(
         JSON.stringify({ error: 'Traccar credentials not configured. Set TRACCAR_BASE_URL and TRACCAR_API_TOKEN secrets.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 1) Load all traccar devices with external refs
     const { data: refs, error: refsErr } = await supabase
