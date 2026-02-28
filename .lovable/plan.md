@@ -1,31 +1,37 @@
 
+Ziel: Root-Domain-Redirect für ZL Wohnbau stabil machen und /portal auf Brand-Domains verhindern.
 
-# Diagnose: zl-wohnbau.de leitet auf /auth statt auf ZL Wohnbau Website
+1) Verifiziert (Live-Test)
+- `https://zl-wohnbau.de` → landet auf Portal-Login
+- `https://zl-wohnbau.de/website/zl-wohnbau` → ZL Wohnbau Website lädt korrekt
+- `https://zl-gruppe.com` → ZL Wohnbau Website lädt korrekt
+- Interne Route für die Website: `/website/zl-wohnbau` (Home), plus z. B. `/website/zl-wohnbau/leistungen`, `/portfolio`, `/kontakt`
 
-## Problem
+2) Fehlerbild eingrenzen
+- `domainMap.ts` enthält `zl-wohnbau.de` korrekt.
+- Zone-3-Routen für `zlwohnbau` sind vorhanden.
+- Das Problem ist nicht die Zielroute, sondern der Einstieg über `/` (Root), der bei `zl-wohnbau.de` in `/portal` endet.
 
-Die Code-Logik ist korrekt:
-- `domainMap.ts` enthält `zl-wohnbau.de` → `{ siteKey: 'zlwohnbau', base: '/website/zl-wohnbau' }`
-- `App.tsx` Zeile 81-85: Wenn `getDomainEntry()` eine Domain findet → Redirect auf `/website/zl-wohnbau`
-- Wenn `getDomainEntry()` **null** zurückgibt → Redirect auf `/portal` → Auth-Guard → `/auth`
+3) Umsetzungsplan (Code-Fix, robust)
+- In `App.tsx` Root-Redirect robust machen:
+  - Hostname normalisieren (`trim`, lowercase, trailing dot entfernen).
+  - Domain-Auflösung über normalisierten Host.
+- Zusätzlich Guard einbauen:
+  - Wenn Brand-Domain erkannt und Pfad mit `/portal` startet, sofort auf `domainEntry.base` (`/website/zl-wohnbau`) umleiten.
+  - Damit wird Fehlrouting auf Login zuverlässig abgefangen, selbst wenn extern `/portal` angesprungen wird.
+- Optional in `useDomainRouter.ts`:
+  - zentrale `normalizeHostname()` Funktion ergänzen und in Hook + Non-Hook-Version verwenden.
 
-**Das bedeutet:** Der Hostname, unter dem die App geladen wird, ist **nicht** `zl-wohnbau.de` (sonst würde die domainMap greifen). Das passiert, weil die Domain **noch nicht in den Lovable-Projekt-Settings als Custom Domain konfiguriert** ist.
+4) Verifikation nach Umsetzung
+- Test 1: `https://zl-wohnbau.de` → muss direkt Website-Home zeigen
+- Test 2: `https://zl-wohnbau.de/portal` → muss automatisch auf `/website/zl-wohnbau` gehen
+- Test 3: `https://www.zl-wohnbau.de` dito
+- Test 4: Regression-Check für `zl-gruppe.com` und `systemofatown.com`
+- Test 5: Deep links wie `/website/zl-wohnbau/portfolio` bleiben funktionsfähig
 
-## Ursache
-
-Selbst wenn DNS (A-Record 185.158.133.1) korrekt gesetzt ist, muss die Domain **zusätzlich** in den Lovable-Projekt-Einstellungen unter **Domains** hinzugefügt werden. Ohne das leitet Lovable's Infrastruktur den Traffic nicht korrekt an die App weiter, oder der Hostname stimmt nicht überein.
-
-## Lösung
-
-1. **Lovable-Projekt-Settings → Domains → "Connect Domain"** öffnen
-2. `zl-wohnbau.de` als Custom Domain hinzufügen
-3. `www.zl-wohnbau.de` ebenfalls hinzufügen
-4. DNS-Einträge bei IONOS verifizieren:
-   - A-Record `@` → `185.158.133.1`
-   - A-Record `www` → `185.158.133.1`
-   - TXT-Record `_lovable` → den angezeigten Verify-Wert eintragen
-5. Optional: `zl-gruppe.com` und `www.zl-gruppe.com` ebenfalls als Custom Domains hinzufügen
-6. SSL-Zertifikat wird automatisch provisioniert (kann bis 72h dauern)
-
-**Keine Code-Änderungen nötig** — die Routing-Logik im Code ist vollständig korrekt. Es ist rein eine Infrastruktur-Konfiguration in den Projekt-Settings.
-
+5) Technische Details
+- Betroffene Dateien:
+  - `src/App.tsx`
+  - `src/hooks/useDomainRouter.ts`
+- Keine Datenbankänderung erforderlich.
+- Keine Backend-Funktion erforderlich.
