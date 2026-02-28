@@ -1,38 +1,31 @@
 
 
-## Plan: Fahrtenbuch-Integration fertigstellen (ohne Server)
+# Diagnose: zl-wohnbau.de leitet auf /auth statt auf ZL Wohnbau Website
 
-Alles, was wir jetzt bauen können, funktioniert sofort in der UI. Traccar-Verbindung wird erst aktiv, wenn du bei Strato die Server-URL hast — dann trägst du nur noch 2 Werte ein und alles läuft.
+## Problem
 
-### Was jetzt gemacht wird
+Die Code-Logik ist korrekt:
+- `domainMap.ts` enthält `zl-wohnbau.de` → `{ siteKey: 'zlwohnbau', base: '/website/zl-wohnbau' }`
+- `App.tsx` Zeile 81-85: Wenn `getDomainEntry()` eine Domain findet → Redirect auf `/website/zl-wohnbau`
+- Wenn `getDomainEntry()` **null** zurückgibt → Redirect auf `/portal` → Auth-Guard → `/auth`
 
-**1. LogbookCreateFlow verbessern**
-- "Teltonika FMM003" als eigene Auswahl-Option hinzufügen (statt nur generisch "Teltonika")
-- Hersteller-Liste erweitern: `Teltonika FMM003`, `Seeworld R58L`, `Andere`
-- `integration_level` automatisch setzen: FMM003 → `B` (OBD2), Seeworld → `A` (GPS-only)
+**Das bedeutet:** Der Hostname, unter dem die App geladen wird, ist **nicht** `zl-wohnbau.de` (sonst würde die domainMap greifen). Das passiert, weil die Domain **noch nicht in den Lovable-Projekt-Settings als Custom Domain konfiguriert** ist.
 
-**2. `register_device` Action in die Backend-Funktion einbauen**
-- Neue Action in `sot-telematics-sync`: nimmt IMEI + Gerätename, registriert das Gerät automatisch in Traccar via REST API (`POST /api/devices`)
-- Speichert die zurückgegebene Traccar-Device-ID in `cars_device_external_refs`
-- Wird automatisch beim Erstellen eines Fahrtenbuchs aufgerufen (wenn Tracker ausgewählt)
-- Funktioniert erst, wenn Secrets hinterlegt sind — bis dahin wird das Gerät lokal gespeichert und die Traccar-Registrierung übersprungen
+## Ursache
 
-**3. Secrets vorbereiten (noch NICHT anlegen)**
-- Zwei Secrets werden benötigt: `TRACCAR_BASE_URL` und `TRACCAR_API_TOKEN`
-- Diese legen wir erst an, wenn du deine Strato-Zugangsdaten hast
-- Der Code prüft, ob die Secrets vorhanden sind und überspringt die Traccar-Kommunikation, wenn nicht
+Selbst wenn DNS (A-Record 185.158.133.1) korrekt gesetzt ist, muss die Domain **zusätzlich** in den Lovable-Projekt-Einstellungen unter **Domains** hinzugefügt werden. Ohne das leitet Lovable's Infrastruktur den Traffic nicht korrekt an die App weiter, oder der Hostname stimmt nicht überein.
 
-### Was du später machst (nach Strato-Setup)
-1. Traccar auf dem Strato-Server installieren (Docker-Befehl, den ich dir dann gebe)
-2. Admin-Account erstellen
-3. Mir die URL + Zugangsdaten geben → ich lege die 2 Secrets an
-4. FMM003 einstecken → Geräte-Registrierung läuft automatisch
+## Lösung
 
-### Technische Details
+1. **Lovable-Projekt-Settings → Domains → "Connect Domain"** öffnen
+2. `zl-wohnbau.de` als Custom Domain hinzufügen
+3. `www.zl-wohnbau.de` ebenfalls hinzufügen
+4. DNS-Einträge bei IONOS verifizieren:
+   - A-Record `@` → `185.158.133.1`
+   - A-Record `www` → `185.158.133.1`
+   - TXT-Record `_lovable` → den angezeigten Verify-Wert eintragen
+5. Optional: `zl-gruppe.com` und `www.zl-gruppe.com` ebenfalls als Custom Domains hinzufügen
+6. SSL-Zertifikat wird automatisch provisioniert (kann bis 72h dauern)
 
-**Dateien die geändert werden:**
-- `src/components/portal/cars/logbook/LogbookCreateFlow.tsx` — Hersteller-Optionen erweitern, auto-register Aufruf
-- `supabase/functions/sot-telematics-sync/index.ts` — Neue `register_device` Action hinzufügen
-
-**Kein Docker, kein ngrok nötig.** Die UI funktioniert sofort, Fahrten können auch manuell angelegt werden. Die automatische Erkennung startet erst mit Server-Verbindung.
+**Keine Code-Änderungen nötig** — die Routing-Logik im Code ist vollständig korrekt. Es ist rein eine Infrastruktur-Konfiguration in den Projekt-Settings.
 
