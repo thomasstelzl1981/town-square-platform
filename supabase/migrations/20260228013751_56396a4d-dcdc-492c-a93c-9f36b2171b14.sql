@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS public.cars_logbook_connections CASCADE;

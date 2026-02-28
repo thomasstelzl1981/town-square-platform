@@ -25,7 +25,6 @@ import {
   Car, 
   FileText, 
   AlertTriangle,
-  BookOpen,
   FolderOpen,
   Plus,
   Pencil,
@@ -224,38 +223,8 @@ export default function VehicleDetailPage() {
     enabled: !!id,
   });
 
-  // Fetch logbook connection
-  const { data: logbookConnection } = useQuery({
-    queryKey: ['cars_logbook_connections', id],
-    queryFn: async () => {
-      if (!id) return null;
-      const { data, error } = await supabase
-        .from('cars_logbook_connections')
-        .select('*')
-        .eq('vehicle_id', id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!id,
-  });
 
-  // Fetch trips
-  const { data: trips } = useQuery({
-    queryKey: ['cars_trips', id],
-    queryFn: async () => {
-      if (!id) return [];
-      const { data, error } = await supabase
-        .from('cars_trips')
-        .select('*')
-        .eq('vehicle_id', id)
-        .order('start_at', { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!id,
-  });
+
 
   if (vehicleLoading) {
     return (
@@ -357,10 +326,6 @@ export default function VehicleDetailPage() {
           <TabsTrigger value="schaeden" className="gap-2">
             <AlertTriangle className="h-4 w-4" />
             Schäden ({claims?.length || 0})
-          </TabsTrigger>
-          <TabsTrigger value="fahrtenbuch" className="gap-2">
-            <BookOpen className="h-4 w-4" />
-            Fahrtenbuch
           </TabsTrigger>
           <TabsTrigger value="dokumente" className="gap-2">
             <FolderOpen className="h-4 w-4" />
@@ -509,81 +474,7 @@ export default function VehicleDetailPage() {
           </Card>
         </TabsContent>
 
-        {/* Fahrtenbuch Tab */}
-        <TabsContent value="fahrtenbuch" className="mt-6 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Provider-Verbindung</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {logbookConnection && logbookConnection.status === 'connected' ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Badge variant="default">Verbunden</Badge>
-                    <span className="font-medium capitalize">{logbookConnection.provider}</span>
-                    <span className="text-sm text-muted-foreground">
-                      Letzte Sync: {logbookConnection.last_sync_at ? formatDate(logbookConnection.last_sync_at) : 'Nie'}
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">Jetzt synchronisieren</Button>
-                    <Button variant="ghost" size="sm">Verbindung trennen</Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <BookOpen className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-50" />
-                  <p className="text-muted-foreground mb-4">Kein Fahrtenbuch verbunden</p>
-                  <div className="flex gap-2 justify-center">
-                    <Button variant="outline" size="sm">Vimcar verbinden</Button>
-                    <Button variant="ghost" size="sm">Manuell erfassen</Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Fahrten</CardTitle>
-              <Button variant="outline" size="sm">Export</Button>
-            </CardHeader>
-            <CardContent>
-              {trips && trips.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Datum</TableHead>
-                      <TableHead>Strecke</TableHead>
-                      <TableHead>Kategorie</TableHead>
-                      <TableHead className="text-right">KM</TableHead>
-                      <TableHead>Zweck</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {trips.map((trip) => (
-                      <TableRow key={trip.id}>
-                        <TableCell>{formatDate(trip.start_at)}</TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {trip.start_address} → {trip.end_address}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="capitalize">{trip.classification}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">{Number(trip.distance_km).toFixed(1)} km</TableCell>
-                        <TableCell className="max-w-xs truncate">{trip.purpose || '—'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>Keine Fahrten erfasst</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* Dokumente Tab */}
         <TabsContent value="dokumente" className="mt-6">

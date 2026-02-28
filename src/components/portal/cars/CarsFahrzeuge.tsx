@@ -600,4 +600,4 @@ function EditableAkteSection({ icon: Icon, title, vehicleId, isDemo, fields, onS
   );
 }
 
-// VimcarLogbook removed — replaced by LogbookSection
+

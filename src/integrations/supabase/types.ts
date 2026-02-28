@@ -3621,66 +3621,6 @@ export type Database = {
           },
         ]
       }
-      cars_logbook_connections: {
-        Row: {
-          api_credentials_encrypted: string | null
-          created_at: string
-          external_vehicle_ref: string | null
-          id: string
-          last_sync_at: string | null
-          provider: Database["public"]["Enums"]["car_logbook_provider"]
-          settings: Json | null
-          status: Database["public"]["Enums"]["car_logbook_status"]
-          sync_error_message: string | null
-          tenant_id: string
-          updated_at: string
-          vehicle_id: string
-        }
-        Insert: {
-          api_credentials_encrypted?: string | null
-          created_at?: string
-          external_vehicle_ref?: string | null
-          id?: string
-          last_sync_at?: string | null
-          provider?: Database["public"]["Enums"]["car_logbook_provider"]
-          settings?: Json | null
-          status?: Database["public"]["Enums"]["car_logbook_status"]
-          sync_error_message?: string | null
-          tenant_id: string
-          updated_at?: string
-          vehicle_id: string
-        }
-        Update: {
-          api_credentials_encrypted?: string | null
-          created_at?: string
-          external_vehicle_ref?: string | null
-          id?: string
-          last_sync_at?: string | null
-          provider?: Database["public"]["Enums"]["car_logbook_provider"]
-          settings?: Json | null
-          status?: Database["public"]["Enums"]["car_logbook_status"]
-          sync_error_message?: string | null
-          tenant_id?: string
-          updated_at?: string
-          vehicle_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cars_logbook_connections_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cars_logbook_connections_vehicle_id_fkey"
-            columns: ["vehicle_id"]
-            isOneToOne: true
-            referencedRelation: "cars_vehicles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       cars_logbook_locks: {
         Row: {
           id: string
@@ -4140,13 +4080,6 @@ export type Database = {
           vehicle_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "cars_trips_connection_id_fkey"
-            columns: ["connection_id"]
-            isOneToOne: false
-            referencedRelation: "cars_logbook_connections"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "cars_trips_device_id_fkey"
             columns: ["device_id"]
