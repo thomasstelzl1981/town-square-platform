@@ -18,7 +18,7 @@ export default function FutureRoomKontakt() {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const response = await fetch(`${supabaseUrl}/functions/v1/sot-lead-inbox`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/sot-ncore-lead-submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
         body: JSON.stringify({ brand: 'futureroom', type: form.interest, name: form.name, email: form.email, phone: form.phone || null, message: form.message }),

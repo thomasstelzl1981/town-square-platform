@@ -798,6 +798,8 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "kontakt", component: "ZLWohnbauKontakt", title: "Kontakt — ZL Wohnbau" },
       { path: "impressum", component: "ZLWohnbauImpressum", title: "Impressum — ZL Wohnbau" },
       { path: "datenschutz", component: "ZLWohnbauDatenschutz", title: "Datenschutz — ZL Wohnbau" },
+      { path: "ratgeber", component: "ZLWohnbauRatgeber", title: "Ratgeber — ZL Wohnbau" },
+      { path: "ratgeber/:slug", component: "ZLWohnbauRatgeberArticle", title: "Ratgeber Artikel", dynamic: true },
     ],
   },
 };
