@@ -12,10 +12,10 @@ import {
 } from 'lucide-react';
 
 import { KostenDashboard } from '@/pages/portal/communication-pro/agenten/KostenDashboard';
-import { SystemPreisliste } from '@/components/armstrong/SystemPreisliste';
-import { EmailEnrichmentCard } from '@/components/armstrong/EmailEnrichmentCard';
-import { WhatsAppArmstrongCard } from '@/components/armstrong/WhatsAppArmstrongCard';
-import { RegistryImportCard } from '@/components/armstrong/RegistryImportCard';
+import { SystemPreisliste } from '@/components/shared/SystemPreisliste';
+import { EmailEnrichmentCard } from '@/components/shared/EmailEnrichmentCard';
+import { WhatsAppArmstrongCard } from '@/components/shared/WhatsAppArmstrongCard';
+import { RegistryImportCard } from '@/components/shared/RegistryImportCard';
 import { AktionsKatalog } from '@/pages/portal/communication-pro/agenten/AktionsKatalog';
 
 const steps = [

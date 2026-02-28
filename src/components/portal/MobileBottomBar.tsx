@@ -11,7 +11,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useArmstrongAdvisor } from '@/hooks/useArmstrongAdvisor';
 import { useArmstrongVoice } from '@/hooks/useArmstrongVoice';
-import { VoiceButton } from '@/components/armstrong/VoiceButton';
+import { VoiceButton } from '@/components/shared/VoiceButton';
 import { MobileAttachMenu } from './MobileAttachMenu';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
