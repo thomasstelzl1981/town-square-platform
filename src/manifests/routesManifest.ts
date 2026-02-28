@@ -198,6 +198,8 @@ export const zone1Admin: ZoneDefinition = {
     { path: "otto-desk/kontakte", component: "OttoDeskKontakte", title: "Kontakte" },
     { path: "otto-desk/inbox", component: "OttoDeskInbox", title: "Inbox" },
     { path: "otto-desk/monitor", component: "OttoDeskMonitor", title: "Monitor" },
+    // CommPro Desk — Telefonassistenten für alle Marken (Premium/ElevenLabs)
+    { path: "commpro-desk", component: "CommProDeskRouter", title: "CommPro Desk" },
     // Compliance Desk — Legal Engine SSOT (8 internal tabs)
     { path: "compliance", component: "ComplianceDeskRouter", title: "Compliance Desk" },
   ],

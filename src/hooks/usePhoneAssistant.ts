@@ -35,7 +35,6 @@ export interface PhoneAssistantConfig {
   binding_status: string;
   twilio_number_sid: string | null;
   twilio_phone_number_e164: string | null;
-  armstrong_inbound_email: string | null;
   tier: 'standard' | 'premium';
   created_at: string;
   updated_at: string;

@@ -7,3 +7,4 @@ export { default as ProjektDesk } from './ProjektDesk';
 export { default as PetDesk } from './PetmanagerDesk';
 export { default as NcoreDesk } from './NcoreDesk';
 export { default as OttoDesk } from './OttoDesk';
+export { default as CommProDesk } from './CommProDesk';

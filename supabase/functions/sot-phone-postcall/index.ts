@@ -39,10 +39,10 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // 1. Find call session by Twilio SID
+    // 1. Find call session by Twilio SID — JOIN profiles for armstrong_email
     const { data: session } = await supabase
       .from("commpro_phone_call_sessions")
-      .select("*, commpro_phone_assistants!inner(user_id, armstrong_inbound_email, documentation, display_name)")
+      .select("*, commpro_phone_assistants!inner(user_id, documentation, display_name)")
       .eq("twilio_call_sid", callSid)
       .maybeSingle();
 
@@ -123,10 +123,20 @@ Deno.serve(async (req) => {
       .update(updatePayload)
       .eq("id", session.id);
 
-    // 4. Armstrong notification via inbound email
+    // 4. Armstrong notification via inbound email — use profiles.armstrong_email
     const assistant = (session as any).commpro_phone_assistants;
-    const armstrongEmail = assistant?.armstrong_inbound_email;
     const documentation = assistant?.documentation as Record<string, any> | null;
+
+    // Fetch armstrong_email from profiles table via user_id
+    let armstrongEmail: string | null = null;
+    if (assistant?.user_id) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("armstrong_email")
+        .eq("id", assistant.user_id)
+        .maybeSingle();
+      armstrongEmail = profile?.armstrong_email || null;
+    }
 
     if (armstrongEmail && documentation?.email_enabled !== false) {
       try {
