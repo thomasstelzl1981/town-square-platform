@@ -10,7 +10,7 @@ import type { UseMutationResult } from '@tanstack/react-query';
 interface Props {
   calls: CallSession[];
   isLoading: boolean;
-  createTestEvent: UseMutationResult<void, Error, void>;
+  createTestEvent?: UseMutationResult<void, Error, void>;
 }
 
 export function CallLogSection({ calls, isLoading, createTestEvent }: Props) {
@@ -38,10 +38,12 @@ export function CallLogSection({ calls, isLoading, createTestEvent }: Props) {
             <div className="flex flex-col items-center py-10 text-center">
               <PhoneIncoming className="h-10 w-10 text-muted-foreground/40 mb-3" />
               <p className="text-sm text-muted-foreground mb-4">Noch keine Anrufe dokumentiert.</p>
-              <Button size="sm" onClick={() => createTestEvent.mutate()} disabled={createTestEvent.isPending}>
-                <FlaskConical className="h-4 w-4 mr-2" />
-                Test-Eintrag erzeugen
-              </Button>
+              {createTestEvent && (
+                <Button size="sm" onClick={() => createTestEvent.mutate()} disabled={createTestEvent.isPending}>
+                  <FlaskConical className="h-4 w-4 mr-2" />
+                  Test-Eintrag erzeugen
+                </Button>
+              )}
             </div>
           ) : (
             <div className="divide-y divide-border/50">

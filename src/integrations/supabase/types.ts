@@ -4710,6 +4710,7 @@ export type Database = {
           armstrong_inbound_email: string | null
           behavior_prompt: string
           binding_status: string
+          brand_key: string | null
           created_at: string
           display_name: string
           documentation: Json
@@ -4731,6 +4732,7 @@ export type Database = {
           armstrong_inbound_email?: string | null
           behavior_prompt?: string
           binding_status?: string
+          brand_key?: string | null
           created_at?: string
           display_name?: string
           documentation?: Json
@@ -4752,6 +4754,7 @@ export type Database = {
           armstrong_inbound_email?: string | null
           behavior_prompt?: string
           binding_status?: string
+          brand_key?: string | null
           created_at?: string
           display_name?: string
           documentation?: Json
