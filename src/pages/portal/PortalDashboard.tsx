@@ -12,6 +12,7 @@ import { useTodayEvents } from '@/hooks/useTodayEvents';
 import { useWidgetOrder } from '@/hooks/useWidgetOrder';
 import { useWidgetPreferences } from '@/hooks/useWidgetPreferences';
 import { useTaskWidgets } from '@/hooks/useTaskWidgets';
+import { usePreviewSafeMode } from '@/hooks/usePreviewSafeMode';
 import { EarthGlobeCard } from '@/components/dashboard/EarthGlobeCard';
 import { WeatherCard } from '@/components/dashboard/WeatherCard';
 import { ArmstrongGreetingCard } from '@/components/dashboard/ArmstrongGreetingCard';
@@ -30,7 +31,7 @@ import { MeetingRecorderWidget } from '@/components/dashboard/MeetingRecorderWid
 import { NotesWidget } from '@/components/dashboard/widgets/NotesWidget';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Settings2, Inbox, ChevronDown } from 'lucide-react';
+import { Settings2, Inbox, ChevronDown, Globe, Radio, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const ARMSTRONG_WIDGET_ID = 'system_armstrong';
@@ -52,8 +53,21 @@ const WIDGET_CODE_TO_ID: Record<string, string> = {
   'SYS.FIN.ACCOUNTS': 'system_accounts',
 };
 
+/** Placeholder card shown in preview for disabled heavy widgets */
+function PreviewPlaceholderCard({ label, icon: Icon }: { label: string; icon: React.ElementType }) {
+  return (
+    <Card className="relative h-[260px] md:h-auto md:aspect-square flex items-center justify-center bg-muted/50 border-dashed border-muted-foreground/20">
+      <CardContent className="flex flex-col items-center gap-2 text-muted-foreground">
+        <Icon className="h-8 w-8 opacity-40" />
+        <span className="text-xs text-center">{label}<br /><span className="opacity-60">(Preview deaktiviert)</span></span>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function PortalDashboard() {
   const { profile, isDevelopmentMode } = useAuth();
+  const { isPreview, allowHeavyWidgets } = usePreviewSafeMode();
   const navigate = useNavigate();
   const { location, loading: locationLoading } = useGeolocation();
   const { data: weather, isLoading: weatherLoading } = useWeather(
@@ -128,6 +142,7 @@ export default function PortalDashboard() {
       return <WeatherCard latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} />;
     }
     if (widgetId === 'system_globe') {
+      if (!allowHeavyWidgets) return <PreviewPlaceholderCard label="3D Globe" icon={Globe} />;
       return <EarthGlobeCard latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} />;
     }
     if (widgetId === 'system_finance') return <FinanceWidget />;
@@ -135,8 +150,14 @@ export default function PortalDashboard() {
     if (widgetId === 'system_news') return <NewsWidget />;
     if (widgetId === 'system_space') return <SpaceWidget />;
     if (widgetId === 'system_quote') return <QuoteWidget />;
-    if (widgetId === 'system_radio') return <RadioWidget />;
-    if (widgetId === 'system_pv_live') return <PVLiveWidget />;
+    if (widgetId === 'system_radio') {
+      if (!allowHeavyWidgets) return <PreviewPlaceholderCard label="Radio" icon={Radio} />;
+      return <RadioWidget />;
+    }
+    if (widgetId === 'system_pv_live') {
+      if (!allowHeavyWidgets) return <PreviewPlaceholderCard label="PV Live" icon={Zap} />;
+      return <PVLiveWidget />;
+    }
     if (widgetId === 'system_meeting_recorder') return <MeetingRecorderWidget />;
     if (widgetId === 'system_brand_kaufy') return <BrandLinkWidget code="SYS.BRAND.KAUFY" />;
     if (widgetId === 'system_brand_futureroom') return <BrandLinkWidget code="SYS.BRAND.FUTUREROOM" />;

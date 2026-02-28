@@ -31,6 +31,9 @@ import { useLegalConsent } from '@/hooks/useLegalConsent';
 import { ConsentRequiredModal } from './ConsentRequiredModal';
 import { useDemoAutoLogin } from '@/hooks/useDemoAutoLogin';
 import { useLennoxInitialSeed } from '@/hooks/useLennoxInitialSeed';
+import { isPreviewEnvironment } from '@/hooks/usePreviewSafeMode';
+
+const isPreviewEnv = isPreviewEnvironment();
 
 const LENNOX_TENANT_ID = 'eac1778a-23bc-4d03-b3f9-b26be27c9505';
 
@@ -79,8 +82,9 @@ function PortalLayoutInner() {
     }
   }, [activeTenantId, user, runLennoxSeed]);
 
-  // Preload modules after initial render for instant navigation
+  // Preload modules after initial render — disabled in preview to save memory
   useEffect(() => {
+    if (isPreviewEnv) return;
     const timer = setTimeout(preloadModules, 1000);
     return () => clearTimeout(timer);
   }, []);

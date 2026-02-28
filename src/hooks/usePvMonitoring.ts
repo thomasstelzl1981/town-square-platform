@@ -19,6 +19,9 @@ export interface PlantLiveData {
   isOnline: boolean;
 }
 
+/**
+ * @param refreshInterval Default 7s in production, auto-throttled to 60s in preview via usePreviewSafeMode
+ */
 export function usePvMonitoring(plants: PvPlant[], refreshInterval = 7000) {
   const [liveData, setLiveData] = useState<Map<string, PlantLiveData>>(new Map());
 

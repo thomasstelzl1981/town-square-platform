@@ -8,6 +8,7 @@ import { useWeather } from '@/hooks/useWeather';
 import { getWeatherInfo } from '@/lib/weatherCodes';
 import { Droplets, Wind, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePreviewSafeMode } from '@/hooks/usePreviewSafeMode';
 
 interface WeatherCardProps {
   latitude: number | null;
@@ -388,6 +389,7 @@ function WeatherEffects({ code }: { code: number }) {
 
 export function WeatherCard({ latitude, longitude, city }: WeatherCardProps) {
   const { data: weather, isLoading, error } = useWeather(latitude, longitude);
+  const { isPreview } = usePreviewSafeMode();
 
   if (isLoading) {
     return (
@@ -414,8 +416,8 @@ export function WeatherCard({ latitude, longitude, city }: WeatherCardProps) {
       className="relative h-[260px] md:h-auto md:aspect-square overflow-hidden border-border/30 shadow-lg"
       style={{ background: gradient }}
     >
-      {/* Weather Effects Overlay */}
-      <WeatherEffects code={weather.current.weatherCode} />
+      {/* Weather Effects Overlay — disabled in preview to save CPU */}
+      {!isPreview && <WeatherEffects code={weather.current.weatherCode} />}
 
       {/* Subtle glass overlay for better text readability */}
       <div 
