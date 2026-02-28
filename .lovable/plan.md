@@ -1,26 +1,62 @@
 
 
-## Plan: 3D Globe Widget entfernen
+## Analyse: Technische Schulden — Status & Bewertung
 
-### Befund
+### 1. `as any` Type-Casts (~3.300 Stellen in 226 Dateien)
 
-Das Globe Widget (`EarthGlobeCard`) importiert `react-globe.gl`, das **Three.js** als Dependency mitbringt — eine der größten JavaScript-Libraries überhaupt (~600KB gzipped + WebGL-Kontext). Allein der Import erzeugt erheblichen Speicherdruck, selbst wenn lazy-loaded. Dazu kommt: WebGL-Kontexte werden beim HMR-Reload nicht sauber freigegeben, was den akkumulierenden Memory Leak erklärt.
+**Deutlich mehr als die ursprünglich gemeldeten 780.** Die Ursachen verteilen sich auf 3 Kategorien:
 
-### Änderungen
+| Kategorie | Anteil | Beispiel | Aufwand |
+|-----------|--------|---------|---------|
+| Supabase-Rückgabewerte (Joins, `.from()` Ergebnis) | ~40% | `(u.properties as any)?.id` | Mittel — erfordert generische Query-Typen |
+| Form/Event-Werte (React Hook Form, Select) | ~25% | `setValue('field', v as any)` | Gering — Zod-Inferenz + generische Form-Typen |
+| Sonstige (Payload-Bau, untyped Maps) | ~35% | `insert(payload as any)` | Hoch — braucht typisierte Helper |
 
-| Aktion | Datei | Was |
-|--------|-------|-----|
-| **Edit** | `src/pages/portal/PortalDashboard.tsx` | `system_globe` rendert immer `CSSGlobeFallback` statt `EarthGlobeCard`. Import von `EarthGlobeCard` entfernen |
-| **Delete** | `src/components/dashboard/EarthGlobeCard.tsx` | Komplette Datei löschen |
-| **Delete** | `src/components/dashboard/earth-globe/CSSGlobeFallback.tsx` | Wird nach `src/components/dashboard/GlobeWidget.tsx` verschoben (eigenständige Widget-Card) |
-| **Neu** | `src/components/dashboard/GlobeWidget.tsx` | Leichtgewichtiges CSS-Globe-Widget mit Koordinaten-Overlay (aus CSSGlobeFallback + CardContent-Overlay von EarthGlobeCard) |
-| **Edit** | `package.json` | `react-globe.gl` Dependency entfernen |
-| **Edit** | `src/types/widget.ts` | `system_globe` bleibt als Widget-Typ (keine Breaking Change) |
+**Bewertung:** Kein Laufzeit-Risiko. Rein statische Typsicherheit. Ein Refactoring aller 3.300 Stellen würde **dutzende Prompts** kosten und bringt null funktionalen Mehrwert. Nur sinnvoll modulweise bei ohnehin anstehenden Änderungen.
 
-### Erwarteter Effekt
+---
 
-- **~600KB+ weniger im Bundle** (Three.js + react-globe.gl + three-globe)
-- **Kein WebGL-Kontext mehr** → kein GPU-Memory-Leak bei HMR
-- **CSSGlobeFallback existiert bereits** und sieht visuell gut aus — wird zum Standard-Widget
-- Published Version bekommt das gleiche leichtgewichtige Widget (kein Funktionsverlust, da der 3D-Globe rein dekorativ ist)
+### 2. `: any` Typ-Deklarationen (~2.430 Stellen in 202 Dateien)
+
+Ebenfalls höher als gemeldet. Hauptsächlich in:
+- Supabase-Query-Callbacks (`(p: any) => p.id`)
+- Event-Handler und generische Utility-Funktionen
+- Temporäre Datenstrukturen (Maps, Reduce)
+
+**Bewertung:** Gleiche Kategorie wie oben. Kein funktionales Risiko.
+
+---
+
+### 3. `supabase.from('x' as any)` (~312 Stellen in 27 Dateien)
+
+Diese existieren weil die Tabellen in der DB existieren, aber **nicht in `types.ts` reflektiert** sind. Betroffen u.a.:
+- `pet_z1_pets`, `pet_z1_customers`, `pet_z1_booking_requests`
+- `car_service_requests`
+- `pv_plants`, `private_loans`
+- `fortbildung_curated_items`, `fortbildung_search_logs`
+
+**Bewertung:** Das ist ein **types.ts-Regenerierungs-Thema**. Die `types.ts` wird automatisch generiert und kann nicht manuell editiert werden. Solange die Tabellen in der DB existieren, funktioniert alles. Die `as any` Casts sind der korrekte Workaround.
+
+---
+
+### 4. TODO in FMInvestmentTab
+
+```typescript
+// TODO: Upvest integration — for now show empty state
+const isConnected = false;
+```
+
+**Bewertung:** Korrekt dokumentierter Platzhalter. Upvest-Integration ist ein **eigenständiges Feature** (externer API-Anbieter), kein Bug. Der Empty State ist die richtige Lösung bis zur Integration.
+
+---
+
+### Empfehlung
+
+| Schuld | Aktion | Priorität |
+|--------|--------|-----------|
+| `as any` / `: any` Casts | **Keine sofortige Aktion.** Modulweise bereinigen wenn Module ohnehin bearbeitet werden. | Low |
+| `supabase.from('x' as any)` | **Keine Aktion möglich.** `types.ts` ist auto-generiert. Die Casts verschwinden automatisch wenn die Typen regeneriert werden. | None |
+| TODO FMInvestmentTab | **Belassen.** Upvest ist ein zukünftiges Feature, kein Defekt. | None |
+
+**Fazit:** Keine der technischen Schulden verursacht Laufzeitfehler oder Abstürze. Der größte Hebel für Stabilität war die Globe-Entfernung und Preview-Härtung (bereits umgesetzt). Die Type-Cast-Schulden sind kosmetisch und sollten nur bei Gelegenheit reduziert werden.
 
