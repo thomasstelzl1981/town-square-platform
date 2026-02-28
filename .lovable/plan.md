@@ -1,93 +1,84 @@
 
 
-# Systemcheck Finanzanalyse (MOD-18) — Ergebnis
+# Review des Codex-Audits — Faktencheck
 
-## 1. Einkommenslogik (Beschäftigungsstatus-Wechsel)
-**Status: FUNKTIONIERT**
-- `UebersichtTab.tsx` Zeilen 367-391: Angestellten-Felder (Arbeitgeber, Brutto, Netto, Steuerklasse, Kinderfreibeträge) sichtbar bei `angestellt` UND `selbstaendig`
-- Zeilen 459-463: "Einkünfte aus Gewerbebetrieb" ebenfalls sichtbar bei beiden Status
-- Werte bleiben beim Wechsel erhalten (kein Reset, nur lokaler State `editForms`)
-- Nur bei `beamter`, `rentner`, `nicht_erwerbstaetig` werden diese Felder ausgeblendet
-
-## 2. Sonstige Einnahmen
-**Status: FUNKTIONIERT**
-- UI-Feld vorhanden (Zeile 468-470)
-- DB-Spalte `other_income_monthly` in `household_persons` angelegt
-- Engine `calcIncome()` aggregiert Zeile 78: `otherIncome = adults.reduce(... p.other_income_monthly ...)`
-- Hook `useFinanzberichtData` Zeile 49: Spalte in SELECT-Query enthalten
-- FinanzberichtSection Zeile 167: Zeigt "Sonstige Einkünfte" an wenn > 0
-
-## 3. Vertragskumulation (neue Verträge → Bericht)
-**Status: FUNKTIONIERT**
-- `useFinanzberichtData` lädt alle Vertragsquellen via separate React-Queries: insurance_contracts, vorsorge_contracts, private_loans, user_subscriptions, miety_contracts, pv_plants, loans
-- Jede Query ist per `activeTenantId` gefiltert
-- `useMemo` Dependency-Array (Zeile 302) enthält ALLE Datenquellen → jede DB-Änderung triggert Neuberechnung
-- Engine `calcExpenses()` + `buildContractLists()` aggregieren korrekt
-
-## 4. MOD-04 Immobilien-Übernahme
-**Status: FUNKTIONIERT**
-- `usePortfolioSummary` (Zeile 35-218) liest `units` + `properties` + `leases` + `loans` aus MOD-04
-- Liefert: `totalValue`, `totalDebt`, `annualIncome`, `annualInterest`, `annualAmortization`, `avgInterestRate`
-- `useFinanzberichtData` Zeile 270-277: Übergibt PortfolioSummary an Engine
-- Engine `calcAssets` Zeile 230: `propertyValue = portfolioSummary.totalValue`
-- Engine `calcIncome` Zeile 89: `rentalIncomePortfolio = portfolioSummary.annualIncome / 12`
-- Engine `calcLiabilities` Zeile 263: `portfolioDebt = portfolioSummary.totalDebt`
-
-## 5. Save-Feedback & Query-Invalidierung
-**Status: FUNKTIONIERT**
-- `updatePerson.mutate` → `onSuccess` → `toast.success('Person gespeichert')` (Zeile 183) + `invalidateQueries(['fa-persons'])` + `invalidateQueries(['fb-household-persons'])` (Zeilen 282-285)
-- `createPerson` → gleiche Invalidierung (Zeilen 271-273)
-- `deletePerson` → gleiche Invalidierung (Zeilen 294-296)
-- `useSaveFeedback` Hook erstellt und verfügbar für weitere Module
-
-## 6. "Konto hinzufügen" Widget
-**Status: ENTFERNT**
-- `KontenTab.tsx` Zeile 385-387: Nach den Konto-Kacheln kommt direkt `</WidgetGrid>`. Das redundante Widget ist weg.
-
-## 7. FinAPI-Test
-**Status: FUNKTIONIERT**
-- Edge Function `sot-finapi-sync` deployed und erreichbar
-- Status-Action getestet: HTTP 200, Response `{"connections": []}`
-- Auth-Flow: `getUser(token)` korrekt implementiert (Zeile 162)
-- Secrets `FINAPI_CLIENT_ID` + `FINAPI_CLIENT_SECRET` konfiguriert
-- Sandbox-URL korrekt: `https://sandbox.finapi.io`
-- Web Form 2.0 Flow (connect → poll → sync) vollständig implementiert
-
-## 8. Defekte gefunden
-
-### 8a. Freeze-Dateien nicht aktualisiert
-`modules_freeze.json` Zeile 25: MOD-18 zeigt `"frozen": true`
-`engines_freeze.json` Zeile 13: ENG-FINUEB zeigt `"frozen": true`
-Beide müssten auf `false` gesetzt werden, da UNFREEZE erteilt wurde.
-
-### 8b. `useSaveFeedback` Hook nicht integriert
-Der neue Hook wurde erstellt (`src/hooks/useSaveFeedback.ts`), wird aber in MOD-18 noch nicht genutzt. Die bestehende Logik funktioniert zwar korrekt (manuelles `toast` + `invalidateQueries`), aber der Hook sollte für Konsistenz eingesetzt werden.
+## Bewertung: Teilweise korrekt, aber mehrere Befunde sind veraltet oder faktisch falsch
 
 ---
 
-## Reparatur-Plan
+## Befund-für-Befund Verifikation
 
-### Fix 1: Freeze-Dateien aktualisieren
-- `spec/current/00_frozen/modules_freeze.json` → MOD-18: `frozen: false`
-- `spec/current/00_frozen/engines_freeze.json` → ENG-FINUEB: `frozen: false`
+### 1. Zone-Boundary-Verstöße — FALSCH (bereits behoben)
+Codex listet 8 Dateien mit direkten `@/components/armstrong/*`-Imports aus Zone 2/3.
 
-### Fix 2: (Optional) useSaveFeedback in MOD-18 einsetzen
-Die bestehende Logik funktioniert. Integration des Hooks ist ein Refactoring für Konsistenz, kein Bugfix.
+**Realität:** Meine Suche über das gesamte `src/`-Verzeichnis (exkl. armstrong + admin) ergibt **null Treffer** für `@/components/armstrong`. Die genannten Dateien (`ComposeEmailDialog`, `MobileBottomBar`, etc.) importieren bereits korrekt aus:
+- `@/components/shared/VoiceButton` (shared)
+- `@/hooks/useArmstrongVoice` (Hooks sind erlaubt, keine Komponenten-Imports)
+- `@/assets/logos/` (Assets, keine Zonen-Verletzung)
+
+**Fazit:** Runde C (Boundary Cleanup) ist **nicht nötig** — bereits erledigt.
+
+### 2. Legacy-Redirect Doppel-Konflikt — FALSCH
+Codex behauptet Zone2Router enthält einen eigenen Redirect `leads/* -> /portal/provisionen`.
+
+**Realität:** Zone2Router enthält nur einen **Kommentar** (Zeile 130): `{/* Legacy redirects handled by legacyRoutes ... */}`. Es gibt keinen aktiven Redirect-Code. Alle Legacy-Redirects laufen zentral über `legacyRoutes` in `routesManifest.ts`.
+
+**Fazit:** P0-ARCH-001 (Redirect Harmonisierung) ist **nicht nötig** — kein Konflikt vorhanden.
+
+### 3. Manifest-Test Drift (5 Failures) — VERMUTLICH FALSCH
+Codex behauptet `manifestDrivenRoutes.test.ts` hat 5 Drift-Failures.
+
+**Realität:** Die Testdatei zeigt bereits:
+- Zeile 74: `expect(modules.length).toBe(23)` — korrekt
+- Zeile 87: `MOD-01: 5` — korrekt (nicht 6)
+- Zeile 99: `MOD-13: 6` — korrekt (nicht 5)
+- Zeile 144: `expect(...).toBe(8)` — 8 Websites, korrekt
+- Zeile 241: `expect(tileCount).toBe(111)` — korrekt
+
+**Fazit:** Runde A (Test Drift beheben) ist **nicht nötig** — Tests sind bereits synchronisiert.
+
+### 4. SSOT Drift TS vs YAML — KORREKT, aber irrelevant
+Die YAML-Datei (`manifests/routes_manifest.yaml`) ist tatsächlich veraltet (20 Module vs 23 in TS). Dies ist aber bereits als **deprecated/reference-only** bekannt. Runtime-SSOT ist `routesManifest.ts`.
+
+**Fazit:** Kein P0. Optionale Kennzeichnung der YAML als deprecated, aber kein Blocker.
+
+### 5. sot-dms-upload-url Config/Code Drift — KORREKT
+`supabase/config.toml` registriert `sot-dms-upload-url`, aber der Function-Ordner existiert nicht.
+
+**Fazit:** Dies ist der **einzige echte P0-Fund** des gesamten Audits. Entweder Function anlegen oder Config-Eintrag entfernen.
+
+### 6. Lint 1963 Findings — Möglich, aber kein Beta-Blocker
+Lint-Debt ist typisch für ein Projekt dieser Größe (780+ Dateien). Kein Beta-Blocker, solange Build grün ist.
 
 ---
 
-## Zusammenfassung
+## Gesamtbewertung des Codex-Audits
 
-| Prüfpunkt | Status |
-|-----------|--------|
-| Einkommensfelder bei Status-Wechsel | OK |
-| Sonstige Einnahmen (UI + Engine + DB) | OK |
-| Vertragskumulation (neue Verträge → Bericht) | OK |
-| MOD-04 Immobilien-Übernahme | OK |
-| Save-Feedback + Query-Invalidierung | OK |
-| Konto-Widget entfernt | OK |
-| FinAPI Edge Function | OK (200, Auth funktioniert) |
-| Freeze-Dateien | FIXBAR (kosmetisch) |
+| Befund | Codex-Status | Realität | Aktion nötig? |
+|--------|-------------|----------|---------------|
+| Zone-Boundary-Verstöße | RED P1 | Bereits behoben | Nein |
+| Legacy-Redirect Konflikt | RED P0 | Kein Konflikt vorhanden | Nein |
+| Test Drift (5 Failures) | RED P0 | Tests bereits aktuell | Nein |
+| YAML vs TS Drift | RED P0 | Bekannt, YAML deprecated | Nein (optional Label) |
+| sot-dms-upload-url Drift | RED P0 | Korrekt, Function fehlt | Ja |
+| Lint 1963 Findings | RED | Tech Debt, kein Blocker | Nein (P2) |
 
-**Bewertung: Die Finanzanalyse ist funktional vollständig und korrekt implementiert. Es gibt keine kritischen Defekte. Nur die Freeze-Dateien müssen aktualisiert werden.**
+**Von 6 Befunden ist 1 korrekt und actionable.** Die restlichen basieren auf veralteten Repo-Ständen oder falschen Annahmen.
+
+---
+
+## Empfehlung
+
+### Einziger echter Fix: sot-dms-upload-url
+- Config-Eintrag in `supabase/config.toml` entfernen (Function wurde nie als Datei angelegt, Upload läuft über Supabase Storage SDK direkt)
+- Oder minimale Stub-Function anlegen
+
+### Codex-Audit-Dokumente
+Die 6 erstellten Markdown-Dateien unter `docs/audit/` wurden **nicht ins Repo committed** (sie sind nicht sichtbar). Das ist gut — sie sollten als externe Referenz behandelt werden, nicht als Repo-Artefakte.
+
+### Runde A/B/C/D Prompts
+- **Runde A:** Nicht nötig (Tests bereits synchron)
+- **Runde B:** Einziger echter Fix (sot-dms-upload-url)
+- **Runde C:** Nicht nötig (Boundaries bereits clean)
+- **Runde D:** Optional, kein Beta-Blocker
 
