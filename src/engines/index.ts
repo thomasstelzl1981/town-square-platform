@@ -48,3 +48,7 @@ export * from './kontoMatch/recurring';
 
 // Engine 12: Market Directory (ENG-MKTDIR)
 export * from './marketDirectory';
+
+// Engine 13: Trip Engine (ENG-TRIP) — Fahrtenbuch Trip Detection
+export * from './tripEngine/engine';
+export * from './tripEngine/spec';
