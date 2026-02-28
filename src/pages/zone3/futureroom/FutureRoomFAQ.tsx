@@ -117,11 +117,11 @@ export default function FutureRoomFAQ() {
           </p>
           <p className="mb-6">
             <a 
-              href="mailto:info@futureroom.de" 
+              href="mailto:info@futureroom.online" 
               className="font-medium hover:underline"
               style={{ color: 'hsl(165 70% 36%)' }}
             >
-              info@futureroom.de
+              info@futureroom.online
             </a>
           </p>
           <Link to="/futureroom/bonitat">
