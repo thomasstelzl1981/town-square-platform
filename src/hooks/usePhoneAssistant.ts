@@ -33,6 +33,10 @@ export interface PhoneAssistantConfig {
   };
   forwarding_number_e164: string | null;
   binding_status: string;
+  twilio_number_sid: string | null;
+  twilio_phone_number_e164: string | null;
+  armstrong_inbound_email: string | null;
+  tier: 'standard' | 'premium';
   created_at: string;
   updated_at: string;
 }
@@ -191,6 +195,11 @@ export function usePhoneAssistant() {
 
   const config = (localConfig ?? assistant) as PhoneAssistantConfig | undefined;
 
+  const refetchAssistant = useCallback(() => {
+    setLocalConfig(null);
+    qc.invalidateQueries({ queryKey: ASSISTANT_KEY });
+  }, [qc]);
+
   return {
     config,
     isLoading,
@@ -200,5 +209,6 @@ export function usePhoneAssistant() {
     callsLoading,
     createTestEvent,
     deleteTestEvents,
+    refetchAssistant,
   };
 }
