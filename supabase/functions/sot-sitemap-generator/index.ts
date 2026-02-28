@@ -150,7 +150,7 @@ serve(async (req) => {
 
   if (!brand || !BRAND_CONFIGS[brand]) {
     return new Response(
-      JSON.stringify({ error: "Invalid brand. Use: sot, kaufy, futureroom, acquiary, lennox" }),
+      JSON.stringify({ error: "Invalid brand. Use: sot, kaufy, futureroom, acquiary, lennox, ncore, otto" }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }

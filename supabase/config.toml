@@ -262,3 +262,12 @@ verify_jwt = false
 
 [functions.sot-telematics-sync]
 verify_jwt = false
+
+[functions.sot-content-engine]
+verify_jwt = false
+
+[functions.sot-sitemap-generator]
+verify_jwt = false
+
+[functions.sot-page-view]
+verify_jwt = false
