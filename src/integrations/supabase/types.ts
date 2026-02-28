@@ -4707,6 +4707,7 @@ export type Database = {
       }
       commpro_phone_assistants: {
         Row: {
+          armstrong_inbound_email: string | null
           behavior_prompt: string
           binding_status: string
           created_at: string
@@ -4717,6 +4718,9 @@ export type Database = {
           id: string
           is_enabled: boolean
           rules: Json
+          tier: string
+          twilio_number_sid: string | null
+          twilio_phone_number_e164: string | null
           updated_at: string
           user_id: string
           voice_preset_key: string
@@ -4724,6 +4728,7 @@ export type Database = {
           voice_settings: Json
         }
         Insert: {
+          armstrong_inbound_email?: string | null
           behavior_prompt?: string
           binding_status?: string
           created_at?: string
@@ -4734,6 +4739,9 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           rules?: Json
+          tier?: string
+          twilio_number_sid?: string | null
+          twilio_phone_number_e164?: string | null
           updated_at?: string
           user_id: string
           voice_preset_key?: string
@@ -4741,6 +4749,7 @@ export type Database = {
           voice_settings?: Json
         }
         Update: {
+          armstrong_inbound_email?: string | null
           behavior_prompt?: string
           binding_status?: string
           created_at?: string
@@ -4751,6 +4760,9 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           rules?: Json
+          tier?: string
+          twilio_number_sid?: string | null
+          twilio_phone_number_e164?: string | null
           updated_at?: string
           user_id?: string
           voice_preset_key?: string
@@ -4762,6 +4774,7 @@ export type Database = {
       commpro_phone_call_sessions: {
         Row: {
           action_items: Json
+          armstrong_notified_at: string | null
           assistant_id: string
           created_at: string
           direction: string
@@ -4770,15 +4783,18 @@ export type Database = {
           from_number_e164: string
           id: string
           match: Json
+          recording_url: string | null
           started_at: string
           status: string
           summary_text: string | null
           to_number_e164: string | null
           transcript_text: string | null
+          twilio_call_sid: string | null
           user_id: string
         }
         Insert: {
           action_items?: Json
+          armstrong_notified_at?: string | null
           assistant_id: string
           created_at?: string
           direction?: string
@@ -4787,15 +4803,18 @@ export type Database = {
           from_number_e164: string
           id?: string
           match?: Json
+          recording_url?: string | null
           started_at?: string
           status?: string
           summary_text?: string | null
           to_number_e164?: string | null
           transcript_text?: string | null
+          twilio_call_sid?: string | null
           user_id: string
         }
         Update: {
           action_items?: Json
+          armstrong_notified_at?: string | null
           assistant_id?: string
           created_at?: string
           direction?: string
@@ -4804,11 +4823,13 @@ export type Database = {
           from_number_e164?: string
           id?: string
           match?: Json
+          recording_url?: string | null
           started_at?: string
           status?: string
           summary_text?: string | null
           to_number_e164?: string | null
           transcript_text?: string | null
+          twilio_call_sid?: string | null
           user_id?: string
         }
         Relationships: [
