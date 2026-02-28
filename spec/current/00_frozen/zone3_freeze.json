@@ -8,6 +8,7 @@
     "FUTUREROOM": { "frozen": false, "frozen_at": null, "path": "src/pages/zone3/futureroom/*", "reason": "Unfrozen for Phase 2 SEO migration" },
     "ACQUIARY": { "frozen": false, "frozen_at": null, "path": "src/pages/zone3/acquiary/*", "reason": "Unfrozen for Phase 2 SEO migration" },
     "LENNOX": { "frozen": false, "frozen_at": null, "path": "src/pages/zone3/lennox/*", "reason": "Unfrozen for Phase 2 SEO migration" },
-    "MIETY": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "path": "src/pages/zone3/miety/*", "reason": "Re-frozen after ChatGPT-style upload upgrade" }
+    "MIETY": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "path": "src/pages/zone3/miety/*", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
+    "ZLWOHNBAU": { "frozen": false, "frozen_at": null, "path": "src/pages/zone3/zlwohnbau/*", "reason": "New site — ZL Wohnbau GmbH" }
   }
 }

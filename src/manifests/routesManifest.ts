@@ -785,6 +785,21 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "ratgeber/:slug", component: "OttoRatgeberArticle", title: "Ratgeber Artikel", dynamic: true },
     ],
   },
+  // =========================================================================
+  // ZL WOHNBAU — Wohnraum für Mitarbeiter
+  // =========================================================================
+  zlwohnbau: {
+    base: "/website/zl-wohnbau",
+    layout: "ZLWohnbauLayout",
+    routes: [
+      { path: "", component: "ZLWohnbauHome", title: "ZL Wohnbau — Wohnraum für Mitarbeiter" },
+      { path: "leistungen", component: "ZLWohnbauLeistungen", title: "Leistungen — ZL Wohnbau" },
+      { path: "portfolio", component: "ZLWohnbauPortfolio", title: "Portfolio — ZL Wohnbau" },
+      { path: "kontakt", component: "ZLWohnbauKontakt", title: "Kontakt — ZL Wohnbau" },
+      { path: "impressum", component: "ZLWohnbauImpressum", title: "Impressum — ZL Wohnbau" },
+      { path: "datenschutz", component: "ZLWohnbauDatenschutz", title: "Datenschutz — ZL Wohnbau" },
+    ],
+  },
 };
 // =============================================================================
 export const legacyRoutes: LegacyRoute[] = [
