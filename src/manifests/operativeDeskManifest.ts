@@ -188,6 +188,23 @@ export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
       'Kunden-Triage',
     ],
   },
+  {
+    deskId: 'commpro-desk',
+    displayName: 'CommPro Desk',
+    managerModuleCode: 'MOD-14',
+    managerModuleName: 'Communication Pro',
+    clientModuleCode: '',
+    clientModuleName: '',
+    websiteProfileId: '',
+    route: 'commpro-desk',
+    icon: 'Phone',
+    responsibilities: [
+      'Marken-Telefonassistenten',
+      'Premium-Voice (ElevenLabs)',
+      'Nummernverwaltung',
+      'Anrufprotokoll',
+    ],
+  },
 ];
 
 // =============================================================================
