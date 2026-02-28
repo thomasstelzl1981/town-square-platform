@@ -60,7 +60,7 @@ export function SotModuleCard({
           <div>
             <h3 className="font-bold text-sm">{module.name}</h3>
             <span className="text-xs" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-              {module.code}
+              {module.tagline}
             </span>
           </div>
         </div>
@@ -88,7 +88,7 @@ export function SotModuleCard({
             </div>
             <div>
               <span className="text-xs font-medium px-2 py-1 rounded-full bg-white/10">
-                {module.code}
+                {module.category === 'client' ? 'Vermögen' : module.category === 'service' ? 'Betrieb' : 'Fundament'}
               </span>
               <h3 className="font-bold text-xl mt-1">{module.name}</h3>
             </div>
@@ -152,7 +152,7 @@ export function SotModuleCard({
 
         {/* CTA */}
         <Link 
-          to={`/sot/module/${module.code.toLowerCase()}`}
+          to={`/website/sot/module/${module.code.toLowerCase()}`}
           className="sot-btn-ghost text-sm w-full justify-center group"
         >
           Mehr erfahren
@@ -189,7 +189,7 @@ export function SotModuleCard({
       </div>
       
       <span className="text-xs font-medium" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-        {module.code}
+        {module.category === 'client' ? 'Vermögen' : module.category === 'service' ? 'Betrieb' : 'Fundament'}
       </span>
       <h3 className="font-bold text-lg mb-1">{module.name}</h3>
       <p className="text-sm mb-4" style={{ color: 'hsl(var(--z3-accent))' }}>

@@ -208,7 +208,7 @@ export default function FutureRoomLayout() {
           <div>
             <h4 className="fr-footer-title">Kontakt</h4>
             <ul className="fr-footer-links">
-              <li>info@futureroom.de</li>
+              <li>info@futureroom.online</li>
               <li>089 66667788</li>
             </ul>
           </div>

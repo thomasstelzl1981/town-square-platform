@@ -81,7 +81,7 @@ export default function AcquiaryKontakt() {
           </div>
           <div className="lg:col-span-2 space-y-6">
             <div className="rounded-2xl border border-[hsl(220,15%,90%)] bg-white p-6 shadow-sm space-y-5">
-              <div className="flex items-start gap-4"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[hsl(207,90%,54%,0.1)]"><Mail className="h-5 w-5 text-[hsl(207,90%,54%)]" /></div><div><p className="text-sm font-medium text-[hsl(220,25%,12%)]">E-Mail</p><a href="mailto:info@acquiary.de" className="text-sm text-[hsl(207,90%,54%)] hover:underline">info@acquiary.de</a></div></div>
+              <div className="flex items-start gap-4"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[hsl(207,90%,54%,0.1)]"><Mail className="h-5 w-5 text-[hsl(207,90%,54%)]" /></div><div><p className="text-sm font-medium text-[hsl(220,25%,12%)]">E-Mail</p><a href="mailto:info@acquiary.com" className="text-sm text-[hsl(207,90%,54%)] hover:underline">info@acquiary.com</a></div></div>
               <div className="flex items-start gap-4"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[hsl(207,90%,54%,0.1)]"><MapPin className="h-5 w-5 text-[hsl(207,90%,54%)]" /></div><div><p className="text-sm font-medium text-[hsl(220,25%,12%)]">Standort</p><p className="text-sm text-[hsl(220,10%,42%)]">Deutschland</p></div></div>
             </div>
             <div className="rounded-xl border border-[hsl(207,90%,54%,0.15)] bg-[hsl(207,90%,54%,0.04)] p-5 flex items-start gap-3">

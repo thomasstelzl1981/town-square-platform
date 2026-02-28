@@ -70,7 +70,7 @@ export default function SotModuleDetail() {
             </div>
             <div>
               <span className="text-sm font-mono" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                {mod.code}
+                {mod.category === 'client' ? 'Vermögen' : mod.category === 'service' ? 'Betrieb' : 'Fundament'}
               </span>
               <h1 className="sot-display text-3xl lg:text-4xl">{mod.name}</h1>
             </div>
@@ -156,7 +156,7 @@ export default function SotModuleDetail() {
           <div className="flex justify-between items-center">
             {prevModule ? (
               <Link 
-                to={`/sot/module/${prevModule.code.toLowerCase()}`}
+                to={`/website/sot/module/${prevModule.code.toLowerCase()}`}
                 className="flex items-center gap-2 text-sm hover:underline"
                 style={{ color: 'hsl(var(--z3-muted-foreground))' }}
               >
@@ -166,7 +166,7 @@ export default function SotModuleDetail() {
             ) : <div />}
             {nextModule ? (
               <Link 
-                to={`/sot/module/${nextModule.code.toLowerCase()}`}
+                to={`/website/sot/module/${nextModule.code.toLowerCase()}`}
                 className="flex items-center gap-2 text-sm hover:underline"
                 style={{ color: 'hsl(var(--z3-muted-foreground))' }}
               >
