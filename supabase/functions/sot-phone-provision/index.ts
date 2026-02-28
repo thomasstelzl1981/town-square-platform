@@ -71,11 +71,15 @@ Deno.serve(async (req) => {
       for (const numType of types) {
         const searchUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/AvailablePhoneNumbers/${cc}/${numType}.json?PageSize=1`;
         console.log(`searching Twilio for ${cc} ${numType} numbers...`);
+        console.log(`URL: ${searchUrl}`);
+        console.log(`Auth header prefix: Basic ${twilioAuth.substring(0, 20)}...`);
         const searchRes = await fetch(searchUrl, {
           headers: { Authorization: `Basic ${twilioAuth}` },
         });
         console.log(`Twilio ${numType} search response status:`, searchRes.status);
-        searchData = await searchRes.json();
+        const searchText = await searchRes.text();
+        console.log(`Twilio ${numType} response body:`, searchText.substring(0, 500));
+        try { searchData = JSON.parse(searchText); } catch { searchData = { available_phone_numbers: [] }; }
         console.log(`Twilio ${numType} results:`, searchData.available_phone_numbers?.length ?? 0);
         if (searchData.available_phone_numbers?.length) break;
       }
