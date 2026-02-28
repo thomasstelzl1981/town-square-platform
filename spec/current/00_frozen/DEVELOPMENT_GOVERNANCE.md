@@ -70,20 +70,35 @@ Bei jeder Feature-Implementierung:
 
 ---
 
-## Modul-Referenz
+## Modul-Referenz (Stand: 2026-02-28)
 
-| MOD | Name | Master-Route | 4-Tile Pattern |
-|-----|------|--------------|----------------|
-| MOD-01 | Stammdaten | `/portal/stammdaten` | Profil, Firma, Abrechnung, Sicherheit |
-| MOD-02 | KI Office | `/portal/office` | E-Mail, Brief, Kontakte, Kalender |
-| MOD-03 | DMS | `/portal/dms` | Storage, Posteingang, Sortieren, Einstellungen |
-| MOD-04 | Immobilien | `/portal/immobilien` | Portfolio, Sanierung, Bewertung, Verwaltung |
-| MOD-05 | MSV | `/portal/msv` | Objekte, Mieteingang, Vermietung, Einstellungen |
-| MOD-06 | Verkauf | `/portal/verkauf` | Listings, Aktivität, Transaktionen, Einstellungen |
-| MOD-07 | Finanzierung | `/portal/finanzierung` | Vorgänge, Readiness, Export, Partner |
-| MOD-08 | Investments | `/portal/investments` | Suche, Favoriten, Simulation, Einstellungen |
-| MOD-09 | Vertriebspartner | `/portal/vertriebspartner` | Dashboard, Katalog, Beratung, Netzwerk |
-| MOD-10 | Leadgenerierung | `/portal/leads` | Inbox, Pipeline, Kampagnen, Statistiken |
+> Tile-Anzahl variiert je Modul. Die alleinige SSOT ist `src/manifests/routesManifest.ts`.
+
+| MOD | Name | Master-Route | Tiles | Status |
+|-----|------|--------------|-------|--------|
+| MOD-00 | Dashboard | `/portal/dashboard` | 0 | aktiv |
+| MOD-01 | Stammdaten | `/portal/stammdaten` | 5 | aktiv |
+| MOD-02 | KI Office | `/portal/office` | 5 | aktiv |
+| MOD-03 | DMS | `/portal/dms` | 4 | aktiv |
+| MOD-04 | Immobilien | `/portal/immobilien` | 7 | aktiv |
+| MOD-05 | Pets | `/portal/pets` | 5 | aktiv |
+| MOD-06 | Verkauf | `/portal/verkauf` | 6 | aktiv |
+| MOD-07 | Finanzierung | `/portal/finanzierung` | 5 | aktiv |
+| MOD-08 | Investment-Suche | `/portal/investments` | 6 | aktiv |
+| MOD-09 | Immomanager | `/portal/vertriebspartner` | 5 | aktiv |
+| MOD-10 | Lead Manager | `/portal/lead-manager` | 6 | aktiv |
+| MOD-11 | Finanzierungsmanager | `/portal/finanzierungsmanager` | 7 | aktiv (Rolle) |
+| MOD-12 | Akquisemanager | `/portal/akquise-manager` | 6 | aktiv |
+| MOD-13 | Projektmanager | `/portal/projekte` | 6 | aktiv |
+| MOD-14 | Communication Pro | `/portal/communication-pro` | 4 | aktiv |
+| MOD-15 | Fortbildung | `/portal/fortbildung` | 4 | aktiv |
+| MOD-16 | Shop | `/portal/services` | 4 | aktiv |
+| MOD-17 | Car-Management | `/portal/cars` | 4 | aktiv |
+| MOD-18 | Finanzen | `/portal/finanzanalyse` | 5 | aktiv |
+| MOD-19 | Photovoltaik | `/portal/photovoltaik` | 5 | aktiv |
+| MOD-20 | Miety | `/portal/miety` | 6 | aktiv |
+| MOD-21 | KI-Browser | `/portal/ki-browser` | 5 | hidden (Beta) |
+| MOD-22 | Pet Manager | `/portal/petmanager` | 5 | aktiv |
 
 ---
 
