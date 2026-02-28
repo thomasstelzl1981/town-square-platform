@@ -1,207 +1,20 @@
 /**
- * MANIFEST ROUTER — Route generation from SSOT manifest
+ * MANIFEST ROUTER — Zone-based code-split router
  * 
- * This component generates all Routes from the manifest.
- * App.tsx should only define special routes and delegate everything else here.
+ * Each zone is lazy-loaded independently to reduce dev-server memory usage.
+ * Only the zone matching the current path is loaded into memory.
  * 
- * P0 FIX: Now generates EXPLICIT child routes for:
- * - Module tiles (path: "<tile.path>")
- * - Dynamic routes (path: "<dynamic.path>")
- * - Index redirects (to default tile)
- * 
- * NO ROUTE EXISTS UNLESS DECLARED IN routesManifest.ts
+ * Zone 1: /admin/*    → Zone1Router (Admin Portal)
+ * Zone 2: /portal/*   → Zone2Router (User Portal)
+ * Zone 3: /website/*  → Zone3Router (Brand Websites + Flat Routes)
  */
 
 import React from 'react';
 import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
-import { getDomainEntry } from '@/hooks/useDomainRouter';
+// Note: Navigate, useParams, useLocation used by LegacyRedirect
 import { PathNormalizer } from './PathNormalizer';
-import { GoldenPathGuard } from '@/goldenpath/GoldenPathGuard';
-// LEGACY REDIRECT COMPONENT — Preserves dynamic parameters
-// =============================================================================
-function LegacyRedirect({ to }: { to: string }) {
-  const params = useParams();
-  const location = useLocation();
-  
-  // Replace all named param placeholders with actual values (skip wildcard '*')
-  let redirectPath = to;
-  Object.entries(params).forEach(([key, value]) => {
-    if (key !== '*' && value) {
-      redirectPath = redirectPath.replace(`:${key}`, value);
-    }
-  });
-  
-  // Preserve query string and hash
-  const fullPath = `${redirectPath}${location.search}${location.hash}`;
-  
-  return <Navigate to={fullPath} replace />;
-}
-
-// Manifests
-import {
-  zone1Admin,
-  zone2Portal,
-  zone3Websites,
-  legacyRoutes,
-  type ModuleDefinition,
-} from '@/manifests/routesManifest';
-
-// Zone 1: Admin Portal Components (all lazy-loaded — admin-only, behind auth gates)
-import { AdminLayout } from '@/components/admin/AdminLayout';
-const Dashboard = React.lazy(() => import('@/pages/admin/Dashboard'));
-const Organizations = React.lazy(() => import('@/pages/admin/Organizations'));
-const OrganizationDetail = React.lazy(() => import('@/pages/admin/OrganizationDetail'));
-const Users = React.lazy(() => import('@/pages/admin/Users'));
-const Delegations = React.lazy(() => import('@/pages/admin/Delegations'));
-const Support = React.lazy(() => import('@/pages/admin/Support'));
-// MasterContacts removed (orphaned)
-const RolesManagement = React.lazy(() => import('@/pages/admin/RolesManagement'));
-const TileCatalog = React.lazy(() => import('@/pages/admin/TileCatalog'));
-const Integrations = React.lazy(() => import('@/pages/admin/Integrations'));
-// CommunicationHub removed (orphaned, demo-only)
-const Oversight = React.lazy(() => import('@/pages/admin/Oversight'));
-const AuditHub = React.lazy(() => import('@/pages/admin/audit/AuditHub'));
-// KI Office — Consolidated 3 pages
-const AdminRecherche = React.lazy(() => import('@/pages/admin/ki-office/AdminRecherche'));
-const AdminKontaktbuch = React.lazy(() => import('@/pages/admin/ki-office/AdminKontaktbuch'));
-const AdminEmailAgent = React.lazy(() => import('@/pages/admin/ki-office/AdminEmailAgent'));
-
-const Agreements = React.lazy(() => import('@/pages/admin/Agreements'));
-const PartnerVerification = React.lazy(() => import('@/pages/admin/PartnerVerification'));
-const MasterTemplates = React.lazy(() => import('@/pages/admin/MasterTemplates'));
-const MasterTemplatesImmobilienakte = React.lazy(() => import('@/pages/admin/MasterTemplatesImmobilienakte'));
-const MasterTemplatesSelbstauskunft = React.lazy(() => import('@/pages/admin/MasterTemplatesSelbstauskunft'));
-const MasterTemplatesProjektakte = React.lazy(() => import('@/pages/admin/MasterTemplatesProjektakte'));
-const MasterTemplatesFahrzeugakte = React.lazy(() => import('@/pages/admin/MasterTemplatesFahrzeugakte'));
-const MasterTemplatesPhotovoltaikakte = React.lazy(() => import('@/pages/admin/MasterTemplatesPhotovoltaikakte'));
-const MasterTemplatesFinanzierungsakte = React.lazy(() => import('@/pages/admin/MasterTemplatesFinanzierungsakte'));
-const MasterTemplatesVersicherungsakte = React.lazy(() => import('@/pages/admin/MasterTemplatesVersicherungsakte'));
-const MasterTemplatesVorsorgeakte = React.lazy(() => import('@/pages/admin/MasterTemplatesVorsorgeakte'));
-const MasterTemplatesPersonenakte = React.lazy(() => import('@/pages/admin/MasterTemplatesPersonenakte'));
-const MasterTemplatesHaustierakte = React.lazy(() => import('@/pages/admin/MasterTemplatesHaustierakte'));
-const AdminFutureRoomLayout = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomLayout'));
-const AdminStubPage = React.lazy(() => import('@/pages/admin/stub').then(m => ({ default: m.AdminStubPage })));
-const SalesDesk = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.SalesDesk })));
-const FinanceDesk = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.FinanceDesk })));
-const Acquiary = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.Acquiary })));
-const LeadDeskComponent = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.LeadDesk })));
-const ProjektDeskComponent = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.ProjektDesk })));
-
-// Zone 2: User Portal Layout & Dashboard
-import { PortalLayout } from '@/components/portal/PortalLayout';
-import PortalDashboard from '@/pages/portal/PortalDashboard';
-
-// Zone 2: Module Page Components (Lazy loaded)
-// These handle the "How It Works" landing and tile routing internally
-
-// Zone 2: Dynamic Route Components
-const PropertyDetailPage = React.lazy(() => import('@/pages/portal/immobilien/PropertyDetailPage'));
-const RentalExposeDetail = React.lazy(() => import('@/pages/portal/immobilien/RentalExposeDetail'));
-const ExposeDetail = React.lazy(() => import('@/pages/portal/verkauf/ExposeDetail'));
-const AnfrageDetailPage = React.lazy(() => import('@/pages/portal/finanzierung/AnfrageDetailPage'));
-const FMFallDetail = React.lazy(() => import('@/pages/portal/finanzierungsmanager/FMFallDetail'));
-const RepairSortContainersPage = React.lazy(() => import('@/pages/portal/RepairSortContainersPage'));
-
-// Zone 2: Module Pages (with internal routing)
-const StammdatenPage = React.lazy(() => import('@/pages/portal/StammdatenPage'));
-const OfficePage = React.lazy(() => import('@/pages/portal/OfficePage'));
-const DMSPage = React.lazy(() => import('@/pages/portal/DMSPage'));
-const ImmobilienPage = React.lazy(() => import('@/pages/portal/ImmobilienPage'));
-const VerkaufPage = React.lazy(() => import('@/pages/portal/VerkaufPage'));
-const FinanzierungPage = React.lazy(() => import('@/pages/portal/FinanzierungPage'));
-const FinanzierungsmanagerPage = React.lazy(() => import('@/pages/portal/FinanzierungsmanagerPage'));
-const InvestmentsPage = React.lazy(() => import('@/pages/portal/InvestmentsPage'));
-const VertriebspartnerPage = React.lazy(() => import('@/pages/portal/VertriebspartnerPage'));
-const LeadManagerPage = React.lazy(() => import('@/pages/portal/LeadManagerPage'));
-const AkquiseManagerPage = React.lazy(() => import('@/pages/portal/AkquiseManagerPage'));
-const ProjektePage = React.lazy(() => import('@/pages/portal/ProjektePage'));
-const CommunicationProPage = React.lazy(() => import('@/pages/portal/CommunicationProPage'));
-const FortbildungPage = React.lazy(() => import('@/pages/portal/FortbildungPage'));
-const ServicesPage = React.lazy(() => import('@/pages/portal/ServicesPage'));
-const CarsPage = React.lazy(() => import('@/pages/portal/CarsPage'));
-const FinanzanalysePage = React.lazy(() => import('@/pages/portal/FinanzanalysePage'));
-const PhotovoltaikPage = React.lazy(() => import('@/pages/portal/PhotovoltaikPage'));
-const MietyPortalPage = React.lazy(() => import('@/pages/portal/MietyPortalPage'));
-const AreaOverviewPage = React.lazy(() => import('@/pages/portal/AreaOverviewPage'));
-const ArmstrongInfoPage = React.lazy(() => import('@/pages/portal/ArmstrongInfoPage'));
-
-// Zone 3: Kaufy2026 Website (lazy loaded)
-const Kaufy2026Layout = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Layout'));
-const Kaufy2026Home = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Home'));
-const Kaufy2026Expose = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Expose'));
-const Kaufy2026Vermieter = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Vermieter'));
-const Kaufy2026Verkaeufer = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Verkaeufer'));
-const Kaufy2026Vertrieb = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Vertrieb'));
-
-
-// Zone 3: FutureRoom Website (lazy loaded)
-const FutureRoomLayout = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomLayout'));
-const FutureRoomHome = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomHome'));
-const FutureRoomBonitat = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomBonitat'));
-const FutureRoomKarriere = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomKarriere'));
-const FutureRoomFAQ = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomFAQ'));
-const FutureRoomLogin = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomLogin'));
-const FutureRoomAkte = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomAkte'));
-// FutureRoomAuthGuard now handled by FutureRoomAkteGuarded (AUD-008)
-
-// Zone 3: System of a Town Website (lazy loaded)
-const SotLayout = React.lazy(() => import('@/pages/zone3/sot/SotLayout'));
-const SotHome = React.lazy(() => import('@/pages/zone3/sot/SotHome'));
-const SotPlattform = React.lazy(() => import('@/pages/zone3/sot/SotPlattform'));
-const SotIntelligenz = React.lazy(() => import('@/pages/zone3/sot/SotIntelligenz'));
-const SotModule = React.lazy(() => import('@/pages/zone3/sot/SotModule'));
-const SotPreise = React.lazy(() => import('@/pages/zone3/sot/SotPreise'));
-const SotDemo = React.lazy(() => import('@/pages/zone3/sot/SotDemo'));
-const SotKarriere = React.lazy(() => import('@/pages/zone3/sot/SotKarriere'));
-const SotFAQ = React.lazy(() => import('@/pages/zone3/sot/SotFAQ'));
-const SotMietsonderverwaltung = React.lazy(() => import('@/pages/zone3/sot/SotMietsonderverwaltung'));
-const SotImmobilienverwaltung = React.lazy(() => import('@/pages/zone3/sot/SotImmobilienverwaltung'));
-const SotFinanzdienstleistungen = React.lazy(() => import('@/pages/zone3/sot/SotFinanzdienstleistungen'));
-// Ratgeber (Supporting Content)
-const RatgeberMsvVsWeg = React.lazy(() => import('@/pages/zone3/sot/ratgeber/RatgeberMsvVsWeg'));
-const RatgeberNebenkostenabrechnung = React.lazy(() => import('@/pages/zone3/sot/ratgeber/RatgeberNebenkostenabrechnung'));
-const RatgeberImmobilienverwalterWechseln = React.lazy(() => import('@/pages/zone3/sot/ratgeber/RatgeberImmobilienverwalterWechseln'));
-const RatgeberPortfolioAnalyse = React.lazy(() => import('@/pages/zone3/sot/ratgeber/RatgeberPortfolioAnalyse'));
-const RatgeberImmobilienfinanzierung = React.lazy(() => import('@/pages/zone3/sot/ratgeber/RatgeberImmobilienfinanzierung'));
-const RatgeberRenditeberechnung = React.lazy(() => import('@/pages/zone3/sot/ratgeber/RatgeberRenditeberechnung'));
-
-// Zone 3: ACQUIARY Website (lazy loaded)
-const AcquiaryLayout = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryLayout'));
-const AcquiaryHome = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryHome'));
-const AcquiaryMethodik = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryMethodik'));
-const AcquiaryNetzwerk = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryNetzwerk'));
-const AcquiaryKarriere = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryKarriere'));
-const AcquiaryObjekt = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryObjekt'));
-
-// Zone 3: Lennox & Friends Pet Service (lazy loaded)
-const LennoxLayout = React.lazy(() => import('@/pages/zone3/lennox/LennoxLayout'));
-const LennoxStartseite = React.lazy(() => import('@/pages/zone3/lennox/LennoxStartseite'));
-const LennoxPartnerProfil = React.lazy(() => import('@/pages/zone3/lennox/LennoxPartnerProfil'));
-const LennoxShop = React.lazy(() => import('@/pages/zone3/lennox/LennoxShop'));
-const LennoxPartnerWerden = React.lazy(() => import('@/pages/zone3/lennox/LennoxPartnerWerden'));
-const LennoxAuth = React.lazy(() => import('@/pages/zone3/lennox/LennoxAuth'));
-
-// Zone 3: Project Landing Pages (lazy loaded)
-const ProjectLandingLayout = React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingLayout'));
-const ProjectLandingHome = React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingHome'));
-const ProjectLandingObjekt = React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingObjekt'));
-const ProjectLandingBeratung = React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingBeratung'));
-const ProjectLandingExpose = React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingExpose'));
-const LennoxMeinBereich = React.lazy(() => import('@/pages/zone3/lennox/LennoxMeinBereich'));
-
-// Zone 3: Ncore Business Consulting (lazy loaded)
-const NcoreLayout = React.lazy(() => import('@/pages/zone3/ncore/NcoreLayout'));
-const NcoreHome = React.lazy(() => import('@/pages/zone3/ncore/NcoreHome'));
-
-// Zone 3: Otto² Advisory (lazy loaded)
-const OttoAdvisoryLayout = React.lazy(() => import('@/pages/zone3/otto/OttoAdvisoryLayout'));
-const OttoHome = React.lazy(() => import('@/pages/zone3/otto/OttoHome'));
-
-// Zone 1: Ncore + Otto Desk (lazy loaded)
-const NcoreDesk = React.lazy(() => import('@/pages/admin/desks/NcoreDesk'));
-const OttoDesk = React.lazy(() => import('@/pages/admin/desks/OttoDesk'));
-
-// 404
+import { legacyRoutes } from '@/manifests/routesManifest';
+import { getDomainEntry } from '@/hooks/useDomainRouter';
 import NotFound from '@/pages/NotFound';
 
 // =============================================================================
@@ -214,566 +27,81 @@ const LoadingFallback = () => (
 );
 
 // =============================================================================
-// Component Map for Zone 1
+// Legacy Redirect Component — Preserves dynamic parameters
 // =============================================================================
-
-// Armstrong Console Components (Zone 1 Governance — lazy loaded)
-const ArmstrongDashboard = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.ArmstrongDashboard })));
-const ArmstrongActions = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.ArmstrongActions })));
-const ArmstrongLogs = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.ArmstrongLogs })));
-const ArmstrongKnowledge = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.ArmstrongKnowledge })));
-const ArmstrongBilling = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.ArmstrongBilling })));
-const ArmstrongPolicies = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.ArmstrongPolicies })));
-const ArmstrongTestHarness = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.ArmstrongTestHarness })));
-const ArmstrongIntegrations = React.lazy(() => import('@/pages/admin/armstrong/ArmstrongIntegrations'));
-const ArmstrongEngines = React.lazy(() => import('@/pages/admin/armstrong/ArmstrongEngines'));
-const ArmstrongGoldenPaths = React.lazy(() => import('@/pages/admin/armstrong/ArmstrongGoldenPaths'));
-const PlatformCostMonitor = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.PlatformCostMonitor })));
-const PlatformHealth = React.lazy(() => import('@/pages/admin/armstrong/PlatformHealth'));
-const WeeklyReview = React.lazy(() => import('@/pages/admin/armstrong/WeeklyReview'));
-
-const adminComponentMap: Record<string, React.ComponentType> = {
-  Dashboard,
-  Organizations,
-  OrganizationDetail,
-  Users,
-  Delegations,
-  // MasterContacts removed
-  MasterTemplates,
-  MasterTemplatesImmobilienakte,
-  MasterTemplatesSelbstauskunft,
-  MasterTemplatesProjektakte,
-  MasterTemplatesFahrzeugakte,
-  MasterTemplatesPhotovoltaikakte,
-  MasterTemplatesFinanzierungsakte,
-  MasterTemplatesVersicherungsakte,
-  MasterTemplatesVorsorgeakte,
-  MasterTemplatesPersonenakte,
-  MasterTemplatesHaustierakte,
-  TileCatalog,
-  Integrations,
-  // CommunicationHub removed
-  Oversight,
-  AuditHub,
-  // KI Office — Consolidated 3 pages
-  AdminRecherche,
-  AdminKontaktbuch,
-  AdminEmailAgent,
+function LegacyRedirect({ to }: { to: string }) {
+  const params = useParams();
+  const location = useLocation();
   
-  Agreements,
-  PartnerVerification,
-  ManagerFreischaltung: React.lazy(() => import('@/pages/admin/ManagerFreischaltung')),
-  RolesManagement,
-  AdminFutureRoomLayout,
-  FutureRoomBanks: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomBanks')),
-  FutureRoomManagers: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomManagers')),
-  Support,
+  let redirectPath = to;
+  Object.entries(params).forEach(([key, value]) => {
+    if (key !== '*' && value) {
+      redirectPath = redirectPath.replace(`:${key}`, value);
+    }
+  });
   
-  // Armstrong Console (Zone 1 Governance Suite)
-  ArmstrongDashboard,
-  ArmstrongActions,
-  ArmstrongLogs,
-  ArmstrongKnowledge,
-  ArmstrongBilling,
-  ArmstrongPolicies,
-  ArmstrongTestHarness,
-  ArmstrongIntegrations,
-  ArmstrongEngines,
-  ArmstrongGoldenPaths,
-  PlatformCostMonitor,
-  PlatformHealth,
-  WeeklyReview,
-  // Social Media removed (100% demo data, no DB)
-  // Fortbildung Management
-  AdminFortbildung: React.lazy(() => import('@/pages/admin/AdminFortbildung')),
-  // Service Desk (Zone 1 — all service area modules)
-  ServiceDeskRouter: React.lazy(() => import('@/pages/admin/service-desk/ServiceDeskRouter')),
-  // Compliance Desk (Legal Engine SSOT)
-  ComplianceDeskRouter: React.lazy(() => import('@/pages/admin/compliance/ComplianceDeskRouter')),
-  // New Desks
-  LeadDeskDashboard: LeadDeskComponent,
-  ProjektDeskDashboard: ProjektDeskComponent,
-  PetDeskRouter: React.lazy(() => import('@/pages/admin/desks/PetmanagerDesk')),
-  FinanceDeskDashboard: FinanceDesk,
-  // WebHosting sub-routes removed (all pointed to same component)
-};
-
-// Zone 1 Desk Components with internal routing (FutureRoom uses explicit nested routes)
-const adminDeskMap: Record<string, React.ComponentType> = {
-  'sales-desk': SalesDesk,
-  'finance-desk': FinanceDesk,
-  acquiary: Acquiary,
-  'lead-desk': LeadDeskComponent,
-  'projekt-desk': ProjektDeskComponent,
-  'pet-desk': React.lazy(() => import('@/pages/admin/desks/PetmanagerDesk')) as unknown as React.ComponentType,
-  'service-desk': React.lazy(() => import('@/pages/admin/service-desk/ServiceDeskRouter')) as unknown as React.ComponentType,
-  'ncore-desk': NcoreDesk as unknown as React.ComponentType,
-  'otto-desk': OttoDesk as unknown as React.ComponentType,
-};
-
-// Zone 1 FutureRoom Sub-Pages (lazy loaded for explicit nested routes)
-const FutureRoomInbox = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomInbox'));
-const FutureRoomZuweisung = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomZuweisung'));
-const FutureRoomManagers = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomManagers'));
-const FutureRoomBanks = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomBanks'));
-const FutureRoomMonitoring = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomMonitoring'));
-const FutureRoomTemplates = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomTemplates'));
-const FutureRoomWebLeads = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomWebLeads'));
-const FutureRoomContracts = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomContracts'));
-
-// =============================================================================
-// Component Map for Zone 2 Module Pages (with internal routing)
-// =============================================================================
-// PortalDashboard is imported statically (line 94) — used directly in portalModulePageMap to avoid duplicate import warning
-
-const portalModulePageMap: Record<string, React.LazyExoticComponent<React.ComponentType> | React.ComponentType> = {
-  dashboard: PortalDashboard,
-  stammdaten: StammdatenPage,
-  office: OfficePage,
-  dms: DMSPage,
-  immobilien: ImmobilienPage,
-  verkauf: VerkaufPage,
-  finanzierung: FinanzierungPage,
-  finanzierungsmanager: FinanzierungsmanagerPage,
-  investments: InvestmentsPage,
-  vertriebspartner: VertriebspartnerPage,
-  'lead-manager': LeadManagerPage,
-  'akquise-manager': AkquiseManagerPage,
-  projekte: ProjektePage,
-  'communication-pro': CommunicationProPage,
-  fortbildung: FortbildungPage,
-  services: ServicesPage,
-  cars: CarsPage,
-  finanzanalyse: FinanzanalysePage,
-  photovoltaik: PhotovoltaikPage,
-  miety: MietyPortalPage,
-  pets: React.lazy(() => import('@/pages/portal/PetsPage')),
-  petmanager: React.lazy(() => import('@/pages/portal/PetManagerPage')),
-  'ki-browser': React.lazy(() => import('@/pages/portal/KiBrowserPage')),
-};
-
-// =============================================================================
-// Component Map for Zone 2 Dynamic Routes
-// =============================================================================
-const portalDynamicComponentMap: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
-  PropertyDetail: PropertyDetailPage,
-  PropertyDetailPage: PropertyDetailPage,
-  CreatePropertyRedirect: React.lazy(() => import('@/pages/portal/immobilien/CreatePropertyRedirect')),
-  RentalExposeDetail: RentalExposeDetail,
-  ExposeDetail: ExposeDetail,
-  AnfrageDetailPage: AnfrageDetailPage,
-  FMFallDetail: FMFallDetail,
-};
-
-// =============================================================================
-// Component Map for Zone 3 Kaufy2026
-// =============================================================================
-const kaufy2026ComponentMap: Record<string, React.ComponentType> = {
-  Kaufy2026Home,
-  Kaufy2026Expose,
-  Kaufy2026Vermieter,
-  Kaufy2026Verkaeufer,
-  Kaufy2026Vertrieb,
-  Kaufy2026Impressum: React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Impressum')),
-  Kaufy2026Datenschutz: React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Datenschutz')),
-  Kaufy2026Kontakt: React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Kontakt')),
-  Kaufy2026FAQ: React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026FAQ')),
-  KaufyRatgeber: React.lazy(() => import('@/pages/zone3/kaufy2026/KaufyRatgeber')),
-  KaufyRatgeberArticle: React.lazy(() => import('@/pages/zone3/kaufy2026/KaufyRatgeberArticle')),
-};
-
-
-// =============================================================================
-// Component Map for Zone 3 FutureRoom
-// =============================================================================
-const futureroomComponentMap: Record<string, React.ComponentType> = {
-  FutureRoomHome,
-  FutureRoomBonitat,
-  FutureRoomKarriere,
-  FutureRoomFAQ,
-  FutureRoomLogin,
-  FutureRoomAkte: React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomAkteGuarded')),
-  FutureRoomImpressum: React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomImpressum')),
-  FutureRoomDatenschutz: React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomDatenschutz')),
-  FutureRoomKontakt: React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomKontakt')),
-  FutureRoomRatgeber: React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomRatgeber')),
-  FutureRoomRatgeberArticle: React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomRatgeberArticle')),
-};
-
-// =============================================================================
-// Component Map for Zone 3 SoT
-// =============================================================================
-const sotComponentMap: Record<string, React.ComponentType> = {
-  SotHome,
-  SotPlattform,
-  SotIntelligenz,
-  SotModule: React.lazy(() => import('@/pages/zone3/sot/SotModule')),
-  SotPreise,
-  SotDemo,
-  SotKarriere,
-  SotFAQ,
-  SotMietsonderverwaltung,
-  SotImmobilienverwaltung,
-  SotFinanzdienstleistungen,
-  // Ratgeber
-  RatgeberMsvVsWeg,
-  RatgeberNebenkostenabrechnung,
-  RatgeberImmobilienverwalterWechseln,
-  RatgeberPortfolioAnalyse,
-  RatgeberImmobilienfinanzierung,
-  RatgeberRenditeberechnung,
-  SotImpressum: React.lazy(() => import('@/pages/zone3/sot/SotImpressum')),
-  SotDatenschutz: React.lazy(() => import('@/pages/zone3/sot/SotDatenschutz')),
-};
-
-// =============================================================================
-// Component Map for Zone 3 ACQUIARY
-// =============================================================================
-const acquiaryComponentMap: Record<string, React.ComponentType> = {
-  AcquiaryHome,
-  AcquiaryMethodik,
-  AcquiaryNetzwerk,
-  AcquiaryKarriere,
-  AcquiaryObjekt,
-  AcquiaryImpressum: React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryImpressum')),
-  AcquiaryDatenschutz: React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryDatenschutz')),
-  AcquiaryKontakt: React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryKontakt')),
-  AcquiaryFAQ: React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryFAQ')),
-  AcquiaryRatgeber: React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryRatgeber')),
-  AcquiaryRatgeberArticle: React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryRatgeberArticle')),
-};
-
-// =============================================================================
-// Layout Map for Zone 3
-// =============================================================================
-const zone3LayoutMap: Record<string, React.ComponentType<{ children?: React.ReactNode }>> = {
-  Kaufy2026Layout,
-  FutureRoomLayout,
-  SotLayout,
-  AcquiaryLayout,
-  LennoxLayout,
-  ProjectLandingLayout,
-  NcoreLayout,
-  OttoAdvisoryLayout,
-};
-
-const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = {
-  kaufy: kaufy2026ComponentMap,
-  futureroom: futureroomComponentMap,
-  sot: sotComponentMap,
-  acquiary: acquiaryComponentMap,
-  lennox: {
-    LennoxStartseite,
-    LennoxPartnerProfil,
-    LennoxShop,
-    LennoxPartnerWerden,
-    LennoxAuth,
-    LennoxMeinBereich,
-    LennoxImpressum: React.lazy(() => import('@/pages/zone3/lennox/LennoxImpressum')),
-    LennoxDatenschutz: React.lazy(() => import('@/pages/zone3/lennox/LennoxDatenschutz')),
-    LennoxKontakt: React.lazy(() => import('@/pages/zone3/lennox/LennoxKontakt')),
-    LennoxFAQ: React.lazy(() => import('@/pages/zone3/lennox/LennoxFAQ')),
-    LennoxRatgeber: React.lazy(() => import('@/pages/zone3/lennox/LennoxRatgeber')),
-    LennoxRatgeberArticle: React.lazy(() => import('@/pages/zone3/lennox/LennoxRatgeberArticle')),
-  },
-  'project-landing': {
-    ProjectLandingHome,
-    ProjectLandingObjekt,
-    ProjectLandingBeratung,
-    ProjectLandingExpose,
-    ProjectLandingImpressum: React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingImpressum')),
-    ProjectLandingDatenschutz: React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingDatenschutz')),
-  },
-  ncore: {
-    NcoreHome,
-    NcoreDigitalisierung: React.lazy(() => import('@/pages/zone3/ncore/NcoreDigitalisierung')),
-    NcoreStiftungen: React.lazy(() => import('@/pages/zone3/ncore/NcoreStiftungen')),
-    NcoreGeschaeftsmodelle: React.lazy(() => import('@/pages/zone3/ncore/NcoreGeschaeftsmodelle')),
-    NcoreNetzwerk: React.lazy(() => import('@/pages/zone3/ncore/NcoreNetzwerk')),
-    NcoreGruender: React.lazy(() => import('@/pages/zone3/ncore/NcoreGruender')),
-    NcoreKontakt: React.lazy(() => import('@/pages/zone3/ncore/NcoreKontakt')),
-    NcoreImpressum: React.lazy(() => import('@/pages/zone3/ncore/NcoreImpressum')),
-    NcoreDatenschutz: React.lazy(() => import('@/pages/zone3/ncore/NcoreDatenschutz')),
-    NcoreRatgeber: React.lazy(() => import('@/pages/zone3/ncore/NcoreRatgeber')),
-    NcoreRatgeberArticle: React.lazy(() => import('@/pages/zone3/ncore/NcoreRatgeberArticle')),
-  },
-  otto: {
-    OttoHome,
-    OttoUnternehmer: React.lazy(() => import('@/pages/zone3/otto/OttoUnternehmer')),
-    OttoPrivateHaushalte: React.lazy(() => import('@/pages/zone3/otto/OttoPrivateHaushalte')),
-    OttoFinanzierung: React.lazy(() => import('@/pages/zone3/otto/OttoFinanzierung')),
-    OttoKontakt: React.lazy(() => import('@/pages/zone3/otto/OttoKontakt')),
-    OttoFAQ: React.lazy(() => import('@/pages/zone3/otto/OttoFAQ')),
-    OttoImpressum: React.lazy(() => import('@/pages/zone3/otto/OttoImpressum')),
-    OttoDatenschutz: React.lazy(() => import('@/pages/zone3/otto/OttoDatenschutz')),
-    OttoRatgeber: React.lazy(() => import('@/pages/zone3/otto/OttoRatgeber')),
-    OttoRatgeberArticle: React.lazy(() => import('@/pages/zone3/otto/OttoRatgeberArticle')),
-  },
-};
-
-// =============================================================================
-// Helper: Get default tile path for a module
-// =============================================================================
-function getDefaultTilePath(module: ModuleDefinition): string {
-  const defaultTile = module.tiles.find(t => t.default === true);
-  return defaultTile?.path || module.tiles[0]?.path || '';
+  const fullPath = `${redirectPath}${location.search}${location.hash}`;
+  return <Navigate to={fullPath} replace />;
 }
 
 // =============================================================================
-// MANIFEST ROUTER COMPONENT
+// Lazy Zone Routers — Only loaded when their path is visited
+// =============================================================================
+const Zone1Router = React.lazy(() => import('./Zone1Router'));
+const Zone2Router = React.lazy(() => import('./Zone2Router'));
+const Zone3Router = React.lazy(() => import('./Zone3Router'));
+
+// =============================================================================
+// MANIFEST ROUTER
 // =============================================================================
 export function ManifestRouter() {
+  const domainEntry = getDomainEntry();
+  
   return (
     <PathNormalizer>
-    <Routes>
-      {/* ================================================================== */}
-      {/* LEGACY REDIRECTS — Parameters preserved via LegacyRedirect component */}
-      {/* ================================================================== */}
-      {legacyRoutes.map((route) => (
-        <Route
-          key={route.path}
-          path={route.path}
-          element={<LegacyRedirect to={route.redirect_to} />}
-        />
-      ))}
-
-      {/* ================================================================== */}
-      {/* ZONE 1: ADMIN PORTAL */}
-      {/* ================================================================== */}
-      <Route path={zone1Admin.base} element={<AdminLayout />}>
-        {/* ============================================================== */}
-        {/* FUTUREROOM — Explicit Nested Routes (not desk pattern) */}
-        {/* This prevents the flash→redirect→404 issue with mixed-case URLs */}
-        {/* ============================================================== */}
-        <Route path="futureroom" element={<React.Suspense fallback={<LoadingFallback />}><AdminFutureRoomLayout /></React.Suspense>}>
-          <Route index element={<Navigate to="inbox" replace />} />
-          <Route path="inbox" element={
-            <React.Suspense fallback={<LoadingFallback />}>
-              <FutureRoomInbox />
-            </React.Suspense>
-          } />
-          <Route path="zuweisung" element={
-            <React.Suspense fallback={<LoadingFallback />}>
-              <FutureRoomZuweisung />
-            </React.Suspense>
-          } />
-          <Route path="finanzierungsmanager" element={
-            <React.Suspense fallback={<LoadingFallback />}>
-              <FutureRoomManagers />
-            </React.Suspense>
-          } />
-          <Route path="bankkontakte" element={
-            <React.Suspense fallback={<LoadingFallback />}>
-              <FutureRoomBanks />
-            </React.Suspense>
-          } />
-          <Route path="monitoring" element={
-            <React.Suspense fallback={<LoadingFallback />}>
-              <FutureRoomMonitoring />
-            </React.Suspense>
-          } />
-          <Route path="vorlagen" element={
-            <React.Suspense fallback={<LoadingFallback />}>
-              <FutureRoomTemplates />
-            </React.Suspense>
-          } />
-          <Route path="website-leads" element={
-            <React.Suspense fallback={<LoadingFallback />}>
-              <FutureRoomWebLeads />
-            </React.Suspense>
-          } />
-          <Route path="contracts" element={
-            <React.Suspense fallback={<LoadingFallback />}>
-              <FutureRoomContracts />
-            </React.Suspense>
-          } />
-          {/* Catch-all for FutureRoom — redirect to inbox */}
-          <Route path="*" element={<Navigate to="inbox" replace />} />
-        </Route>
-
-        {/* Admin Desk Routes with internal sub-routing (except FutureRoom) */}
-        {Object.entries(adminDeskMap).map(([deskPath, DeskComponent]) => (
+      <Routes>
+        {/* Legacy Redirects */}
+        {legacyRoutes.map((route) => (
           <Route
-            key={deskPath}
-            path={`${deskPath}/*`}
-            element={
-              <React.Suspense fallback={<LoadingFallback />}>
-                <DeskComponent />
-              </React.Suspense>
-            }
+            key={route.path}
+            path={route.path}
+            element={<LegacyRedirect to={route.redirect_to} />}
           />
         ))}
-        
-        {/* Standard Admin Routes */}
-        {zone1Admin.routes?.map((route) => {
-          // Skip desk routes (handled above)
-          if (['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk', 'pet-desk', 'lead-desk', 'service-desk', 'ncore-desk', 'otto-desk'].some(desk => route.path.startsWith(desk))) {
-            return null;
-          }
-          
-          const Component = adminComponentMap[route.component];
-          if (!Component) {
-            console.warn(`Missing admin component: ${route.component}`);
-            return null;
-          }
-          return (
-            <Route
-              key={route.path || 'index'}
-              index={route.path === ''}
-              path={route.path || undefined}
-              element={
-                <React.Suspense fallback={<LoadingFallback />}>
-                  <Component />
-                </React.Suspense>
-              }
-            />
-          );
-        })}
-      </Route>
 
-      {/* ================================================================== */}
-      {/* ZONE 2: USER PORTAL */}
-      {/* ================================================================== */}
-      <Route path={zone2Portal.base} element={<PortalLayout />}>
-        {/* Portal Index shows Dashboard */}
-        <Route index element={<PortalDashboard />} />
-
-        {/* Area Overview Pages */}
-        <Route path="area/:areaKey" element={
+        {/* Zone 1: Admin Portal */}
+        <Route path="/admin/*" element={
           <React.Suspense fallback={<LoadingFallback />}>
-            <AreaOverviewPage />
+            <Zone1Router />
           </React.Suspense>
         } />
 
-        {/* Armstrong Info Page (internal) */}
-        <Route path="armstrong" element={
+        {/* Zone 2: User Portal */}
+        <Route path="/portal/*" element={
           <React.Suspense fallback={<LoadingFallback />}>
-            <ArmstrongInfoPage />
+            <Zone2Router />
           </React.Suspense>
         } />
 
-        {/* Module Routes - Each module gets direct routing to ModulePage */}
-        {/* ModulePage handles all internal routing via nested <Routes> */}
-        {Object.entries(zone2Portal.modules || {}).map(([code, module]) => {
-          const ModulePage = portalModulePageMap[module.base];
-          if (!ModulePage) {
-            console.warn(`Missing module page for: ${module.base}`);
-            return null;
-          }
-
-          return (
-            <Route 
-              key={code} 
-              path={`${module.base}/*`}
-              element={
-                <React.Suspense fallback={<LoadingFallback />}>
-                  <ModulePage />
-                </React.Suspense>
-              } 
-            />
-          );
-        })}
-
-        {/* One-time repair page — remove after use */}
-        <Route path="repair-sort-containers" element={
+        {/* Zone 3: Websites (canonical + flat brand-domain routes) */}
+        <Route path="/website/*" element={
           <React.Suspense fallback={<LoadingFallback />}>
-            <RepairSortContainersPage />
+            <Zone3Router />
           </React.Suspense>
         } />
 
-        {/* Legacy redirect: /portal/leads → /portal/provisionen */}
-        <Route path="leads/*" element={<Navigate to="/portal/provisionen" replace />} />
-      </Route>
-
-      {/* ================================================================== */}
-      {/* ZONE 3: WEBSITES (canonical /website/* paths) */}
-      {/* ================================================================== */}
-      {Object.entries(zone3Websites).map(([siteKey, site]) => {
-        const Layout = zone3LayoutMap[site.layout];
-        const componentMap = zone3ComponentMaps[siteKey];
-
-        if (!Layout) {
-          console.warn(`Missing layout: ${site.layout}`);
-          return null;
-        }
-
-        return (
-          <Route key={siteKey} path={site.base} element={
+        {/* Zone 3: Flat routes for brand domains (e.g. kaufy.immo/vermieter) */}
+        {domainEntry && (
+          <Route path="/*" element={
             <React.Suspense fallback={<LoadingFallback />}>
-              <Layout />
+              <Zone3Router />
             </React.Suspense>
-          }>
-            {site.routes.map((route) => {
-              const Component = componentMap?.[route.component];
-              if (!Component) {
-                console.warn(`Missing component: ${route.component} for ${siteKey}`);
-                return null;
-              }
-              return (
-                <Route
-                  key={route.path || 'index'}
-                  index={route.path === ''}
-                  path={route.path || undefined}
-                  element={
-                    <React.Suspense fallback={<LoadingFallback />}>
-                      <Component />
-                    </React.Suspense>
-                  }
-                />
-              );
-            })}
-          </Route>
-        );
-      })}
+          } />
+        )}
 
-      {/* ================================================================== */}
-      {/* ZONE 3: FLAT ROUTES for Brand Domains */}
-      {/* When visiting e.g. kaufy.immo, routes are also available without  */}
-      {/* the /website/kaufy prefix (e.g. /vermieter instead of             */}
-      {/* /website/kaufy/vermieter)                                         */}
-      {/* ================================================================== */}
-      {(() => {
-        const domainEntry = getDomainEntry();
-        if (!domainEntry) return null;
-        
-        const site = zone3Websites[domainEntry.siteKey];
-        if (!site) return null;
-        
-        const Layout = zone3LayoutMap[site.layout];
-        const componentMap = zone3ComponentMaps[domainEntry.siteKey];
-        if (!Layout || !componentMap) return null;
-
-        return (
-          <Route path="/" element={
-            <React.Suspense fallback={<LoadingFallback />}>
-              <Layout />
-            </React.Suspense>
-          }>
-            {site.routes.map((route) => {
-              const Component = componentMap[route.component];
-              if (!Component) return null;
-              return (
-                <Route
-                  key={`flat-${route.path || 'index'}`}
-                  index={route.path === ''}
-                  path={route.path || undefined}
-                  element={
-                    <React.Suspense fallback={<LoadingFallback />}>
-                      <Component />
-                    </React.Suspense>
-                  }
-                />
-              );
-            })}
-          </Route>
-        );
-      })()}
-
-      {/* ================================================================== */}
-      {/* 404 FALLBACK */}
-      {/* ================================================================== */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        {/* 404 Fallback */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </PathNormalizer>
   );
 }
