@@ -9,18 +9,17 @@ const corsHeaders = {
 /**
  * sot-content-engine — KI-gestützter Content-Generator für alle 7 Brands.
  * 
- * POST body: { brand: string, topic: string, slug: string, category?: string }
- * 
- * Generates a German-language article via Lovable AI and saves it to brand_articles.
- * Can be triggered manually from the Portal or via a cron job.
+ * MODE 1 (manual): POST body: { brand, topic, slug, category?, auto_publish? }
+ * MODE 2 (auto):   POST body: { auto: true } — picks next pending topic from content_topics
  */
 
 interface ContentRequest {
-  brand: string;
-  topic: string;
-  slug: string;
+  brand?: string;
+  topic?: string;
+  slug?: string;
   category?: string;
   auto_publish?: boolean;
+  auto?: boolean;
 }
 
 const BRAND_CONTEXTS: Record<string, string> = {
@@ -33,6 +32,17 @@ const BRAND_CONTEXTS: Record<string, string> = {
   otto: "Otto² Advisory — Finanzberatung für Unternehmer und Privathaushalte. Schwerpunkt: Strategische Finanzplanung, Risikoanalyse, Vorsorge, Immobilienfinanzierung.",
 };
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[äÄ]/g, "ae")
+    .replace(/[öÖ]/g, "oe")
+    .replace(/[üÜ]/g, "ue")
+    .replace(/ß/g, "ss")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -44,17 +54,64 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error("Supabase config missing");
 
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body: ContentRequest = await req.json();
-    const { brand, topic, slug, category, auto_publish } = body;
 
-    if (!brand || !topic || !slug) {
-      return new Response(JSON.stringify({ error: "brand, topic, and slug are required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    let brand: string;
+    let topic: string;
+    let slug: string;
+    let category: string;
+    let autoPublish: boolean;
+    let topicId: string | null = null;
+
+    if (body.auto) {
+      // ── AUTO MODE: pick next pending topic ──
+      const { data: nextTopic, error: topicErr } = await supabase
+        .from("content_topics")
+        .select("*")
+        .eq("status", "pending")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .single();
+
+      if (topicErr || !nextTopic) {
+        // No pending topics — graceful exit
+        return new Response(JSON.stringify({ success: true, message: "No pending topics" }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Lock the topic as in_progress
+      await supabase
+        .from("content_topics")
+        .update({ status: "in_progress", updated_at: new Date().toISOString() })
+        .eq("id", nextTopic.id);
+
+      brand = nextTopic.brand;
+      topic = nextTopic.title_prompt;
+      slug = slugify(nextTopic.title_prompt);
+      category = nextTopic.category || "ratgeber";
+      autoPublish = true;
+      topicId = nextTopic.id;
+
+      console.log(`[auto] Generating article for ${brand}: "${topic}"`);
+    } else {
+      // ── MANUAL MODE ──
+      if (!body.brand || !body.topic || !body.slug) {
+        return new Response(JSON.stringify({ error: "brand, topic, and slug are required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      brand = body.brand;
+      topic = body.topic;
+      slug = body.slug;
+      category = body.category || "ratgeber";
+      autoPublish = body.auto_publish ?? false;
     }
 
     const brandContext = BRAND_CONTEXTS[brand];
     if (!brandContext) {
+      if (topicId) await supabase.from("content_topics").update({ status: "failed" }).eq("id", topicId);
       return new Response(JSON.stringify({ error: `Unknown brand: ${brand}` }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -101,6 +158,10 @@ Am Ende: Generiere einen JSON-Block mit Metadaten:
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("AI gateway error:", response.status, errorText);
+      if (topicId) await supabase.from("content_topics").update({ status: "failed" }).eq("id", topicId);
+
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded, please try again later." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -111,8 +172,6 @@ Am Ende: Generiere einen JSON-Block mit Metadaten:
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
       throw new Error("AI gateway error");
     }
 
@@ -135,8 +194,6 @@ Am Ende: Generiere einen JSON-Block mit Metadaten:
     const cleanContent = content.replace(/```json\s*\n?[\s\S]*?\n?```/, "").trim();
 
     // Save to database
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
     const { data: article, error: dbError } = await supabase
       .from("brand_articles")
       .upsert({
@@ -145,18 +202,27 @@ Am Ende: Generiere einen JSON-Block mit Metadaten:
         title: seoTitle,
         description: seoDescription,
         content: cleanContent,
-        category: category || "ratgeber",
+        category: category,
         author: brand,
         generated_by: "sot-content-engine",
-        is_published: auto_publish ?? false,
-        published_at: auto_publish ? new Date().toISOString() : null,
+        is_published: autoPublish,
+        published_at: autoPublish ? new Date().toISOString() : null,
       }, { onConflict: "brand,slug" })
       .select()
       .single();
 
     if (dbError) {
       console.error("DB error:", dbError);
+      if (topicId) await supabase.from("content_topics").update({ status: "failed" }).eq("id", topicId);
       throw new Error(`Database error: ${dbError.message}`);
+    }
+
+    // Mark topic as published
+    if (topicId && article) {
+      await supabase
+        .from("content_topics")
+        .update({ status: "published", published_article_id: article.id, updated_at: new Date().toISOString() })
+        .eq("id", topicId);
     }
 
     return new Response(JSON.stringify({ success: true, article }), {
