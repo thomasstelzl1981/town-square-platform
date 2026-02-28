@@ -12,6 +12,7 @@ Allow: /llms-acquiary.txt
 Allow: /llms-lennox.txt
 Allow: /llms-ncore.txt
 Allow: /llms-otto.txt
+Allow: /llms-zlwohnbau.txt
 Disallow: /portal/
 Disallow: /admin/
 Disallow: /auth
@@ -44,6 +45,7 @@ Allow: /llms-acquiary.txt
 Allow: /llms-lennox.txt
 Allow: /llms-ncore.txt
 Allow: /llms-otto.txt
+Allow: /llms-zlwohnbau.txt
 Disallow: /portal/
 Disallow: /admin/
 Disallow: /auth
@@ -59,6 +61,7 @@ Allow: /website/
 Allow: /llms.txt
 Allow: /llms-ncore.txt
 Allow: /llms-otto.txt
+Allow: /llms-zlwohnbau.txt
 Disallow: /portal/
 Disallow: /admin/
 
@@ -67,6 +70,7 @@ Allow: /website/
 Allow: /llms.txt
 Allow: /llms-ncore.txt
 Allow: /llms-otto.txt
+Allow: /llms-zlwohnbau.txt
 Disallow: /portal/
 Disallow: /admin/
 
@@ -92,3 +96,4 @@ Sitemap: https://acquiary.com/sitemap-acquiary.xml
 Sitemap: https://lennoxandfriends.app/sitemap-lennox.xml
 Sitemap: https://ncore.online/sitemap-ncore.xml
 Sitemap: https://otto2advisory.com/sitemap-otto.xml
+Sitemap: https://zl-wohnbau.de/sitemap-zlwohnbau.xml

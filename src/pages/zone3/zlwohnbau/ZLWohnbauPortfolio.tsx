@@ -4,6 +4,7 @@
  */
 import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { Building2, MapPin, Calendar, Ruler, Leaf } from 'lucide-react';
+import energyImg from '@/assets/zlwohnbau/energy-house.jpg';
 
 const BRAND = '#2D6A4F';
 
@@ -71,8 +72,10 @@ export default function ZLWohnbauPortfolio() {
         }}
       />
 
-      <section className="py-20 px-4 bg-slate-50 border-b border-slate-100">
-        <div className="mx-auto max-w-4xl text-center">
+      <section className="relative py-20 px-4 overflow-hidden">
+        <img src={energyImg} alt="Energieeffizientes Haus" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-white/85 to-white/95" />
+        <div className="relative z-10 mx-auto max-w-4xl text-center">
           <h1 className="mb-4 text-4xl font-bold text-slate-800 md:text-5xl">Unser Portfolio</h1>
           <p className="text-lg text-slate-500 max-w-2xl mx-auto">
             {totalUnits} Wohneinheiten · {totalSqm.toLocaleString('de-DE')} m² Wohnfläche · Niederbayern
