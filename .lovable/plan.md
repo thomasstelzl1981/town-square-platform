@@ -1,48 +1,53 @@
 
-## Status
 
-### ✅ Erledigt
-- Secrets: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN konfiguriert
-- DB-Migration: commpro_phone_assistants erweitert (twilio_number_sid, twilio_phone_number_e164, tier, brand_key)
-- DB-Migration: commpro_phone_call_sessions erweitert (twilio_call_sid, recording_url, armstrong_notified_at)
-- Edge Functions: sot-phone-provision (auth fix + brand_key support), sot-phone-inbound, sot-phone-postcall deployed
-- UI Zone 2: StatusForwardingCard mit Nummernkauf, GSM-Codes, Release
-- Armstrong-Fix: phone-postcall nutzt profiles.armstrong_email statt redundantem Feld
-- Zone 1 CommPro-Desk: Routing, Sub-Tabs (7 Marken), operativeDeskManifest
-- Zone 1 BrandPhonePanel: Vollständige UI mit StatusForwardingCard, VoiceSettings, Content, Rules, Documentation, CallLog
-- useBrandPhoneAssistant Hook: Brand-scoped Assistent-Management für Zone 1
+## Analyse: Warum "Assistent konnte nicht geladen werden"
 
-### 🔲 Offen
-- Zone 1 CommPro-Desk: Brand-spezifische Assistenten-Records (pro Marke eigener DB-Eintrag) — Auto-Create implementiert
-- Premium-Tier: ElevenLabs Conversational AI Stream-Integration (Twilio `<Stream>` → ElevenLabs WebSocket)
-- Credit-Preflight: System noch nicht implementiert (Platzhalter)
-- Armstrong Sidebar: Eintrag für CommPro-Desk in der Admin-Navigation
+Drei konkrete Bugs gefunden:
 
-## Architektur
+### Bug 1: RLS-Policy falsche Rolle
+Die Policy "Admins can manage brand assistants" hat `roles: {public}` statt `{authenticated}`. Dadurch greift sie nicht für eingeloggte User. Gleichzeitig blockiert die RESTRICTIVE Policy `tenant_isolation_restrictive` den Zugriff, weil brand-Assistenten `user_id = NULL` haben und nur `is_platform_admin()` durchkommt.
 
-### 2-Tier Modell
-- **Zone 1 (Premium):** Twilio + ElevenLabs Conversational AI für Marken
-- **Zone 2 (Standard):** Twilio STT/TTS + LLM für Kunden-Assistenten
+### Bug 2: StatusForwardingCard sendet kein `brand_key`
+`StatusForwardingCard` ruft `sot-phone-provision` direkt auf mit `{ action: 'purchase', country_code: 'DE' }` — ohne `brand_key`. Dadurch wird im Provision-Code der Zone-2-Pfad (user_id-Modus) genommen statt Zone-1 (brand_key-Modus). Das gleiche Problem bei `handleRelease`.
 
-### 3-Zone Manifest-Trennung
-- **Zone 1:** `Zone1Router.tsx` — Admin/Desks (CommPro-Desk, Sales-Desk, etc.)
-- **Zone 2:** `Zone2Router.tsx` — Portal/Module (KI-Telefon, Stammdaten, etc.)
-- **Zone 3:** `Zone3Router.tsx` — Websites/Brands (Kaufy, FutureRoom, etc.)
-- Jede Zone hat eigene Routen, eigene Lazy-Loading-Bundles, eigenen Scope
-- NIEMALS Zone-übergreifend Routen registrieren
+### Bug 3: postcall hat kein Billing-Tracking
+`commpro_phone_call_sessions` fehlen die Preis-Felder für späteres Billing.
 
-### Armstrong Integration
-- `phone-postcall` sendet Zusammenfassungen an `profiles.armstrong_email`
-- `sot-inbound-receive` verarbeitet die E-Mail → Dashboard-Widget + Aufgaben
+---
 
-### Zone 1 CommPro-Desk
+## Implementierungsplan
+
+### 1. DB-Migration: RLS fixen + Billing-Felder
+
+```sql
+-- RLS fix: Brand-Policy auf authenticated setzen
+DROP POLICY IF EXISTS "Admins can manage brand assistants" 
+  ON commpro_phone_assistants;
+CREATE POLICY "Admins can manage brand assistants" 
+  ON commpro_phone_assistants FOR ALL 
+  TO authenticated
+  USING (brand_key IS NOT NULL AND is_platform_admin(auth.uid()))
+  WITH CHECK (brand_key IS NOT NULL AND is_platform_admin(auth.uid()));
+
+-- Billing-Felder für Zone-2-Vorbereitung
+ALTER TABLE commpro_phone_call_sessions
+  ADD COLUMN IF NOT EXISTS twilio_price NUMERIC,
+  ADD COLUMN IF NOT EXISTS twilio_price_unit TEXT DEFAULT 'USD',
+  ADD COLUMN IF NOT EXISTS billed_credits INTEGER DEFAULT 0;
 ```
-/admin/commpro-desk
-├── /kaufy        — Telefonassistent für Kaufy
-├── /futureroom   — Telefonassistent für FutureRoom
-├── /acquiary     — Telefonassistent für Acquiary
-├── /sot          — Telefonassistent für SoT
-├── /lennox       — Telefonassistent für Lennox & Friends
-├── /ncore        — Telefonassistent für Ncore
-└── /otto         — Telefonassistent für Otto²
-```
+
+### 2. StatusForwardingCard: brand_key-Prop hinzufügen
+
+- Props erweitern um optionales `brandKey?: string`
+- `handlePurchase` und `handleRelease` senden `brand_key` im Body wenn vorhanden
+- BrandPhonePanel übergibt `brandKey` an StatusForwardingCard
+
+### 3. sot-phone-postcall: Preis-Tracking ergänzen
+
+- Twilio liefert im StatusCallback `CallDuration` und optional Preis-Informationen
+- `twilio_price` und `twilio_price_unit` beim Session-Update speichern (falls von Twilio geliefert)
+
+### 4. Plan-Update
+
+- `.lovable/plan.md` aktualisieren: RLS-Fix, Billing-Felder, StatusForwardingCard-Fix als erledigt markieren
+
