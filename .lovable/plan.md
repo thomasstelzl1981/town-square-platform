@@ -1,89 +1,83 @@
 
 
-# SEO & LLM Audit + Maschinenlesbarkeit: ZL Wohnbau + Otto² Advisory
+# Finanzanalyse (MOD-18) — Komplett-Reparatur + Zone-2 Save-Feedback
 
-## Audit-Ergebnis
-
-### ZL Wohnbau — Defizite
-
-| Bereich | Status | Problem |
-|---------|--------|---------|
-| LLM-Datei | FEHLT | Keine `llms-zlwohnbau.txt` vorhanden |
-| robots.txt | FEHLT | ZL Wohnbau nicht in robots.txt eingetragen |
-| Sitemap | FEHLT | Kein `zlwohnbau` Brand im Sitemap-Generator |
-| Sitemap-Eintrag | FEHLT | Keine `Sitemap:` Zeile in robots.txt |
-| Kontaktformular | FEHLT | Nur statische Kontaktdaten, kein Formular mit Lead-Submission |
-| Header-Bilder Unterseiten | FEHLT | Leistungen, Portfolio, Kontakt haben nur Text-Header (bg-slate-50) |
-| Browser-Titel | FALSCH | Zeigt "Wohnraum für Mitarbeiter \| ZL Wohnbau" statt "ZL Wohnbau" als Basis |
-| Ratgeber | FEHLT | Keine /ratgeber Route registriert (andere Brands haben das) |
-| Content Engine | FEHLT | ZL Wohnbau nicht im Content-Engine-Cron registriert |
-
-### Otto² Advisory — Defizite
-
-| Bereich | Status | Problem |
-|---------|--------|---------|
-| LLM-Datei | OK | `llms-otto.txt` existiert |
-| robots.txt | OK | Otto eingetragen |
-| Sitemap | TEILWEISE | Routen-Pfade falsch: `/privathaushalte` statt `/private-haushalte` |
-| Kontaktformular | OK | Formular mit Lead-Submission vorhanden |
-| Header-Bilder Unterseiten | FEHLT | Unternehmer und Privathaushalte haben nur Text-Header ohne Bild |
-| Ratgeber | OK | /ratgeber Route vorhanden |
-| Adresse Kontakt | UNVOLLSTÄNDIG | Standort zeigt nur "Deutschland", keine Straße |
+## Freeze-Status
+- **MOD-18**: UNFREEZE erteilt (user approved)
+- **ENG-FINUEB**: UNFREEZE erteilt (user approved)
+- **Infra-manifests**: Bleibt frozen (keine Manifest-Änderungen nötig)
 
 ---
 
-## Umsetzungsplan
+## Defekte & Fixes
 
-### 1. LLM-Datei für ZL Wohnbau erstellen
-- Neue Datei: `public/llms-zlwohnbau.txt`
-- Inhalt: Unternehmen, Leistungen, Portfolio, Kontaktdaten, FAQ — analog zu `llms-otto.txt`
+### 1. Einkommensfelder: Beide Status-Typen immer sichtbar
+**Problem:** `UebersichtTab.tsx` zeigt Angestellten-Felder NUR bei `employment_status === 'angestellt'` und Selbstständig-Felder NUR bei `'selbstaendig'`. Beim Wechsel verschwinden die Felder, vorhandene Daten bleiben in DB, werden aber im Report weiter angezeigt.
 
-### 2. robots.txt aktualisieren
-- `Allow: /llms-zlwohnbau.txt` bei Googlebot, GPTBot, PerplexityBot, ClaudeBot hinzufügen
+**Fix (`src/pages/portal/finanzanalyse/UebersichtTab.tsx`):**
+- Angestellten-Felder (Arbeitgeber, Brutto, Netto, Steuerklasse, Kinderfreibeträge) und Selbstständig-Felder (Firmenname, Einkünfte Gewerbebetrieb) werden IMMER angezeigt, außer bei `beamter`, `rentner`, `nicht_erwerbstaetig`.
+- Beamter zeigt weiterhin sein eigenes Feldset.
+- PV-Einkünfte bleiben immer sichtbar (bereits korrekt).
+- Neues Feld: **"Sonstige Einnahmen (€/mtl.)"** unter PV-Einkünfte (mappt auf DB-Feld `other_income_monthly` in `household_persons`).
+- Werte bleiben beim Status-Wechsel erhalten (keine Löschung).
 
-### 3. Sitemap-Generator erweitern
-- `supabase/functions/sot-sitemap-generator/index.ts`: Brand `zlwohnbau` mit Domain `https://zl-wohnbau.de` und allen 6 Routen hinzufügen
-- Fehler-Meldung aktualisieren (valid brands)
-- `robots.txt`: `Sitemap: https://zl-wohnbau.de/sitemap-zlwohnbau.xml` hinzufügen
+### 2. "Sonstige Einnahmen" — DB + Engine + UI
+**a) DB-Migration:** `ALTER TABLE household_persons ADD COLUMN IF NOT EXISTS other_income_monthly numeric DEFAULT 0;`
 
-### 4. Otto² Sitemap-Routen korrigieren
-- `/privathaushalte` → `/private-haushalte` (muss mit tatsächlicher Route übereinstimmen)
-- `/kontakt` und `/faq` mit `/ratgeber` ergänzen
+**b) Engine (`src/engines/finanzuebersicht/spec.ts`):**
+- `FUHouseholdPerson` erweitern um `other_income_monthly?: number | null;`
 
-### 5. Kontaktformular für ZL Wohnbau
-- `ZLWohnbauKontakt.tsx` komplett überarbeiten: Formular mit Name, E-Mail, Telefon, Nachricht, Interesse (Wohnraum anfragen / Objekt anbieten / Allgemein)
-- Submission an `sot-ncore-lead-submit` Edge Function mit `brand: 'zlwohnbau'`
-- JSON-LD ContactPage Schema hinzufügen
+**c) Engine (`src/engines/finanzuebersicht/engine.ts`):**
+- In `calcIncome()`: `otherIncome` aus `householdPersons` aggregieren statt fix 0.
 
-### 6. Header-Bilder für Unterseiten (ZL Wohnbau)
-- Leistungen, Portfolio, Kontakt: Bestehende Hero-Bilder (`heroImg`, `townImg`, `energyImg`) als subtile Hintergrundbilder in den Header-Sektionen einsetzen (wie auf der Home-Page)
-- Gradient-Overlay für Lesbarkeit
+**d) Hook (`src/hooks/useFinanzberichtData.ts`):**
+- `other_income_monthly` in die `select()`-Query von `fb-household-persons` aufnehmen.
 
-### 7. Header-Bilder für Unterseiten (Otto² Advisory)
-- Unternehmer-Seite: `advisoryImg` als Header-Hintergrund
-- Privathaushalte-Seite: `heroFamilyImg` als Header-Hintergrund
+**e) UI (`UebersichtTab.tsx`):**
+- FormInput "Sonstige Einnahmen (€/mtl.)" hinzufügen.
 
-### 8. Browser-Titel korrigieren (ZL Wohnbau Layout)
-- Layout SEOHead: `title` von "Wohnraum für Mitarbeiter" auf "ZL Wohnbau" ändern, damit der Fallback-Titel `ZL Wohnbau | ZL Wohnbau` korrekt ist
-- Einzelseiten überschreiben den Titel ohnehin spezifisch
+### 3. Konto-Widget "Konto hinzufügen" entfernen
+**Problem:** `KontenTab.tsx` zeigt am Ende des WidgetGrid eine dashed Kachel "Konto hinzufügen" (Zeilen 387-401). Diese verbraucht zu viel Platz — alles geht über den Plus-Button im Header.
 
-### 9. Otto² Kontakt-Adresse vervollständigen
-- Vollständige Adresse (Ruselstraße 16, 94327 Bogen) in OttoKontakt.tsx ergänzen
+**Fix (`src/pages/portal/finanzanalyse/KontenTab.tsx`):**
+- Zeilen 387-401 (die `<WidgetCell>` mit "Konto hinzufügen") entfernen.
 
-### 10. Ratgeber-Route für ZL Wohnbau registrieren
-- Route `/ratgeber` und `/ratgeber/:slug` in routesManifest.ts für ZL Wohnbau hinzufügen
-- Shared RatgeberListPage/RatgeberArticlePage verwenden (wie bei anderen Brands)
+### 4. Globales Zone-2 Save-Feedback
+**Problem:** Kein konsistentes Feedback nach Speichern über alle Module. Toast + Query-Invalidierung fehlt an vielen Stellen.
 
-### Betroffene Dateien
-- `public/llms-zlwohnbau.txt` (NEU)
-- `public/robots.txt`
-- `supabase/functions/sot-sitemap-generator/index.ts`
-- `src/pages/zone3/zlwohnbau/ZLWohnbauKontakt.tsx`
-- `src/pages/zone3/zlwohnbau/ZLWohnbauLeistungen.tsx`
-- `src/pages/zone3/zlwohnbau/ZLWohnbauPortfolio.tsx`
-- `src/pages/zone3/zlwohnbau/ZLWohnbauLayout.tsx`
-- `src/pages/zone3/otto/OttoKontakt.tsx`
-- `src/pages/zone3/otto/OttoUnternehmer.tsx`
-- `src/pages/zone3/otto/OttoPrivateHaushalte.tsx`
-- `src/manifests/routesManifest.ts` (Ratgeber-Route ZL Wohnbau)
+**Fix (neuer Shared-Hook `src/hooks/useSaveFeedback.ts`):**
+- Wrapper um `useMutation`, der automatisch `toast.success('Gespeichert')` und `queryClient.invalidateQueries()` ausführt.
+- Betroffene Stellen in MOD-18 UebersichtTab.tsx bereits korrekt (hat `toast.success` + `invalidateQueries`).
+- ManualExpensesSection ebenfalls korrekt.
+- **Prüfung/Fix** für folgende Module, die `toast.success` OHNE `invalidateQueries` haben:
+  - Wir erstellen den Hook und setzen ihn in MOD-18 ein. Weitere Module folgen via selbes Pattern (nicht-frozen Module können direkt, frozen Module beim nächsten Unfreeze).
+
+### 5. FinAPI-Request schlägt fehl
+**Problem:** Keine aktuellen Logs für `sot-finapi-sync`. Secrets (`FINAPI_CLIENT_ID`, `FINAPI_CLIENT_SECRET`) sind konfiguriert. Die Edge Function nutzt `getClaims()`, was in neueren Supabase-JS-Versionen nicht existiert.
+
+**Fix (`supabase/functions/sot-finapi-sync/index.ts`):**
+- `getClaims(token)` → `getUser(token)` umstellen (gleicher Pattern wie in `sot-phone-provision`).
+- Sandbox-URL validieren (aktuell `https://sandbox.finapi.io` — korrekt für Sandbox-Umgebung).
+
+---
+
+## Betroffene Dateien
+
+| Datei | Aktion |
+|-------|--------|
+| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | Einkommensfelder immer anzeigen + "Sonstige Einnahmen" |
+| `src/pages/portal/finanzanalyse/KontenTab.tsx` | Widget "Konto hinzufügen" entfernen |
+| `src/engines/finanzuebersicht/spec.ts` | `other_income_monthly` zu `FUHouseholdPerson` |
+| `src/engines/finanzuebersicht/engine.ts` | `otherIncome` aus household_persons aggregieren |
+| `src/hooks/useFinanzberichtData.ts` | `other_income_monthly` in Query |
+| `src/hooks/useSaveFeedback.ts` | NEU: Shared save-feedback hook |
+| `supabase/functions/sot-finapi-sync/index.ts` | `getClaims` → `getUser` Fix |
+| DB-Migration | `other_income_monthly` Spalte |
+
+---
+
+## Nicht betroffen / Kein Handlungsbedarf
+- Routing/Tabs: `FinanzanalysePage.tsx` + Manifest sind korrekt — 9 Tabs funktionieren.
+- ManualExpensesSection: Bereits korrekt implementiert mit Toast + Invalidierung.
+- FinanzberichtSection: Zeigt `income.otherIncome` bereits an (Zeile 167), nur Engine liefert aktuell 0.
 
