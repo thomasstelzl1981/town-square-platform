@@ -26,18 +26,17 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: claims, error: claimsErr } = await supabase.auth.getClaims(
-      authHeader.replace("Bearer ", "")
-    );
-    if (claimsErr || !claims?.claims?.sub) {
+    // Fixed: use getUser() instead of non-existent getClaims()
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const userId = claims.claims.sub as string;
+    const userId = user.id;
 
-    const { action, country_code } = await req.json();
+    const { action, country_code, brand_key } = await req.json();
 
     const TWILIO_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
     const TWILIO_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
@@ -51,8 +50,13 @@ Deno.serve(async (req) => {
     const twilioAuth = btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`);
     const webhookBaseUrl = Deno.env.get("SUPABASE_URL") + "/functions/v1";
 
+    // Determine lookup: brand_key (Zone 1) or user_id (Zone 2)
+    const isBrandMode = !!brand_key;
+    const lookupFilter = isBrandMode
+      ? { column: "brand_key", value: brand_key }
+      : { column: "user_id", value: userId };
+
     if (action === "purchase") {
-      // 1. Search for available local numbers
       const cc = country_code || "DE";
       const searchUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/AvailablePhoneNumbers/${cc}/Local.json?PageSize=1`;
       const searchRes = await fetch(searchUrl, {
@@ -68,8 +72,10 @@ Deno.serve(async (req) => {
       }
 
       const number = searchData.available_phone_numbers[0];
+      const friendlyName = isBrandMode
+        ? `SoT-Brand-${brand_key}`
+        : `SoT-PhoneAssistant-${userId.slice(0, 8)}`;
 
-      // 2. Purchase the number with webhook configuration
       const buyUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/IncomingPhoneNumbers.json`;
       const buyBody = new URLSearchParams({
         PhoneNumber: number.phone_number,
@@ -77,7 +83,7 @@ Deno.serve(async (req) => {
         VoiceMethod: "POST",
         StatusCallback: `${webhookBaseUrl}/sot-phone-postcall`,
         StatusCallbackMethod: "POST",
-        FriendlyName: `SoT-PhoneAssistant-${userId.slice(0, 8)}`,
+        FriendlyName: friendlyName,
       });
 
       const buyRes = await fetch(buyUrl, {
@@ -98,7 +104,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      // 3. Update assistant record
+      // Update assistant record (by brand_key or user_id)
       const { error: updateErr } = await supabase
         .from("commpro_phone_assistants")
         .update({
@@ -108,7 +114,7 @@ Deno.serve(async (req) => {
           binding_status: "active",
           updated_at: new Date().toISOString(),
         })
-        .eq("user_id", userId);
+        .eq(lookupFilter.column, lookupFilter.value);
 
       if (updateErr) {
         console.error("DB update failed:", updateErr);
@@ -126,11 +132,10 @@ Deno.serve(async (req) => {
     }
 
     if (action === "release") {
-      // Get current assistant to find Twilio SID
       const { data: assistant } = await supabase
         .from("commpro_phone_assistants")
         .select("twilio_number_sid")
-        .eq("user_id", userId)
+        .eq(lookupFilter.column, lookupFilter.value)
         .single();
 
       if (!assistant?.twilio_number_sid) {
@@ -140,7 +145,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Release number on Twilio
       const releaseUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/IncomingPhoneNumbers/${assistant.twilio_number_sid}.json`;
       const releaseRes = await fetch(releaseUrl, {
         method: "DELETE",
@@ -154,7 +158,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Clear DB
       await supabase
         .from("commpro_phone_assistants")
         .update({
@@ -164,7 +167,7 @@ Deno.serve(async (req) => {
           binding_status: "pending",
           updated_at: new Date().toISOString(),
         })
-        .eq("user_id", userId);
+        .eq(lookupFilter.column, lookupFilter.value);
 
       return new Response(
         JSON.stringify({ success: true }),

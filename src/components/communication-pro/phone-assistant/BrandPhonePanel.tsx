@@ -1,10 +1,10 @@
 /**
- * BrandPhonePanel — Reusable phone assistant panel for Zone 1 brand management.
- * Shows number status, call log, configuration for a specific brand.
- * Uses the same components as Zone 2 KiTelefonPage but scoped to a brand.
+ * BrandPhonePanel — Zone 1 phone assistant panel for a specific brand.
+ * Uses useBrandPhoneAssistant hook (brand_key scoped) instead of usePhoneAssistant (user_id scoped).
  */
 import { Badge } from '@/components/ui/badge';
-import { Phone } from 'lucide-react';
+import { Phone, Loader2, Save, CheckCircle } from 'lucide-react';
+import { useBrandPhoneAssistant } from '@/hooks/useBrandPhoneAssistant';
 import { StatusForwardingCard } from './StatusForwardingCard';
 import { VoiceSettingsCard } from './VoiceSettingsCard';
 import { ContentCard } from './ContentCard';
@@ -19,31 +19,63 @@ interface BrandPhonePanelProps {
 }
 
 export default function BrandPhonePanel({ brandKey, brandLabel, tier }: BrandPhonePanelProps) {
-  // TODO: In a future iteration, each brand will have its own assistant record.
-  // For now, show a placeholder with brand info and tier badge.
+  const {
+    config,
+    isLoading,
+    saveStatus,
+    updateConfig,
+    calls,
+    callsLoading,
+    refetchAssistant,
+  } = useBrandPhoneAssistant(brandKey);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-sm text-muted-foreground">Lade {brandLabel}…</span>
+      </div>
+    );
+  }
+
+  if (!config) {
+    return (
+      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center">
+        <p className="text-sm text-destructive">Assistent konnte nicht geladen werden.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Phone className="h-5 w-5 text-muted-foreground" />
-        <h2 className="text-lg font-semibold">{brandLabel}</h2>
-        <Badge variant={tier === 'premium' ? 'default' : 'secondary'} className="text-xs">
-          {tier === 'premium' ? '⭐ Premium (ElevenLabs)' : 'Standard (Twilio TTS)'}
-        </Badge>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Phone className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">{brandLabel}</h2>
+          <Badge variant={tier === 'premium' ? 'default' : 'secondary'} className="text-xs">
+            {tier === 'premium' ? '⭐ Premium (ElevenLabs)' : 'Standard (Twilio TTS)'}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {saveStatus === 'saving' && <><Save className="h-3 w-3 animate-pulse" /> Speichern…</>}
+          {saveStatus === 'saved' && <><CheckCircle className="h-3 w-3 text-green-500" /> Gespeichert</>}
+        </div>
       </div>
 
-      <div className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center text-muted-foreground">
-        <Phone className="mx-auto mb-3 h-10 w-10 opacity-40" />
-        <p className="text-sm font-medium">Telefonassistent für {brandLabel}</p>
-        <p className="mt-1 text-xs">
-          Hier wird der {tier === 'premium' ? 'Premium-Telefonassistent mit ElevenLabs' : 'Standard-Telefonassistent'} für die Marke {brandLabel} konfiguriert.
-        </p>
-        <p className="mt-3 text-xs text-muted-foreground/60">
-          Nummernkauf, Begrüßung, Stimme, Regeln und Anrufprotokoll — alles an einem Ort.
-          <br />
-          Integration folgt im nächsten Schritt.
-        </p>
+      {/* Cards Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <StatusForwardingCard config={config} onUpdate={updateConfig} onRefresh={refetchAssistant} />
+        <VoiceSettingsCard config={config} onUpdate={updateConfig} />
+        <ContentCard config={config} onUpdate={updateConfig} />
+        <RulesCard config={config} onUpdate={updateConfig} />
+        <div className="lg:col-span-2">
+          <DocumentationCard config={config} onUpdate={updateConfig} />
+        </div>
       </div>
+
+      {/* Call Log */}
+      <CallLogSection calls={calls} isLoading={callsLoading} />
     </div>
   );
 }
