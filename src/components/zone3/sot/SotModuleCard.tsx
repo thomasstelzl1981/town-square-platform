@@ -152,7 +152,7 @@ export function SotModuleCard({
 
         {/* CTA */}
         <Link 
-          to={`/website/sot/module/${module.code.toLowerCase()}`}
+          to={`/website/sot/module/${module.code}`}
           className="sot-btn-ghost text-sm w-full justify-center group"
         >
           Mehr erfahren

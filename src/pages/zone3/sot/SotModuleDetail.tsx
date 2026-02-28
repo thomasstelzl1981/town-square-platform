@@ -19,9 +19,9 @@ export default function SotModuleDetail() {
   const { moduleId } = useParams<{ moduleId: string }>();
   const { ref: heroRef, isVisible: heroVisible } = useSotScrollAnimation();
 
-  // Find module by code (e.g., "mod-01" → "MOD-01")
+  // Find module by slug (e.g., "ki-office", "immobilien")
   const mod = SOT_WEBSITE_MODULES.find(
-    m => m.code.toLowerCase() === moduleId?.toLowerCase()
+    m => m.code === moduleId
   );
 
   if (!mod) {
@@ -156,7 +156,7 @@ export default function SotModuleDetail() {
           <div className="flex justify-between items-center">
             {prevModule ? (
               <Link 
-                to={`/website/sot/module/${prevModule.code.toLowerCase()}`}
+                to={`/website/sot/module/${prevModule.code}`}
                 className="flex items-center gap-2 text-sm hover:underline"
                 style={{ color: 'hsl(var(--z3-muted-foreground))' }}
               >
@@ -166,7 +166,7 @@ export default function SotModuleDetail() {
             ) : <div />}
             {nextModule ? (
               <Link 
-                to={`/website/sot/module/${nextModule.code.toLowerCase()}`}
+                to={`/website/sot/module/${nextModule.code}`}
                 className="flex items-center gap-2 text-sm hover:underline"
                 style={{ color: 'hsl(var(--z3-muted-foreground))' }}
               >
