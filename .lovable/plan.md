@@ -1,38 +1,18 @@
 
 
-## Analyse: Warum der Nummernkauf still scheitert
+## Problem
+Die Edge Function nutzt `TWILIO_ACCOUNT_SID:TWILIO_AUTH_TOKEN` für Basic Auth. Der User hat stattdessen einen **Twilio API Key** bereitgestellt (`SK...` + Secret). Bei Twilio API Keys ist die Basic Auth: `ApiKeySid:ApiKeySecret`, aber die Account SID (`AC...`) wird weiterhin in den URL-Pfaden benötigt.
 
-### Ursache 1: Fehlende config.toml-Registrierung
-`sot-phone-provision` ist **nicht** in `supabase/config.toml` registriert. Alle anderen ~60 Edge Functions haben dort einen Eintrag mit `verify_jwt = false`. Ohne diesen Eintrag verhält sich die JWT-Validierung am Gateway anders und kann zu stiller Ablehnung führen.
+## Plan
 
-Gleiches gilt für `sot-phone-inbound` und `sot-phone-postcall` — keine der Phone-Functions ist registriert.
+### 1. Neue Secrets anlegen
+- `TWILIO_API_KEY_SID` = `SK8676e98953f1b921eaaf52bbd1d6c92f`
+- `TWILIO_API_KEY_SECRET` = `JqzweJEVIhKgL1AqECHfcqzsvjM5FZ0z`
 
-### Ursache 2: Kein Debug-Logging
-Die Funktion hat keinerlei `console.log()` am Anfang des Handlers. Deshalb sehen wir in den Logs nur "booted" → "shutdown" — keine Information darüber, ob der Auth-Check, der Twilio-API-Call oder etwas anderes fehlschlägt.
+### 2. sot-phone-provision: Auth auf API Key umstellen
+- Basic Auth ändern von `TWILIO_SID:TWILIO_TOKEN` zu `TWILIO_API_KEY_SID:TWILIO_API_KEY_SECRET`
+- `TWILIO_ACCOUNT_SID` weiterhin für URL-Pfade verwenden (bleibt unverändert)
+- Gleiche Änderung in `sot-phone-inbound` und `sot-phone-postcall` falls diese auch Twilio-API-Calls machen
 
-### Ursache 3: Potentieller Twilio-API-Timeout
-Falls der Request doch durchkommt: Die Twilio AvailablePhoneNumbers API + Purchase ist ein Two-Step-Call. Wenn der erste Call (Suche) oder zweite (Kauf) langsam antwortet, kann das Edge Function Timeout (150s) greifen.
-
----
-
-## Implementierungsplan
-
-### 1. config.toml — Alle Phone-Functions registrieren
-Einträge hinzufügen für:
-- `sot-phone-provision` → `verify_jwt = false`
-- `sot-phone-inbound` → `verify_jwt = false`  
-- `sot-phone-postcall` → `verify_jwt = false`
-
-### 2. sot-phone-provision — Debug-Logging hinzufügen
-An folgenden Stellen `console.log()` einfügen:
-- Zeile 14: `console.log("provision handler called, method:", req.method)`
-- Nach Auth-Check (Zeile 37): `console.log("authenticated user:", userId)`
-- Nach JSON-Parse (Zeile 39): `console.log("action:", action, "brand_key:", brand_key)`
-- Vor Twilio-Search (Zeile 62): `console.log("searching Twilio for", cc, "numbers...")`
-- Nach Twilio-Search (Zeile 65): `console.log("Twilio search response status:", searchRes.status)`
-- Vor Twilio-Buy (Zeile 89): `console.log("purchasing number:", number.phone_number)`
-- Nach Twilio-Buy (Zeile 97): `console.log("Twilio buy response status:", buyRes.status)`
-
-### 3. Redeploy + Erneuter Test
-Nach dem Deployment erneut den Kauf-Button drücken. Die Logs zeigen dann exakt, wo der Prozess hängt oder scheitert.
+### 3. Redeploy + Test
 
