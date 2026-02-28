@@ -1,7 +1,7 @@
 /**
  * NCORE DIGITALISIERUNG — Redesign: Alternating dark/light with tech-AI image
  */
-import { Helmet } from 'react-helmet';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { Link } from 'react-router-dom';
 import { Cpu, Zap, BarChart3, ArrowRight, Bot, FileSearch, Workflow, Shield } from 'lucide-react';
 import techAiImg from '@/assets/ncore/tech-ai.jpg';
@@ -23,22 +23,17 @@ const FAQ = [
 export default function NcoreDigitalisierung() {
   return (
     <>
-      <Helmet>
-        <title>Digitalisierung & KI für KMU — Ncore Business Consulting</title>
-        <meta name="description" content="KI-gestützte Digitalisierung für kleine und mittelständische Unternehmen. Prozessautomatisierung, KI-Integration und einheitliche Softwarelösungen." />
-        <meta property="og:title" content="Digitalisierung & KI für KMU — Ncore Business Consulting" />
-        <meta property="og:url" content="https://ncore.online/digitalisierung" />
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org", "@type": "Service",
-          "name": "Digitalisierung & KI-Beratung für KMU",
-          "provider": { "@id": "https://ncore.online/#organization" },
-          "description": "Ganzheitliche Digitalisierungsberatung mit KI-Integration für KMU.",
-        })}</script>
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org", "@type": "FAQPage",
-          "mainEntity": FAQ.map(f => ({ "@type": "Question", "name": f.q, "acceptedAnswer": { "@type": "Answer", "text": f.a } })),
-        })}</script>
-      </Helmet>
+      <SEOHead
+        brand="ncore"
+        page={{
+          title: 'Digitalisierung & KI für KMU',
+          description: 'KI-gestützte Digitalisierung für kleine und mittelständische Unternehmen. Prozessautomatisierung, KI-Integration und einheitliche Softwarelösungen.',
+          path: '/digitalisierung',
+        }}
+        faq={FAQ.map(f => ({ question: f.q, answer: f.a }))}
+        services={[{ name: 'Digitalisierung & KI-Beratung für KMU', description: 'Ganzheitliche Digitalisierungsberatung mit KI-Integration für KMU.' }]}
+      />
+      
 
       {/* ── Hero — Dark with tech image ── */}
       <section className="relative py-28 px-4 overflow-hidden">

@@ -4,7 +4,7 @@
  * Design: Light, warm, Telis-Finanz-Stil
  */
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import {
   ArrowRight, CheckCircle2, TrendingUp, Wallet,
   Shield, Users, Building2
@@ -71,14 +71,15 @@ export default function OttoUnternehmer() {
 
   return (
     <>
-      <Helmet>
-        <title>Für Unternehmer — Otto² Advisory | Finanzierung & Nachfolge</title>
-        <meta name="description" content="Beratung für Unternehmer: Nachfolgeplanung, Finanzierung, Fördermittel, Gewerbe-Risikostruktur und betriebliche Altersvorsorge — strukturiert und transparent." />
-        <link rel="canonical" href="https://otto2advisory.com/unternehmer" />
-        <meta property="og:title" content="Für Unternehmer — Otto² Advisory" />
-        <meta property="og:description" content="Finanzierung, Absicherung und strategische Beratung für Ihr Unternehmen." />
-        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
-      </Helmet>
+      <SEOHead
+        brand="otto"
+        page={{
+          title: 'Für Unternehmer — Finanzierung & Nachfolge',
+          description: 'Beratung für Unternehmer: Nachfolgeplanung, Finanzierung, Fördermittel, Gewerbe-Risikostruktur und betriebliche Altersvorsorge — strukturiert und transparent.',
+          path: '/unternehmer',
+        }}
+        services={[{ name: 'Unternehmensberatung', description: 'Finanzberatung für Unternehmer: Nachfolgeplanung, Finanzierung, Gewerberisiken und bAV.' }]}
+      />
 
       {/* Hero with Image */}
       <section className="relative py-20 px-4 md:py-28 overflow-hidden">

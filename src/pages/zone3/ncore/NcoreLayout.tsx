@@ -6,6 +6,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Cpu, Menu, X, ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { ArmstrongWidget } from '@/components/zone3/ArmstrongWidget';
 
 const NAV_ITEMS = [
@@ -34,45 +35,21 @@ export default function NcoreLayout() {
 
   return (
     <>
+      <SEOHead
+        brand="ncore"
+        page={{
+          title: 'Unternehmensberatung für KMU',
+          description: 'Ganzheitliche Unternehmensberatung für KMU: KI-gestützte Digitalisierung, österreichische Stiftungsmodelle, Vermögensschutz und Geschäftsmodellentwicklung.',
+          path: location.pathname.replace('/website/ncore', '') || '/',
+        }}
+      />
       <Helmet>
         <html lang="de" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-        <meta property="og:site_name" content="Ncore Business Consulting" />
-        <meta property="og:type" content="website" />
-        <meta property="og:locale" content="de_DE" />
         <meta name="author" content="Ncore Business Consulting" />
-        <link rel="canonical" href={`https://ncore.online${location.pathname.replace('/website/ncore', '') || '/'}`} />
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "ProfessionalService",
-          "@id": "https://ncore.online/#organization",
-          "name": "Ncore Business Consulting",
-          "url": "https://ncore.online",
-          "description": "Ganzheitliche Unternehmensberatung für KMU: KI-gestützte Digitalisierung, österreichische Stiftungsmodelle, Vermögensschutz und Geschäftsmodellentwicklung.",
-          "slogan": "Connecting Dots. Connecting People.",
-          "areaServed": [
-            { "@type": "Country", "name": "Germany" },
-            { "@type": "Country", "name": "Austria" },
-          ],
-          "knowsAbout": [
-            "KMU-Digitalisierung", "Künstliche Intelligenz für Unternehmen", "Prozessautomatisierung",
-            "Österreichische Privatstiftungen", "Vermögensschutz und -strukturierung", "Wegzugsbesteuerung",
-            "Geschäftsmodellentwicklung", "Vertriebssysteme", "Businessplan-Erstellung", "Pitch Deck Entwicklung",
-          ],
-          "hasOfferCatalog": {
-            "@type": "OfferCatalog",
-            "name": "Beratungsleistungen",
-            "itemListElement": [
-              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Digitalisierung & KI-Beratung", "description": "Operative KI-Integration und Prozessautomatisierung für KMU." } },
-              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Stiftungen & Vermögensschutz", "description": "Österreichische Stiftungsmodelle und generationsübergreifender Vermögensschutz." } },
-              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Geschäftsmodelle & Vertrieb", "description": "Geschäftsmodellentwicklung, Businesspläne und digitalisierte Vertriebssysteme." } },
-            ],
-          },
-          "contactPoint": { "@type": "ContactPoint", "contactType": "customer service", "email": "info@ncore.online", "availableLanguage": ["Deutsch", "Englisch"] },
-        })}</script>
       </Helmet>
 
       <div className="min-h-screen bg-slate-900 text-slate-100" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>

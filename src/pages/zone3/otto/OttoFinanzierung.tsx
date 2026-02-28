@@ -5,7 +5,7 @@
  * SEO: Baufinanzierung beantragen, Immobilienfinanzierung, Bonitätscheck
  * Design: Light, warm, Telis-Finanz-Stil
  */
-import { Helmet } from 'react-helmet';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { Landmark, ArrowRight, ArrowLeft, CheckCircle2, FileText, Shield, Users, Send, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -71,7 +71,7 @@ export default function OttoFinanzierung() {
   if (submitted) {
     return (
       <>
-        <Helmet><title>Anfrage eingereicht — Otto² Advisory</title></Helmet>
+        <SEOHead brand="otto" page={{ title: 'Anfrage eingereicht', description: 'Ihre Finanzierungsanfrage wurde erfolgreich eingereicht.', path: '/finanzierung', noIndex: true }} />
         <section className="flex min-h-[70vh] flex-col items-center justify-center px-4 text-center">
           <div className="rounded-full bg-green-50 p-6 mb-6">
             <CheckCircle2 className="h-16 w-16 text-green-500" />
@@ -88,12 +88,15 @@ export default function OttoFinanzierung() {
 
   return (
     <>
-      <Helmet>
-        <title>Finanzierung beantragen — Otto² Advisory | Immobilienfinanzierung</title>
-        <meta name="description" content="Starten Sie Ihre Immobilienfinanzierung digital. Bonitätsdaten strukturiert erfassen — schnell, sicher und unverbindlich bei Otto² Advisory." />
-        <link rel="canonical" href="https://otto2advisory.com/finanzierung" />
-        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
-      </Helmet>
+      <SEOHead
+        brand="otto"
+        page={{
+          title: 'Finanzierung beantragen — Immobilienfinanzierung',
+          description: 'Starten Sie Ihre Immobilienfinanzierung digital. Bonitätsdaten strukturiert erfassen — schnell, sicher und unverbindlich bei Otto² Advisory.',
+          path: '/finanzierung',
+        }}
+        services={[{ name: 'Finanzierung beantragen', description: 'Immobilienfinanzierung digital beantragen. Bonitätsdaten strukturiert erfassen.' }]}
+      />
 
       <section className="py-20 px-4 md:py-28">
         <div className="mx-auto max-w-3xl">

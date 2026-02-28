@@ -1,7 +1,7 @@
 /**
  * NCORE GRÜNDER — Redesign: Alternating dark/light with advisory image
  */
-import { Helmet } from 'react-helmet';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Briefcase, GraduationCap, Network, Globe, Cpu, Shield } from 'lucide-react';
 import advisoryImg from '@/assets/ncore/advisory-session.jpg';
@@ -18,23 +18,14 @@ const EXPERTISE_AREAS = [
 export default function NcoreGruender() {
   return (
     <>
-      <Helmet>
-        <title>Der Gründer — Ncore Business Consulting</title>
-        <meta name="description" content="Über den Gründer von Ncore Business Consulting: Langjährige Erfahrung in Finanz- und Unternehmensberatung, operative KI-Kompetenz und ein exzellentes Netzwerk." />
-        <meta property="og:title" content="Der Gründer — Ncore Business Consulting" />
-        <meta property="og:url" content="https://ncore.online/gruender" />
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "ProfilePage",
-          "mainEntity": {
-            "@type": "Person",
-            "name": "Gründer",
-            "jobTitle": "Geschäftsführer",
-            "worksFor": { "@id": "https://ncore.online/#organization" },
-            "knowsAbout": ["KMU-Digitalisierung", "Künstliche Intelligenz", "Stiftungen", "Vermögensstrukturierung", "Geschäftsmodellentwicklung"],
-          },
-        })}</script>
-      </Helmet>
+      <SEOHead
+        brand="ncore"
+        page={{
+          title: 'Der Gründer',
+          description: 'Über den Gründer von Ncore Business Consulting: Langjährige Erfahrung in Finanz- und Unternehmensberatung, operative KI-Kompetenz und ein exzellentes Netzwerk.',
+          path: '/gruender',
+        }}
+      />
 
       {/* ── Hero — Dark ── */}
       <section className="relative py-28 px-4 overflow-hidden">

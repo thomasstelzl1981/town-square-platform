@@ -1,7 +1,7 @@
 /**
  * NCORE KONTAKT — Redesign: Light form, dark hero, preserved lead submission
  */
-import { Helmet } from 'react-helmet';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { useState } from 'react';
 import { Mail, Phone, MapPin, ArrowRight, CheckCircle2, Send, Briefcase, Handshake } from 'lucide-react';
 import { toast } from 'sonner';
@@ -54,10 +54,7 @@ export default function NcoreKontakt() {
   if (sent) {
     return (
       <>
-        <Helmet>
-          <title>Nachricht gesendet — Ncore Business Consulting</title>
-          <meta name="robots" content="noindex" />
-        </Helmet>
+        <SEOHead brand="ncore" page={{ title: 'Nachricht gesendet', description: 'Ihre Nachricht wurde erfolgreich gesendet.', path: '/kontakt', noIndex: true }} />
         <section className="flex min-h-[70vh] items-center justify-center px-4">
           <div className="max-w-md text-center">
             <CheckCircle2 className="mx-auto mb-6 h-16 w-16 text-emerald-400" />
@@ -76,20 +73,14 @@ export default function NcoreKontakt() {
 
   return (
     <>
-      <Helmet>
-        <title>Kontakt — Ncore Business Consulting</title>
-        <meta name="description" content="Kontaktieren Sie Ncore Business Consulting für ein unverbindliches Erstgespräch zu Digitalisierung, Stiftungen oder Geschäftsmodellen." />
-        <meta property="og:title" content="Kontakt — Ncore Business Consulting" />
-        <meta property="og:url" content="https://ncore.online/kontakt" />
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org", "@type": "ContactPage",
-          "name": "Kontakt — Ncore Business Consulting",
-          "url": "https://ncore.online/kontakt",
-          "mainEntity": { "@type": "Organization", "@id": "https://ncore.online/#organization",
-            "contactPoint": { "@type": "ContactPoint", "contactType": "customer service", "email": "info@ncore.online" },
-          },
-        })}</script>
-      </Helmet>
+      <SEOHead
+        brand="ncore"
+        page={{
+          title: 'Kontakt',
+          description: 'Kontaktieren Sie Ncore Business Consulting für ein unverbindliches Erstgespräch zu Digitalisierung, Stiftungen oder Geschäftsmodellen.',
+          path: '/kontakt',
+        }}
+      />
 
       {/* ── Hero — Dark ── */}
       <section className="py-28 px-4">

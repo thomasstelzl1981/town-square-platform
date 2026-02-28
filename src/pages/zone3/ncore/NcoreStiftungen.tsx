@@ -1,7 +1,7 @@
 /**
  * NCORE STIFTUNGEN — Redesign: Alternating dark/light sections
  */
-import { Helmet } from 'react-helmet';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { Link } from 'react-router-dom';
 import { Shield, Scale, Globe, ArrowRight, Users, Landmark, Lock, Building2, CheckCircle2 } from 'lucide-react';
 
@@ -15,21 +15,16 @@ const FAQ = [
 export default function NcoreStiftungen() {
   return (
     <>
-      <Helmet>
-        <title>Stiftungen & Vermögensschutz — Ncore Business Consulting</title>
-        <meta name="description" content="Österreichische Stiftungsmodelle, generationsübergreifender Vermögensschutz und Wegzugsbesteuerung. Beratung und Orchestrierung mit RA- und StB-Netzwerk." />
-        <meta property="og:title" content="Stiftungen & Vermögensschutz — Ncore Business Consulting" />
-        <meta property="og:url" content="https://ncore.online/stiftungen" />
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org", "@type": "Service",
-          "name": "Stiftungs- und Vermögensstrukturierung",
-          "provider": { "@id": "https://ncore.online/#organization" },
-        })}</script>
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org", "@type": "FAQPage",
-          "mainEntity": FAQ.map(f => ({ "@type": "Question", "name": f.q, "acceptedAnswer": { "@type": "Answer", "text": f.a } })),
-        })}</script>
-      </Helmet>
+      <SEOHead
+        brand="ncore"
+        page={{
+          title: 'Stiftungen & Vermögensschutz',
+          description: 'Österreichische Stiftungsmodelle, generationsübergreifender Vermögensschutz und Wegzugsbesteuerung. Beratung und Orchestrierung mit RA- und StB-Netzwerk.',
+          path: '/stiftungen',
+        }}
+        faq={FAQ.map(f => ({ question: f.q, answer: f.a }))}
+        services={[{ name: 'Stiftungs- und Vermögensstrukturierung', description: 'Österreichische Stiftungsmodelle und generationsübergreifender Vermögensschutz.' }]}
+      />
 
       {/* ── Hero — Dark ── */}
       <section className="relative py-28 px-4 overflow-hidden">

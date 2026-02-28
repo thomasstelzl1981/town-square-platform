@@ -1,7 +1,7 @@
 /**
  * NCORE NETZWERK — Redesign: Alternating dark/light with handshake image
  */
-import { Helmet } from 'react-helmet';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { Link } from 'react-router-dom';
 import { Network, Building2, Scale, Landmark, Cpu, ArrowRight, Shield, Globe, Users, Handshake } from 'lucide-react';
 import networkImg from '@/assets/ncore/network-handshake.jpg';
@@ -18,12 +18,14 @@ const NETWORK_CATEGORIES = [
 export default function NcoreNetzwerk() {
   return (
     <>
-      <Helmet>
-        <title>Unser Netzwerk — Ncore Business Consulting</title>
-        <meta name="description" content="Hervorragendes Netzwerk in der Unternehmens- und Bankenwelt. Rechtsanwälte, Steuerberater, Banken, KI-Partner und Versicherungen — alles für KMU." />
-        <meta property="og:title" content="Unser Netzwerk — Ncore Business Consulting" />
-        <meta property="og:url" content="https://ncore.online/netzwerk" />
-      </Helmet>
+      <SEOHead
+        brand="ncore"
+        page={{
+          title: 'Unser Netzwerk',
+          description: 'Hervorragendes Netzwerk in der Unternehmens- und Bankenwelt. Rechtsanwälte, Steuerberater, Banken, KI-Partner und Versicherungen — alles für KMU.',
+          path: '/netzwerk',
+        }}
+      />
 
       {/* ── Hero — Dark with image ── */}
       <section className="relative py-28 px-4 overflow-hidden">

@@ -1,7 +1,7 @@
 /**
  * NCORE GESCHÄFTSMODELLE — Redesign: Alternating dark/light
  */
-import { Helmet } from 'react-helmet';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { Link } from 'react-router-dom';
 import { TrendingUp, Lightbulb, Megaphone, ArrowRight, Target, BarChart3, Users, Zap, CheckCircle2 } from 'lucide-react';
 
@@ -14,21 +14,16 @@ const FAQ = [
 export default function NcoreGeschaeftsmodelle() {
   return (
     <>
-      <Helmet>
-        <title>Geschäftsmodelle & Vertrieb — Ncore Business Consulting</title>
-        <meta name="description" content="Von der Geschäftsidee zum skalierbaren Modell. Businesspläne, Pitch Decks, Vertriebssysteme und CRM-Digitalisierung für KMU." />
-        <meta property="og:title" content="Geschäftsmodelle & Vertrieb — Ncore Business Consulting" />
-        <meta property="og:url" content="https://ncore.online/geschaeftsmodelle" />
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org", "@type": "Service",
-          "name": "Geschäftsmodell- und Vertriebsberatung",
-          "provider": { "@id": "https://ncore.online/#organization" },
-        })}</script>
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org", "@type": "FAQPage",
-          "mainEntity": FAQ.map(f => ({ "@type": "Question", "name": f.q, "acceptedAnswer": { "@type": "Answer", "text": f.a } })),
-        })}</script>
-      </Helmet>
+      <SEOHead
+        brand="ncore"
+        page={{
+          title: 'Geschäftsmodelle & Vertrieb',
+          description: 'Von der Geschäftsidee zum skalierbaren Modell. Businesspläne, Pitch Decks, Vertriebssysteme und CRM-Digitalisierung für KMU.',
+          path: '/geschaeftsmodelle',
+        }}
+        faq={FAQ.map(f => ({ question: f.q, answer: f.a }))}
+        services={[{ name: 'Geschäftsmodell- und Vertriebsberatung', description: 'Von der Idee zum skalierbaren Geschäftsmodell mit digitalem Vertrieb.' }]}
+      />
 
       {/* ── Hero — Dark ── */}
       <section className="relative py-28 px-4 overflow-hidden">

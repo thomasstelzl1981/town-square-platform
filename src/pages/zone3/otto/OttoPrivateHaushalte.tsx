@@ -4,7 +4,7 @@
  * Design: Light, warm, Telis-Finanz-Stil
  */
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import {
   ArrowRight, Shield, PiggyBank, Home, Wallet,
   Heart, GraduationCap, TrendingUp, Users
@@ -34,14 +34,15 @@ export default function OttoPrivateHaushalte() {
 
   return (
     <>
-      <Helmet>
-        <title>Für Privathaushalte — Otto² Advisory | Vorsorge & Finanzierung</title>
-        <meta name="description" content="Ganzheitliche Finanzberatung für Familien: Altersvorsorge, Immobilienfinanzierung, Vermögensaufbau und staatliche Förderung — fair, transparent und ehrlich." />
-        <link rel="canonical" href="https://otto2advisory.com/private-haushalte" />
-        <meta property="og:title" content="Für Privathaushalte — Otto² Advisory" />
-        <meta property="og:description" content="Immobilienfinanzierung, Altersvorsorge und Vermögensaufbau — maßgeschneidert auf Ihre Lebenssituation." />
-        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
-      </Helmet>
+      <SEOHead
+        brand="otto"
+        page={{
+          title: 'Für Privathaushalte — Vorsorge & Finanzierung',
+          description: 'Ganzheitliche Finanzberatung für Familien: Altersvorsorge, Immobilienfinanzierung, Vermögensaufbau und staatliche Förderung — fair, transparent und ehrlich.',
+          path: '/private-haushalte',
+        }}
+        services={[{ name: 'Private Finanzberatung', description: 'Ganzheitliche Finanzberatung für Privathaushalte: Altersvorsorge, Versicherung, Immobilienfinanzierung, Vermögensaufbau und staatliche Förderung.' }]}
+      />
 
       {/* Hero with Image */}
       <section className="relative py-20 px-4 md:py-28 overflow-hidden">

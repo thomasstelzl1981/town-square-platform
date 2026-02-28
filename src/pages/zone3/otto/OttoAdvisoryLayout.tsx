@@ -8,6 +8,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Menu, X, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { ArmstrongWidget } from '@/components/zone3/ArmstrongWidget';
 
 const NAV_ITEMS = [
@@ -35,6 +36,14 @@ export default function OttoAdvisoryLayout() {
 
   return (
     <div className="min-h-screen bg-white text-slate-800" style={{ fontFamily: "'Source Sans 3', 'Source Sans Pro', sans-serif" }}>
+      <SEOHead
+        brand="otto"
+        page={{
+          title: 'Ganzheitliche Finanzberatung',
+          description: 'Finanz- und Vorsorgekonzepte für Unternehmer und Familien. Erst Analyse, dann Zielbild — strukturiert umsetzen.',
+          path: location.pathname.replace('/website/otto-advisory', '') || '/',
+        }}
+      />
       <Helmet>
         <meta name="theme-color" content="#0055A4" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
