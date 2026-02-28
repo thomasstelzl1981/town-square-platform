@@ -41,7 +41,6 @@ export function useBrandPhoneAssistant(brandKey: string) {
       const { data: created, error: createErr } = await supabase
         .from('commpro_phone_assistants')
         .insert({
-          user_id: user.id,
           brand_key: brandKey,
           tier: 'premium',
           display_name: brandKey.charAt(0).toUpperCase() + brandKey.slice(1) + ' Telefonassistent',

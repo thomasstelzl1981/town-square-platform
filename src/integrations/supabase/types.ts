@@ -4723,7 +4723,7 @@ export type Database = {
           twilio_number_sid: string | null
           twilio_phone_number_e164: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
           voice_preset_key: string
           voice_provider: string | null
           voice_settings: Json
@@ -4745,7 +4745,7 @@ export type Database = {
           twilio_number_sid?: string | null
           twilio_phone_number_e164?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
           voice_preset_key?: string
           voice_provider?: string | null
           voice_settings?: Json
@@ -4767,7 +4767,7 @@ export type Database = {
           twilio_number_sid?: string | null
           twilio_phone_number_e164?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
           voice_preset_key?: string
           voice_provider?: string | null
           voice_settings?: Json
