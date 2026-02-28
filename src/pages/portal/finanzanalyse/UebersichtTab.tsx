@@ -363,7 +363,8 @@ export default function UebersichtTab() {
                     </Select>
                   </div>
 
-                  {form.employment_status === 'angestellt' && (
+                  {/* Angestellten-Felder: immer sichtbar außer bei beamter/rentner/nicht_erwerbstaetig */}
+                  {form.employment_status !== 'beamter' && form.employment_status !== 'rentner' && form.employment_status !== 'nicht_erwerbstaetig' && (
                     <>
                       <FormInput label="Arbeitgeber" name="employer_name" value={form.employer_name || ''}
                         onChange={e => updateField(person.id, 'employer_name', e.target.value)} />
@@ -454,19 +455,19 @@ export default function UebersichtTab() {
                     </>
                   )}
 
-                  {form.employment_status === 'selbstaendig' && (
-                    <>
-                      <FormInput label="Firmenname" name="employer_name" value={form.employer_name || ''}
-                        onChange={e => updateField(person.id, 'employer_name', e.target.value)} />
-                      <FormInput label="Einkünfte aus Gewerbebetrieb (€/mtl.)" name="business_income_monthly" type="number"
-                        value={form.business_income_monthly || ''}
-                        onChange={e => updateField(person.id, 'business_income_monthly', e.target.value)} />
-                    </>
+                  {/* Selbstständig-Felder: immer sichtbar außer bei beamter/rentner/nicht_erwerbstaetig */}
+                  {form.employment_status !== 'beamter' && form.employment_status !== 'rentner' && form.employment_status !== 'nicht_erwerbstaetig' && (
+                    <FormInput label="Einkünfte aus Gewerbebetrieb (€/mtl.)" name="business_income_monthly" type="number"
+                      value={form.business_income_monthly || ''}
+                      onChange={e => updateField(person.id, 'business_income_monthly', e.target.value)} />
                   )}
 
                   <FormInput label="Einkünfte aus Photovoltaik (€/mtl.)" name="pv_income_monthly" type="number"
                     value={form.pv_income_monthly || ''}
                     onChange={e => updateField(person.id, 'pv_income_monthly', e.target.value)} />
+                  <FormInput label="Sonstige Einnahmen (€/mtl.)" name="other_income_monthly" type="number"
+                    value={form.other_income_monthly || ''}
+                    onChange={e => updateField(person.id, 'other_income_monthly', e.target.value)} />
                 </div>
               </div>
 

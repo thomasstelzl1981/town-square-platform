@@ -1,0 +1,1 @@
+ALTER TABLE public.household_persons ADD COLUMN IF NOT EXISTS other_income_monthly numeric DEFAULT 0;

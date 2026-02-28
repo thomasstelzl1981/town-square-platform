@@ -152,6 +152,7 @@ export interface FUHouseholdPerson {
   pv_income_monthly?: number | null;
   child_allowances?: number | null;
   employment_status?: string | null;
+  other_income_monthly?: number | null;
 }
 
 export interface FUDepotAccount {

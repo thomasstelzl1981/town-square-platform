@@ -46,7 +46,7 @@ export function useFinanzberichtData(): FinanzberichtData {
       if (!activeTenantId) return [];
       const { data } = await supabase
         .from('household_persons')
-        .select('id, role, first_name, last_name, net_income_monthly, gross_income_monthly, business_income_monthly, pv_income_monthly, child_allowances, employment_status')
+        .select('id, role, first_name, last_name, net_income_monthly, gross_income_monthly, business_income_monthly, pv_income_monthly, child_allowances, employment_status, other_income_monthly')
         .eq('tenant_id', activeTenantId)
         .order('sort_order', { ascending: true });
       return data || [];

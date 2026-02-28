@@ -384,21 +384,6 @@ export default function KontenTab() {
           );
         })}
 
-        <WidgetCell>
-          <div
-            className="h-full w-full rounded-xl border-2 border-dashed border-primary/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
-            role="button"
-            tabIndex={0}
-            onClick={() => setShowAddDialog(true)}
-          >
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Plus className="h-6 w-6 text-primary" />
-              </div>
-              <p className="text-sm font-medium">Konto hinzufügen</p>
-            </div>
-          </div>
-        </WidgetCell>
       </WidgetGrid>
 
       {openKontoId && (
