@@ -159,9 +159,9 @@ Deno.serve(async (req) => {
     const sbUser = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: claimsData, error: claimsErr } = await sbUser.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims?.sub) return json({ error: "Invalid user" }, 401);
-    const userId = claimsData.claims.sub as string;
+    const { data: { user }, error: userErr } = await sbUser.auth.getUser(token);
+    if (userErr || !user?.id) return json({ error: "Invalid user" }, 401);
+    const userId = user.id;
 
     const { data: profile } = await sbUser
       .from("profiles")

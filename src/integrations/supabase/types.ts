@@ -8864,6 +8864,7 @@ export type Database = {
           marital_status: string | null
           net_income_monthly: number | null
           net_income_range: string | null
+          other_income_monthly: number | null
           phone: string | null
           phone_landline: string | null
           planned_retirement_date: string | null
@@ -8903,6 +8904,7 @@ export type Database = {
           marital_status?: string | null
           net_income_monthly?: number | null
           net_income_range?: string | null
+          other_income_monthly?: number | null
           phone?: string | null
           phone_landline?: string | null
           planned_retirement_date?: string | null
@@ -8942,6 +8944,7 @@ export type Database = {
           marital_status?: string | null
           net_income_monthly?: number | null
           net_income_range?: string | null
+          other_income_monthly?: number | null
           phone?: string | null
           phone_landline?: string | null
           planned_retirement_date?: string | null

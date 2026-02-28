@@ -75,7 +75,7 @@ export function calcIncome(
     // Kindergeld: count children via child_allowances on adults
     const totalChildAllowances = adults.reduce((s, p) => s + (p.child_allowances || 0), 0);
     childBenefit = totalChildAllowances * KINDERGELD_PER_CHILD;
-    otherIncome = 0;
+    otherIncome = adults.reduce((s, p) => s + (p.other_income_monthly || 0), 0);
   } else {
     // Fallback to applicant_profiles
     netIncomeTotal = profiles.reduce((s, p) => s + (p.net_income_monthly || 0), 0);
