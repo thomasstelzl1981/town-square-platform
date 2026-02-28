@@ -88,6 +88,41 @@ Deno.serve(async (req) => {
       ? { column: "brand_key", value: brand_key }
       : { column: "user_id", value: userId };
 
+    // Debug action: list all Twilio addresses
+    if (action === "list_addresses") {
+      const allAddresses = [];
+      for (const host of twilioHosts) {
+        const addrUrl = `https://${host}/2010-04-01/Accounts/${TWILIO_SID}/Addresses.json?PageSize=50`;
+        const addrRes = await fetch(addrUrl, {
+          headers: { Authorization: `Basic ${twilioAuth}` },
+        });
+        const addrText = await addrRes.text();
+        try {
+          const addrData = JSON.parse(addrText);
+          if (addrData.addresses) {
+            for (const a of addrData.addresses) {
+              allAddresses.push({
+                sid: a.sid,
+                friendly_name: a.friendly_name,
+                customer_name: a.customer_name,
+                street: a.street,
+                city: a.city,
+                region: a.region,
+                postal_code: a.postal_code,
+                country: a.iso_country,
+                validated: a.validated,
+                verified: a.verified,
+              });
+            }
+          }
+        } catch { /* ignore parse errors */ }
+      }
+      return new Response(
+        JSON.stringify({ addresses: allAddresses, count: allAddresses.length }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (action === "purchase") {
       const cc = country_code || "DE";
       // Try Local first, then Mobile, then Toll-Free
