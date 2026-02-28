@@ -376,6 +376,8 @@ const kaufy2026ComponentMap: Record<string, React.ComponentType> = {
   Kaufy2026Vertrieb,
   Kaufy2026Impressum: React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Impressum')),
   Kaufy2026Datenschutz: React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Datenschutz')),
+  Kaufy2026Kontakt: React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Kontakt')),
+  Kaufy2026FAQ: React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026FAQ')),
 };
 
 
@@ -391,6 +393,7 @@ const futureroomComponentMap: Record<string, React.ComponentType> = {
   FutureRoomAkte: React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomAkteGuarded')),
   FutureRoomImpressum: React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomImpressum')),
   FutureRoomDatenschutz: React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomDatenschutz')),
+  FutureRoomKontakt: React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomKontakt')),
 };
 
 // =============================================================================
@@ -430,6 +433,8 @@ const acquiaryComponentMap: Record<string, React.ComponentType> = {
   AcquiaryObjekt,
   AcquiaryImpressum: React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryImpressum')),
   AcquiaryDatenschutz: React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryDatenschutz')),
+  AcquiaryKontakt: React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryKontakt')),
+  AcquiaryFAQ: React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryFAQ')),
 };
 
 // =============================================================================
@@ -460,6 +465,8 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
     LennoxMeinBereich,
     LennoxImpressum: React.lazy(() => import('@/pages/zone3/lennox/LennoxImpressum')),
     LennoxDatenschutz: React.lazy(() => import('@/pages/zone3/lennox/LennoxDatenschutz')),
+    LennoxKontakt: React.lazy(() => import('@/pages/zone3/lennox/LennoxKontakt')),
+    LennoxFAQ: React.lazy(() => import('@/pages/zone3/lennox/LennoxFAQ')),
   },
   'project-landing': {
     ProjectLandingHome,
@@ -486,6 +493,7 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
     OttoPrivateHaushalte: React.lazy(() => import('@/pages/zone3/otto/OttoPrivateHaushalte')),
     OttoFinanzierung: React.lazy(() => import('@/pages/zone3/otto/OttoFinanzierung')),
     OttoKontakt: React.lazy(() => import('@/pages/zone3/otto/OttoKontakt')),
+    OttoFAQ: React.lazy(() => import('@/pages/zone3/otto/OttoFAQ')),
     OttoImpressum: React.lazy(() => import('@/pages/zone3/otto/OttoImpressum')),
     OttoDatenschutz: React.lazy(() => import('@/pages/zone3/otto/OttoDatenschutz')),
   },

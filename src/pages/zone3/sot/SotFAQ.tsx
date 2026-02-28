@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { SotCTA } from '@/components/zone3/sot';
 import { useSotScrollAnimation } from '@/hooks/useSotScrollAnimation';
 import { Brand } from '@/components/ui/brand';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
 const faqItems = [
   {
@@ -122,6 +123,11 @@ export default function SotFAQ() {
 
   return (
     <div>
+      <SEOHead
+        brand="sot"
+        page={{ title: 'Häufige Fragen (FAQ) zur Digitalisierungsplattform', description: 'Antworten auf häufige Fragen zu System of a Town: Plattform, Module, KI-Assistent Armstrong, Kosten und Datensicherheit.', path: '/faq' }}
+        faq={faqItems.flatMap(cat => cat.questions.map(q => ({ question: q.q, answer: q.a })))}
+      />
       {/* Hero */}
       <section className="py-24 lg:py-32 sot-atmosphere relative">
         <div className="absolute inset-0 sot-grid-pattern opacity-10" />

@@ -133,9 +133,10 @@ export default function LennoxLayout() {
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs" style={{ color: C.barkMuted }}>
               <Link to="/website/tierservice/partner-werden" className="hover:underline">Partner werden</Link>
               <Link to="/website/tierservice/shop" className="hover:underline">Shop</Link>
+              <Link to="/website/tierservice/faq" className="hover:underline">FAQ</Link>
+              <Link to="/website/tierservice/kontakt" className="hover:underline">Kontakt</Link>
               <Link to="/website/tierservice/impressum" className="hover:underline">Impressum</Link>
               <Link to="/website/tierservice/datenschutz" className="hover:underline">Datenschutz</Link>
-              <a href="mailto:info@lennoxandfriends.app" className="hover:underline">Kontakt</a>
             </div>
 
             {/* Copyright */}
