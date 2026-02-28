@@ -5,7 +5,7 @@
  * Design: Light, warm, Telis-Finanz-Stil
  */
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import {
   ArrowRight, CheckCircle2, Building2, Users, Home,
   TrendingUp, Shield, Wallet, FileText, Target,
@@ -49,16 +49,14 @@ export default function OttoHome() {
 
   return (
     <>
-      <Helmet>
-        <title>Otto² Advisory — Finanzberatung für Unternehmer & Privathaushalte</title>
-        <meta name="description" content="Erst Analyse, dann Zielbild. Otto² Advisory bietet ganzheitliche Finanzberatung: Immobilienfinanzierung, Vorsorge und Vermögensaufbau — strukturiert und transparent." />
-        <link rel="canonical" href="https://otto2advisory.com" />
-        <meta property="og:title" content="Otto² Advisory — Ganzheitliche Finanzberatung" />
-        <meta property="og:description" content="Finanzberatung für Unternehmer und Privathaushalte. Finanzierung, Vorsorge und Vermögensaufbau — alles aus einer Hand." />
-        <meta property="og:url" content="https://otto2advisory.com" />
-        <meta property="og:type" content="website" />
-        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
-      </Helmet>
+      <SEOHead
+        brand="otto"
+        page={{
+          title: 'Finanzberatung für Unternehmer & Privathaushalte',
+          description: 'Erst Analyse, dann Zielbild. Otto² Advisory bietet ganzheitliche Finanzberatung: Immobilienfinanzierung, Vorsorge und Vermögensaufbau — strukturiert und transparent.',
+          path: '/',
+        }}
+      />
 
       {/* Hero with Background Image */}
       <section className="relative flex min-h-[85vh] flex-col items-center justify-center px-4 text-center overflow-hidden">

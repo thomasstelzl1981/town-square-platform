@@ -62,6 +62,22 @@ export const BRAND_SEO_CONFIG: Record<string, BrandSEOConfig> = {
     logo: '/icons/lennox-logo.png',
     sameAs: [],
   },
+  ncore: {
+    name: 'Ncore Business Consulting',
+    legalName: 'Ncore Business Consulting UG (haftungsbeschränkt) & Co. KG',
+    domain: 'https://ncore.online',
+    tagline: 'Connecting Dots. Connecting People. — Ganzheitliche Unternehmensberatung für den Mittelstand.',
+    logo: '/icons/sot-logo.png',
+    sameAs: [],
+  },
+  otto: {
+    name: 'Otto² Advisory',
+    legalName: 'Komplett ZL Finanzdienstleistungen GmbH',
+    domain: 'https://otto2advisory.com',
+    tagline: 'Erst Analyse, dann Zielbild. Finanzberatung für Unternehmer und Privathaushalte.',
+    logo: '/icons/sot-logo.png',
+    sameAs: [],
+  },
 };
 
 // ─── Types ───────────────────────────────────────────────────────────────────

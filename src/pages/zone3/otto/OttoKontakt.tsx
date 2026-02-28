@@ -4,7 +4,7 @@
  * SEO: Kontakt, Finanzberatung, Termin
  * Design: Light, warm, Telis-Finanz-Stil
  */
-import { Helmet } from 'react-helmet';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -60,12 +60,14 @@ export default function OttoKontakt() {
 
   return (
     <>
-      <Helmet>
-        <title>Kontakt — Otto² Advisory | Termin vereinbaren</title>
-        <meta name="description" content="Kontaktieren Sie Otto² Advisory für ein unverbindliches Beratungsgespräch. Wir beraten Sie zu Finanzierung, Vorsorge und Vermögensaufbau." />
-        <link rel="canonical" href="https://otto2advisory.com/kontakt" />
-        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
-      </Helmet>
+      <SEOHead
+        brand="otto"
+        page={{
+          title: 'Kontakt — Termin vereinbaren',
+          description: 'Kontaktieren Sie Otto² Advisory für ein unverbindliches Beratungsgespräch. Wir beraten Sie zu Finanzierung, Vorsorge und Vermögensaufbau.',
+          path: '/kontakt',
+        }}
+      />
 
       {/* Hero */}
       <section className="py-20 px-4 md:py-28 bg-slate-50">

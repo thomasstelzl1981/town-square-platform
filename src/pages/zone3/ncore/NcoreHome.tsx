@@ -2,7 +2,7 @@
  * NCORE HOME — Redesign: Alternating dark/light with AI images
  */
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { ArrowRight, Cpu, Shield, TrendingUp, Network, Users, Sparkles, CheckCircle2, Globe, Zap, Lightbulb } from 'lucide-react';
 import heroNetworkImg from '@/assets/ncore/hero-network.jpg';
 import advisoryImg from '@/assets/ncore/advisory-session.jpg';
@@ -18,19 +18,14 @@ const STATS = [
 export default function NcoreHome() {
   return (
     <>
-      <Helmet>
-        <title>Ncore Business Consulting — Connecting Dots. Connecting People.</title>
-        <meta name="description" content="Ganzheitliche Unternehmensberatung für KMU: KI-gestützte Digitalisierung, österreichische Stiftungsmodelle, Vermögensschutz und Geschäftsmodellentwicklung." />
-        <meta property="og:title" content="Ncore Business Consulting — Connecting Dots. Connecting People." />
-        <meta property="og:url" content="https://ncore.online/" />
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebPage",
-          "name": "Ncore Business Consulting — Startseite",
-          "url": "https://ncore.online/",
-          "mainEntity": { "@id": "https://ncore.online/#organization" },
-        })}</script>
-      </Helmet>
+      <SEOHead
+        brand="ncore"
+        page={{
+          title: 'Connecting Dots. Connecting People.',
+          description: 'Ganzheitliche Unternehmensberatung für KMU: KI-gestützte Digitalisierung, österreichische Stiftungsmodelle, Vermögensschutz und Geschäftsmodellentwicklung.',
+          path: '/',
+        }}
+      />
 
       {/* ── Hero — Dark with network image ── */}
       <section className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden px-4 text-center">
