@@ -76,11 +76,15 @@ export function ManifestRouter() {
           </React.Suspense>
         } />
 
-        {/* Zone 2: User Portal */}
+        {/* Zone 2: User Portal — on brand domains, redirect to website instead */}
         <Route path="/portal/*" element={
-          <React.Suspense fallback={<LoadingFallback />}>
-            <Zone2Router />
-          </React.Suspense>
+          domainEntry ? (
+            <Navigate to={domainEntry.base} replace />
+          ) : (
+            <React.Suspense fallback={<LoadingFallback />}>
+              <Zone2Router />
+            </React.Suspense>
+          )
         } />
 
         {/* Zone 3: Websites (canonical + flat brand-domain routes) */}

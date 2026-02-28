@@ -62,9 +62,19 @@ export const domainMap: Record<string, DomainEntry> = {
 };
 
 /**
+ * Normalize hostname: lowercase, trim, remove trailing dot, remove www. prefix.
+ */
+export function normalizeHostname(hostname: string): string {
+  if (!hostname) return '';
+  return hostname.trim().toLowerCase().replace(/\.$/, '');
+}
+
+/**
  * Resolve current hostname to a domain entry.
+ * Tries exact match first, then without www. prefix.
  * Returns null for staging/preview domains (*.lovable.app, localhost, etc.)
  */
 export function resolveDomain(hostname: string): DomainEntry | null {
-  return domainMap[hostname] ?? null;
+  const normalized = normalizeHostname(hostname);
+  return domainMap[normalized] ?? null;
 }
