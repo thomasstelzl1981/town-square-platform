@@ -42,19 +42,45 @@ Deno.serve(async (req) => {
     console.log("action:", action, "country_code:", country_code, "brand_key:", brand_key);
 
     const TWILIO_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
+    const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
     const TWILIO_API_KEY = Deno.env.get("TWILIO_API_KEY_SID");
     const TWILIO_API_SECRET = Deno.env.get("TWILIO_API_KEY_SECRET");
-    if (!TWILIO_SID || !TWILIO_API_KEY || !TWILIO_API_SECRET) {
-      console.error("Missing Twilio creds — SID:", !!TWILIO_SID, "API_KEY:", !!TWILIO_API_KEY, "API_SECRET:", !!TWILIO_API_SECRET);
+
+    const hasTokenAuth = !!TWILIO_SID && !!TWILIO_AUTH_TOKEN;
+    const hasApiKeyAuth = !!TWILIO_SID && !!TWILIO_API_KEY && !!TWILIO_API_SECRET;
+
+    if (!hasTokenAuth && !hasApiKeyAuth) {
+      console.error(
+        "Missing Twilio creds — SID:",
+        !!TWILIO_SID,
+        "AUTH_TOKEN:",
+        !!TWILIO_AUTH_TOKEN,
+        "API_KEY:",
+        !!TWILIO_API_KEY,
+        "API_SECRET:",
+        !!TWILIO_API_SECRET,
+      );
       return new Response(
         JSON.stringify({ error: "Twilio credentials not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // API Key auth: BasicAuth uses ApiKeySid:ApiKeySecret, URL paths still use AccountSid
-    const twilioAuth = btoa(`${TWILIO_API_KEY}:${TWILIO_API_SECRET}`);
+    // Prefer Account SID + Auth Token, fallback to API Key auth
+    const usingAuthToken = hasTokenAuth;
+    const twilioAuth = usingAuthToken
+      ? btoa(`${TWILIO_SID}:${TWILIO_AUTH_TOKEN ?? ""}`)
+      : btoa(`${TWILIO_API_KEY ?? ""}:${TWILIO_API_SECRET ?? ""}`);
     const webhookBaseUrl = Deno.env.get("SUPABASE_URL") + "/functions/v1";
+    console.log("Twilio auth mode:", usingAuthToken ? "account_token" : "api_key");
+
+    // Twilio regional host handling (API Keys can be region-bound, e.g. ie1)
+    const configuredRegion = (Deno.env.get("TWILIO_REGION") || "").trim().toLowerCase();
+    const hostFromRegion = (region: string) =>
+      region === "us1" ? "api.twilio.com" : `api.${region}.twilio.com`;
+    const twilioHosts = configuredRegion
+      ? [hostFromRegion(configuredRegion)]
+      : ["api.twilio.com", "api.ie1.twilio.com"];
 
     // Determine lookup: brand_key (Zone 1) or user_id (Zone 2)
     const isBrandMode = !!brand_key;
@@ -67,21 +93,29 @@ Deno.serve(async (req) => {
       // Try Local first, then Mobile, then Toll-Free
       const types = ["Local", "Mobile", "TollFree"];
       let searchData: any = { available_phone_numbers: [] };
-      
-      for (const numType of types) {
-        const searchUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/AvailablePhoneNumbers/${cc}/${numType}.json?PageSize=1`;
-        console.log(`searching Twilio for ${cc} ${numType} numbers...`);
-        console.log(`URL: ${searchUrl}`);
-        console.log(`Auth header prefix: Basic ${twilioAuth.substring(0, 20)}...`);
-        const searchRes = await fetch(searchUrl, {
-          headers: { Authorization: `Basic ${twilioAuth}` },
-        });
-        console.log(`Twilio ${numType} search response status:`, searchRes.status);
-        const searchText = await searchRes.text();
-        console.log(`Twilio ${numType} response body:`, searchText.substring(0, 500));
-        try { searchData = JSON.parse(searchText); } catch { searchData = { available_phone_numbers: [] }; }
-        console.log(`Twilio ${numType} results:`, searchData.available_phone_numbers?.length ?? 0);
-        if (searchData.available_phone_numbers?.length) break;
+      let selectedHost = twilioHosts[0];
+
+      hostLoop:
+      for (const host of twilioHosts) {
+        for (const numType of types) {
+          const searchUrl = `https://${host}/2010-04-01/Accounts/${TWILIO_SID}/AvailablePhoneNumbers/${cc}/${numType}.json?PageSize=1`;
+          console.log(`searching Twilio for ${cc} ${numType} numbers on host ${host}...`);
+          console.log(`URL: ${searchUrl}`);
+          console.log(`Auth header prefix: Basic ${twilioAuth.substring(0, 20)}...`);
+          const searchRes = await fetch(searchUrl, {
+            headers: { Authorization: `Basic ${twilioAuth}` },
+          });
+          console.log(`Twilio ${numType} search response status:`, searchRes.status);
+          const searchText = await searchRes.text();
+          console.log(`Twilio ${numType} response body:`, searchText.substring(0, 500));
+          try { searchData = JSON.parse(searchText); } catch { searchData = { available_phone_numbers: [] }; }
+          console.log(`Twilio ${numType} results:`, searchData.available_phone_numbers?.length ?? 0);
+
+          if (searchData.available_phone_numbers?.length) {
+            selectedHost = host;
+            break hostLoop;
+          }
+        }
       }
 
       if (!searchData.available_phone_numbers?.length) {
@@ -96,7 +130,7 @@ Deno.serve(async (req) => {
         ? `SoT-Brand-${brand_key}`
         : `SoT-PhoneAssistant-${userId.slice(0, 8)}`;
 
-      const buyUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/IncomingPhoneNumbers.json`;
+      const buyUrl = `https://${selectedHost}/2010-04-01/Accounts/${TWILIO_SID}/IncomingPhoneNumbers.json`;
       const buyBody = new URLSearchParams({
         PhoneNumber: number.phone_number,
         VoiceUrl: `${webhookBaseUrl}/sot-phone-inbound`,
@@ -167,15 +201,26 @@ Deno.serve(async (req) => {
         );
       }
 
-      const releaseUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/IncomingPhoneNumbers/${assistant.twilio_number_sid}.json`;
-      const releaseRes = await fetch(releaseUrl, {
-        method: "DELETE",
-        headers: { Authorization: `Basic ${twilioAuth}` },
-      });
+      let releaseOk = false;
+      let lastReleaseStatus = 500;
 
-      if (!releaseRes.ok && releaseRes.status !== 404) {
+      for (const host of twilioHosts) {
+        const releaseUrl = `https://${host}/2010-04-01/Accounts/${TWILIO_SID}/IncomingPhoneNumbers/${assistant.twilio_number_sid}.json`;
+        const releaseRes = await fetch(releaseUrl, {
+          method: "DELETE",
+          headers: { Authorization: `Basic ${twilioAuth}` },
+        });
+
+        lastReleaseStatus = releaseRes.status;
+        if (releaseRes.ok || releaseRes.status === 404) {
+          releaseOk = true;
+          break;
+        }
+      }
+
+      if (!releaseOk) {
         return new Response(
-          JSON.stringify({ error: "Nummer-Release fehlgeschlagen" }),
+          JSON.stringify({ error: "Nummer-Release fehlgeschlagen", status: lastReleaseStatus }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
