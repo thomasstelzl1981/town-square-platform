@@ -54,6 +54,11 @@ export const domainMap: Record<string, DomainEntry> = {
   'www.zl-beratung.de': { siteKey: 'otto', base: '/website/otto-advisory' },
   'zl-finanzen.de': { siteKey: 'otto', base: '/website/otto-advisory' },
   'www.zl-finanzen.de': { siteKey: 'otto', base: '/website/otto-advisory' },
+  // ZL Wohnbau GmbH
+  'zl-wohnbau.de': { siteKey: 'zlwohnbau', base: '/website/zl-wohnbau' },
+  'www.zl-wohnbau.de': { siteKey: 'zlwohnbau', base: '/website/zl-wohnbau' },
+  'zl-gruppe.com': { siteKey: 'zlwohnbau', base: '/website/zl-wohnbau' },
+  'www.zl-gruppe.com': { siteKey: 'zlwohnbau', base: '/website/zl-wohnbau' },
 };
 
 /**

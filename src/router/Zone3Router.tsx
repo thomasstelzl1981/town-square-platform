@@ -30,6 +30,7 @@ const LennoxLayout = React.lazy(() => import('@/pages/zone3/lennox/LennoxLayout'
 const ProjectLandingLayout = React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingLayout'));
 const NcoreLayout = React.lazy(() => import('@/pages/zone3/ncore/NcoreLayout'));
 const OttoAdvisoryLayout = React.lazy(() => import('@/pages/zone3/otto/OttoAdvisoryLayout'));
+const ZLWohnbauLayout = React.lazy(() => import('@/pages/zone3/zlwohnbau/ZLWohnbauLayout'));
 
 // =============================================================================
 // Zone 3: Page Components (all lazy)
@@ -94,6 +95,9 @@ const NcoreHome = React.lazy(() => import('@/pages/zone3/ncore/NcoreHome'));
 // Otto
 const OttoHome = React.lazy(() => import('@/pages/zone3/otto/OttoHome'));
 
+// ZL Wohnbau
+const ZLWohnbauHome = React.lazy(() => import('@/pages/zone3/zlwohnbau/ZLWohnbauHome'));
+
 // =============================================================================
 // Layout Map
 // =============================================================================
@@ -106,6 +110,7 @@ const zone3LayoutMap: Record<string, React.ComponentType<{ children?: React.Reac
   ProjectLandingLayout,
   NcoreLayout,
   OttoAdvisoryLayout,
+  ZLWohnbauLayout,
 };
 
 // =============================================================================
@@ -218,6 +223,14 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
     OttoDatenschutz: React.lazy(() => import('@/pages/zone3/otto/OttoDatenschutz')),
     OttoRatgeber: React.lazy(() => import('@/pages/zone3/otto/OttoRatgeber')),
     OttoRatgeberArticle: React.lazy(() => import('@/pages/zone3/otto/OttoRatgeberArticle')),
+  },
+  zlwohnbau: {
+    ZLWohnbauHome,
+    ZLWohnbauLeistungen: React.lazy(() => import('@/pages/zone3/zlwohnbau/ZLWohnbauLeistungen')),
+    ZLWohnbauPortfolio: React.lazy(() => import('@/pages/zone3/zlwohnbau/ZLWohnbauPortfolio')),
+    ZLWohnbauKontakt: React.lazy(() => import('@/pages/zone3/zlwohnbau/ZLWohnbauKontakt')),
+    ZLWohnbauImpressum: React.lazy(() => import('@/pages/zone3/zlwohnbau/ZLWohnbauImpressum')),
+    ZLWohnbauDatenschutz: React.lazy(() => import('@/pages/zone3/zlwohnbau/ZLWohnbauDatenschutz')),
   },
 };
 

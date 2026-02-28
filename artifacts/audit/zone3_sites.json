@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-02-19T04:00:00Z",
-  "total_count": 5,
+  "generated_at": "2026-02-28T12:00:00Z",
+  "total_count": 6,
   "sites": [
     {
       "name": "kaufy",
@@ -26,6 +26,11 @@
       "name": "lennox",
       "base": "/website/tierservice",
       "layout": "LennoxLayout"
+    },
+    {
+      "name": "zlwohnbau",
+      "base": "/website/zl-wohnbau",
+      "layout": "ZLWohnbauLayout"
     }
   ]
 }

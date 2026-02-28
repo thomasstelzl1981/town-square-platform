@@ -87,6 +87,16 @@ export const BRAND_SEO_CONFIG: Record<string, BrandSEOConfig> = {
     ogImage: '/og/og-otto.jpg',
     sameAs: [],
   },
+  zlwohnbau: {
+    name: 'ZL Wohnbau',
+    legalName: 'ZL Wohnbau GmbH',
+    domain: 'https://zl-wohnbau.de',
+    tagline: 'Wohnraum für Mitarbeiter — Langfristig. Nachhaltig. Partnerschaftlich.',
+    logo: '/icons/sot-logo.png',
+    ogImage: '/og/og-zlwohnbau.jpg',
+    parentOrganization: 'otto',
+    sameAs: [],
+  },
 };
 
 // ─── Types ───────────────────────────────────────────────────────────────────
