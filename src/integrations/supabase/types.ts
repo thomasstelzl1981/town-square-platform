@@ -2941,6 +2941,57 @@ export type Database = {
           },
         ]
       }
+      brand_articles: {
+        Row: {
+          author: string | null
+          brand: string
+          category: string | null
+          content: string
+          created_at: string
+          description: string
+          generated_by: string | null
+          id: string
+          is_published: boolean
+          og_image: string | null
+          published_at: string | null
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author?: string | null
+          brand: string
+          category?: string | null
+          content: string
+          created_at?: string
+          description: string
+          generated_by?: string | null
+          id?: string
+          is_published?: boolean
+          og_image?: string | null
+          published_at?: string | null
+          slug: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author?: string | null
+          brand?: string
+          category?: string | null
+          content?: string
+          created_at?: string
+          description?: string
+          generated_by?: string | null
+          id?: string
+          is_published?: boolean
+          og_image?: string | null
+          published_at?: string | null
+          slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           all_day: boolean | null
