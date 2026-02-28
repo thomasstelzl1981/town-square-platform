@@ -3,9 +3,6 @@ project_id = "ktpvilzjtcaxyuufocrs"
 [functions.sot-armstrong-advisor]
 verify_jwt = false
 
-[functions.sot-dms-upload-url]
-verify_jwt = false
-
 [functions.sot-dms-download-url]
 verify_jwt = false
 
