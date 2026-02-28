@@ -13,7 +13,7 @@ import { useWidgetOrder } from '@/hooks/useWidgetOrder';
 import { useWidgetPreferences } from '@/hooks/useWidgetPreferences';
 import { useTaskWidgets } from '@/hooks/useTaskWidgets';
 import { usePreviewSafeMode } from '@/hooks/usePreviewSafeMode';
-import { EarthGlobeCard } from '@/components/dashboard/EarthGlobeCard';
+import { GlobeWidget } from '@/components/dashboard/GlobeWidget';
 import { WeatherCard } from '@/components/dashboard/WeatherCard';
 import { ArmstrongGreetingCard } from '@/components/dashboard/ArmstrongGreetingCard';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
@@ -142,8 +142,7 @@ export default function PortalDashboard() {
       return <WeatherCard latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} />;
     }
     if (widgetId === 'system_globe') {
-      if (!allowHeavyWidgets) return <PreviewPlaceholderCard label="3D Globe" icon={Globe} />;
-      return <EarthGlobeCard latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} />;
+      return <GlobeWidget latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} />;
     }
     if (widgetId === 'system_finance') return <FinanceWidget />;
     if (widgetId === 'system_accounts') return <AccountsWidget />;
