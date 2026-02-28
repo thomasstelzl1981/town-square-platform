@@ -128,8 +128,8 @@ export default function NcoreDatenschutz() {
               <p className="mt-2">
                 Telefon: +49 (0)30 424 314 70<br />
                 E-Mail:{' '}
-                <a href="mailto:thomas.stelzl@ncore.online" className="text-emerald-400 hover:text-emerald-300">
-                  thomas.stelzl@ncore.online
+                <a href="mailto:info@ncore.online" className="text-emerald-400 hover:text-emerald-300">
+                  info@ncore.online
                 </a>
               </p>
               <p className="mt-3">

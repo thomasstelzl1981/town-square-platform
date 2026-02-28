@@ -26,7 +26,7 @@ export default function OttoPrivateHaushalte() {
     '@context': 'https://schema.org',
     '@type': 'Service',
     name: 'Otto² Advisory — Private Finanzberatung',
-    provider: { '@type': 'Organization', name: 'Komplett ZL Finanzdienstleistungen GmbH' },
+    provider: { '@type': 'Organization', name: 'ZL Finanzdienstleistungen GmbH' },
     description: 'Ganzheitliche Finanzberatung für Privathaushalte: Altersvorsorge, Versicherung, Immobilienfinanzierung, Vermögensaufbau und staatliche Förderung.',
     serviceType: 'Private Finanzberatung',
     areaServed: { '@type': 'Country', name: 'DE' },

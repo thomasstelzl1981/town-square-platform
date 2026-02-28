@@ -255,7 +255,7 @@ export default function FutureRoomBonitat() {
             </p>
             <p className="text-gray-500 text-sm mb-6">
               📧 Sie erhalten in Kürze eine E-Mail mit einer Dokumenten-Checkliste und Ihrer Vorgangsnummer.
-              Senden Sie uns Ihre Unterlagen per E-Mail an <span className="font-medium">finanzierung@futureroom.com</span>.
+              Senden Sie uns Ihre Unterlagen per E-Mail an <span className="font-medium">finanzierung@futureroom.online</span>.
             </p>
             {publicId && (
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg mb-6" style={{ background: 'hsl(165 70% 36% / 0.08)' }}>

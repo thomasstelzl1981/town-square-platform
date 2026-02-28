@@ -50,7 +50,7 @@ export default function OttoKontakt() {
     url: 'https://otto2advisory.com/kontakt',
     mainEntity: {
       '@type': 'Organization',
-      name: 'Komplett ZL Finanzdienstleistungen GmbH',
+      name: 'ZL Finanzdienstleistungen GmbH',
       email: 'info@otto2advisory.com',
     },
   };
@@ -175,8 +175,8 @@ export default function OttoKontakt() {
                   </div>
                   <div>
                     <h3 className="font-semibold mb-1 text-slate-800">Telefon</h3>
-                    <a href="tel:+498915893341" className="text-[#0055A4] hover:underline text-sm">
-                      089 / 158 933 41-0
+                    <a href="tel:+4994224845" className="text-[#0055A4] hover:underline text-sm">
+                      +49 (0)9422 4845
                     </a>
                   </div>
                 </div>
@@ -188,7 +188,7 @@ export default function OttoKontakt() {
                   <div>
                     <h3 className="font-semibold mb-1 text-slate-800">Standort</h3>
                     <p className="text-sm text-slate-500">
-                      Komplett ZL Finanzdienstleistungen GmbH<br />
+                      ZL Finanzdienstleistungen GmbH<br />
                       Deutschland
                     </p>
                   </div>

@@ -296,7 +296,7 @@ export default function KaufyFinanceRequestSheet({ open, onClose, listing, engin
             <div className="bg-muted/50 rounded-lg p-4 text-sm text-left space-y-2 w-full">
               <p className="font-medium">Nächste Schritte:</p>
               <p>📧 Sie erhalten in Kürze eine E-Mail mit einer Dokumenten-Checkliste und Ihrer Vorgangsnummer.</p>
-              <p>📎 Senden Sie uns Ihre Unterlagen (Gehaltsabrechnungen, Selbstauskunft etc.) per E-Mail an <span className="font-medium">finanzierung@futureroom.com</span> unter Angabe Ihrer Vorgangsnummer.</p>
+              <p>📎 Senden Sie uns Ihre Unterlagen (Gehaltsabrechnungen, Selbstauskunft etc.) per E-Mail an <span className="font-medium">finanzierung@futureroom.online</span> unter Angabe Ihrer Vorgangsnummer.</p>
               <p>📞 Ein Finanzierungsmanager wird sich innerhalb von 48 Stunden bei Ihnen melden.</p>
             </div>
             <Button onClick={() => { setSubmitted(false); setForm(initialFormData); onClose(); }} className="mt-4">

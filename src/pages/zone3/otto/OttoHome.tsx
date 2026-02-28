@@ -39,7 +39,7 @@ export default function OttoHome() {
     '@context': 'https://schema.org',
     '@type': 'FinancialService',
     name: 'Otto² Advisory',
-    alternateName: 'Komplett ZL Finanzdienstleistungen GmbH',
+    alternateName: 'ZL Finanzdienstleistungen GmbH',
     description: 'Ganzheitliche Finanzberatung für Unternehmer und Privathaushalte — Finanzierung, Vorsorge, Vermögensaufbau.',
     url: 'https://otto2advisory.com',
     areaServed: { '@type': 'Country', name: 'DE' },

@@ -1,7 +1,7 @@
 /**
  * OTTO² ADVISORY LAYOUT — Zone 3 Website
  * Brand: Blue-White — Ganzheitliche Finanzberatung
- * Legal: Komplett ZL Finanzdienstleistungen GmbH
+ * Legal: ZL Finanzdienstleistungen GmbH
  * Design: Light, warm, Telis-Finanz-Stil
  */
 import { Outlet, Link, useLocation } from 'react-router-dom';
@@ -192,7 +192,7 @@ export default function OttoAdvisoryLayout() {
 
           <div className="mt-12 pt-8 border-t border-slate-200">
             <p className="text-xs text-slate-400">
-              © {new Date().getFullYear()} Komplett ZL Finanzdienstleistungen GmbH. Alle Rechte vorbehalten.
+              © {new Date().getFullYear()} ZL Finanzdienstleistungen GmbH. Alle Rechte vorbehalten.
             </p>
           </div>
         </div>

@@ -209,7 +209,7 @@ export default function FutureRoomLayout() {
             <h4 className="fr-footer-title">Kontakt</h4>
             <ul className="fr-footer-links">
               <li>info@futureroom.de</li>
-              <li>+49 89 123456789</li>
+              <li>089 66667788</li>
             </ul>
           </div>
         </div>

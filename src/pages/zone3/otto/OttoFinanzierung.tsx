@@ -60,7 +60,7 @@ export default function OttoFinanzierung() {
   const jsonLd = {
     '@context': 'https://schema.org', '@type': 'Service',
     name: 'Finanzierung beantragen — Otto² Advisory',
-    provider: { '@type': 'Organization', name: 'Komplett ZL Finanzdienstleistungen GmbH' },
+    provider: { '@type': 'Organization', name: 'ZL Finanzdienstleistungen GmbH' },
     description: 'Immobilienfinanzierung digital beantragen. Bonitätsdaten strukturiert erfassen — schnell, sicher und unverbindlich.',
     serviceType: 'Immobilienfinanzierung',
   };

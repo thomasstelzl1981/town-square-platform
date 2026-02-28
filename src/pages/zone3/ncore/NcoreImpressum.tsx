@@ -34,8 +34,8 @@ export default function NcoreImpressum() {
                 Telefon: +49 (0)30 424 314 70<br />
                 Mobil: +49 (0)160 901 17 358<br />
                 E-Mail:{' '}
-                <a href="mailto:thomas.stelzl@ncore.online" className="text-emerald-400 hover:text-emerald-300">
-                  thomas.stelzl@ncore.online
+                <a href="mailto:info@ncore.online" className="text-emerald-400 hover:text-emerald-300">
+                  info@ncore.online
                 </a>
                 <br />
                 Web:{' '}

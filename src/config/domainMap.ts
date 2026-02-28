@@ -43,7 +43,7 @@ export const domainMap: Record<string, DomainEntry> = {
   'www.thomas-stelzl.com': { siteKey: 'ncore', base: '/website/ncore' },
   'thomasstelzl.de': { siteKey: 'ncore', base: '/website/ncore' },
   'www.thomasstelzl.de': { siteKey: 'ncore', base: '/website/ncore' },
-  // Otto² Advisory (Komplett ZL Finanzdienstleistungen GmbH)
+  // Otto² Advisory (ZL Finanzdienstleistungen GmbH)
   'otto2advisory.com': { siteKey: 'otto', base: '/website/otto-advisory' },
   'www.otto2advisory.com': { siteKey: 'otto', base: '/website/otto-advisory' },
   'finanzdienstleistungen.gmbh': { siteKey: 'otto', base: '/website/otto-advisory' },
