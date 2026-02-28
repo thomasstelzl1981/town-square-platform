@@ -12,6 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log("provision handler called, method:", req.method);
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -35,8 +36,10 @@ Deno.serve(async (req) => {
       });
     }
     const userId = user.id;
+    console.log("authenticated user:", userId);
 
     const { action, country_code, brand_key } = await req.json();
+    console.log("action:", action, "country_code:", country_code, "brand_key:", brand_key);
 
     const TWILIO_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
     const TWILIO_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
@@ -58,11 +61,21 @@ Deno.serve(async (req) => {
 
     if (action === "purchase") {
       const cc = country_code || "DE";
-      const searchUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/AvailablePhoneNumbers/${cc}/Local.json?PageSize=1`;
-      const searchRes = await fetch(searchUrl, {
-        headers: { Authorization: `Basic ${twilioAuth}` },
-      });
-      const searchData = await searchRes.json();
+      // Try Local first, then Mobile, then Toll-Free
+      const types = ["Local", "Mobile", "TollFree"];
+      let searchData: any = { available_phone_numbers: [] };
+      
+      for (const numType of types) {
+        const searchUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/AvailablePhoneNumbers/${cc}/${numType}.json?PageSize=1`;
+        console.log(`searching Twilio for ${cc} ${numType} numbers...`);
+        const searchRes = await fetch(searchUrl, {
+          headers: { Authorization: `Basic ${twilioAuth}` },
+        });
+        console.log(`Twilio ${numType} search response status:`, searchRes.status);
+        searchData = await searchRes.json();
+        console.log(`Twilio ${numType} results:`, searchData.available_phone_numbers?.length ?? 0);
+        if (searchData.available_phone_numbers?.length) break;
+      }
 
       if (!searchData.available_phone_numbers?.length) {
         return new Response(
@@ -86,6 +99,7 @@ Deno.serve(async (req) => {
         FriendlyName: friendlyName,
       });
 
+      console.log("purchasing number:", number.phone_number);
       const buyRes = await fetch(buyUrl, {
         method: "POST",
         headers: {
@@ -95,6 +109,7 @@ Deno.serve(async (req) => {
         body: buyBody.toString(),
       });
       const buyData = await buyRes.json();
+      console.log("Twilio buy response status:", buyRes.status, "sid:", buyData.sid);
 
       if (!buyRes.ok) {
         console.error("Twilio purchase failed:", buyData);
