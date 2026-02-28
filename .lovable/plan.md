@@ -1,75 +1,26 @@
 
 
-## Plan: Preview-Kombi-Härtung (nur Preview-Umgebung)
+## Plan: 3D Globe Widget entfernen
 
-### Ursache
+### Befund
 
-Die Preview crasht alle ~20s weil das Dashboard gleichzeitig betreibt:
-- **3D Globe** (Three.js/WebGL — massiver GPU+RAM-Verbrauch)
-- **PV Monitoring** (`setInterval` alle 7s mit Recharts-Sparkline)
-- **Weather Animations** (40+ animierte DOM-Elemente bei Regen/Schnee)
-- **Radio Audio** (Audio-Element + Sound-Visualisierung)
-- **4+ Edge Function Calls** (Finance, News, APOD, Quote) beim Dashboard-Mount
-- **PortalLayout `preloadModules`** lädt 5 weitere Module nach 1s
-- Nach jedem Prompt: Vite HMR invalidiert den Module Graph → Reload → alles startet gleichzeitig neu
+Das Globe Widget (`EarthGlobeCard`) importiert `react-globe.gl`, das **Three.js** als Dependency mitbringt — eine der größten JavaScript-Libraries überhaupt (~600KB gzipped + WebGL-Kontext). Allein der Import erzeugt erheblichen Speicherdruck, selbst wenn lazy-loaded. Dazu kommt: WebGL-Kontexte werden beim HMR-Reload nicht sauber freigegeben, was den akkumulierenden Memory Leak erklärt.
 
-### Lösung: `isPreview`-gesteuerter Safe Mode (nur Preview)
+### Änderungen
 
-**1 neue Datei erstellen:**
-
-| Datei | Zweck |
-|-------|-------|
-| `src/hooks/usePreviewSafeMode.ts` | Erkennt Preview-Umgebung, exportiert `isPreview` Flag + gedrosselte Konfiguration |
-
-Preview-Erkennung: `window.location.hostname.includes('-preview--')` oder `window.location.hostname.includes('lovable.app') && import.meta.env.DEV`
-
-**4 Dateien editieren:**
-
-| Datei | Änderung |
-|-------|----------|
-| `src/pages/portal/PortalDashboard.tsx` | Widgets nur rendern wenn im Viewport (IntersectionObserver). Globe, PV, Radio im Preview deaktiviert → Platzhalter-Card |
-| `src/hooks/usePvMonitoring.ts` | `refreshInterval` von 7s auf 60s wenn `isPreview` |
-| `src/components/portal/PortalLayout.tsx` | `preloadModules` im Preview deaktivieren (spart 5 lazy imports beim Start) |
-| `src/components/dashboard/WeatherCard.tsx` | `WeatherEffects` (animierte DOM-Elemente) im Preview nicht rendern |
-
-### Technische Details
-
-**`usePreviewSafeMode.ts`:**
-```typescript
-export function usePreviewSafeMode() {
-  const isPreview = useMemo(() => {
-    const host = window.location.hostname;
-    return host.includes('-preview--') || 
-           (host.includes('lovable.app') && import.meta.env.DEV);
-  }, []);
-  
-  return { isPreview, safeRefreshInterval: isPreview ? 60000 : 7000 };
-}
-```
-
-**Dashboard-Änderung:** Widgets die im Preview deaktiviert werden:
-- `system_globe` → ersetzt durch statische Card "Globe (Preview deaktiviert)"
-- `system_pv_live` → ersetzt durch statische Card
-- `system_radio` → ersetzt durch statische Card
-
-Widgets die gedrosselt werden:
-- `system_weather` → ohne `WeatherEffects` Overlay
-- `system_finance` / `system_news` → unverändert (einmalige API-Calls, kein Polling)
-
-**PortalLayout-Änderung:** 
-```typescript
-// Zeile 82-86: preloadModules nur in Published
-useEffect(() => {
-  if (isPreview) return; // Skip in preview
-  const timer = setTimeout(preloadModules, 1000);
-  return () => clearTimeout(timer);
-}, []);
-```
+| Aktion | Datei | Was |
+|--------|-------|-----|
+| **Edit** | `src/pages/portal/PortalDashboard.tsx` | `system_globe` rendert immer `CSSGlobeFallback` statt `EarthGlobeCard`. Import von `EarthGlobeCard` entfernen |
+| **Delete** | `src/components/dashboard/EarthGlobeCard.tsx` | Komplette Datei löschen |
+| **Delete** | `src/components/dashboard/earth-globe/CSSGlobeFallback.tsx` | Wird nach `src/components/dashboard/GlobeWidget.tsx` verschoben (eigenständige Widget-Card) |
+| **Neu** | `src/components/dashboard/GlobeWidget.tsx` | Leichtgewichtiges CSS-Globe-Widget mit Koordinaten-Overlay (aus CSSGlobeFallback + CardContent-Overlay von EarthGlobeCard) |
+| **Edit** | `package.json` | `react-globe.gl` Dependency entfernen |
+| **Edit** | `src/types/widget.ts` | `system_globe` bleibt als Widget-Typ (keine Breaking Change) |
 
 ### Erwarteter Effekt
 
-- **RAM-Einsparung:** ~40-60MB weniger (kein Three.js, kein WebGL-Kontext, keine Preloads)
-- **CPU-Einsparung:** Keine 7s-Timer, keine CSS-Animationen, keine Audio-Elemente
-- **Netzwerk:** 5 weniger parallele Requests beim Start
-- **Published Version:** Null Änderung — alle Widgets laufen wie bisher
+- **~600KB+ weniger im Bundle** (Three.js + react-globe.gl + three-globe)
+- **Kein WebGL-Kontext mehr** → kein GPU-Memory-Leak bei HMR
+- **CSSGlobeFallback existiert bereits** und sieht visuell gut aus — wird zum Standard-Widget
+- Published Version bekommt das gleiche leichtgewichtige Widget (kein Funktionsverlust, da der 3D-Globe rein dekorativ ist)
 
