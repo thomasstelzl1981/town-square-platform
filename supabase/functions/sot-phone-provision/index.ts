@@ -42,15 +42,18 @@ Deno.serve(async (req) => {
     console.log("action:", action, "country_code:", country_code, "brand_key:", brand_key);
 
     const TWILIO_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
-    const TWILIO_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
-    if (!TWILIO_SID || !TWILIO_TOKEN) {
+    const TWILIO_API_KEY = Deno.env.get("TWILIO_API_KEY_SID");
+    const TWILIO_API_SECRET = Deno.env.get("TWILIO_API_KEY_SECRET");
+    if (!TWILIO_SID || !TWILIO_API_KEY || !TWILIO_API_SECRET) {
+      console.error("Missing Twilio creds — SID:", !!TWILIO_SID, "API_KEY:", !!TWILIO_API_KEY, "API_SECRET:", !!TWILIO_API_SECRET);
       return new Response(
         JSON.stringify({ error: "Twilio credentials not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const twilioAuth = btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`);
+    // API Key auth: BasicAuth uses ApiKeySid:ApiKeySecret, URL paths still use AccountSid
+    const twilioAuth = btoa(`${TWILIO_API_KEY}:${TWILIO_API_SECRET}`);
     const webhookBaseUrl = Deno.env.get("SUPABASE_URL") + "/functions/v1";
 
     // Determine lookup: brand_key (Zone 1) or user_id (Zone 2)
