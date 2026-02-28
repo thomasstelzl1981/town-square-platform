@@ -115,8 +115,11 @@ export default function PortalDashboard() {
       .filter(Boolean);
   }, [enabledWidgets]);
 
-  // Armstrong + all enabled system widgets (no cap)
+  // Armstrong as fallback if not already in preferences (prevents 8+1 = 9 bug)
   const systemWidgetIds = useMemo(() => {
+    if (enabledSystemWidgetIds.includes(ARMSTRONG_WIDGET_ID)) {
+      return enabledSystemWidgetIds;
+    }
     return [ARMSTRONG_WIDGET_ID, ...enabledSystemWidgetIds];
   }, [enabledSystemWidgetIds]);
 
