@@ -65,7 +65,7 @@ export default function BrandPhonePanel({ brandKey, brandLabel, tier }: BrandPho
 
       {/* Cards Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <StatusForwardingCard config={config} onUpdate={updateConfig} onRefresh={refetchAssistant} />
+        <StatusForwardingCard config={config} onUpdate={updateConfig} onRefresh={refetchAssistant} brandKey={brandKey} />
         <VoiceSettingsCard config={config} onUpdate={updateConfig} />
         <ContentCard config={config} onUpdate={updateConfig} />
         <RulesCard config={config} onUpdate={updateConfig} />

@@ -62,6 +62,12 @@ Deno.serve(async (req) => {
     if (recordingUrl) updatePayload.recording_url = `${recordingUrl}.mp3`;
     if (transcriptionText) updatePayload.transcript_text = transcriptionText;
 
+    // Billing: Capture Twilio price if available in callback
+    const twilioPrice = formData.get("Price") as string;
+    const twilioPriceUnit = formData.get("PriceUnit") as string;
+    if (twilioPrice) updatePayload.twilio_price = parseFloat(twilioPrice);
+    if (twilioPriceUnit) updatePayload.twilio_price_unit = twilioPriceUnit;
+
     // 3. Generate LLM summary if transcript available
     if (transcriptionText && transcriptionText.length > 10) {
       try {

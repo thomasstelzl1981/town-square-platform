@@ -13,6 +13,7 @@ interface Props {
   config: PhoneAssistantConfig;
   onUpdate: (u: Partial<PhoneAssistantConfig>) => void;
   onRefresh?: () => void;
+  brandKey?: string;
 }
 
 const GSM_CODES = [
@@ -20,7 +21,7 @@ const GSM_CODES = [
   { provider: 'Telekom / Vodafone / O2', immediate: '**21*{nr}#', delayed: '**61*{nr}**30#', cancel: '##002#' },
 ];
 
-export function StatusForwardingCard({ config, onUpdate, onRefresh }: Props) {
+export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: Props) {
   const [purchasing, setPurchasing] = useState(false);
   const [releasing, setReleasing] = useState(false);
 
@@ -36,9 +37,9 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh }: Props) {
   const handlePurchase = async () => {
     setPurchasing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sot-phone-provision', {
-        body: { action: 'purchase', country_code: 'DE' },
-      });
+      const body: Record<string, string> = { action: 'purchase', country_code: 'DE' };
+      if (brandKey) body.brand_key = brandKey;
+      const { data, error } = await supabase.functions.invoke('sot-phone-provision', { body });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast({ title: 'Nummer gekauft', description: data.phone_number });
@@ -53,9 +54,9 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh }: Props) {
   const handleRelease = async () => {
     setReleasing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sot-phone-provision', {
-        body: { action: 'release' },
-      });
+      const body: Record<string, string> = { action: 'release' };
+      if (brandKey) body.brand_key = brandKey;
+      const { data, error } = await supabase.functions.invoke('sot-phone-provision', { body });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast({ title: 'Nummer freigegeben' });
