@@ -213,7 +213,7 @@ export default function FutureRoomLayout() {
             </ul>
           </div>
         </div>
-      <div className="fr-footer-bottom">© {new Date().getFullYear()} FutureRoom — Ein Service von System of a Town</div>
+      <div className="fr-footer-bottom">© {new Date().getFullYear()} FutureRoom — Plattform: <a href="https://systemofatown.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">System of a Town</a></div>
       </footer>
       <ArmstrongWidget website="futureroom" />
     </div>

@@ -143,7 +143,7 @@ export default function LennoxLayout() {
             <p className="text-xs md:text-right" style={{ color: C.barkMuted }}>
               © {new Date().getFullYear()} Lennox & Friends
               <br />
-              <span className="text-[10px] opacity-60">Ein Netzwerk der SOT Plattform</span>
+              <span className="text-[10px] opacity-60">Plattform: <a href="https://systemofatown.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">System of a Town</a></span>
             </p>
           </div>
         </div>

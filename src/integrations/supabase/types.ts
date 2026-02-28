@@ -13728,6 +13728,36 @@ export type Database = {
           },
         ]
       }
+      page_views: {
+        Row: {
+          brand: string
+          country_code: string | null
+          created_at: string
+          id: string
+          path: string
+          referrer: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          brand: string
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          path: string
+          referrer?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          brand?: string
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          path?: string
+          referrer?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       partner_deals: {
         Row: {
           actual_close_date: string | null

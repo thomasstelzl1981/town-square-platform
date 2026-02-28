@@ -10,6 +10,8 @@ Allow: /llms-kaufy.txt
 Allow: /llms-futureroom.txt
 Allow: /llms-acquiary.txt
 Allow: /llms-lennox.txt
+Allow: /llms-ncore.txt
+Allow: /llms-otto.txt
 Disallow: /portal/
 Disallow: /admin/
 Disallow: /auth
@@ -40,6 +42,8 @@ Allow: /llms-kaufy.txt
 Allow: /llms-futureroom.txt
 Allow: /llms-acquiary.txt
 Allow: /llms-lennox.txt
+Allow: /llms-ncore.txt
+Allow: /llms-otto.txt
 Disallow: /portal/
 Disallow: /admin/
 Disallow: /auth
@@ -53,12 +57,16 @@ Disallow: /admin/
 User-agent: PerplexityBot
 Allow: /website/
 Allow: /llms.txt
+Allow: /llms-ncore.txt
+Allow: /llms-otto.txt
 Disallow: /portal/
 Disallow: /admin/
 
 User-agent: ClaudeBot
 Allow: /website/
 Allow: /llms.txt
+Allow: /llms-ncore.txt
+Allow: /llms-otto.txt
 Disallow: /portal/
 Disallow: /admin/
 
@@ -82,3 +90,5 @@ Sitemap: https://kaufy.immo/sitemap-kaufy.xml
 Sitemap: https://futureroom.online/sitemap-futureroom.xml
 Sitemap: https://acquiary.com/sitemap-acquiary.xml
 Sitemap: https://lennoxandfriends.app/sitemap-lennox.xml
+Sitemap: https://ncore.online/sitemap-ncore.xml
+Sitemap: https://otto2advisory.com/sitemap-otto.xml
