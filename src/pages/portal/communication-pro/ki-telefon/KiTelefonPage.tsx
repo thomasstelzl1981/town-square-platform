@@ -20,6 +20,7 @@ export default function KiTelefonPage() {
     callsLoading,
     createTestEvent,
     deleteTestEvents,
+    refetchAssistant,
   } = usePhoneAssistant();
 
   if (isLoading || !config) {
@@ -47,7 +48,7 @@ export default function KiTelefonPage() {
       />
 
       <div className="space-y-4 md:space-y-6">
-        <StatusForwardingCard config={config} onUpdate={updateConfig} />
+        <StatusForwardingCard config={config} onUpdate={updateConfig} onRefresh={refetchAssistant} />
         <VoiceSettingsCard config={config} onUpdate={updateConfig} />
         <ContentCard config={config} onUpdate={updateConfig} />
         <RulesCard config={config} onUpdate={updateConfig} />
