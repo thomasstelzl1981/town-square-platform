@@ -280,7 +280,8 @@ export default function Kaufy2026Layout() {
             {/* Footer Bottom Bar */}
             <div className="mt-12 pt-6 border-t border-[hsl(210,20%,90%)] flex flex-col md:flex-row items-center justify-between gap-4">
               <p className="text-xs text-[hsl(215,16%,47%)]">
-                © {new Date().getFullYear()} kaufy GmbH
+                © {new Date().getFullYear()} KAUFY — Ein Produkt der{' '}
+                <a href="https://systemofatown.com" target="_blank" rel="noopener noreferrer" className="hover:text-[hsl(220,20%,10%)] underline transition-colors">System of a Town GmbH</a>
               </p>
               <div className="flex items-center gap-4 text-xs text-[hsl(215,16%,47%)]">
                 <Link to="/website/kaufy/impressum" className="hover:text-[hsl(220,20%,10%)] transition-colors">Impressum</Link>

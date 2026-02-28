@@ -168,7 +168,7 @@ export default function AcquiaryLayout() {
           </div>
         </div>
         <div className="aq-footer-bottom">
-          <span>© {new Date().getFullYear()} ACQUIARY — Ein Service von System of a Town</span>
+          <span>© {new Date().getFullYear()} ACQUIARY — Ein Service der <a href="https://futureroom.online" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">FutureRoom GmbH</a> · Plattform: <a href="https://systemofatown.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">System of a Town</a></span>
           <div className="aq-footer-badges">
             <span className="aq-footer-badge"><Shield className="h-3.5 w-3.5" /> DSGVO</span>
             <span className="aq-footer-badge"><Sparkles className="h-3.5 w-3.5" /> KI-gestützt</span>

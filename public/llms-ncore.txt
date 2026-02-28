@@ -1,0 +1,46 @@
+# Ncore Business Consulting — LLM Knowledge File
+# Last updated: 2026-02-28
+# Version: 1.0
+
+> Ncore Business Consulting ist eine ganzheitliche Unternehmensberatung für den Mittelstand mit Fokus auf Geschäftsmodellentwicklung, Digitalisierung und Stiftungsberatung.
+
+## Unternehmen
+- Name: Ncore Business Consulting UG (haftungsbeschränkt) & Co. KG
+- Komplementär: Ncore Business Consulting Verwaltungs UG (haftungsbeschränkt)
+- Sitz: Schellingstraße 109a, 80798 München, Deutschland
+- Website: https://ncore.online
+- Gründer: Thomas Stelzl
+- Branche: Unternehmensberatung / Strategieberatung
+
+## Zielgruppe
+- Mittelständische Unternehmen, die neue Geschäftsmodelle entwickeln wollen
+- Unternehmer, die Digitalisierung strategisch umsetzen möchten
+- Stifter und gemeinnützige Organisationen
+- Kooperationspartner für strategische Allianzen
+
+## Kernleistungen
+1. **Geschäftsmodellentwicklung** — Analyse, Innovation und Transformation bestehender Geschäftsmodelle
+2. **Digitalisierung** — Strategische Digitalisierungsberatung für den Mittelstand
+3. **Stiftungsberatung** — Gründung und Beratung von gemeinnützigen Stiftungen
+4. **Netzwerk & Kooperationen** — Strategische Partnerschaften und Netzwerkaufbau
+
+## Wichtige Seiten
+- https://ncore.online/ — Startseite
+- https://ncore.online/geschaeftsmodelle — Geschäftsmodelle
+- https://ncore.online/digitalisierung — Digitalisierung
+- https://ncore.online/stiftungen — Stiftungsberatung
+- https://ncore.online/gruender — Der Gründer
+- https://ncore.online/netzwerk — Netzwerk
+- https://ncore.online/kontakt — Kontakt
+- https://ncore.online/impressum — Impressum
+- https://ncore.online/datenschutz — Datenschutz
+
+## FAQ
+Q: Was ist Ncore Business Consulting?
+A: Eine ganzheitliche Unternehmensberatung für den Mittelstand mit den Schwerpunkten Geschäftsmodellentwicklung, Digitalisierung und Stiftungsberatung.
+
+Q: Wer steckt hinter Ncore?
+A: Thomas Stelzl, Gründer und Geschäftsführer, mit langjähriger Erfahrung in Unternehmensberatung und strategischer Geschäftsentwicklung.
+
+Q: Welche Rechtsform hat Ncore?
+A: Ncore Business Consulting UG (haftungsbeschränkt) & Co. KG, eingetragen am Amtsgericht München (HRA 121933).

@@ -7,6 +7,7 @@
  *   <SEOHead brand="sot" page={{ title: "...", description: "...", path: "/plattform" }} />
  */
 import { useEffect } from 'react';
+import { usePageView } from '@/hooks/usePageView';
 
 // ─── Brand Registry ──────────────────────────────────────────────────────────
 export interface BrandSEOConfig {
@@ -15,7 +16,8 @@ export interface BrandSEOConfig {
   domain: string;
   tagline: string;
   logo: string;
-  parentOrganization?: string; // legal parent brand key
+  ogImage?: string;          // default OG image (1200x630)
+  parentOrganization?: string;
   sameAs?: string[];
 }
 
@@ -26,6 +28,7 @@ export const BRAND_SEO_CONFIG: Record<string, BrandSEOConfig> = {
     domain: 'https://systemofatown.com',
     tagline: 'Digitalisierung greifbar machen. Für Unternehmer und Vermieter.',
     logo: '/icons/sot-logo.png',
+    ogImage: '/og/og-sot.jpg',
     sameAs: [],
   },
   kaufy: {
@@ -34,6 +37,7 @@ export const BRAND_SEO_CONFIG: Record<string, BrandSEOConfig> = {
     domain: 'https://kaufy.immo',
     tagline: 'KI-Plattform für Kapitalanlageimmobilien.',
     logo: '/icons/kaufy-logo.png',
+    ogImage: '/og/og-kaufy.jpg',
     parentOrganization: 'sot',
     sameAs: [],
   },
@@ -43,6 +47,7 @@ export const BRAND_SEO_CONFIG: Record<string, BrandSEOConfig> = {
     domain: 'https://futureroom.online',
     tagline: 'Digitale Immobilienfinanzierung.',
     logo: '/icons/futureroom-logo.png',
+    ogImage: '/og/og-futureroom.jpg',
     sameAs: [],
   },
   acquiary: {
@@ -51,6 +56,7 @@ export const BRAND_SEO_CONFIG: Record<string, BrandSEOConfig> = {
     domain: 'https://acquiary.com',
     tagline: 'Digitale Akquise für Immobilieninvestments.',
     logo: '/icons/acquiary-logo.png',
+    ogImage: '/og/og-acquiary.jpg',
     parentOrganization: 'futureroom',
     sameAs: [],
   },
@@ -60,6 +66,7 @@ export const BRAND_SEO_CONFIG: Record<string, BrandSEOConfig> = {
     domain: 'https://lennoxandfriends.app',
     tagline: 'Premium Dog Resorts & Services.',
     logo: '/icons/lennox-logo.png',
+    ogImage: '/og/og-lennox.jpg',
     sameAs: [],
   },
   ncore: {
@@ -68,6 +75,7 @@ export const BRAND_SEO_CONFIG: Record<string, BrandSEOConfig> = {
     domain: 'https://ncore.online',
     tagline: 'Connecting Dots. Connecting People. — Ganzheitliche Unternehmensberatung für den Mittelstand.',
     logo: '/icons/sot-logo.png',
+    ogImage: '/og/og-ncore.jpg',
     sameAs: [],
   },
   otto: {
@@ -76,6 +84,7 @@ export const BRAND_SEO_CONFIG: Record<string, BrandSEOConfig> = {
     domain: 'https://otto2advisory.com',
     tagline: 'Erst Analyse, dann Zielbild. Finanzberatung für Unternehmer und Privathaushalte.',
     logo: '/icons/sot-logo.png',
+    ogImage: '/og/og-otto.jpg',
     sameAs: [],
   },
 };
@@ -113,12 +122,18 @@ export interface ArticleSchema {
   image?: string;
 }
 
+export interface BreadcrumbItem {
+  name: string;
+  url: string;
+}
+
 export interface SEOHeadProps {
   brand: string;
   page: SEOPageMeta;
   faq?: FAQItem[];
   services?: ServiceSchema[];
   article?: ArticleSchema;
+  breadcrumbs?: BreadcrumbItem[];
 }
 
 // ─── JSON-LD Builders ────────────────────────────────────────────────────────
@@ -213,10 +228,25 @@ function buildArticleLD(article: ArticleSchema, brandConfig: BrandSEOConfig) {
   };
 }
 
+function buildBreadcrumbLD(items: BreadcrumbItem[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: item.name,
+      item: item.url,
+    })),
+  };
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
-export function SEOHead({ brand, page, faq, services, article }: SEOHeadProps) {
+export function SEOHead({ brand, page, faq, services, article, breadcrumbs }: SEOHeadProps) {
   const config = BRAND_SEO_CONFIG[brand];
 
+  // GDPR-compliant page view tracking (no cookies, no IP)
+  usePageView(brand, page.path || '/');
   useEffect(() => {
     if (!config) return;
 
@@ -225,7 +255,7 @@ export function SEOHead({ brand, page, faq, services, article }: SEOHeadProps) {
     document.title = fullTitle;
 
     const canonicalUrl = page.canonical || `${config.domain}${page.path || '/'}`;
-    const ogImage = page.ogImage || `${config.domain}${config.logo}`;
+    const ogImage = page.ogImage || (config.ogImage ? `${config.domain}${config.ogImage}` : `${config.domain}${config.logo}`);
 
     // ── Meta Tags ──
     const metas: HTMLMetaElement[] = [];
@@ -290,6 +320,7 @@ export function SEOHead({ brand, page, faq, services, article }: SEOHeadProps) {
       });
     }
     if (article) injectLD(buildArticleLD(article, config));
+    if (breadcrumbs?.length) injectLD(buildBreadcrumbLD(breadcrumbs));
 
     // ── Cleanup ──
     return () => {
@@ -302,7 +333,7 @@ export function SEOHead({ brand, page, faq, services, article }: SEOHeadProps) {
     brand, config,
     page.title, page.description, page.path, page.ogImage,
     page.ogType, page.noIndex, page.canonical,
-    faq, services, article,
+    faq, services, article, breadcrumbs,
   ]);
 
   return null; // Helmet-style: no DOM output
