@@ -1,35 +1,60 @@
 
+## Plan: KI-Telefonassistent — Twilio-Integration (2-Stufen)
 
-## Plan: Armstrong-Widget zählbar machen
+### Architektur
 
-### Problem
-
-In `PortalDashboard.tsx` Zeile 120 wird Armstrong bedingungslos eingefügt:
-```typescript
-return [ARMSTRONG_WIDGET_ID, ...enabledSystemWidgetIds];
 ```
-Das passiert **außerhalb** der Widget-Preferences-Logik. Wenn ein User 8 Widgets aktiviert hat, sieht er 9.
-
-### Lösung
-
-**1 Datei editieren:** `src/pages/portal/PortalDashboard.tsx`
-
-Armstrong nur einfügen, wenn es nicht bereits in `enabledSystemWidgetIds` enthalten ist (Duplikat-Schutz), und es als reguläres System-Widget über die Preferences steuerbar machen:
-
-```typescript
-const systemWidgetIds = useMemo(() => {
-  if (enabledSystemWidgetIds.includes(ARMSTRONG_WIDGET_ID)) {
-    return enabledSystemWidgetIds;
-  }
-  return [ARMSTRONG_WIDGET_ID, ...enabledSystemWidgetIds];
-}, [enabledSystemWidgetIds]);
+Anrufer → GSM-Weiterleitung → Twilio-Nummer (pro User)
+       → Webhook → Edge Function "phone-inbound"
+       ├─ Zone 1: ElevenLabs Conversational AI (Sprach-Dialog)
+       └─ Zone 2: Twilio <Say>/<Gather> + LLM
+       → Edge Function "phone-postcall"
+       → Armstrong Inbound-Email → Widget + persönliche E-Mail an User
+       → DB: commpro_phone_call_sessions
 ```
 
-Damit gilt: Wenn Armstrong in den Preferences aktiviert ist → wird es gezählt. Wenn es dort nicht auftaucht (z.B. kein DB-Eintrag), wird es als Fallback trotzdem angezeigt (Abwärtskompatibilität). Keine Dopplung mehr.
+### Armstrong-Integration (Post-Call Flow)
 
-### Auswirkung
+1. `phone-postcall` erstellt LLM-Summary + Action-Items
+2. Sendet strukturierte E-Mail an Armstrong-Inbound-Adresse des Tenant-Users
+3. Armstrong erkennt den Anruf-Kontext und:
+   - Erzeugt ein Widget im Dashboard ("Verpasster Anruf von Thomas Müller")
+   - Formuliert eine persönliche E-Mail an den User mit Summary + nächsten Schritten
+4. Kontakt-Matching: Caller-ID → `contacts.phone` / `contacts.phone_mobile`
+   - Wenn Treffer → personalisierter Kontext (offene Vorgänge, letzte Kommunikation)
+   - Wenn kein Treffer → neuer Kontaktvorschlag
 
-- User mit 8 aktivierten Widgets (inkl. Armstrong-Preference) → sieht 8
-- User ohne explizite Armstrong-Preference → sieht Armstrong trotzdem (Fallback)
-- Keine DB-Migration nötig
+### Stufen
 
+| | Zone 1 (Eigene Marken) | Zone 2 (Kunden) |
+|---|---|---|
+| Telefonie | Twilio | Twilio |
+| Stimme | ElevenLabs Conversational AI | Twilio `<Say>` + `<Gather>` + LLM |
+| Post-Call | LLM + Armstrong-Context | LLM + Armstrong-Inbound-Email |
+| Kontakterkennung | Ja (Caller-ID → Kontakt) | Ja (gleicher Lookup) |
+
+### Implementierungs-Reihenfolge
+
+- [x] 1. Plan erstellen
+- [ ] 2. Secrets einrichten (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+- [ ] 3. DB-Migration (twilio_number_sid, twilio_phone_number_e164, armstrong_inbound_email)
+- [ ] 4. Edge Function `phone-provision` (Nummernkauf via Twilio API)
+- [ ] 5. Edge Function `phone-inbound` (Webhook + TwiML, Zone-Routing)
+- [ ] 6. Edge Function `phone-postcall` (Summary + Armstrong-Inbound-Email)
+- [ ] 7. UNFREEZE MOD-14 → UI: StatusForwardingCard erweitern (Nummernkauf + GSM-Codes)
+- [ ] 8. Credit-Integration (sot-credit-preflight)
+
+### Secrets
+
+- `TWILIO_ACCOUNT_SID` — ⏳ noch einzurichten
+- `TWILIO_AUTH_TOKEN` — ⏳ noch einzurichten
+- `ELEVENLABS_API_KEY` — ✅ vorhanden
+
+### Kosten-Modell (Credit-basiert)
+
+| Posten | ~Preis | Credits |
+|--------|--------|---------|
+| Nummer/Monat | ~1 EUR | 4 Credits |
+| Anruf/Min (Twilio) | ~0.01 EUR | 1 Credit |
+| ElevenLabs Audio/Min | ~0.05 EUR | 1 Credit/Min |
+| Post-Call LLM | ~0.01 EUR | 1 Credit |
