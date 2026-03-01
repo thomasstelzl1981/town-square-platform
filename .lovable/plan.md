@@ -1,42 +1,24 @@
 
 
-## Persoenliche Berater-Sektion auf Otto² Advisory Homepage
+## Fix: Portraitfotos besser zentrieren (Kopf nicht abgeschnitten)
 
-### Freeze-Check
-- Zone 3 / Otto: Nicht in `zone3_freeze.json` gelistet → **nicht frozen** ✅
+### Problem
+Die runden Portraitfotos verwenden `object-cover`, was standardmaessig auf die Bildmitte zentriert (`object-position: center`). Bei Portraitfotos, wo der Kopf im oberen Drittel liegt, wird dieser abgeschnitten.
+
+### Loesung
+Auf allen 3 Seiten `object-top` zur Image-Klasse hinzufuegen, damit der Fokus auf den oberen Bildbereich (Kopf/Gesicht) gelegt wird.
 
 ### Aenderungen
 
-**1. Bilder kopieren nach `src/assets/otto/`**
-- `user-uploads://1B02E279-...` → `src/assets/otto/otto-stelzl.jpg` (Otto Stelzl)
-- `user-uploads://B0FCC94C-...` → `src/assets/otto/thomas-stelzl.jpg` (Thomas Otto Stelzl)
+**1. `src/pages/zone3/otto/OttoHome.tsx`** (2 Bilder)
+- Zeile 124: `object-cover` → `object-cover object-top`
+- Zeile 129: `object-cover` → `object-cover object-top`
 
-**2. Neue Berater-Sektion in `src/pages/zone3/otto/OttoHome.tsx`**
+**2. `src/pages/zone3/ncore/NcoreHome.tsx`** (1 Bild)
+- Zeile 224: `object-cover` → `object-cover object-top`
 
-Zwischen der "Warum Otto²"-Sektion (Zeile 114) und der "Fuer Unternehmer & Privathaushalte"-Sektion (Zeile 117) eine kompakte Berater-Vorstellung einfuegen:
+**3. `src/pages/zone3/zlwohnbau/ZLWohnbauHome.tsx`** (1 Bild)
+- Zeile 188: `object-cover` → `object-cover object-top`
 
-```
-Ihre Berater
-
-[Foto Otto]              [Foto Thomas]
-Otto Stelzl              Thomas Otto Stelzl
-Geschäftsführer          Finanzberater
-
-"Herzlich willkommen bei Otto² Advisory! Wir freuen uns
-darauf, Sie kennenzulernen. Unser Versprechen: Pragmatisch
-und ehrlich beraten — immer. Wir laden Sie herzlich ein
-zu einem unverbindlichen Kennenlernen."
-
-                [Kontakt aufnehmen →]
-```
-
-Design:
-- Weisser Hintergrund, `border-t border-slate-100`
-- Zwei runde Portraitfotos nebeneinander (ca. 160x160px, `rounded-full`, `object-cover`)
-- Darunter Name + Rolle in Slate-800 / Slate-500
-- Zitat-Text zentriert in Slate-600, kursiv
-- CTA-Link zu `/website/otto-advisory/kontakt`
-- Responsive: auf Mobile untereinander
-
-**Keine weiteren Dateien betroffen.**
+Keine weiteren Aenderungen.
 
