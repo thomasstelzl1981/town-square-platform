@@ -2,6 +2,25 @@ import { getJsPDF } from './lazyJspdf';
 import { formatDateLong } from './formatters';
 import type { LetterFont } from '@/components/portal/office/LetterPreview';
 
+/** Load an image URL as a base64 data URL for jsPDF embedding */
+function loadImageAsDataUrl(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject(new Error('No canvas context'));
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('Image load failed'));
+    img.src = url;
+  });
+}
+
 export interface LetterPdfData {
   senderName?: string;
   senderCompany?: string;
@@ -15,6 +34,7 @@ export interface LetterPdfData {
   body?: string;
   date?: string;
   font?: LetterFont;
+  signatureUrl?: string | null;
 }
 
 // Map LetterFont to jsPDF native font names
@@ -116,6 +136,22 @@ export async function generateLetterPdf(data: LetterPdfData): Promise<{ base64: 
       }
       doc.text(line, leftMargin, yPos);
       yPos += lineHeight;
+    }
+  }
+
+  // ── Signature image ──
+  if (data.signatureUrl) {
+    try {
+      const img = await loadImageAsDataUrl(data.signatureUrl);
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 27;
+      }
+      yPos += 5;
+      doc.addImage(img, 'PNG', leftMargin, yPos, 45, 18);
+      yPos += 22;
+    } catch (e) {
+      console.warn('Could not embed signature in PDF:', e);
     }
   }
 

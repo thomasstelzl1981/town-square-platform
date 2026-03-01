@@ -57,6 +57,8 @@ import {
   Type,
   Download,
   Eye,
+  Upload,
+  X,
 } from 'lucide-react';
 import { LetterPreview, type LetterFont } from '@/components/portal/office/LetterPreview';
 import { SenderSelector, type SenderOption } from '@/components/shared';
@@ -97,6 +99,7 @@ interface Profile {
   postal_code: string | null;
   city: string | null;
   letterhead_logo_url: string | null;
+  signature_url: string | null;
 }
 
 export function BriefTab() {
@@ -133,7 +136,7 @@ export function BriefTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, display_name, first_name, last_name, active_tenant_id, street, house_number, postal_code, city, letterhead_logo_url')
+        .select('id, display_name, first_name, last_name, active_tenant_id, street, house_number, postal_code, city, letterhead_logo_url, signature_url')
         .single();
       if (error) throw error;
       return data as Profile;
@@ -393,6 +396,7 @@ ${senderLine}`);
       subject,
       body: generatedBody,
       font: letterFont,
+      signatureUrl: profile?.signature_url || undefined,
     };
   };
 
@@ -505,6 +509,59 @@ ${senderLine}`);
   };
 
   const [draftsOpen, setDraftsOpen] = useState(false);
+  const [isUploadingSignature, setIsUploadingSignature] = useState(false);
+
+  const handleSignatureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile?.id) return;
+
+    setIsUploadingSignature(true);
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const path = `signatures/${profile.id}/signature.${ext}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('tenant-documents')
+        .upload(path, file, { upsert: true });
+      
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('tenant-documents')
+        .getPublicUrl(path);
+
+      const publicUrl = urlData.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ signature_url: publicUrl })
+        .eq('id', profile.id);
+      
+      if (updateError) throw updateError;
+
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      toast.success('Unterschrift hochgeladen');
+    } catch (err: any) {
+      toast.error('Upload fehlgeschlagen: ' + err.message);
+    } finally {
+      setIsUploadingSignature(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveSignature = async () => {
+    if (!profile?.id) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ signature_url: null })
+      .eq('id', profile.id);
+    if (error) {
+      toast.error('Fehler: ' + error.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+    toast.success('Unterschrift entfernt');
+  };
 
   return (
     <PageShell>
@@ -741,6 +798,27 @@ ${senderLine}`);
               </div>
             </div>
 
+            {/* Signature upload */}
+            <div className="flex items-center gap-3 pt-1">
+              <Label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Unterschrift:</Label>
+              {profile?.signature_url ? (
+                <div className="flex items-center gap-2">
+                  <img src={profile.signature_url} alt="Unterschrift" className="h-8 max-w-[120px] object-contain border rounded px-1" />
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleRemoveSignature}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/png,image/jpeg,image/svg+xml" className="hidden" onChange={handleSignatureUpload} />
+                  <Button variant="outline" size="sm" className="gap-1.5 pointer-events-none" disabled={isUploadingSignature}>
+                    {isUploadingSignature ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    Bild hochladen
+                  </Button>
+                </label>
+              )}
+            </div>
+
             <LetterPreview
               senderName={selectedSender?.label}
               senderCompany={selectedSender?.type === 'BUSINESS' ? selectedSender?.company : undefined}
@@ -758,6 +836,7 @@ ${senderLine}`);
               subject={subject}
               body={generatedBody}
               font={letterFont}
+              signatureUrl={profile?.signature_url || undefined}
             />
           </CardContent>
         </Card>

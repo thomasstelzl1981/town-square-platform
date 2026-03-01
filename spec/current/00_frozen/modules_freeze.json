@@ -6,7 +6,7 @@
   "modules": {
     "MOD-00": { "frozen": true, "frozen_at": "2026-03-01T12:00:00.000Z", "reason": "Re-frozen after WeatherCard visual fix" },
     "MOD-01": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
-    "MOD-02": { "frozen": true, "frozen_at": "2026-03-01T18:00:00.000Z", "reason": "Re-frozen: complete freeze restore" },
+    "MOD-02": { "frozen": true, "frozen_at": "2026-03-01T23:59:00.000Z", "reason": "Re-frozen after Briefgenerator 700px scaling + signature upload" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
     "MOD-04": { "frozen": true, "frozen_at": "2026-03-01T12:00:00.000Z", "reason": "Re-frozen after Vermietereinheit edit + Miete p.a. intake fix" },
     "MOD-05": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
