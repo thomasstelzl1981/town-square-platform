@@ -26,10 +26,24 @@ import AuthResetPassword from "./pages/AuthResetPassword";
 import PresentationPage from "./pages/presentation/PresentationPage";
 import { lazy, Suspense } from "react";
 import { getDomainEntry } from "./hooks/useDomainRouter";
+import { useAuth } from "./contexts/AuthContext";
 const VideocallJoinPage = lazy(() => import("./pages/portal/office/VideocallJoinPage"));
 const InstallPage = lazy(() => import("./pages/Install"));
 
 
+
+// Auth-aware root redirect for brand domains
+function RootRedirect() {
+  const domainEntry = getDomainEntry();
+  const { user, session, isLoading } = useAuth();
+  
+  if (!domainEntry) return <Navigate to="/portal" replace />;
+  
+  // Brand domain: if user is logged in, go to portal
+  if (isLoading) return null; // wait for auth
+  if (user || session) return <Navigate to="/portal" replace />;
+  return <Navigate to={domainEntry.base} replace />;
+}
 
 // Manifest-driven router
 import { ManifestRouter } from "./router/ManifestRouter";
@@ -78,12 +92,8 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              {/* Root redirect: Brand domain → Zone 3 home, otherwise → Portal */}
-              <Route path="/" element={
-                getDomainEntry() 
-                  ? <Navigate to={getDomainEntry()!.base} replace /> 
-                  : <Navigate to="/portal" replace />
-              } />
+              {/* Root redirect: Auth-aware for brand domains */}
+              <Route path="/" element={<RootRedirect />} />
               
               {/* Special: Authentication (public) */}
               <Route path="/auth" element={<Auth />} />

@@ -49,11 +49,11 @@ function LegacyRedirect({ to }: { to: string }) {
 // Portal Guard — Auth-aware redirect for brand domains
 // =============================================================================
 function PortalOrWebsiteRedirect({ domainEntry }: { domainEntry: { base: string } }) {
-  const { session, isLoading } = useAuth();
+  const { user, session, isLoading } = useAuth();
 
   if (isLoading) return <LoadingFallback />;
 
-  if (session) {
+  if (user || session) {
     return (
       <React.Suspense fallback={<LoadingFallback />}>
         <Zone2Router />
