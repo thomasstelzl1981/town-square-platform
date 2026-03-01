@@ -9,8 +9,8 @@ import { ArmstrongIdentityCard } from './ArmstrongIdentityCard';
 import { BrandKnowledgeCard } from './BrandKnowledgeCard';
 import { AgentSyncCard } from './AgentSyncCard';
 // Re-use existing shared cards from MOD-14 (readonly import, no modification)
+import { BrandVoiceCard } from './BrandVoiceCard';
 import { StatusForwardingCard } from '@/components/communication-pro/phone-assistant/StatusForwardingCard';
-import { VoiceSettingsCard } from '@/components/communication-pro/phone-assistant/VoiceSettingsCard';
 import { RulesCard } from '@/components/communication-pro/phone-assistant/RulesCard';
 import { DocumentationCard } from '@/components/communication-pro/phone-assistant/DocumentationCard';
 import { CallLogSection } from '@/components/communication-pro/phone-assistant/CallLogSection';
@@ -66,7 +66,7 @@ export default function BrandAssistantPanel({ brandKey, brandLabel }: BrandAssis
       {/* Section 2: Status + Voice (2-column) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <StatusForwardingCard config={config} onUpdate={updateConfig} onRefresh={refetchAssistant} brandKey={brandKey} />
-        <VoiceSettingsCard config={config} onUpdate={updateConfig} />
+        <BrandVoiceCard config={config} onUpdate={updateConfig} />
       </div>
 
       {/* Section 3: Knowledge Store */}
