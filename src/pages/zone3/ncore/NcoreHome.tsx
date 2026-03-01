@@ -7,6 +7,7 @@ import { ArrowRight, Cpu, Shield, TrendingUp, Network, Users, Sparkles, CheckCir
 import heroNetworkImg from '@/assets/ncore/hero-network.jpg';
 import advisoryImg from '@/assets/ncore/advisory-session.jpg';
 import networkImg from '@/assets/ncore/network-handshake.jpg';
+import founderImg from '@/assets/ncore/thomas-stelzl.jpg';
 
 const STATS = [
   { value: '15+', label: 'Jahre Erfahrung' },
@@ -210,6 +211,29 @@ export default function NcoreHome() {
               </Link>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── Gründer — Light ── */}
+      <section className="py-20 px-4 border-t border-slate-200 bg-white">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-emerald-600">Der Gründer</p>
+          <img
+            src={founderImg}
+            alt="Thomas Stelzl — Gründer von Ncore Business Consulting"
+            className="mx-auto mb-6 h-44 w-44 rounded-full object-cover shadow-lg"
+          />
+          <h2 className="mb-1 text-2xl font-bold text-slate-800">Thomas Stelzl</h2>
+          <p className="mb-6 text-sm text-slate-500">Gründer & Geschäftsführer</p>
+          <p className="mx-auto max-w-xl text-slate-600 italic leading-relaxed mb-8">
+            „Ich habe Ncore gegründet, weil ich davon überzeugt bin, dass gute Beratung alle Bereiche eines Unternehmens zusammen denken muss — Digitalisierung, Finanzen und Strategie. Operativ, ehrlich und immer mit dem Blick auf das große Ganze."
+          </p>
+          <Link
+            to="/website/ncore/kontakt"
+            className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600 hover:underline"
+          >
+            Persönliches Gespräch vereinbaren <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
 
