@@ -41,6 +41,8 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
   const [selectedNumber, setSelectedNumber] = useState<AvailableNumber | null>(null);
   // No filter needed — backend returns only Local 089 numbers for DE
   const [forwardingOpen, setForwardingOpen] = useState(false);
+  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
+  const [purchasedNumber, setPurchasedNumber] = useState('');
 
   const hasNumber = !!config.twilio_phone_number_e164;
 
@@ -96,9 +98,9 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
         });
         return;
       }
-      toast({ title: 'Nummer gekauft', description: data.phone_number });
-      setDialogOpen(false);
-      onRefresh?.();
+      // Show success screen instead of closing dialog
+      setPurchasedNumber(data.phone_number || selectedNumber.phone_number);
+      setPurchaseSuccess(true);
     } catch (err: any) {
       toast({ title: 'Fehler beim Nummernkauf', description: err.message, variant: 'destructive' });
       // Keep dialog open on error
@@ -265,86 +267,124 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
       </Card>
 
       {/* Number selection dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        if (!open && purchaseSuccess) {
+          // Closing after success → refresh
+          setPurchaseSuccess(false);
+          setPurchasedNumber('');
+          onRefresh?.();
+        }
+        setDialogOpen(open);
+      }}>
         <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Phone className="h-5 w-5 text-primary" />
-              Deutsche Nummer auswählen
-            </DialogTitle>
-            <DialogDescription>
-              Wählen Sie eine Münchner Festnetznummer (089) für Ihren KI-Assistenten.
-            </DialogDescription>
-          </DialogHeader>
-
-          {searching ? (
-            <div className="flex items-center justify-center py-10 text-muted-foreground text-sm gap-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Verfügbare Nummern werden geladen…
-            </div>
-          ) : availableNumbers.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">
-              Keine Nummern gefunden. Bitte versuchen Sie es später erneut.
-            </div>
-          ) : (
+          {purchaseSuccess ? (
             <>
-              <ScrollArea className="max-h-[360px] pr-2">
-                <div className="space-y-2">
-                  {availableNumbers.map((n) => {
-                    const isSelected = selectedNumber?.phone_number === n.phone_number;
-                    return (
-                      <button
-                        key={n.phone_number}
-                        onClick={() => setSelectedNumber(n)}
-                        className={`w-full text-left rounded-lg border p-3 transition-all ${
-                          isSelected
-                            ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
-                            : 'border-border hover:border-primary/40 hover:bg-muted/30'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-sm font-medium">
-                            {formatPhone(n.phone_number)}
-                          </span>
-                          {isSelected && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          {n.locality && (
-                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <MapPin className="h-3 w-3" />
-                              {n.locality}
-                            </span>
-                          )}
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                            Festnetz 089
-                          </Badge>
-                        </div>
-                      </button>
-                    );
-                  })}
-                  {availableNumbers.length === 0 && (
-                    <div className="text-center py-6 text-muted-foreground text-sm">
-                      Keine Nummern verfügbar.
-                    </div>
-                  )}
+              <div className="flex flex-col items-center text-center py-6 space-y-4">
+                <div className="rounded-full bg-green-500/15 p-4 animate-in zoom-in-50 duration-300">
+                  <CheckCircle2 className="h-10 w-10 text-green-500" />
                 </div>
-              </ScrollArea>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Abbrechen
-                </Button>
-                <Button
-                  onClick={handlePurchaseSelected}
-                  disabled={!selectedNumber || purchasing}
-                >
-                  {purchasing ? (
-                    <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Wird gekauft…</>
-                  ) : (
-                    <><ShoppingCart className="h-4 w-4 mr-2" /> Nummer kaufen</>
-                  )}
+                <div className="space-y-2">
+                  <h2 className="text-xl font-semibold">Herzlichen Glückwunsch!</h2>
+                  <p className="text-muted-foreground text-sm">
+                    Sie haben Ihre Nummer erfolgreich erworben.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-primary/20 bg-primary/5 px-5 py-3">
+                  <span className="text-xs text-muted-foreground">Ihre neue Business-Nummer</span>
+                  <p className="font-mono text-lg font-semibold mt-0.5">{formatPhone(purchasedNumber)}</p>
+                </div>
+                <p className="text-xs text-muted-foreground max-w-sm">
+                  Sie können diese Nummer direkt nutzen oder Ihre bisherige Nummer per Rufweiterleitung darauf umleiten.
+                </p>
+              </div>
+              <div className="flex justify-center pb-2">
+                <Button onClick={() => {
+                  setDialogOpen(false);
+                  setPurchaseSuccess(false);
+                  setPurchasedNumber('');
+                  onRefresh?.();
+                }}>
+                  Verstanden
                 </Button>
               </div>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Phone className="h-5 w-5 text-primary" />
+                  Deutsche Nummer auswählen
+                </DialogTitle>
+                <DialogDescription>
+                  Wählen Sie eine Münchner Festnetznummer (089) für Ihren KI-Assistenten.
+                </DialogDescription>
+              </DialogHeader>
+
+              {searching ? (
+                <div className="flex items-center justify-center py-10 text-muted-foreground text-sm gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Verfügbare Nummern werden geladen…
+                </div>
+              ) : availableNumbers.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground text-sm">
+                  Keine Nummern gefunden. Bitte versuchen Sie es später erneut.
+                </div>
+              ) : (
+                <>
+                  <ScrollArea className="max-h-[360px] pr-2">
+                    <div className="space-y-2">
+                      {availableNumbers.map((n) => {
+                        const isSelected = selectedNumber?.phone_number === n.phone_number;
+                        return (
+                          <button
+                            key={n.phone_number}
+                            onClick={() => setSelectedNumber(n)}
+                            className={`w-full text-left rounded-lg border p-3 transition-all ${
+                              isSelected
+                                ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
+                                : 'border-border hover:border-primary/40 hover:bg-muted/30'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono text-sm font-medium">
+                                {formatPhone(n.phone_number)}
+                              </span>
+                              {isSelected && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              {n.locality && (
+                                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <MapPin className="h-3 w-3" />
+                                  {n.locality}
+                                </span>
+                              )}
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                Festnetz 089
+                              </Badge>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                      Abbrechen
+                    </Button>
+                    <Button
+                      onClick={handlePurchaseSelected}
+                      disabled={!selectedNumber || purchasing}
+                    >
+                      {purchasing ? (
+                        <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Wird gekauft…</>
+                      ) : (
+                        <><ShoppingCart className="h-4 w-4 mr-2" /> Nummer kaufen</>
+                      )}
+                    </Button>
+                  </div>
+                </>
+              )}
             </>
           )}
         </DialogContent>
