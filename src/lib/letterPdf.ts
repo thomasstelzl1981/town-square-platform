@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf';
+import { getJsPDF } from './lazyJspdf';
 import { formatDateLong } from './formatters';
 
 export interface LetterPdfData {
@@ -19,7 +19,8 @@ export interface LetterPdfData {
  * Generate a DIN 5008 Form B compliant letter PDF.
  * Returns the PDF as base64 string and as Blob.
  */
-export function generateLetterPdf(data: LetterPdfData): { base64: string; blob: Blob; dataUrl: string } {
+export async function generateLetterPdf(data: LetterPdfData): Promise<{ base64: string; blob: Blob; dataUrl: string }> {
+  const jsPDF = await getJsPDF();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const pageWidth = 210;
   const leftMargin = 25; // DIN 5008 left margin
@@ -45,23 +46,23 @@ export function generateLetterPdf(data: LetterPdfData): { base64: string; blob: 
 
   // ── Recipient window (DIN 5008: starts at 45mm from top, 85x45mm) ──
   let yPos = 49;
-  doc.setFontSize(12);
+  doc.setFontSize(10.5);
   doc.setTextColor(0, 0, 0);
 
   if (data.recipientCompany) {
     doc.text(data.recipientCompany, leftMargin, yPos);
-    yPos += 5.5;
+    yPos += 5;
   }
   if (data.recipientName) {
     doc.text(data.recipientName, leftMargin, yPos);
-    yPos += 5.5;
+    yPos += 5;
   }
   if (data.recipientAddress) {
     const addressLines = data.recipientAddress.split('\n');
     for (const line of addressLines) {
       if (line.trim()) {
         doc.text(line.trim(), leftMargin, yPos);
-        yPos += 5.5;
+        yPos += 5;
       }
     }
   }
@@ -69,33 +70,33 @@ export function generateLetterPdf(data: LetterPdfData): { base64: string; blob: 
   // ── Date — right-aligned ──
   const dateStr = data.date || formatDateLong(new Date(), data.senderCity);
   yPos = 95; // Fixed position after window zone
-  doc.setFontSize(12);
+  doc.setFontSize(10.5);
   doc.setTextColor(80, 80, 80);
   doc.text(dateStr, pageWidth - rightMargin, yPos, { align: 'right' });
-  yPos += 12;
+  yPos += 10;
 
-  // ── Subject — bold ──
+  // ── Subject — bold, same size as body ──
   if (data.subject) {
-    doc.setFontSize(13);
+    doc.setFontSize(10.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 0);
     doc.text(data.subject, leftMargin, yPos);
-    yPos += 10;
+    yPos += 8;
   }
 
   // ── Body ──
   if (data.body) {
-    doc.setFontSize(12);
+    doc.setFontSize(10.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(30, 30, 30);
 
     const lines = doc.splitTextToSize(data.body, textWidth);
-    const lineHeight = 6;
+    const lineHeight = 5;
     
     for (const line of lines) {
       if (yPos > 270) {
         doc.addPage();
-        yPos = 25;
+        yPos = 27; // DIN 5008 top margin for continuation pages
       }
       doc.text(line, leftMargin, yPos);
       yPos += lineHeight;

@@ -52,14 +52,14 @@ import {
   Mail,
   Phone,
   FileOutput,
-  Mic,
+  Mic, // keep import for potential future use
   History,
   Type,
   Download,
   Eye,
 } from 'lucide-react';
 import { LetterPreview, type LetterFont } from '@/components/portal/office/LetterPreview';
-import { SenderSelector, CreateContextDialog, type SenderOption } from '@/components/shared';
+import { SenderSelector, type SenderOption } from '@/components/shared';
 import { generateLetterPdf, type LetterPdfData } from '@/lib/letterPdf';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { isDemoId } from '@/engines/demoData/engine';
@@ -123,7 +123,7 @@ export function BriefTab() {
   const [channel, setChannel] = useState<'email' | 'fax' | 'post'>('email');
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedSenderId, setSelectedSenderId] = useState<string | null>(null);
-  const [showCreateContext, setShowCreateContext] = useState(false);
+  // showCreateContext removed — dead code, no trigger existed
   const [prefillApplied, setPrefillApplied] = useState(false);
   const [letterFont, setLetterFont] = useState<LetterFont>('din');
 
@@ -234,7 +234,7 @@ export function BriefTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('letter_drafts')
-        .select('id, subject, status, created_at')
+        .select('id, subject, prompt, body, channel, status, created_at')
         .order('created_at', { ascending: false })
         .limit(5);
       if (error) throw error;
@@ -395,16 +395,16 @@ ${senderLine}`);
     };
   };
 
-  const handlePdfPreview = () => {
+  const handlePdfPreview = async () => {
     if (!generatedBody) return;
-    const { dataUrl } = generateLetterPdf(buildPdfData());
+    const { dataUrl } = await generateLetterPdf(buildPdfData());
     setPdfPreviewUrl(dataUrl);
     setShowPdfPreview(true);
   };
 
-  const handlePdfDownload = () => {
+  const handlePdfDownload = async () => {
     if (!generatedBody) return;
-    const { blob } = generateLetterPdf(buildPdfData());
+    const { blob } = await generateLetterPdf(buildPdfData());
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -430,7 +430,7 @@ ${senderLine}`);
 
     setIsSending(true);
     try {
-      const { base64 } = generateLetterPdf(buildPdfData());
+      const { base64 } = await generateLetterPdf(buildPdfData());
       const pdfFilename = `Brief_${subject?.replace(/[^a-zA-Z0-9]/g, '_') || 'Dokument'}.pdf`;
       const recipientFullName = `${recipient.first_name} ${recipient.last_name}`;
 
@@ -662,15 +662,7 @@ ${senderLine}`);
                 onChange={(e) => setPrompt(e.target.value)}
                 className="min-h-[120px] pr-12"
               />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-2 bottom-2"
-                title="Spracheingabe (in Entwicklung)"
-                disabled
-              >
-                <Mic className="h-4 w-4" />
-              </Button>
+              {/* Mic button removed — was disabled/dead code */}
             </div>
             <Button 
               onClick={handleGenerate} 
@@ -857,7 +849,14 @@ ${senderLine}`);
                   ) : (
                     <div className="space-y-1.5">
                       {recentDrafts.map((draft) => (
-                        <button key={draft.id} className="w-full p-2 rounded-md border hover:bg-muted/50 transition-colors text-left">
+                        <button key={draft.id} className="w-full p-2 rounded-md border hover:bg-muted/50 transition-colors text-left" onClick={() => {
+                          if (draft.subject) setSubject(draft.subject);
+                          if (draft.body) setGeneratedBody(draft.body);
+                          if (draft.channel) setChannel(draft.channel as 'email' | 'fax' | 'post');
+                          if (draft.prompt) setPrompt(draft.prompt);
+                          setDraftsOpen(false);
+                          toast.success('Entwurf geladen');
+                        }}>
                           <div className="flex items-center justify-between">
                             <span className="font-medium text-xs truncate">{draft.subject || 'Ohne Betreff'}</span>
                             <Badge variant={draft.status === 'sent' ? 'default' : 'secondary'} className="text-[10px] h-4">
@@ -904,11 +903,7 @@ ${senderLine}`);
         </DialogContent>
       </Dialog>
 
-      {/* Create Context Dialog */}
-      <CreateContextDialog 
-        open={showCreateContext} 
-        onOpenChange={setShowCreateContext} 
-      />
+      {/* CreateContext dialog removed — was dead code, no trigger existed */}
     </PageShell>
   );
 }

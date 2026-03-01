@@ -143,7 +143,7 @@ export function LetterPreview({
           visibility: 'hidden',
           width: `${PAGE_WIDTH}px`,
           fontFamily,
-          fontSize: '8.5px',
+          fontSize: '7.4px',
           pointerEvents: 'none',
         }}
       >
@@ -164,7 +164,7 @@ export function LetterPreview({
             width: `${PAGE_WIDTH}px`,
             height: `${PAGE_HEIGHT}px`,
             fontFamily,
-            fontSize: '8.5px',
+            fontSize: '7.4px',
             overflow: 'hidden',
           }}
         >
