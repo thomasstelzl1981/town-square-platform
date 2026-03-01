@@ -4791,6 +4791,7 @@ export type Database = {
           created_at: string
           direction: string
           duration_sec: number | null
+          elevenlabs_conversation_id: string | null
           ended_at: string | null
           from_number_e164: string
           id: string
@@ -4816,6 +4817,7 @@ export type Database = {
           created_at?: string
           direction?: string
           duration_sec?: number | null
+          elevenlabs_conversation_id?: string | null
           ended_at?: string | null
           from_number_e164: string
           id?: string
@@ -4841,6 +4843,7 @@ export type Database = {
           created_at?: string
           direction?: string
           duration_sec?: number | null
+          elevenlabs_conversation_id?: string | null
           ended_at?: string | null
           from_number_e164?: string
           id?: string
