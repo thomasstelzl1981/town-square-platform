@@ -102,7 +102,7 @@ serve(async (req) => {
 
     console.log(`Sending email via ${account.provider}: ${account.email_address} -> ${to.join(', ')}`);
 
-    let result: { success: boolean; messageId?: string; error?: string };
+    let result: { success: boolean; messageId?: string; threadId?: string; error?: string };
 
     if (account.provider === 'google') {
       result = await sendGoogleMail(account, { to, cc, bcc, subject, bodyHtml, bodyText, replyToMessageId });
@@ -124,24 +124,53 @@ serve(async (req) => {
           ? bodyText.substring(0, 200).replace(/\s+/g, ' ').trim()
           : (bodyHtml ? stripHtmlTags(bodyHtml).substring(0, 200) : '');
         
+        // Determine thread_id for sent message
+        let sentThreadId: string | undefined;
+        if (account.provider === 'google' && result.threadId) {
+          sentThreadId = result.threadId;
+        } else if (replyToMessageId) {
+          // For replies: look up the original message's thread_id
+          const { data: origMsg } = await supabase
+            .from('mail_messages')
+            .select('thread_id')
+            .eq('account_id', accountId)
+            .eq('message_id', replyToMessageId)
+            .limit(1)
+            .maybeSingle();
+          if (origMsg?.thread_id) {
+            sentThreadId = origMsg.thread_id;
+          } else {
+            // Generate IMAP-style thread_id from normalized subject
+            const normalized = subject.replace(/^(Re:\s*|Fwd:\s*|AW:\s*|WG:\s*)+/gi, '').trim().toLowerCase();
+            const encoder = new TextEncoder();
+            const data = encoder.encode(accountId + normalized);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            sentThreadId = 'thread_' + hashArray.slice(0, 16).map(b => b.toString(16).padStart(2, '0')).join('');
+          }
+        }
+        
+        const insertData: Record<string, any> = {
+          account_id: accountId,
+          message_id: result.messageId || `sent_${Date.now()}`,
+          folder: 'SENT',
+          subject: subject,
+          from_address: account.email_address,
+          from_name: displayName,
+          to_addresses: to,
+          body_text: bodyText || null,
+          body_html: bodyHtml || null,
+          snippet: snippet || '(Kein Inhalt)',
+          is_read: true,
+          is_starred: false,
+          has_attachments: false,
+          received_at: sentAt,
+        };
+        if (sentThreadId) insertData.thread_id = sentThreadId;
+        
         const { error: insertError } = await supabase
           .from('mail_messages')
-          .insert({
-            account_id: accountId,
-            message_id: result.messageId || `sent_${Date.now()}`,
-            folder: 'SENT',
-            subject: subject,
-            from_address: account.email_address,
-            from_name: displayName,
-            to_addresses: to,
-            body_text: bodyText || null,
-            body_html: bodyHtml || null,
-            snippet: snippet || '(Kein Inhalt)',
-            is_read: true,
-            is_starred: false,
-            has_attachments: false,
-            received_at: sentAt,
-          });
+          .insert(insertData);
         
         if (insertError) {
           console.error('Error storing sent email:', insertError);
@@ -418,7 +447,7 @@ async function sendGoogleMail(
   }
 
   const data = await response.json();
-  return { success: true, messageId: data.id };
+  return { success: true, messageId: data.id, threadId: data.threadId };
 }
 
 // ─── Microsoft ──────────────────────────────────────────────────────────────
