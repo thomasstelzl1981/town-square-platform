@@ -2,11 +2,15 @@
  * CommPro Desk — Zone-1 Admin Desk for Brand Phone Assistants
  * Sub-Tab Navigation for 7 brands (Kaufy, FutureRoom, Acquiary, SoT, Lennox, Ncore, Otto²)
  */
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { Loader2, Phone } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { OperativeDeskShell } from '@/components/admin/desks/OperativeDeskShell';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 const BRAND_TABS = [
   { value: 'kaufy', label: 'Kaufy', path: 'kaufy' },
@@ -34,16 +38,76 @@ export default function CommProDesk() {
   const subPath = location.pathname.replace(/^\/admin\/commpro-desk\/?/, '').split('/')[0] || '';
   const activeTab = BRAND_TABS.find(t => t.path === subPath)?.value || 'kaufy';
 
+  const [bulkSyncing, setBulkSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<{ done: number; total: number; current: string } | null>(null);
+
+  const handleSyncAll = async () => {
+    setBulkSyncing(true);
+    setSyncProgress({ done: 0, total: BRAND_TABS.length, current: '' });
+    let success = 0;
+    let failed = 0;
+
+    for (let i = 0; i < BRAND_TABS.length; i++) {
+      const brand = BRAND_TABS[i];
+      setSyncProgress({ done: i, total: BRAND_TABS.length, current: brand.label });
+
+      try {
+        const { data, error } = await supabase.functions.invoke('sot-phone-agent-sync', {
+          body: { action: 'sync', brand_key: brand.value },
+        });
+        if (error || data?.error) {
+          failed++;
+          console.error(`Sync failed for ${brand.value}:`, error || data?.error);
+        } else {
+          success++;
+        }
+      } catch (err) {
+        failed++;
+        console.error(`Sync error for ${brand.value}:`, err);
+      }
+    }
+
+    setSyncProgress(null);
+    setBulkSyncing(false);
+    toast({
+      title: 'Bulk-Sync abgeschlossen',
+      description: `${success} erfolgreich, ${failed} fehlgeschlagen`,
+      variant: failed > 0 ? 'destructive' : 'default',
+    });
+  };
+
   const navigation = (
-    <Tabs value={activeTab} className="w-full">
-      <TabsList className="flex-wrap">
-        {BRAND_TABS.map(tab => (
-          <TabsTrigger key={tab.value} value={tab.value} asChild>
-            <Link to={`/admin/commpro-desk/${tab.path}`}>{tab.label}</Link>
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+    <div className="flex items-center gap-4 flex-wrap">
+      <Tabs value={activeTab} className="flex-1">
+        <TabsList className="flex-wrap">
+          {BRAND_TABS.map(tab => (
+            <TabsTrigger key={tab.value} value={tab.value} asChild>
+              <Link to={`/admin/commpro-desk/${tab.path}`}>{tab.label}</Link>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleSyncAll}
+        disabled={bulkSyncing}
+        className="shrink-0"
+      >
+        {bulkSyncing ? (
+          <>
+            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+            {syncProgress ? `${syncProgress.done}/${syncProgress.total} ${syncProgress.current}` : 'Sync…'}
+          </>
+        ) : (
+          <>
+            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+            Alle synchronisieren
+          </>
+        )}
+      </Button>
+    </div>
   );
 
   return (
