@@ -38,10 +38,11 @@ export default function SotLayout() {
     return <div className="min-h-screen flex items-center justify-center"><div className="h-6 w-6 border-2 border-current border-t-transparent rounded-full animate-spin" /></div>;
   }
 
-  const legalPaths = ['/impressum', '/datenschutz'];
+  const legalPaths = ['/impressum', '/datenschutz', '/nutzungsbedingungen'];
   const isLegalPage = legalPaths.some(p => location.pathname.endsWith(p));
   const isHomePage = location.pathname === '/' || location.pathname === '/website/sot' || location.pathname === '/website/sot/';
 
+  // PIN-gate bypass: legal pages + homepage always accessible
   if (pinGateEnabled && !pinVerified && !isLegalPage && !isHomePage) {
     return <WebsitePinGate brandName="System of a Town" sessionKey="sot_pin_verified" onVerified={() => setPinVerified(true)} />;
   }

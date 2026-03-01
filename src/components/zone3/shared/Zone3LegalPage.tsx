@@ -19,11 +19,17 @@ const BRAND_PROFILE_MAP: Record<string, string> = {
 
 interface Zone3LegalPageProps {
   brand: 'kaufy' | 'futureroom' | 'acquiary' | 'sot' | 'tierservice';
-  docType: 'imprint' | 'privacy';
+  docType: 'imprint' | 'privacy' | 'terms';
 }
 
+const DOC_TYPE_KEY_MAP: Record<string, string> = {
+  imprint: 'imprint',
+  privacy: 'privacy',
+  terms: 'terms',
+};
+
 export function Zone3LegalPage({ brand, docType }: Zone3LegalPageProps) {
-  const docKey = `website_${docType === 'imprint' ? 'imprint' : 'privacy'}_${brand}`;
+  const docKey = `website_${DOC_TYPE_KEY_MAP[docType] ?? docType}_${brand}`;
   const profileSlug = BRAND_PROFILE_MAP[brand] ?? 'sot';
 
   // Load document + active version
