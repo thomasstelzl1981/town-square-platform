@@ -254,16 +254,18 @@ Deno.serve(async (req) => {
         StatusCallbackMethod: "POST",
         FriendlyName: friendlyName,
       };
-      if (addressSid) {
-        buyParams.AddressSid = addressSid;
-      }
-      // For regulated countries (DE), include the approved BundleSid
+      // For regulated countries (DE), use BundleSid (which includes the address).
+      // Only fall back to AddressSid when no bundle is used.
       if (cc === "DE") {
         const bundleSid = DE_BUNDLES[purchaseType];
         if (bundleSid) {
           buyParams.BundleSid = bundleSid;
           console.log("Using BundleSid for DE:", bundleSid, "type:", purchaseType);
+        } else if (addressSid) {
+          buyParams.AddressSid = addressSid;
         }
+      } else if (addressSid) {
+        buyParams.AddressSid = addressSid;
       }
       const buyBody = new URLSearchParams(buyParams);
 
