@@ -226,12 +226,16 @@ Deno.serve(async (req) => {
             });
             if (assignRes.ok) {
               const assignData = await assignRes.json();
-              // Find the address item assignment (object_sid starts with "AD")
-              const addrAssignment = (assignData.results || []).find(
-                (item: any) => item.object_sid?.startsWith("AD")
-              );
+              const assignmentItems = [
+                ...(Array.isArray(assignData?.results) ? assignData.results : []),
+                ...(Array.isArray(assignData?.item_assignments) ? assignData.item_assignments : []),
+              ];
+              const addrAssignment = assignmentItems.find((item: any) => {
+                const sid = item?.object_sid || item?.objectSid || item?.sid;
+                return typeof sid === "string" && sid.startsWith("AD");
+              });
               if (addrAssignment) {
-                addressSid = addrAssignment.object_sid;
+                addressSid = addrAssignment.object_sid || addrAssignment.objectSid || addrAssignment.sid;
                 console.log("Using bundle AddressSid:", addressSid);
               }
             } else {
@@ -242,8 +246,9 @@ Deno.serve(async (req) => {
           }
         }
       }
-      // Fallback: fetch first address from account (non-DE or no bundle)
-      if (!addressSid) {
+      // Fallback: only for non-DE. For DE, never force an account-level AddressSid,
+      // because it can conflict with the selected Regulatory Bundle and trigger 21651.
+      if (!addressSid && cc !== "DE") {
         try {
           const addrUrl = `https://${selectedHost}/2010-04-01/Accounts/${TWILIO_SID}/Addresses.json?PageSize=1`;
           const addrRes = await fetch(addrUrl, {
