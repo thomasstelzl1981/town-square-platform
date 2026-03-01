@@ -40,8 +40,9 @@ export default function SotLayout() {
 
   const legalPaths = ['/impressum', '/datenschutz'];
   const isLegalPage = legalPaths.some(p => location.pathname.endsWith(p));
+  const isHomePage = location.pathname === '/' || location.pathname === '/website/sot' || location.pathname === '/website/sot/';
 
-  if (pinGateEnabled && !pinVerified && !isLegalPage) {
+  if (pinGateEnabled && !pinVerified && !isLegalPage && !isHomePage) {
     return <WebsitePinGate brandName="System of a Town" sessionKey="sot_pin_verified" onVerified={() => setPinVerified(true)} />;
   }
 
