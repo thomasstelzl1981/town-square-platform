@@ -18,7 +18,7 @@
     "MOD-11": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
     "MOD-12": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
     "MOD-13": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
-    "MOD-14": { "frozen": true, "frozen_at": "2026-03-01T12:00:00.000Z", "reason": "Re-frozen after Twilio phone assistant integration" },
+    "MOD-14": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for Zone 2 phone billing pipeline + UI updates" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
     "MOD-17": { "frozen": true, "frozen_at": "2026-03-01T12:00:00.000Z", "reason": "Re-frozen after Fahrtenbuch-Widget rebuild with Traccar integration" },

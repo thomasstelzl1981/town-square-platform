@@ -10,10 +10,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * 1. Creates/updates call session with transcript data
  * 2. Generates LLM summary + action items
  * 3. Sends email notifications (Armstrong Zone 2 + Admin Zone 1)
+ * 4. Bills credits: 2 Credits per started minute (Zone 2 only)
  */
 
 const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev";
 const ADMIN_EMAIL = "info@systemofatown.com";
+const CREDITS_PER_MINUTE = 2;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -41,22 +43,95 @@ Deno.serve(async (req) => {
 });
 
 // ═══════════════════════════════════════════════════════
+// Credit Billing for Zone 2 (tenant-level assistants)
+// ═══════════════════════════════════════════════════════
+async function billCallCredits(
+  supabase: any,
+  assistant: any,
+  sessionId: string,
+  durationSec: number | null,
+) {
+  // Only bill for Zone 2 (user-level assistants with tenant_id)
+  // Brand-level assistants (Zone 1) have no tenant billing
+  if (!assistant.tenant_id || !assistant.user_id) {
+    console.log("[BILLING] Skipping — no tenant_id or brand-level assistant");
+    return;
+  }
+
+  if (!durationSec || durationSec <= 0) {
+    console.log("[BILLING] Skipping — no duration");
+    return;
+  }
+
+  const minutes = Math.ceil(durationSec / 60);
+  const creditsCharged = minutes * CREDITS_PER_MINUTE;
+  const billingPeriod = new Date().toISOString().slice(0, 7); // '2026-03'
+
+  console.log(`[BILLING] ${minutes} min × ${CREDITS_PER_MINUTE} Cr = ${creditsCharged} Credits for tenant ${assistant.tenant_id}`);
+
+  try {
+    // 1. Update billed_credits on call session
+    await supabase
+      .from("commpro_phone_call_sessions")
+      .update({ billed_credits: creditsCharged })
+      .eq("id", sessionId);
+
+    // 2. Insert phone_usage_log entry
+    const { error: usageErr } = await supabase
+      .from("phone_usage_log")
+      .insert({
+        tenant_id: assistant.tenant_id,
+        assistant_id: assistant.id,
+        call_session_id: sessionId,
+        user_id: assistant.user_id,
+        duration_sec: durationSec,
+        credits_charged: creditsCharged,
+        provider: "elevenlabs",
+        billing_period: billingPeriod,
+      });
+
+    if (usageErr) {
+      console.error("[BILLING] phone_usage_log insert error:", usageErr.message);
+    } else {
+      console.log("[BILLING] Usage logged:", creditsCharged, "credits");
+    }
+
+    // 3. Deduct credits via credit preflight (if available)
+    try {
+      const { error: creditErr } = await supabase.rpc("rpc_armstrong_log_action_run", {
+        p_action_code: "phone_call",
+        p_zone: "z2",
+        p_org_id: assistant.tenant_id,
+        p_user_id: assistant.user_id,
+        p_status: "success",
+        p_cost_cents: creditsCharged * 25, // 1 Credit = 25 Cent
+        p_credits_charged: creditsCharged,
+        p_input_context: { session_id: sessionId, duration_sec: durationSec, minutes },
+      });
+      if (creditErr) {
+        console.error("[BILLING] Credit deduction RPC error:", creditErr.message);
+      }
+    } catch (rpcErr) {
+      console.error("[BILLING] Credit RPC call failed (non-critical):", rpcErr);
+    }
+  } catch (err) {
+    console.error("[BILLING] Billing failed (non-critical):", err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
 // ElevenLabs Post-Call Webhook Handler
 // ═══════════════════════════════════════════════════════
 async function handleElevenLabsWebhook(req: Request): Promise<Response> {
   const rawPayload = await req.json();
 
-  // ── DEBUG: Log incoming payload structure ──
   console.log("[POSTCALL] Incoming payload type:", typeof rawPayload);
   console.log("[POSTCALL] Top-level keys:", Object.keys(rawPayload));
   if (rawPayload.type) console.log("[POSTCALL] Event type:", rawPayload.type);
   if (rawPayload.data) console.log("[POSTCALL] data keys:", Object.keys(rawPayload.data));
 
-  // ── Robust payload unwrapping ──
-  // ElevenLabs may send: { type, data: { agent_id, ... } } OR flat { agent_id, ... }
   const payload = rawPayload.data ? rawPayload : { type: rawPayload.type || "post_call_transcription", data: rawPayload };
 
-  // Only process post_call_transcription events
   if (payload.type && payload.type !== "post_call_transcription") {
     console.log("[POSTCALL] Ignoring event type:", payload.type);
     return new Response("OK", { status: 200 });
@@ -75,7 +150,6 @@ async function handleElevenLabsWebhook(req: Request): Promise<Response> {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // Find assistant by elevenlabs_agent_id
   const { data: assistant, error: assistantErr } = await supabase
     .from("commpro_phone_assistants")
     .select("*")
@@ -93,11 +167,9 @@ async function handleElevenLabsWebhook(req: Request): Promise<Response> {
 
   console.log("[POSTCALL] Matched assistant:", assistant.id, assistant.display_name);
 
-  // Extract transcript from ElevenLabs format
   const transcript = data.transcript || "";
   const conversationTurns: Array<{ role: string; content: string }> = [];
 
-  // ElevenLabs provides transcript as array of objects with role + message
   if (Array.isArray(data.transcript)) {
     for (const entry of data.transcript) {
       conversationTurns.push({
@@ -111,13 +183,11 @@ async function handleElevenLabsWebhook(req: Request): Promise<Response> {
     ? conversationTurns.map(t => `${t.role === "user" ? "Anrufer" : "Assistent"}: ${t.content}`).join("\n")
     : (typeof transcript === "string" ? transcript : "");
 
-  // Extract metadata
   const metadata = data.metadata || {};
   const callerNumber = metadata.caller_number || data.phone_number || "unknown";
   const callDurationSec = data.call_duration_secs || null;
   const analysis = data.analysis || {};
 
-  // Check if session already exists for this conversation_id
   const { data: existingSession } = await supabase
     .from("commpro_phone_call_sessions")
     .select("id")
@@ -197,6 +267,9 @@ async function handleElevenLabsWebhook(req: Request): Promise<Response> {
   // Generate LLM summary
   await generateSummaryAndNotify(supabase, sessionId, assistant, transcriptText, conversationTurns, callerNumber, contactName, callDurationSec);
 
+  // Bill credits for Zone 2
+  await billCallCredits(supabase, assistant, sessionId, callDurationSec);
+
   return new Response("OK", { status: 200 });
 }
 
@@ -220,10 +293,9 @@ async function handleTwilioCallback(req: Request): Promise<Response> {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // Find call session
   const { data: session } = await supabase
     .from("commpro_phone_call_sessions")
-    .select("*, commpro_phone_assistants!inner(user_id, documentation, display_name, brand_key)")
+    .select("*, commpro_phone_assistants!inner(id, user_id, tenant_id, documentation, display_name, brand_key)")
     .eq("twilio_call_sid", callSid)
     .maybeSingle();
 
@@ -324,6 +396,10 @@ async function handleTwilioCallback(req: Request): Promise<Response> {
   // Send notifications
   await sendNotifications(supabase, session.id, assistant, match, updatePayload, session, finalTranscript, hasConversation, conversationTurns, recordingUrl);
 
+  // Bill credits for Zone 2
+  const durationSec = updatePayload.duration_sec || session.duration_sec;
+  await billCallCredits(supabase, assistant, session.id, durationSec);
+
   return new Response("OK", { status: 200 });
 }
 
@@ -411,12 +487,21 @@ async function generateSummaryAndNotify(
 
   const turnCount = Math.ceil(conversationTurns.length / 2);
 
+  // Calculate billing info for email
+  const minutes = durationSec ? Math.ceil(durationSec / 60) : 0;
+  const creditsCharged = minutes * CREDITS_PER_MINUTE;
+  const isBillable = !!assistant.tenant_id && !!assistant.user_id;
+  const billingLine = isBillable
+    ? `<strong>Abrechnung:</strong> ${creditsCharged} Credits (${minutes} Min × ${CREDITS_PER_MINUTE} Cr/Min)<br/>`
+    : "";
+
   const emailBody = `
 <h2>📞 Eingehender Anruf — ${assistant.display_name || "Telefonassistent"}</h2>
 <p><strong>Von:</strong> ${callerLabel}<br/>
 <strong>Nummer:</strong> ${callerNumber}<br/>
 <strong>Dauer:</strong> ${durationSec || "?"} Sekunden<br/>
 <strong>Typ:</strong> ElevenLabs KI-Gespräch (${turnCount} Dialogrunden)<br/>
+${billingLine}
 <strong>Zeitpunkt:</strong> ${new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })}</p>
 
 <h3>Zusammenfassung</h3>

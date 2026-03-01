@@ -9,6 +9,7 @@ import { RulesCard } from '@/components/communication-pro/phone-assistant/RulesC
 import { DocumentationCard } from '@/components/communication-pro/phone-assistant/DocumentationCard';
 import { TestPreviewCard } from '@/components/communication-pro/phone-assistant/TestPreviewCard';
 import { CallLogSection } from '@/components/communication-pro/phone-assistant/CallLogSection';
+import { PhoneBillingCard } from '@/components/communication-pro/phone-assistant/PhoneBillingCard';
 
 export default function KiTelefonPage() {
   const {
@@ -18,6 +19,8 @@ export default function KiTelefonPage() {
     updateConfig,
     calls,
     callsLoading,
+    usageSummary,
+    usageLoading,
     createTestEvent,
     deleteTestEvents,
     refetchAssistant,
@@ -32,6 +35,7 @@ export default function KiTelefonPage() {
   }
 
   const hasTestData = calls.some(c => c.status === 'test');
+  const hasNumber = !!config.twilio_phone_number_e164;
 
   return (
     <PageShell>
@@ -49,6 +53,7 @@ export default function KiTelefonPage() {
 
       <div className="space-y-4 md:space-y-6">
         <StatusForwardingCard config={config} onUpdate={updateConfig} onRefresh={refetchAssistant} />
+        <PhoneBillingCard usage={usageSummary} isLoading={usageLoading} hasNumber={hasNumber} />
         <VoiceSettingsCard config={config} onUpdate={updateConfig} />
         <ContentCard config={config} onUpdate={updateConfig} />
         <RulesCard config={config} onUpdate={updateConfig} />
