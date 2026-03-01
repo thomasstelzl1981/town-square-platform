@@ -38,7 +38,7 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([]);
   const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
-  const [filterType, setFilterType] = useState<'all' | 'Local' | 'Mobile' | 'TollFree'>('Local');
+  const [filterType, setFilterType] = useState<'all' | 'Local' | 'Mobile' | 'TollFree'>('Mobile');
 
   const hasNumber = !!config.twilio_phone_number_e164;
 
