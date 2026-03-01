@@ -7,11 +7,12 @@ import { toast } from '@/hooks/use-toast';
 export interface PhoneAssistantConfig {
   id: string;
   user_id: string;
+  tenant_id: string | null;
   display_name: string;
   is_enabled: boolean;
   voice_provider: string | null;
   voice_preset_key: string;
-  voice_settings: { stability: number; clarity: number; speed: number };
+  voice_settings: { stability: number; clarity: number; speed: number; voice_id?: string };
   first_message: string;
   behavior_prompt: string;
   rules: {
@@ -55,11 +56,20 @@ export interface CallSession {
   summary_text: string | null;
   action_items: Array<{ title: string; priority?: string; due?: string }>;
   match: { matched_type: string; matched_id: string | null; match_type: string };
+  billed_credits: number | null;
   created_at: string;
+}
+
+export interface PhoneUsageSummary {
+  total_calls: number;
+  total_seconds: number;
+  total_call_credits: number;
+  subscription_credits: number;
 }
 
 const ASSISTANT_KEY = ['phone-assistant'];
 const CALLS_KEY = ['phone-call-sessions'];
+const USAGE_KEY = ['phone-usage-summary'];
 
 export function usePhoneAssistant() {
   const qc = useQueryClient();
@@ -83,10 +93,22 @@ export function usePhoneAssistant() {
       if (error) throw error;
       if (data) return data as unknown as PhoneAssistantConfig;
 
-      // Auto-create default
+      // Get tenant_id from membership
+      const { data: membership } = await supabase
+        .from('memberships')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      // Auto-create default with tenant_id
+      const insertPayload: Record<string, unknown> = { user_id: user.id };
+      if (membership?.tenant_id) {
+        insertPayload.tenant_id = membership.tenant_id;
+      }
+
       const { data: created, error: createErr } = await supabase
         .from('commpro_phone_assistants')
-        .insert({ user_id: user.id } as any)
+        .insert(insertPayload as any)
         .select()
         .single();
 
@@ -139,6 +161,38 @@ export function usePhoneAssistant() {
       return (data ?? []) as unknown as CallSession[];
     },
     enabled: !!assistant,
+  });
+
+  /* ── Usage Summary (current billing period) ── */
+  const currentPeriod = new Date().toISOString().slice(0, 7); // '2026-03'
+  const { data: usageSummary = null, isLoading: usageLoading } = useQuery({
+    queryKey: [...USAGE_KEY, assistant?.tenant_id, currentPeriod],
+    queryFn: async () => {
+      if (!assistant?.tenant_id) return null;
+
+      // Fetch call usage
+      const { data: usageData } = await supabase
+        .from('phone_usage_log')
+        .select('duration_sec, credits_charged')
+        .eq('tenant_id', assistant.tenant_id)
+        .eq('billing_period', currentPeriod);
+
+      // Fetch subscription
+      const { data: subData } = await supabase
+        .from('phone_subscription_log')
+        .select('credits_charged')
+        .eq('tenant_id', assistant.tenant_id)
+        .eq('billing_period', currentPeriod);
+
+      const summary: PhoneUsageSummary = {
+        total_calls: usageData?.length ?? 0,
+        total_seconds: usageData?.reduce((sum, r) => sum + (r.duration_sec || 0), 0) ?? 0,
+        total_call_credits: usageData?.reduce((sum, r) => sum + (r.credits_charged || 0), 0) ?? 0,
+        subscription_credits: subData?.reduce((sum, r) => sum + (r.credits_charged || 0), 0) ?? 0,
+      };
+      return summary;
+    },
+    enabled: !!assistant?.tenant_id,
   });
 
   const createTestEvent = useMutation({
@@ -206,6 +260,8 @@ export function usePhoneAssistant() {
     updateConfig,
     calls,
     callsLoading,
+    usageSummary,
+    usageLoading,
     createTestEvent,
     deleteTestEvents,
     refetchAssistant,

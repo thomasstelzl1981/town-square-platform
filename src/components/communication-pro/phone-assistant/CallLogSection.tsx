@@ -50,13 +50,23 @@ export function CallLogSection({ calls, isLoading, createTestEvent }: Props) {
               {calls.map(c => (
                 <div key={c.id} className="flex items-center justify-between py-3 gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs text-muted-foreground">
                         {new Date(c.started_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                       </span>
                       <Badge variant={statusVariant[c.status] ?? 'outline'} className="text-[10px]">
                         {c.status}
                       </Badge>
+                      {c.duration_sec != null && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {Math.ceil(c.duration_sec / 60)} Min
+                        </span>
+                      )}
+                      {c.billed_credits != null && c.billed_credits > 0 && (
+                        <Badge variant="outline" className="text-[10px] text-primary">
+                          {c.billed_credits} Cr
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm font-mono mt-0.5">{c.from_number_e164}</p>
                     {c.summary_text && (

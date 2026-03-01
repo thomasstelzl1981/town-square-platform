@@ -27,6 +27,8 @@ export const SYSTEM_PRICES: SystemPrice[] = [
   // Kommunikation
   { code: 'fax_send', label: 'Fax-Versand', credits: 4, eur_cents: 100, interval: 'per_use', category: 'communication' },
   { code: 'letter_send', label: 'Brief-Versand', credits: 4, eur_cents: 100, interval: 'per_use', category: 'communication' },
+  { code: 'phone_call', label: 'KI-Telefonat (pro Minute)', credits: 2, eur_cents: 50, interval: 'per_use', category: 'communication' },
+  { code: 'phone_number', label: 'Telefonnummer Grundgebühr', credits: 15, eur_cents: 375, interval: 'monthly', category: 'communication' },
 
   // Konto-Services
   { code: 'bank_sync', label: 'Bank-Synchronisation (finAPI)', credits: 4, eur_cents: 100, interval: 'per_use', category: 'banking' },

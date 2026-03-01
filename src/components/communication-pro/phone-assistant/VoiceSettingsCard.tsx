@@ -81,7 +81,7 @@ export function VoiceSettingsCard({ config, onUpdate }: Props) {
               min={0}
               max={100}
               step={1}
-              value={[vs[s.key as keyof typeof vs]]}
+              value={[Number(vs[s.key as keyof typeof vs]) || 0]}
               onValueChange={([v]) => setVoice(s.key, v)}
             />
           </div>

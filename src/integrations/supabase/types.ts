@@ -4727,6 +4727,7 @@ export type Database = {
           id: string
           is_enabled: boolean
           rules: Json
+          tenant_id: string | null
           tier: string
           twilio_number_sid: string | null
           twilio_phone_number_e164: string | null
@@ -4751,6 +4752,7 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           rules?: Json
+          tenant_id?: string | null
           tier?: string
           twilio_number_sid?: string | null
           twilio_phone_number_e164?: string | null
@@ -4775,6 +4777,7 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           rules?: Json
+          tenant_id?: string | null
           tier?: string
           twilio_number_sid?: string | null
           twilio_phone_number_e164?: string | null
@@ -4784,7 +4787,15 @@ export type Database = {
           voice_provider?: string | null
           voice_settings?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "commpro_phone_assistants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       commpro_phone_call_sessions: {
         Row: {
@@ -15611,6 +15622,115 @@ export type Database = {
           },
         ]
       }
+      phone_subscription_log: {
+        Row: {
+          assistant_id: string
+          billing_period: string
+          created_at: string
+          credits_charged: number
+          id: string
+          tenant_id: string
+          twilio_number_sid: string | null
+        }
+        Insert: {
+          assistant_id: string
+          billing_period: string
+          created_at?: string
+          credits_charged?: number
+          id?: string
+          tenant_id: string
+          twilio_number_sid?: string | null
+        }
+        Update: {
+          assistant_id?: string
+          billing_period?: string
+          created_at?: string
+          credits_charged?: number
+          id?: string
+          tenant_id?: string
+          twilio_number_sid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phone_subscription_log_assistant_id_fkey"
+            columns: ["assistant_id"]
+            isOneToOne: false
+            referencedRelation: "commpro_phone_assistants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_subscription_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      phone_usage_log: {
+        Row: {
+          assistant_id: string
+          billing_period: string | null
+          call_session_id: string | null
+          created_at: string
+          credits_charged: number
+          duration_sec: number
+          id: string
+          provider: string
+          provider_cost_cents: number | null
+          tenant_id: string
+          user_id: string | null
+        }
+        Insert: {
+          assistant_id: string
+          billing_period?: string | null
+          call_session_id?: string | null
+          created_at?: string
+          credits_charged?: number
+          duration_sec?: number
+          id?: string
+          provider?: string
+          provider_cost_cents?: number | null
+          tenant_id: string
+          user_id?: string | null
+        }
+        Update: {
+          assistant_id?: string
+          billing_period?: string | null
+          call_session_id?: string | null
+          created_at?: string
+          credits_charged?: number
+          duration_sec?: number
+          id?: string
+          provider?: string
+          provider_cost_cents?: number | null
+          tenant_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phone_usage_log_assistant_id_fkey"
+            columns: ["assistant_id"]
+            isOneToOne: false
+            referencedRelation: "commpro_phone_assistants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_usage_log_call_session_id_fkey"
+            columns: ["call_session_id"]
+            isOneToOne: false
+            referencedRelation: "commpro_phone_call_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_usage_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plans: {
         Row: {
           created_at: string
@@ -22013,6 +22133,25 @@ export type Database = {
       }
     }
     Views: {
+      phone_usage_monthly: {
+        Row: {
+          billing_period: string | null
+          subscription_credits: number | null
+          tenant_id: string | null
+          total_call_credits: number | null
+          total_calls: number | null
+          total_seconds: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phone_usage_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_all_transactions: {
         Row: {
           account_ref: string | null
