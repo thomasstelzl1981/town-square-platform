@@ -283,3 +283,6 @@ verify_jwt = false
 
 [functions.sot-mail-ai-assist]
 verify_jwt = false
+
+[functions.sot-mail-search]
+verify_jwt = false
