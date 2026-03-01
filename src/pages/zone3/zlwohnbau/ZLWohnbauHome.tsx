@@ -185,7 +185,7 @@ export default function ZLWohnbauHome() {
           <img
             src={ottoStelzlImg}
             alt="Otto Stelzl — Geschäftsführer ZL Wohnbau GmbH"
-            className="mx-auto mb-6 h-44 w-44 rounded-full object-cover shadow-lg"
+            className="mx-auto mb-6 h-44 w-44 rounded-full object-cover object-top shadow-lg"
           />
           <h2 className="mb-1 text-2xl font-bold text-slate-800">Otto Stelzl</h2>
           <p className="mb-6 text-sm text-slate-500">Geschäftsführer</p>
