@@ -326,10 +326,24 @@ export function BriefTab() {
         },
       });
 
-      if (response.error) throw response.error;
+      if (response.error) {
+        console.error('Letter generate error:', response.error);
+        throw response.error;
+      }
       
-      setGeneratedBody(response.data.body || 'Fehler bei der Generierung');
+      const bodyText = response.data?.body;
+      if (!bodyText) {
+        console.error('Empty body in response:', response.data);
+        throw new Error('Leere Antwort vom Server');
+      }
+      
+      setGeneratedBody(bodyText);
       toast.success('Brief wurde generiert');
+      
+      // Auto-scroll to generated text
+      setTimeout(() => {
+        document.querySelector('[placeholder="Der generierte Brief erscheint hier..."]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
     } catch (error: any) {
       toast.error('Fehler bei der Generierung: ' + error.message);
       // Fallback demo text with sender
