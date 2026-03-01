@@ -15,7 +15,7 @@ interface LetterRequest {
   prompt: string;
   senderIdentity?: {
     name: string;
-    company: string;
+    company?: string;
     address?: string;
     role?: string;
   };

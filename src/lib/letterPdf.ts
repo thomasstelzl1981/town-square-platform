@@ -1,5 +1,6 @@
 import { getJsPDF } from './lazyJspdf';
 import { formatDateLong } from './formatters';
+import type { LetterFont } from '@/components/portal/office/LetterPreview';
 
 export interface LetterPdfData {
   senderName?: string;
@@ -13,6 +14,19 @@ export interface LetterPdfData {
   subject?: string;
   body?: string;
   date?: string;
+  font?: LetterFont;
+}
+
+// Map LetterFont to jsPDF native font names
+// jsPDF supports: helvetica, times, courier natively
+function getJsPdfFont(font?: LetterFont): string {
+  switch (font) {
+    case 'times':
+    case 'georgia': // Georgia → closest native serif = times
+      return 'times';
+    default:
+      return 'helvetica'; // din, arial, calibri all map to helvetica
+  }
 }
 
 /**
@@ -27,8 +41,10 @@ export async function generateLetterPdf(data: LetterPdfData): Promise<{ base64: 
   const rightMargin = 20;
   const textWidth = pageWidth - leftMargin - rightMargin;
 
+  const pdfFont = getJsPdfFont(data.font);
+
   // Font setup
-  doc.setFont('helvetica');
+  doc.setFont(pdfFont);
 
   // ── Sender line (small, above window) ──
   const senderLineParts = [data.senderCompany, data.senderName, data.senderAddress?.replace(/\n/g, ', ')].filter(Boolean);
@@ -78,7 +94,7 @@ export async function generateLetterPdf(data: LetterPdfData): Promise<{ base64: 
   // ── Subject — bold, same size as body ──
   if (data.subject) {
     doc.setFontSize(10.5);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(pdfFont, 'bold');
     doc.setTextColor(0, 0, 0);
     doc.text(data.subject, leftMargin, yPos);
     yPos += 8;
@@ -87,7 +103,7 @@ export async function generateLetterPdf(data: LetterPdfData): Promise<{ base64: 
   // ── Body ──
   if (data.body) {
     doc.setFontSize(10.5);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(pdfFont, 'normal');
     doc.setTextColor(30, 30, 30);
 
     const lines = doc.splitTextToSize(data.body, textWidth);
