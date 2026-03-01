@@ -50,9 +50,11 @@ export function SotFooter() {
               </div>
               <span className="text-sm font-bold tracking-wider uppercase">System of a Town</span>
             </Link>
-            <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
+            <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
               Struktur und KI für Ihren Haushalt und Ihre Finanzen.
             </p>
+            <a href="tel:+498941432410" className="text-xs text-primary hover:underline block mb-1">+49 89 4143 2410</a>
+            <p className="text-[10px] text-muted-foreground mb-6">Armstrong KI-Assistent erreichbar</p>
             <div className="flex gap-2">
               {[Linkedin, Twitter, Github].map((Icon, i) => (
                 <a

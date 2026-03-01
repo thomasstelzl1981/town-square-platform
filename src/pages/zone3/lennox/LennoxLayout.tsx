@@ -142,12 +142,13 @@ export default function LennoxLayout() {
               <Link to="/website/tierservice/datenschutz" className="hover:underline">Datenschutz</Link>
             </div>
 
-            {/* Copyright */}
-            <p className="text-xs md:text-right" style={{ color: C.barkMuted }}>
-              © {new Date().getFullYear()} Lennox & Friends
-              <br />
+            {/* Contact + Copyright */}
+            <div className="text-xs md:text-right" style={{ color: C.barkMuted }}>
+              <a href="tel:+498941434901" className="hover:underline block mb-0.5" style={{ color: C.bark }}>+49 89 4143 4901</a>
+              <span className="text-[10px] opacity-70 block mb-2">Armstrong KI-Assistent erreichbar</span>
+              <p>© {new Date().getFullYear()} Lennox & Friends</p>
               <span className="text-[10px] opacity-60">Plattform: <a href="https://systemofatown.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">System of a Town</a></span>
-            </p>
+            </div>
           </div>
         </div>
       </footer>

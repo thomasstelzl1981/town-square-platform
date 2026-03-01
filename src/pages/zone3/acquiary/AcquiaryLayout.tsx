@@ -166,7 +166,8 @@ export default function AcquiaryLayout() {
             <h4 className="aq-footer-title">Kontakt</h4>
             <ul className="aq-footer-links">
               <li>info@acquiary.com</li>
-              <li>089 66667788</li>
+              <li><a href="tel:+498941432188">+49 89 4143 2188</a></li>
+              <li className="text-xs opacity-70">Armstrong KI-Assistent erreichbar</li>
             </ul>
           </div>
         </div>

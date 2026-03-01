@@ -120,6 +120,10 @@ export default function Kaufy2026Kontakt() {
                 <div><p className="text-sm font-medium text-[hsl(220,20%,10%)]">E-Mail</p><a href="mailto:info@kaufy.immo" className="text-sm text-[hsl(210,80%,55%)] hover:underline">info@kaufy.immo</a></div>
               </div>
               <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[hsl(210,80%,55%,0.1)]"><Phone className="h-5 w-5 text-[hsl(210,80%,55%)]" /></div>
+                <div><p className="text-sm font-medium text-[hsl(220,20%,10%)]">Telefon — Armstrong KI-Assistent</p><a href="tel:+498941432270" className="text-sm text-[hsl(210,80%,55%)] hover:underline">+49 89 4143 2270</a><p className="text-xs text-[hsl(215,16%,55%)] mt-0.5">Rufen Sie an — unser KI-Assistent hilft Ihnen sofort weiter.</p></div>
+              </div>
+              <div className="flex items-start gap-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[hsl(210,80%,55%,0.1)]"><MapPin className="h-5 w-5 text-[hsl(210,80%,55%)]" /></div>
                 <div><p className="text-sm font-medium text-[hsl(220,20%,10%)]">Standort</p><p className="text-sm text-[hsl(215,16%,47%)]">Deutschland</p></div>
               </div>
