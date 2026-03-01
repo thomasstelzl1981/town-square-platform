@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     const userId = user.id;
     console.log("authenticated user:", userId);
 
-    const { action, country_code, brand_key } = await req.json();
+    const { action, country_code, brand_key, phone_number: requestedNumber } = await req.json();
     console.log("action:", action, "country_code:", country_code, "brand_key:", brand_key);
 
     const TWILIO_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
@@ -123,44 +123,79 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (action === "purchase") {
+    // ── SEARCH: return a list of available numbers ──
+    if (action === "search") {
       const cc = country_code || "DE";
-      // Try Local first, then Mobile, then Toll-Free
       const types = ["Local", "Mobile", "TollFree"];
-      let searchData: any = { available_phone_numbers: [] };
-      let selectedHost = twilioHosts[0];
+      const allNumbers: any[] = [];
 
-      hostLoop:
       for (const host of twilioHosts) {
         for (const numType of types) {
-          const searchUrl = `https://${host}/2010-04-01/Accounts/${TWILIO_SID}/AvailablePhoneNumbers/${cc}/${numType}.json?PageSize=1`;
-          console.log(`searching Twilio for ${cc} ${numType} numbers on host ${host}...`);
-          console.log(`URL: ${searchUrl}`);
-          console.log(`Auth header prefix: Basic ${twilioAuth.substring(0, 20)}...`);
+          const searchUrl = `https://${host}/2010-04-01/Accounts/${TWILIO_SID}/AvailablePhoneNumbers/${cc}/${numType}.json?PageSize=10`;
+          console.log(`search ${cc} ${numType} on ${host}`);
           const searchRes = await fetch(searchUrl, {
             headers: { Authorization: `Basic ${twilioAuth}` },
           });
-          console.log(`Twilio ${numType} search response status:`, searchRes.status);
-          const searchText = await searchRes.text();
-          console.log(`Twilio ${numType} response body:`, searchText.substring(0, 500));
-          try { searchData = JSON.parse(searchText); } catch { searchData = { available_phone_numbers: [] }; }
-          console.log(`Twilio ${numType} results:`, searchData.available_phone_numbers?.length ?? 0);
+          if (!searchRes.ok) continue;
+          try {
+            const data = JSON.parse(await searchRes.text());
+            for (const n of data.available_phone_numbers ?? []) {
+              allNumbers.push({
+                phone_number: n.phone_number,
+                friendly_name: n.friendly_name,
+                locality: n.locality || n.region || "",
+                type: numType,
+                capabilities: n.capabilities,
+              });
+            }
+          } catch { /* skip */ }
+        }
+        if (allNumbers.length > 0) break; // found numbers on this host
+      }
 
-          if (searchData.available_phone_numbers?.length) {
-            selectedHost = host;
-            break hostLoop;
+      return new Response(
+        JSON.stringify({ numbers: allNumbers, count: allNumbers.length }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── PURCHASE: buy a specific or first available number ──
+    if (action === "purchase") {
+      const cc = country_code || "DE";
+      let numberToBuy = requestedNumber;
+      let selectedHost = twilioHosts[0];
+
+      // If no specific number requested, search for one
+      if (!numberToBuy) {
+        const types = ["Local", "Mobile", "TollFree"];
+        let searchData: any = { available_phone_numbers: [] };
+
+        hostLoop:
+        for (const host of twilioHosts) {
+          for (const numType of types) {
+            const searchUrl = `https://${host}/2010-04-01/Accounts/${TWILIO_SID}/AvailablePhoneNumbers/${cc}/${numType}.json?PageSize=1`;
+            console.log(`searching ${cc} ${numType} on ${host}...`);
+            const searchRes = await fetch(searchUrl, {
+              headers: { Authorization: `Basic ${twilioAuth}` },
+            });
+            if (!searchRes.ok) continue;
+            try { searchData = JSON.parse(await searchRes.text()); } catch { searchData = { available_phone_numbers: [] }; }
+            if (searchData.available_phone_numbers?.length) {
+              selectedHost = host;
+              break hostLoop;
+            }
           }
         }
+
+        if (!searchData.available_phone_numbers?.length) {
+          return new Response(
+            JSON.stringify({ error: "Keine Nummern verfügbar", country: cc }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        numberToBuy = searchData.available_phone_numbers[0].phone_number;
       }
 
-      if (!searchData.available_phone_numbers?.length) {
-        return new Response(
-          JSON.stringify({ error: "Keine Nummern verfügbar", country: cc }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const number = searchData.available_phone_numbers[0];
       const friendlyName = isBrandMode
         ? `SoT-Brand-${brand_key}`
         : `SoT-PhoneAssistant-${userId.slice(0, 8)}`;
@@ -185,7 +220,7 @@ Deno.serve(async (req) => {
 
       const buyUrl = `https://${selectedHost}/2010-04-01/Accounts/${TWILIO_SID}/IncomingPhoneNumbers.json`;
       const buyParams: Record<string, string> = {
-        PhoneNumber: number.phone_number,
+        PhoneNumber: numberToBuy,
         VoiceUrl: `${webhookBaseUrl}/sot-phone-inbound`,
         VoiceMethod: "POST",
         StatusCallback: `${webhookBaseUrl}/sot-phone-postcall`,
