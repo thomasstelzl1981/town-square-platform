@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Mic } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Mic, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PhoneAssistantConfig } from '@/hooks/usePhoneAssistant';
 
@@ -35,18 +36,28 @@ export function VoiceSettingsCard({ config, onUpdate }: Props) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        {/* Provider placeholder */}
-        <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Voice Provider (später)</label>
-          <Select disabled>
-            <SelectTrigger><SelectValue placeholder="Connect folgt…" /></SelectTrigger>
-            <SelectContent><SelectItem value="none">—</SelectItem></SelectContent>
-          </Select>
+        {/* ElevenLabs Provider Badge */}
+        <div className="flex items-center gap-2">
+          <Badge variant="default" className="text-xs gap-1.5">
+            <Mic className="h-3 w-3" />
+            ElevenLabs Conversational AI
+          </Badge>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-[220px]">
+                <p className="text-xs">Modernste Sprach-KI mit natürlicher Intonation, Echtzeitverarbeitung und mehrsprachiger Unterstützung.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* Presets grid */}
         <div>
-          <label className="text-xs text-muted-foreground mb-2 block">Stimmprofil</label>
+          <label className="text-xs text-muted-foreground mb-1 block">Stimmprofil</label>
+          <p className="text-[10px] text-muted-foreground/70 mb-2">Powered by ElevenLabs — natürlichste KI-Stimmen weltweit.</p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {PRESETS.map(p => (
               <button

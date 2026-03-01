@@ -155,6 +155,7 @@ export function usePhoneAssistant() {
       const { data, error } = await supabase
         .from('commpro_phone_call_sessions')
         .select('*')
+        .eq('assistant_id', assistant!.id)
         .order('started_at', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -223,9 +224,25 @@ export function usePhoneAssistant() {
       } as any);
 
       if (error) throw error;
+
+      // Also create a phone_usage_log entry for test events
+      if (assistant.tenant_id) {
+        const billingPeriod = new Date().toISOString().slice(0, 7);
+        const creditsCharged = Math.ceil(duration / 60) * 2; // 2 credits per minute
+        await supabase.from('phone_usage_log').insert({
+          tenant_id: assistant.tenant_id,
+          assistant_id: assistant.id,
+          call_session_id: null,
+          provider: 'test',
+          duration_sec: duration,
+          credits_charged: creditsCharged,
+          billing_period: billingPeriod,
+        } as any);
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: CALLS_KEY });
+      qc.invalidateQueries({ queryKey: USAGE_KEY });
       toast({ title: 'Test-Eintrag erstellt' });
     },
     onError: () => toast({ title: 'Fehler beim Erstellen', variant: 'destructive' }),

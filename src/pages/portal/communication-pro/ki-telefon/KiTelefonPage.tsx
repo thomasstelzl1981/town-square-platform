@@ -10,6 +10,7 @@ import { DocumentationCard } from '@/components/communication-pro/phone-assistan
 import { TestPreviewCard } from '@/components/communication-pro/phone-assistant/TestPreviewCard';
 import { CallLogSection } from '@/components/communication-pro/phone-assistant/CallLogSection';
 import { PhoneBillingCard } from '@/components/communication-pro/phone-assistant/PhoneBillingCard';
+import { Phone, Mic, FileText } from 'lucide-react';
 
 export default function KiTelefonPage() {
   const {
@@ -40,8 +41,8 @@ export default function KiTelefonPage() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="Telefonassistent"
-        description="Konfiguriere Begrüßung, Stimme und Dokumentation. Rufweiterleitung wird extern beim Mobilfunkanbieter eingerichtet."
+        title="KI-Telefonassistent"
+        description="Ihr persönlicher Sprachassistent mit modernster KI-Technologie. Deutsche Festnetznummer, natürliche Sprachsynthese, automatische Dokumentation — direkt aus Ihrem System."
         actions={
           saveStatus !== 'idle' ? (
             <Badge variant={saveStatus === 'saving' ? 'outline' : 'default'} className="text-xs">
@@ -50,6 +51,31 @@ export default function KiTelefonPage() {
           ) : undefined
         }
       />
+
+      {/* Feature Highlight Banner */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5">
+          <Phone className="h-4 w-4 text-primary shrink-0" />
+          <div>
+            <p className="text-xs font-medium">Twilio</p>
+            <p className="text-[10px] text-muted-foreground">Deutsche Festnetznummer</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5">
+          <Mic className="h-4 w-4 text-primary shrink-0" />
+          <div>
+            <p className="text-xs font-medium">ElevenLabs</p>
+            <p className="text-[10px] text-muted-foreground">Natürliche KI-Stimme</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5">
+          <FileText className="h-4 w-4 text-primary shrink-0" />
+          <div>
+            <p className="text-xs font-medium">Auto-Doku</p>
+            <p className="text-[10px] text-muted-foreground">Transkript & Aufgaben</p>
+          </div>
+        </div>
+      </div>
 
       <div className="space-y-4 md:space-y-6">
         <StatusForwardingCard config={config} onUpdate={updateConfig} onRefresh={refetchAssistant} />

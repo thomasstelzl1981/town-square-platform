@@ -66,7 +66,14 @@ export function PhoneBillingCard({ usage, isLoading, hasNumber }: Props) {
           </div>
         )}
 
-        {hasNumber && usage && (
+        {hasNumber && usage && totalCredits === 0 && (
+          <div className="rounded-md border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs text-muted-foreground flex items-center gap-2">
+            <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+            <span>Grundgebühr wird zum Monatsende automatisch abgerechnet.</span>
+          </div>
+        )}
+
+        {hasNumber && usage && totalCredits > 0 && (
           <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/30">
             <span>Aktueller Monat</span>
             <div className="flex gap-2">
