@@ -1,80 +1,45 @@
 
 
-# KI-Textgenerator im E-Mail-Client — Konzept
+# PR 2 Nacharbeiten — Pagination + Thread-Link in Suche
 
-## Das Problem
+## 1. Pagination "Weitere laden"
 
-Vorgefertigte Templates sind starr und werden selten genutzt. Ein separates Eingabefeld (wie beim Briefgenerator) wuerde die UI ueberladen. Die Frage ist: Wie kann KI-Texterstellung direkt in den bestehenden Compose-Flow integriert werden, ohne zusaetzliche UI-Elemente?
+### Aenderungen in EmailTab.tsx:
 
-## Die Loesung: "Stichworte → fertige E-Mail" im bestehenden Body-Feld
+**State**: Neuer `cursor` State (ISO-Timestamp der aeltesten geladenen Nachricht).
 
-Der User tippt Stichworte oder einen kurzen Satz direkt ins Body-Feld — zum Beispiel:
+**Query-Logik**: Bestehende Supabase-Query erhaelt optionalen `.lt('received_at', cursor)` Filter. Neue Nachrichten werden an bestehende Liste angehaengt (nicht ersetzt).
 
-```
-Besichtigung Musterstr 5, Samstag 14 Uhr, Herr Mueller
-```
+**UI**: Am Ende der Thread-Liste ein Button "Weitere laden", sichtbar wenn `messages.length` ein Vielfaches von 50 ist (= es gibt vermutlich mehr). Bei Klick: gleiche Query mit Cursor = `received_at` der letzten Nachricht.
 
-Dann klickt er im bestehenden KI-Dropdown (das bereits "Verbessern" und "Kuerzen" hat) auf eine neue Option: **"Ausformulieren"**.
+**Suchresultate**: `sot-mail-search` unterstuetzt bereits `cursor`-Parameter. Frontend muss diesen bei "Weitere laden" mitsenden.
 
-Die KI macht daraus eine komplette, professionelle E-Mail:
+**Aufwand**: ~30 Zeilen in EmailTab.tsx.
 
-```
-Sehr geehrter Herr Mueller,
+## 2. "Thread anzeigen" bei Suchresultaten
 
-gerne moechte ich Ihnen eine Besichtigung der Immobilie
-in der Musterstrasse 5 anbieten. Wuerde Ihnen Samstag
-um 14:00 Uhr passen?
+### Aenderungen in EmailTab.tsx:
 
-Ich freue mich auf Ihre Rueckmeldung.
-```
+Im Search-Mode (flat list) bekommt jeder Treffer einen kleinen Button/Link: "Thread anzeigen".
 
-**Kein neues Eingabefeld. Kein Modal. Kein Wizard.** Das Body-Feld IST das Eingabefeld — es wird nur transformiert.
+**Logik bei Klick**:
+1. Suche beenden (`setSearchQuery('')`, `setDebouncedSearch('')`)
+2. `setSelectedThreadId(message.thread_id || message.id)`
+3. Sicherstellen, dass der Thread in der normalen (nicht-Suche) Liste enthalten ist — falls nicht (weil aeltere Nachricht), wird er per Einzel-Query nachgeladen
 
-## Was sich aendert
+**Aufwand**: ~15 Zeilen in EmailTab.tsx.
 
-### 1. `sot-mail-ai-assist` — Neue Action `text_expand`
+## Dateien
 
-Neue Action neben den bestehenden (`text_improve`, `text_shorten`, `suggest_subject`, `quality_check`):
-
-- **`text_expand`**: Nimmt Stichworte/kurzen Text, generiert daraus eine vollstaendige professionelle E-Mail
-- System-Prompt erkennt Kontext (Betreff-Feld wird mitgesendet, falls gefuellt)
-- Optional: Empfaenger-Name wird mitgesendet fuer korrekte Anrede
-
-### 2. `ComposeEmailDialog.tsx` — Neuer Eintrag im KI-Dropdown
-
-Das bestehende KI-Dropdown bekommt einen neuen Eintrag:
-
-```
-[Sparkles] KI-Assistent
-  ├── Ausformulieren     ← NEU (aus Stichpunkten eine E-Mail machen)
-  ├── Verbessern         (bestehend)
-  ├── Kuerzen            (bestehend)
-  ├── Betreff vorschlagen (bestehend)
-  └── Qualitaetscheck    (bestehend)
-```
-
-Wenn der Body <30 Zeichen hat und der User "Ausformulieren" klickt, wird der Text als Stichworte interpretiert. Bei laengerem Text wird er als Entwurf behandelt und professionell ausformuliert.
-
-### Kein weiterer UI-Aufwand
-
-- Kein neues Eingabefeld
-- Kein Modal oder Sidebar
-- Nutzt den bestehenden AI-Loading-State (Spinner im Button)
-- Ergebnis ersetzt den Body-Inhalt (mit Undo-Moeglichkeit ueber Ctrl+Z im Textarea)
-
-## Dateien & Umfang
-
-| Datei | Aenderung | Umfang |
+| Datei | Aenderung | Risiko |
 |-------|-----------|--------|
-| `supabase/functions/sot-mail-ai-assist/index.ts` | Neuer `text_expand` Case mit Prompt | ~15 Zeilen |
-| `src/components/portal/office/ComposeEmailDialog.tsx` | Neuer Dropdown-Eintrag, Subject+Recipient als Kontext mitsenden | ~20 Zeilen |
+| `src/pages/portal/office/EmailTab.tsx` | Pagination-State + Button + Cursor-Logik + Thread-Link in Suche | NIEDRIG |
 
-**Geschaetzter Umfang**: ~35 Zeilen in 2 Dateien. Minimaler Eingriff.
+Keine Backend-Aenderungen noetig. `sot-mail-search` hat Cursor-Support bereits eingebaut.
 
-## Risiko: NIEDRIG
+## Risiken
 
-- Bestehende AI-Actions bleiben unveraendert
-- Kein neuer Endpoint, nur neuer Case in bestehender Edge Function
-- Kein DB-Schema-Change
-- Backwards-kompatibel (neue Action ist optional)
+- **NIEDRIG**: Pagination ist additiv (bestehende Query wird nur erweitert)
+- **NIEDRIG**: Thread-Link setzt nur bestehende States zurueck
+- **MITTEL**: Edge-Case — wenn "Thread anzeigen" geklickt wird und der Thread nicht in den aktuell geladenen 50 Messages ist, muss eine Einzel-Nachlade-Query erfolgen. Fallback: Thread-Detail wird direkt per `thread_id`-Query geladen, unabhaengig von der Hauptliste.
 
