@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
       // DE numbers are restricted to area code 089 (Munich) to match the registered
       // regulatory bundle address (Oberhaching). Only Local type has an approved bundle.
       const types = cc === "DE" ? ["Local"] : ["Local", "Mobile", "TollFree"];
-      const hardcodedAreaCode = cc === "DE" ? "89" : null;
+      const hardcodedAreaCode = cc === "DE" ? "+4989" : null;
       const allNumbers: any[] = [];
 
       for (const host of twilioHosts) {
@@ -213,22 +213,52 @@ Deno.serve(async (req) => {
         ? `SoT-Brand-${brand_key}`
         : `SoT-PhoneAssistant-${userId.slice(0, 8)}`;
 
-      // Fetch registered address from Twilio (required for DE numbers)
+      // Fetch the correct AddressSid from the Regulatory Bundle's Item Assignments
+      // (required for DE numbers — the address must be the one registered IN the bundle)
       let addressSid = "";
-      try {
-        const addrUrl = `https://${selectedHost}/2010-04-01/Accounts/${TWILIO_SID}/Addresses.json?PageSize=1`;
-        const addrRes = await fetch(addrUrl, {
-          headers: { Authorization: `Basic ${twilioAuth}` },
-        });
-        if (addrRes.ok) {
-          const addrData = await addrRes.json();
-          if (addrData.addresses?.length) {
-            addressSid = addrData.addresses[0].sid;
-            console.log("Using AddressSid:", addressSid);
+      if (cc === "DE") {
+        const bundleSid = DE_BUNDLES[purchaseType];
+        if (bundleSid) {
+          try {
+            const assignUrl = `https://${selectedHost}/v2/RegulatoryCompliance/Bundles/${bundleSid}/ItemAssignments`;
+            const assignRes = await fetch(assignUrl, {
+              headers: { Authorization: `Basic ${twilioAuth}` },
+            });
+            if (assignRes.ok) {
+              const assignData = await assignRes.json();
+              // Find the address item assignment (object_sid starts with "AD")
+              const addrAssignment = (assignData.results || []).find(
+                (item: any) => item.object_sid?.startsWith("AD")
+              );
+              if (addrAssignment) {
+                addressSid = addrAssignment.object_sid;
+                console.log("Using bundle AddressSid:", addressSid);
+              }
+            } else {
+              console.warn("Bundle ItemAssignments fetch failed:", assignRes.status);
+            }
+          } catch (e) {
+            console.warn("Could not fetch bundle item assignments:", e);
           }
         }
-      } catch (e) {
-        console.warn("Could not fetch Twilio addresses:", e);
+      }
+      // Fallback: fetch first address from account (non-DE or no bundle)
+      if (!addressSid) {
+        try {
+          const addrUrl = `https://${selectedHost}/2010-04-01/Accounts/${TWILIO_SID}/Addresses.json?PageSize=1`;
+          const addrRes = await fetch(addrUrl, {
+            headers: { Authorization: `Basic ${twilioAuth}` },
+          });
+          if (addrRes.ok) {
+            const addrData = await addrRes.json();
+            if (addrData.addresses?.length) {
+              addressSid = addrData.addresses[0].sid;
+              console.log("Using fallback AddressSid:", addressSid);
+            }
+          }
+        } catch (e) {
+          console.warn("Could not fetch Twilio addresses:", e);
+        }
       }
 
       // Check if we have an approved bundle for this number type
@@ -254,18 +284,17 @@ Deno.serve(async (req) => {
         StatusCallbackMethod: "POST",
         FriendlyName: friendlyName,
       };
-      // For regulated countries (DE), use BundleSid (which includes the address).
-      // Only fall back to AddressSid when no bundle is used.
+      // For DE: send BOTH BundleSid AND the bundle's own AddressSid
       if (cc === "DE") {
         const bundleSid = DE_BUNDLES[purchaseType];
         if (bundleSid) {
           buyParams.BundleSid = bundleSid;
           console.log("Using BundleSid for DE:", bundleSid, "type:", purchaseType);
-        } else if (addressSid) {
-          buyParams.AddressSid = addressSid;
         }
-      } else if (addressSid) {
+      }
+      if (addressSid) {
         buyParams.AddressSid = addressSid;
+        console.log("Using AddressSid:", addressSid);
       }
       const buyBody = new URLSearchParams(buyParams);
 
