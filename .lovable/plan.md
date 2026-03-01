@@ -1,24 +1,22 @@
 
 
-## Fix: Portraitfotos besser zentrieren (Kopf nicht abgeschnitten)
+## Nummerntyp-Filter im Auswahl-Dialog + Bug-Fix
 
-### Problem
-Die runden Portraitfotos verwenden `object-cover`, was standardmaessig auf die Bildmitte zentriert (`object-position: center`). Bei Portraitfotos, wo der Kopf im oberen Drittel liegt, wird dieser abgeschnitten.
-
-### Loesung
-Auf allen 3 Seiten `object-top` zur Image-Klasse hinzufuegen, damit der Fokus auf den oberen Bildbereich (Kopf/Gesicht) gelegt wird.
+### Aktueller Stand
+Die Edge Function sucht bereits nach Local, Mobile und TollFree getrennt und liefert den Typ pro Nummer zurueck. Die UI zeigt den Typ als Badge an, aber es gibt keinen Filter — alle Typen werden gemischt angezeigt.
 
 ### Aenderungen
 
-**1. `src/pages/zone3/otto/OttoHome.tsx`** (2 Bilder)
-- Zeile 124: `object-cover` → `object-cover object-top`
-- Zeile 129: `object-cover` → `object-cover object-top`
+**1. UI: `StatusForwardingCard.tsx`** — Typ-Filter im Dialog
+- Neuer State `filterType` mit Werten `'all' | 'Local' | 'Mobile' | 'TollFree'`
+- Toggle-Buttons oberhalb der Nummernliste: "Alle", "Festnetz", "Mobil", "Gebührenfrei"
+- Gefilterte Liste basierend auf Auswahl
+- Default-Filter auf "Festnetz" (`Local`), da der User sich schoene Festnetznummern aussuchen moechte
 
-**2. `src/pages/zone3/ncore/NcoreHome.tsx`** (1 Bild)
-- Zeile 224: `object-cover` → `object-cover object-top`
+**2. Edge Function: Bug-Fix Zeile 235**
+- `number.phone_number` ist undefiniert (Variable heisst `numberToBuy`) — aendere zu `numberToBuy`
 
-**3. `src/pages/zone3/zlwohnbau/ZLWohnbauHome.tsx`** (1 Bild)
-- Zeile 188: `object-cover` → `object-cover object-top`
+### Technische Details
 
-Keine weiteren Aenderungen.
+Keine neuen Dateien, kein neuer API-Call. Der Filter arbeitet rein client-seitig auf den bereits geladenen Nummern. Die Edge Function liefert schon alle 3 Typen.
 
