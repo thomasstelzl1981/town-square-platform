@@ -39,7 +39,7 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([]);
   const [selectedNumber, setSelectedNumber] = useState<AvailableNumber | null>(null);
-  const [filterType, setFilterType] = useState<'all' | 'Local' | 'Mobile' | 'TollFree'>('Local');
+  // No filter needed — backend returns only Local 089 numbers for DE
   const [forwardingOpen, setForwardingOpen] = useState(false);
 
   const hasNumber = !!config.twilio_phone_number_e164;
@@ -273,7 +273,7 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
               Deutsche Nummer auswählen
             </DialogTitle>
             <DialogDescription>
-              Wählen Sie eine verfügbare Telefonnummer für Ihren KI-Assistenten. Festnetznummern mit lokaler Vorwahl werden empfohlen.
+              Wählen Sie eine Münchner Festnetznummer (089) für Ihren KI-Assistenten.
             </DialogDescription>
           </DialogHeader>
 
@@ -288,31 +288,10 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
             </div>
           ) : (
             <>
-              {/* Type filter toggles */}
-              <div className="flex gap-1 flex-wrap">
-                {([['all', 'Alle'], ['Local', 'Festnetz ⭐'], ['Mobile', 'Mobil'], ['TollFree', 'Gebührenfrei']] as const).map(([value, label]) => {
-                  const count = value === 'all' ? availableNumbers.length : availableNumbers.filter(n => n.type === value).length;
-                  return (
-                    <Button
-                      key={value}
-                      size="sm"
-                      variant={filterType === value ? 'default' : 'outline'}
-                      onClick={() => { setFilterType(value); setSelectedNumber(null); }}
-                      className="text-xs"
-                    >
-                      {label} ({count})
-                    </Button>
-                  );
-                })}
-              </div>
-
               <ScrollArea className="max-h-[360px] pr-2">
                 <div className="space-y-2">
-                  {availableNumbers
-                    .filter(n => filterType === 'all' || n.type === filterType)
-                    .map((n) => {
+                  {availableNumbers.map((n) => {
                     const isSelected = selectedNumber?.phone_number === n.phone_number;
-                    const hasBundle = n.type === 'Local'; // Only Local has approved bundle
                     return (
                       <button
                         key={n.phone_number}
@@ -337,20 +316,15 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
                             </span>
                           )}
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                            {n.type === 'Local' ? 'Festnetz' : n.type === 'Mobile' ? 'Mobil' : 'Gebührenfrei'}
+                            Festnetz 089
                           </Badge>
-                          {!hasBundle && (
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 text-amber-600">
-                              Bundle fehlt
-                            </Badge>
-                          )}
                         </div>
                       </button>
                     );
                   })}
-                  {availableNumbers.filter(n => filterType === 'all' || n.type === filterType).length === 0 && (
+                  {availableNumbers.length === 0 && (
                     <div className="text-center py-6 text-muted-foreground text-sm">
-                      Keine Nummern dieses Typs verfügbar.
+                      Keine Nummern verfügbar.
                     </div>
                   )}
                 </div>
