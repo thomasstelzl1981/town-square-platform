@@ -6,7 +6,7 @@
   "modules": {
     "MOD-00": { "frozen": true, "frozen_at": "2026-02-28T12:05:00.000Z", "reason": "Re-frozen after Armstrong widget count fix" },
     "MOD-01": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
-    "MOD-02": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
+    "MOD-02": { "frozen": false, "frozen_at": "2026-03-01T02:30:00.000Z", "reason": "Unfrozen for Briefgenerator CORS + display fix" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
     "MOD-04": { "frozen": false, "frozen_at": "2026-02-28T00:10:00.000Z", "reason": "Unfrozen for Miete p.a. intake fix" },
     "MOD-05": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },

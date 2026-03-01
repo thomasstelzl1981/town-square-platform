@@ -276,6 +276,20 @@ export function useFinanzanalyseData() {
   const updatePerson = useMutation({
     mutationFn: async (person: Record<string, any>) => {
       const { id, created_at, updated_at, ...rest } = person;
+      // Sanitize numeric fields: empty strings → null
+      const numericFields = [
+        'gross_income_monthly', 'net_income_monthly', 'business_income_monthly',
+        'pv_income_monthly', 'other_income_monthly', 'child_allowances',
+        'ruhegehaltfaehiges_grundgehalt', 'ruhegehaltfaehige_dienstjahre', 'erfahrungsstufe',
+      ];
+      for (const field of numericFields) {
+        if (field in rest && (rest[field] === '' || rest[field] === undefined)) {
+          rest[field] = null;
+        } else if (field in rest && rest[field] !== null) {
+          rest[field] = Number(rest[field]);
+          if (isNaN(rest[field])) rest[field] = null;
+        }
+      }
       const { error } = await supabase.from('household_persons').update(rest).eq('id', id);
       if (error) throw error;
     },

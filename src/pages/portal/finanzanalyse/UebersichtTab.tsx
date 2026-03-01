@@ -183,7 +183,10 @@ export default function UebersichtTab() {
         toast.success('Person gespeichert');
         setSavingId(null);
       },
-      onError: () => setSavingId(null),
+      onError: (error: any) => {
+        toast.error('Speichern fehlgeschlagen: ' + (error?.message || 'Unbekannter Fehler'));
+        setSavingId(null);
+      },
     });
   };
 
