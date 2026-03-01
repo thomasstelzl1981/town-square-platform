@@ -6,7 +6,7 @@ serve(async (req) => {
   const cors = getCorsHeaders(req);
 
   try {
-    const { action, text, language } = await req.json();
+    const { action, text, language, subject: emailSubject, recipientName } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -39,6 +39,14 @@ serve(async (req) => {
 Antworte als kurze Checkliste mit Emojis (✅ = gut, ⚠️ = Verbesserungsvorschlag, ❌ = Problem).
 Format: Eine Zeile pro Punkt, maximal 6 Zeilen. Sprache: ${lang === "de" ? "Deutsch" : "English"}.`;
         break;
+      case "text_expand": {
+        const contextParts: string[] = [];
+        if (emailSubject) contextParts.push(`Betreff: ${emailSubject}`);
+        if (recipientName) contextParts.push(`Empfänger: ${recipientName}`);
+        const contextHint = contextParts.length > 0 ? `\n\nKontext:\n${contextParts.join("\n")}` : "";
+        systemPrompt = `Du bist ein professioneller E-Mail-Redakteur in der Immobilienbranche. Der Benutzer gibt dir Stichworte, einen kurzen Satz oder einen groben Entwurf. Formuliere daraus eine vollständige, professionelle E-Mail mit korrekter Anrede, Hauptteil und Grußformel. Wenn ein Empfängername bekannt ist, verwende ihn in der Anrede. Antworte NUR mit dem fertigen E-Mail-Text, keine Erklärungen oder Meta-Kommentare. Sprache: ${lang === "de" ? "Deutsch" : "English"}.${contextHint}`;
+        break;
+      }
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {
           status: 400, headers: { ...cors, "Content-Type": "application/json" },
