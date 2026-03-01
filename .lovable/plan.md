@@ -2,53 +2,46 @@
 
 ## Diagnose
 
-Die Gmail OAuth-Verbindung funktioniert technisch (Edge Function loggt "Successfully connected"), aber das Popup-Fenster schliesst sich nicht und zeigt stattdessen den rohen HTML-Quellcode.
-
-**Ursache 1 — `window.opener` ist `null`**: Nach der Google OAuth-Redirect-Kette (Popup → Google → Edge Function Callback) verliert der Browser die `window.opener`-Referenz. Dadurch wird `postMessage` nie an das Elternfenster gesendet, und das Popup bleibt offen.
-
-**Ursache 2 — UTF-8**: Dem HTML fehlt `<meta charset="utf-8">`, daher wird "schließt" als "schlieÃŸt" angezeigt.
-
-## Loesung
-
-Zwei Dateien muessen angepasst werden:
-
-### 1. Edge Function: `supabase/functions/sot-mail-gmail-auth/index.ts`
-
-Die `popupResultHtml`-Funktion (Zeilen 51-72) wird robuster:
-
-- `<meta charset="utf-8">` hinzufuegen (behebt Umlaut-Problem)
-- **localStorage als Fallback-Kanal**: Zusaetzlich zu `postMessage` wird das Ergebnis in `localStorage.setItem('gmail_auth_result', ...)` geschrieben — das funktioniert auch ohne `window.opener`
-- `postMessage` bleibt als primaerer Kanal erhalten (fuer den Fall dass opener existiert)
-- Retry-Logik fuer `window.close()` (manche Browser brauchen einen kurzen Delay)
+In `supabase/functions/sot-mail-send/index.ts`, Zeile 296-306:
 
 ```javascript
-// Neue popupResultHtml:
-// 1. Schreibt Ergebnis in localStorage (zuverlässig)
-// 2. Versucht postMessage (falls opener da)
-// 3. Versucht window.close() mit Retry
-// 4. Zeigt "Fenster manuell schliessen" Fallback-Text
+const rawMessage = [
+  `From: ${account.email_address}`,
+  `To: ${email.to.join(', ')}`,
+  // ... headers ...
+  '',        // ← RFC 2822 Trennzeile (Header/Body)
+  body,
+].filter(Boolean).join('\r\n');
 ```
 
-### 2. Frontend: `src/components/portal/office/AccountIntegrationDialog.tsx`
+**Der Bug:** `.filter(Boolean)` entfernt die leere Zeile `''` (falsy). In RFC 2822 **muss** zwischen Headers und Body eine leere Zeile stehen (`\r\n\r\n`). Ohne diese Trennzeile interpretiert Gmail den Body als Header-Fortsetzung und der Inhalt geht verloren.
 
-Die `handleGoogleConnect`-Funktion (Zeilen 316-348) erhaelt einen zusaetzlichen `storage`-Event-Listener:
+## Fix
 
-```typescript
-// Neben dem bestehenden message-Listener:
-const handleStorage = (e: StorageEvent) => {
-  if (e.key === 'gmail_auth_result') {
-    // Parse result, cleanup, show toast
-    localStorage.removeItem('gmail_auth_result');
-  }
-};
-window.addEventListener('storage', handleStorage);
+In `supabase/functions/sot-mail-send/index.ts`:
+
+1. Die Header-Zeilen mit `.filter(Boolean)` filtern (um optionale Header wie Cc/Bcc zu entfernen)
+2. Dann manuell die leere Trennzeile + Body anfuegen
+
+```javascript
+const headers = [
+  `From: ${account.email_address}`,
+  `To: ${email.to.join(', ')}`,
+  email.cc?.length ? `Cc: ${email.cc.join(', ')}` : '',
+  email.bcc?.length ? `Bcc: ${email.bcc.join(', ')}` : '',
+  `Subject: ${email.subject}`,
+  `Content-Type: ${contentType}; charset=utf-8`,
+  email.replyToMessageId ? `In-Reply-To: ${email.replyToMessageId}` : '',
+].filter(Boolean).join('\r\n');
+
+const rawMessage = headers + '\r\n\r\n' + body;
 ```
 
-### 3. Frontend: `src/pages/portal/office/EmailTab.tsx`
-
-Gleiche localStorage-Fallback-Logik wie in AccountIntegrationDialog (hat denselben postMessage-Listener).
+### Datei
+| Datei | Aenderung |
+|-------|-----------|
+| `supabase/functions/sot-mail-send/index.ts` | `.filter(Boolean)` nur auf Headers anwenden, Trennzeile manuell einfuegen |
 
 ### Freeze-Check
-- Edge Function: Nicht eingefroren (kein Modul-Pfad)
-- AccountIntegrationDialog + EmailTab: MOD-02 (KI Office) — muss `modules_freeze.json` pruefen
+Edge Functions sind nicht eingefroren -- OK.
 
