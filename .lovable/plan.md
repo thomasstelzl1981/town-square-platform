@@ -1,67 +1,25 @@
 
 
-## Diagnose — Alle SIDs aus den Screenshots abgeglichen
+## Analyse
 
-### Was die Screenshots zeigen
+Der Kauf hat funktioniert (Status 200, Nummer `+498941433040` erfolgreich zugewiesen). Das Problem: Nach dem Kauf zeigt die UI nur einen kurzen Toast "Nummer gekauft" und schliesst den Dialog. Die Karte aktualisiert sich zwar (die Nummer erscheint im Input-Feld), aber es fehlt ein visueller Erfolgs-Moment.
 
-**Bundle `BU7b6e70441548870e7a0655d5b4d63474`** — Status: **Accepted** ✅
+## Plan
 
-| Typ | SID | Status |
-|---|---|---|
-| Address (im Bundle-Profil) | `ADdfec635e3ea56ba7095db1d937345dce` | ✅ Im Bundle |
-| End-User | `IT497b63a248b6146837a24319559bf722` | ✅ ItemAssignment |
-| Handelsregisterauszug | `RD6e82b1d216c57c7a48d44c99dae9400e` | ✅ ItemAssignment |
-| Gewerbeanmeldung | `RDa47525be4ecf79186a554964b53990cd` | ✅ ItemAssignment |
+**Datei:** `src/components/communication-pro/phone-assistant/StatusForwardingCard.tsx`
 
-**Callback URL**: Leer (`-`) — das ist OK für den Kaufprozess, nicht erforderlich.
+Einen **Success-State** nach dem Kauf einbauen:
 
-### Das Problem
+1. Neuen State `purchaseSuccess` + `purchasedNumber` hinzufuegen
+2. Nach erfolgreichem Kauf (`handlePurchaseSelected`): statt Dialog sofort zu schliessen, auf eine Erfolgsansicht im Dialog umschalten
+3. Erfolgsansicht zeigt:
+   - Gruenes Haekchen-Icon mit Animation
+   - "Herzlichen Glueckwunsch!" Ueberschrift
+   - "Ihre neue Business-Nummer: +49 89 414 33040" (formatiert)
+   - Kurzer Hinweistext: "Sie koennen diese Nummer direkt nutzen oder Ihre bisherige Nummer per Rufweiterleitung darauf umleiten."
+   - Button "Verstanden" der den Dialog schliesst und `onRefresh()` ausfuehrt
 
-Die Adresse `ADdfec635e3ea56ba7095db1d937345dce` ist im Bundle-**Profil** eingebettet, aber sie taucht **nicht** als eigenes ItemAssignment auf (die API gibt nur RD... und IT... zurück). Der Code sucht in ItemAssignments nach einem `AD`-prefixed SID → findet nichts → sendet keinen AddressSid → Fehler 21631.
+4. `onRefresh()` wird erst beim Schliessen des Erfolgs-Dialogs aufgerufen (nicht sofort nach Kauf), damit der Nutzer die Erfolgsmeldung in Ruhe lesen kann.
 
-Der vorherige Fehler 21651 kam, weil eine **andere** Adresse (`AD0aed...`) gesendet wurde, die nicht zu diesem Bundle gehört. Die richtige Adresse `ADdfec...` wurde nie versucht.
-
-### Fix — Einfach und direkt
-
-Die Bundle-eigene AddressSid `ADdfec635e3ea56ba7095db1d937345dce` als Konstante hinterlegen und zusammen mit der BundleSid senden.
-
-**Änderung in `supabase/functions/sot-phone-provision/index.ts`:**
-
-1. Neue Konstante neben `DE_BUNDLES`:
-```typescript
-const DE_BUNDLE_ADDRESS: Record<string, string | null> = {
-  Local: "ADdfec635e3ea56ba7095db1d937345dce",
-  Mobile: null,
-  TollFree: null,
-};
-```
-
-2. Im Purchase-Block (Zeilen 316-330) — beide Parameter senden:
-```typescript
-if (cc === "DE") {
-  const bundleSid = DE_BUNDLES[purchaseType];
-  const bundleAddr = DE_BUNDLE_ADDRESS[purchaseType];
-  if (bundleSid) {
-    buyParams.BundleSid = bundleSid;
-    console.log("Using BundleSid for DE:", bundleSid);
-  }
-  if (bundleAddr) {
-    buyParams.AddressSid = bundleAddr;
-    console.log("Using bundle AddressSid for DE:", bundleAddr);
-  }
-} else if (addressSid) {
-  buyParams.AddressSid = addressSid;
-}
-```
-
-### Warum das funktioniert
-
-- `ADdfec...` ist die Adresse, die **im Bundle-Profil** steht (Screenshot 2)
-- Vorher wurde `AD0aed...` gesendet → "not contained in bundle" (21651)
-- Vorher wurde gar keine gesendet → "Address required" (21631)
-- Jetzt senden wir die **richtige** Adresse, die zum genehmigten Bundle gehört
-
-### Callback URL
-
-Nicht erforderlich für den Nummernkauf. Die Voice/StatusCallback URLs werden bereits im Code über `VoiceUrl` und `StatusCallback` Parameter beim Kauf gesetzt.
+Keine weiteren Dateien betroffen. Keine DB-Aenderungen noetig.
 
