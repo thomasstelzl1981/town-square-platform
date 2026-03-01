@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Copy, Info, Phone, Search, ShoppingCart, Trash2, Loader2, MapPin, CheckCircle2, ChevronDown, ArrowRightLeft } from 'lucide-react';
+import { Copy, Info, Phone, Search, ShoppingCart, Trash2, Loader2, MapPin, CheckCircle2, ChevronDown, ArrowRightLeft, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { PhoneAssistantConfig } from '@/hooks/usePhoneAssistant';
@@ -36,6 +36,7 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
   const [purchasing, setPurchasing] = useState(false);
   const [releasing, setReleasing] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([]);
   const [selectedNumber, setSelectedNumber] = useState<AvailableNumber | null>(null);
@@ -197,12 +198,41 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
             <Badge variant={s.variant} className="mt-1">{s.label}</Badge>
           </div>
 
-          {/* Tier indicator */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Tier:</span>
-            <Badge variant={config.tier === 'premium' ? 'default' : 'secondary'} className="text-xs">
-              {config.tier === 'premium' ? '⚡ Premium (ElevenLabs)' : '📞 Standard (Twilio)'}
-            </Badge>
+          {/* Tier indicator + Sync */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Tier:</span>
+              <Badge variant={config.tier === 'premium' ? 'default' : 'secondary'} className="text-xs">
+                {config.tier === 'premium' ? '⚡ Premium (ElevenLabs)' : '📞 Standard (Twilio)'}
+              </Badge>
+            </div>
+            {hasNumber && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs gap-1.5"
+                disabled={syncing}
+                onClick={async () => {
+                  setSyncing(true);
+                  try {
+                    const { data, error } = await supabase.functions.invoke('sot-phone-agent-sync', {
+                      body: { assistant_id: config.id },
+                    });
+                    if (error) throw error;
+                    if (data?.error) throw new Error(data.error);
+                    toast({ title: 'Agent synchronisiert ✓' });
+                    onRefresh?.();
+                  } catch (err: any) {
+                    toast({ title: 'Sync fehlgeschlagen', description: err.message, variant: 'destructive' });
+                  } finally {
+                    setSyncing(false);
+                  }
+                }}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                Sync
+              </Button>
+            )}
           </div>
 
           {/* GSM forwarding codes – optional, collapsible */}
