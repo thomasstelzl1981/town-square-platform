@@ -275,6 +275,9 @@ verify_jwt = false
 [functions.sot-phone-inbound]
 verify_jwt = false
 
+[functions.sot-phone-converse]
+verify_jwt = false
+
 [functions.sot-phone-postcall]
 verify_jwt = false
 

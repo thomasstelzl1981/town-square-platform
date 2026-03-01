@@ -4,25 +4,26 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * sot-phone-inbound — Twilio Voice Webhook
  * Called when a call comes in to a provisioned Twilio number.
  *
- * Zone 2 (standard tier): Twilio <Say> greeting + <Gather> + LLM follow-up
- * Zone 1 (premium tier): ElevenLabs Conversational AI via <Stream> (future)
+ * Stage 2: Gather-Loop with LLM conversation
+ * - Greeting via <Say>
+ * - <Gather input="speech"> captures caller speech
+ * - Routes to sot-phone-converse for LLM response
+ * - Loop continues until goodbye or max duration
  *
  * Returns TwiML.
  */
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      },
+    });
   }
 
   try {
-    // Twilio sends form-encoded POST
     const formData = await req.formData();
     const calledNumber = formData.get("To") as string;
     const callerNumber = formData.get("From") as string;
@@ -32,7 +33,6 @@ Deno.serve(async (req) => {
       return twimlResponse("<Say>Entschuldigung, ein Fehler ist aufgetreten.</Say><Hangup/>");
     }
 
-    // Service client for cross-user lookups
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. Attempt contact matching via caller number
+    // 2. Contact matching
     let contactName: string | null = null;
     if (callerNumber) {
       const normalizedCaller = callerNumber.replace(/\s/g, "");
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3. Create call session record
+    // 3. Create call session with empty conversation_turns
     const { error: sessionErr } = await supabase
       .from("commpro_phone_call_sessions")
       .insert({
@@ -81,6 +81,7 @@ Deno.serve(async (req) => {
         started_at: new Date().toISOString(),
         status: "in_progress",
         twilio_call_sid: callSid,
+        conversation_turns: [],
         match: {
           matched_type: contactName ? "contact" : "unknown",
           matched_id: null,
@@ -93,17 +94,8 @@ Deno.serve(async (req) => {
       console.error("Failed to create call session:", sessionErr);
     }
 
-    // 4. Build TwiML based on tier
+    // 4. Build TwiML: Greeting + Gather loop
     const config = assistant as Record<string, any>;
-    const tier = config.tier || "standard";
-
-    if (tier === "premium") {
-      // Zone 1: ElevenLabs via Twilio <Stream> — future implementation
-      // For now, fall through to standard
-      console.log("Premium tier — ElevenLabs streaming will be implemented next phase");
-    }
-
-    // Zone 2 (standard): Twilio native TTS with <Gather>
     const greeting = config.first_message ||
       "Guten Tag, Sie sprechen mit dem KI-Assistenten. Wie kann ich Ihnen helfen?";
 
@@ -113,36 +105,17 @@ Deno.serve(async (req) => {
 
     const rules = config.rules || {};
     const maxDuration = rules.max_call_seconds || 120;
-
-    // Build gather prompts based on rules
-    const gatherPrompts: string[] = [];
-    if (rules.collect_name && !contactName) {
-      gatherPrompts.push("Darf ich Ihren Namen erfahren?");
-    }
-    if (rules.collect_reason) {
-      gatherPrompts.push("Bitte schildern Sie kurz Ihr Anliegen.");
-    }
-
-    const gatherText = gatherPrompts.length > 0
-      ? gatherPrompts.join(" ")
-      : "Bitte hinterlassen Sie Ihre Nachricht nach dem Signalton.";
-
     const webhookBaseUrl = Deno.env.get("SUPABASE_URL") + "/functions/v1";
 
+    // Gather with speech input → routes to sot-phone-converse
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Marlene" language="de-DE">${escapeXml(personalizedGreeting)}</Say>
-  <Pause length="1"/>
-  <Say voice="Polly.Marlene" language="de-DE">${escapeXml(gatherText)}</Say>
-  <Record
-    maxLength="${maxDuration}"
-    playBeep="true"
-    transcribe="true"
-    transcribeCallback="${webhookBaseUrl}/sot-phone-postcall"
-    action="${webhookBaseUrl}/sot-phone-postcall"
-    method="POST"
-  />
-  <Say voice="Polly.Marlene" language="de-DE">Vielen Dank für Ihren Anruf. Wir melden uns zeitnah bei Ihnen.</Say>
+  <Gather input="speech" language="de-DE" speechTimeout="3" timeout="10" action="${webhookBaseUrl}/sot-phone-converse" method="POST">
+    <Say voice="Polly.Marlene" language="de-DE"></Say>
+  </Gather>
+  <Say voice="Polly.Marlene" language="de-DE">Ich habe Sie leider nicht verstanden. Vielen Dank für Ihren Anruf. Auf Wiederhören.</Say>
+  <Hangup/>
 </Response>`;
 
     return twimlResponse(twiml);

@@ -4777,9 +4777,11 @@ export type Database = {
       commpro_phone_call_sessions: {
         Row: {
           action_items: Json
+          admin_notified_at: string | null
           armstrong_notified_at: string | null
           assistant_id: string
           billed_credits: number | null
+          conversation_turns: Json | null
           created_at: string
           direction: string
           duration_sec: number | null
@@ -4800,9 +4802,11 @@ export type Database = {
         }
         Insert: {
           action_items?: Json
+          admin_notified_at?: string | null
           armstrong_notified_at?: string | null
           assistant_id: string
           billed_credits?: number | null
+          conversation_turns?: Json | null
           created_at?: string
           direction?: string
           duration_sec?: number | null
@@ -4823,9 +4827,11 @@ export type Database = {
         }
         Update: {
           action_items?: Json
+          admin_notified_at?: string | null
           armstrong_notified_at?: string | null
           assistant_id?: string
           billed_credits?: number | null
+          conversation_turns?: Json | null
           created_at?: string
           direction?: string
           duration_sec?: number | null
