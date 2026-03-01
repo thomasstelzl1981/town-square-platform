@@ -129,4 +129,5 @@ export const DEV_MOCK_PROFILE: Profile = {
   phone: null,
   sot_email: null,
   armstrong_email: null,
+  signature_url: null,
 };

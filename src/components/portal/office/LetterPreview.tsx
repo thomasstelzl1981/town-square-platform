@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
+import { useMemo, useRef, useEffect, useState } from 'react';
 import defaultLetterheadLogo from '@/assets/logos/armstrong_logo_light.jpg';
 import { formatDateLong } from '@/lib/formatters';
 
@@ -12,15 +12,15 @@ const FONT_STACKS: Record<LetterFont, string> = {
   georgia: "Georgia, 'Palatino Linotype', serif",
 };
 
-// A4 page proportions at 420px width: 420 x 594px
-const PAGE_WIDTH = 420;
-const PAGE_HEIGHT = Math.round(PAGE_WIDTH * (297 / 210)); // 594px
+// A4 page proportions at 700px width: 700 x 990px
+const PAGE_WIDTH = 700;
+const PAGE_HEIGHT = Math.round(PAGE_WIDTH * (297 / 210)); // 990px
 
 // Margins in px (proportional to A4 mm margins)
-const TOP_MARGIN = Math.round(PAGE_HEIGHT * 0.067); // ~40px ≈ 20mm
+const TOP_MARGIN = Math.round(PAGE_HEIGHT * 0.067);
 const BOTTOM_MARGIN = Math.round(PAGE_HEIGHT * 0.067);
-const LEFT_MARGIN = Math.round(PAGE_WIDTH * 0.119); // ~50px ≈ 25mm
-const RIGHT_MARGIN = Math.round(PAGE_WIDTH * 0.095); // ~40px ≈ 20mm
+const LEFT_MARGIN = Math.round(PAGE_WIDTH * 0.119);
+const RIGHT_MARGIN = Math.round(PAGE_WIDTH * 0.095);
 const USABLE_HEIGHT = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN;
 
 interface LetterPreviewProps {
@@ -37,6 +37,7 @@ interface LetterPreviewProps {
   body?: string;
   date?: string;
   font?: LetterFont;
+  signatureUrl?: string | null;
 }
 
 export function LetterPreview({
@@ -53,6 +54,7 @@ export function LetterPreview({
   body,
   date,
   font = 'din',
+  signatureUrl,
 }: LetterPreviewProps) {
   const displayDate = formatDateLong(date ? new Date(date) : new Date(), senderCity);
   const logo = logoUrl || defaultLetterheadLogo;
@@ -94,14 +96,14 @@ export function LetterPreview({
 
     const result: number[][] = [];
     let currentPage: number[] = [];
-    let remainingHeight = USABLE_HEIGHT - headerHeight; // Page 1 has header
+    let remainingHeight = USABLE_HEIGHT - headerHeight;
     
     for (let i = 0; i < bodyParagraphs.length; i++) {
-      const lineH = bodyLineHeights[i] || 12; // fallback
+      const lineH = bodyLineHeights[i] || 20;
       if (remainingHeight < lineH && currentPage.length > 0) {
         result.push(currentPage);
         currentPage = [];
-        remainingHeight = USABLE_HEIGHT; // Continuation pages: full height
+        remainingHeight = USABLE_HEIGHT;
       }
       currentPage.push(i);
       remainingHeight -= lineH;
@@ -112,22 +114,33 @@ export function LetterPreview({
     return result;
   }, [bodyParagraphs, headerHeight, bodyLineHeights]);
 
+  // Signature block rendered after body on the last page
+  const signatureBlock = signatureUrl ? (
+    <div style={{ marginTop: '24px' }}>
+      <img
+        src={signatureUrl}
+        alt="Unterschrift"
+        style={{ maxHeight: '60px', maxWidth: '180px', objectFit: 'contain' }}
+      />
+    </div>
+  ) : null;
+
   // Header block (sender line, recipient, date, subject) — only on page 1
   const headerBlock = (
     <>
       {/* Spacer for logo zone */}
-      <div style={{ height: '50px', flexShrink: 0 }} />
+      <div style={{ height: '84px', flexShrink: 0 }} />
 
       {/* Sender line */}
       <div
         className="border-b border-gray-300 text-gray-400 truncate"
-        style={{ fontSize: '0.6em', paddingBottom: '3px', marginBottom: '2px', marginTop: '8px' }}
+        style={{ fontSize: '0.6em', paddingBottom: '4px', marginBottom: '3px', marginTop: '12px' }}
       >
         {senderLine}
       </div>
 
       {/* Recipient window */}
-      <div style={{ minHeight: '90px', marginBottom: '6px' }}>
+      <div style={{ minHeight: '150px', marginBottom: '10px' }}>
         {recipientName ? (
           <div className="text-gray-800" style={{ fontSize: '1em', lineHeight: '1.55' }}>
             {recipientCompany && <div>{recipientCompany}</div>}
@@ -146,7 +159,7 @@ export function LetterPreview({
       {/* Date */}
       <div
         className="text-right text-gray-500"
-        style={{ fontSize: '1em', marginBottom: '10px' }}
+        style={{ fontSize: '1em', marginBottom: '16px' }}
       >
         {displayDate}
       </div>
@@ -155,14 +168,14 @@ export function LetterPreview({
       {subject ? (
         <div
           className="font-bold text-gray-900"
-          style={{ fontSize: '1em', marginBottom: '10px' }}
+          style={{ fontSize: '1em', marginBottom: '16px' }}
         >
           {subject}
         </div>
       ) : (
         <div
           className="text-gray-300 italic"
-          style={{ fontSize: '1em', marginBottom: '10px' }}
+          style={{ fontSize: '1em', marginBottom: '16px' }}
         >
           Betreff...
         </div>
@@ -179,7 +192,7 @@ export function LetterPreview({
           visibility: 'hidden',
           width: `${PAGE_WIDTH}px`,
           fontFamily,
-          fontSize: '7.4px',
+          fontSize: '12.3px',
           pointerEvents: 'none',
         }}
       >
@@ -205,7 +218,7 @@ export function LetterPreview({
             width: `${PAGE_WIDTH}px`,
             height: `${PAGE_HEIGHT}px`,
             fontFamily,
-            fontSize: '7.4px',
+            fontSize: '12.3px',
             overflow: 'hidden',
           }}
         >
@@ -248,6 +261,8 @@ export function LetterPreview({
                     {bodyParagraphs[lineIdx] || '\u00A0'}
                   </div>
                 ))}
+                {/* Signature on last page after last body line */}
+                {pageIndex === pages.length - 1 && signatureBlock}
               </div>
             ) : !body ? (
               <div

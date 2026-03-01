@@ -16074,6 +16074,7 @@ export type Database = {
           reg_34i_ihk: string | null
           reg_34i_number: string | null
           reg_vermittler_id: string | null
+          signature_url: string | null
           sot_email: string | null
           spouse_profile_id: string | null
           street: string | null
@@ -16116,6 +16117,7 @@ export type Database = {
           reg_34i_ihk?: string | null
           reg_34i_number?: string | null
           reg_vermittler_id?: string | null
+          signature_url?: string | null
           sot_email?: string | null
           spouse_profile_id?: string | null
           street?: string | null
@@ -16158,6 +16160,7 @@ export type Database = {
           reg_34i_ihk?: string | null
           reg_34i_number?: string | null
           reg_vermittler_id?: string | null
+          signature_url?: string | null
           sot_email?: string | null
           spouse_profile_id?: string | null
           street?: string | null
