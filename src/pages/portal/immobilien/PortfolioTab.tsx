@@ -29,7 +29,7 @@ import {
 } from '@/components/shared/PropertyTable';
 import { 
   Loader2, Building2, TrendingUp, Wallet, PiggyBank, 
-  Plus, Upload, Trash2, Calculator, Table2, ChevronDown, Landmark, Download
+  Plus, Upload, Trash2, Calculator, Table2, ChevronDown, Landmark, Download, Pencil
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -63,6 +63,20 @@ interface LandlordContext {
   name: string;
   context_type: string;
   is_default: boolean | null;
+  tax_regime: string | null;
+  tax_rate_percent: number | null;
+  street: string | null;
+  house_number: string | null;
+  postal_code: string | null;
+  city: string | null;
+  hrb_number: string | null;
+  ust_id: string | null;
+  legal_form: string | null;
+  managing_director: string | null;
+  taxable_income_yearly?: number | null;
+  tax_assessment_type?: string | null;
+  church_tax?: boolean | null;
+  children_count?: number | null;
 }
 
 // Unit-based data structure with ANNUAL values (p.a.)
@@ -121,6 +135,7 @@ export function PortfolioTab() {
   // Auto-open create dialog if ?create=1 is present
   const [showCreateDialog, setShowCreateDialog] = useState(() => searchParams.get('create') === '1');
   const [showCreateContextDialog, setShowCreateContextDialog] = useState(false);
+  const [editContext, setEditContext] = useState<LandlordContext | null>(null);
   const [showLoanRerunDialog, setShowLoanRerunDialog] = useState(false);
   const [pendingLoanExcelFile, setPendingLoanExcelFile] = useState<File | null>(null);
   const [assignContextId, setAssignContextId] = useState<string | null>(null);
@@ -178,7 +193,7 @@ export function PortfolioTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('landlord_contexts')
-        .select('id, name, context_type, is_default')
+        .select('id, name, context_type, is_default, tax_regime, tax_rate_percent, street, house_number, postal_code, city, hrb_number, ust_id, legal_form, managing_director, taxable_income_yearly, tax_assessment_type, church_tax, children_count')
         .eq('tenant_id', activeTenantId!)
         .order('is_default', { ascending: false });
       
@@ -752,6 +767,17 @@ export function PortfolioTab() {
       <ModulePageHeader title="Portfolio" description="Übersicht und Verwaltung deiner Immobilien und Einheiten" />
       {/* Portfolio Context Widgets — WidgetGrid (IMMER sichtbar) */}
       <div className="space-y-4">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold">Vermietereinheiten</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setShowCreateContextDialog(true)}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
         <WidgetGrid variant="widget">
           {/* Demo Widget — Position 0, nur sichtbar wenn Demo aktiv */}
           {demoEnabled && (
@@ -888,6 +914,18 @@ export function PortfolioTab() {
                         className="h-6 px-2 text-[10px] text-muted-foreground hover:text-primary"
                         onClick={(e) => {
                           e.stopPropagation();
+                          setEditContext(ctx);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" />
+                        Bearbeiten
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[10px] text-muted-foreground hover:text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setAssignContextId(ctx.id);
                           setAssignContextName(ctx.name);
                         }}
@@ -901,34 +939,17 @@ export function PortfolioTab() {
               );
             })}
 
-            <DesktopOnly>
-              <WidgetCell>
-                <button
-                  onClick={() => setShowCreateContextDialog(true)}
-                  className={cn(
-                    "w-full h-full flex flex-col items-center justify-center gap-4 p-5 rounded-xl border border-dashed text-center transition-all",
-                    DESIGN.CARD.BASE,
-                    "hover:border-primary/50 hover:shadow-md"
-                  )}
-                >
-                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <Plus className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold">Neue Vermietereinheit</h3>
-                    <p className={cn(DESIGN.TYPOGRAPHY.LABEL, 'mt-1')}>anlegen</p>
-                  </div>
-                </button>
-              </WidgetCell>
-            </DesktopOnly>
           </WidgetGrid>
         </div>
 
 
       {/* CreateContextDialog */}
       <CreateContextDialog 
-        open={showCreateContextDialog} 
-        onOpenChange={setShowCreateContextDialog} 
+        open={showCreateContextDialog || !!editContext} 
+        onOpenChange={(open) => {
+          if (!open) { setShowCreateContextDialog(false); setEditContext(null); }
+        }}
+        editContext={editContext}
       />
 
       {/* PropertyContextAssigner — Objekte einer VE zuordnen */}
