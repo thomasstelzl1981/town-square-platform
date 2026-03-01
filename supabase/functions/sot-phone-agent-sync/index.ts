@@ -101,9 +101,9 @@ Deno.serve(async (req) => {
           tts: {
             voice_id: voiceId,
             model_id: "eleven_turbo_v2_5",
-            stability: voiceSettings.stability ?? 0.5,
-            similarity_boost: voiceSettings.clarity ?? 0.75,
-            speed: voiceSettings.speed ?? 1.0,
+            stability: normalizePercent(voiceSettings.stability, 0.5),
+            similarity_boost: normalizePercent(voiceSettings.clarity, 0.75),
+            speed: Math.max(0.7, Math.min(normalizePercent(voiceSettings.speed, 1.0), 1.2)),
           },
           asr: {
             quality: "high",
@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
             language: "de",
           },
           turn: {
-            mode: "turn_based",
+            mode: "turn",
           },
         },
         name: `SOT-${assistant.display_name || "Assistant"}`,
@@ -277,4 +277,12 @@ function jsonResponse(data: any, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+/** Normalize DB values that may be stored as 0-100 integers to 0-1 floats */
+function normalizePercent(value: any, fallback: number): number {
+  if (value == null) return fallback;
+  const n = Number(value);
+  if (isNaN(n)) return fallback;
+  return n > 1 ? n / 100 : n;
 }
