@@ -11,6 +11,7 @@ import {
 import heroImg from '@/assets/zlwohnbau/hero-houses.jpg';
 import townImg from '@/assets/zlwohnbau/bavarian-town.jpg';
 import energyImg from '@/assets/zlwohnbau/energy-house.jpg';
+import ottoStelzlImg from '@/assets/zlwohnbau/otto-stelzl.jpg';
 
 const BRAND = '#2D6A4F';
 
@@ -174,6 +175,30 @@ export default function ZLWohnbauHome() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Geschäftsführer */}
+      <section className="py-16 px-4 border-t border-slate-100 bg-white">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: BRAND }}>Geschäftsführung</p>
+          <img
+            src={ottoStelzlImg}
+            alt="Otto Stelzl — Geschäftsführer ZL Wohnbau GmbH"
+            className="mx-auto mb-6 h-44 w-44 rounded-full object-cover shadow-lg"
+          />
+          <h2 className="mb-1 text-2xl font-bold text-slate-800">Otto Stelzl</h2>
+          <p className="mb-6 text-sm text-slate-500">Geschäftsführer</p>
+          <p className="mx-auto max-w-xl text-slate-600 italic leading-relaxed mb-8">
+            „Die Idee zu ZL Wohnbau ist aus vielen Gesprächen mit unseren Unternehmer-Kunden entstanden. Fachkräfte zu finden ist schwer — sie in der Nähe des Betriebs unterzubringen oft noch schwerer. Mit langjähriger Erfahrung im Immobilien- und Finanzsegment haben wir ein Konzept entwickelt, das Unternehmen echten Mehrwert bietet: attraktiven Wohnraum für ihre Mitarbeiter, langfristig und partnerschaftlich."
+          </p>
+          <Link
+            to="/website/zl-wohnbau/kontakt"
+            className="inline-flex items-center gap-2 text-sm font-medium hover:underline"
+            style={{ color: BRAND }}
+          >
+            Persönliches Gespräch vereinbaren <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
 
