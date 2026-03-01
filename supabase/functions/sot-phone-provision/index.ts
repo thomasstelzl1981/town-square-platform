@@ -220,7 +220,7 @@ Deno.serve(async (req) => {
         const bundleSid = DE_BUNDLES[purchaseType];
         if (bundleSid) {
           try {
-            const assignUrl = `https://${selectedHost}/v2/RegulatoryCompliance/Bundles/${bundleSid}/ItemAssignments`;
+            const assignUrl = `https://${selectedHost}/2010-04-01/Accounts/${TWILIO_SID}/RegulatoryCompliance/Bundles/${bundleSid}/ItemAssignments.json`;
             const assignRes = await fetch(assignUrl, {
               headers: { Authorization: `Basic ${twilioAuth}` },
             });
