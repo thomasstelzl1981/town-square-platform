@@ -4714,6 +4714,8 @@ export type Database = {
           created_at: string
           display_name: string
           documentation: Json
+          elevenlabs_agent_id: string | null
+          elevenlabs_phone_number_id: string | null
           first_message: string
           forwarding_number_e164: string | null
           id: string
@@ -4736,6 +4738,8 @@ export type Database = {
           created_at?: string
           display_name?: string
           documentation?: Json
+          elevenlabs_agent_id?: string | null
+          elevenlabs_phone_number_id?: string | null
           first_message?: string
           forwarding_number_e164?: string | null
           id?: string
@@ -4758,6 +4762,8 @@ export type Database = {
           created_at?: string
           display_name?: string
           documentation?: Json
+          elevenlabs_agent_id?: string | null
+          elevenlabs_phone_number_id?: string | null
           first_message?: string
           forwarding_number_e164?: string | null
           id?: string
