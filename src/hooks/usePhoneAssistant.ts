@@ -88,6 +88,7 @@ export function usePhoneAssistant() {
         .from('commpro_phone_assistants')
         .select('*')
         .eq('user_id', user.id)
+        .is('brand_key', null)
         .maybeSingle();
 
       if (error) throw error;
