@@ -293,28 +293,61 @@ export function AccountIntegrationDialog({ open, onOpenChange }: AccountIntegrat
     }
   };
 
-  // Google OAuth
+  // Google OAuth via dedicated Gmail OAuth popup flow (same as EmailTab)
   const handleGoogleConnect = async () => {
     setIsConnecting(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          scopes: [
-            'https://www.googleapis.com/auth/gmail.readonly',
-            'https://www.googleapis.com/auth/gmail.send',
-            'https://www.googleapis.com/auth/calendar',
-            'https://www.googleapis.com/auth/contacts.readonly',
-          ].join(' '),
-          redirectTo: `${window.location.origin}/portal/office/email`,
-          queryParams: { access_type: 'offline', prompt: 'consent' },
-        },
+      // 1. Get the OAuth URL from our dedicated edge function
+      const { data, error } = await supabase.functions.invoke('sot-mail-gmail-auth', {
+        body: { action: 'init' },
       });
+
       if (error) throw error;
-      toast.success('Weiterleitung zu Google...');
+      if (data?.error) throw new Error(data.error);
+      if (!data?.authUrl) throw new Error('Keine Auth-URL erhalten');
+
+      // 2. Open popup window for Google OAuth
+      const popup = window.open(
+        data.authUrl,
+        'gmail-auth',
+        'width=600,height=700,menubar=no,toolbar=no,location=yes'
+      );
+
+      // 3. Listen for postMessage from popup callback
+      const handleMessage = (event: MessageEvent) => {
+        try {
+          const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+          if (msg?.type === 'gmail_auth_result') {
+            window.removeEventListener('message', handleMessage);
+            if (msg.success) {
+              toast.success('Gmail erfolgreich verbunden!');
+              queryClient.invalidateQueries({ queryKey: ['mail-accounts-integration'] });
+              queryClient.invalidateQueries({ queryKey: ['email-accounts'] });
+              setActiveTab('accounts');
+            } else {
+              toast.error('Gmail-Verbindung fehlgeschlagen: ' + (msg.error || 'Unbekannt'));
+            }
+            setIsConnecting(false);
+          }
+        } catch { /* ignore non-JSON messages */ }
+      };
+
+      window.addEventListener('message', handleMessage);
+
+      // 4. Fallback: poll if popup is closed without postMessage
+      const pollTimer = setInterval(() => {
+        if (popup && popup.closed) {
+          clearInterval(pollTimer);
+          window.removeEventListener('message', handleMessage);
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['mail-accounts-integration'] });
+            queryClient.invalidateQueries({ queryKey: ['email-accounts'] });
+            setIsConnecting(false);
+          }, 1500);
+        }
+      }, 1000);
     } catch (error: any) {
       toast.error('Google-Verbindung fehlgeschlagen: ' + error.message);
-    } finally {
       setIsConnecting(false);
     }
   };
