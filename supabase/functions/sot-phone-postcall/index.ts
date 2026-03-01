@@ -44,19 +44,31 @@ Deno.serve(async (req) => {
 // ElevenLabs Post-Call Webhook Handler
 // ═══════════════════════════════════════════════════════
 async function handleElevenLabsWebhook(req: Request): Promise<Response> {
-  const payload = await req.json();
+  const rawPayload = await req.json();
+
+  // ── DEBUG: Log incoming payload structure ──
+  console.log("[POSTCALL] Incoming payload type:", typeof rawPayload);
+  console.log("[POSTCALL] Top-level keys:", Object.keys(rawPayload));
+  if (rawPayload.type) console.log("[POSTCALL] Event type:", rawPayload.type);
+  if (rawPayload.data) console.log("[POSTCALL] data keys:", Object.keys(rawPayload.data));
+
+  // ── Robust payload unwrapping ──
+  // ElevenLabs may send: { type, data: { agent_id, ... } } OR flat { agent_id, ... }
+  const payload = rawPayload.data ? rawPayload : { type: rawPayload.type || "post_call_transcription", data: rawPayload };
 
   // Only process post_call_transcription events
-  if (payload.type !== "post_call_transcription") {
-    console.log("Ignoring ElevenLabs event type:", payload.type);
+  if (payload.type && payload.type !== "post_call_transcription") {
+    console.log("[POSTCALL] Ignoring event type:", payload.type);
     return new Response("OK", { status: 200 });
   }
 
   const data = payload.data;
-  if (!data?.agent_id || !data?.conversation_id) {
-    console.log("Missing agent_id or conversation_id in ElevenLabs webhook");
+  if (!data?.agent_id && !data?.conversation_id) {
+    console.log("[POSTCALL] Missing agent_id AND conversation_id. Payload keys:", Object.keys(data || {}));
     return new Response("OK", { status: 200 });
   }
+
+  console.log("[POSTCALL] Processing — agent_id:", data.agent_id, "conversation_id:", data.conversation_id);
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -64,16 +76,22 @@ async function handleElevenLabsWebhook(req: Request): Promise<Response> {
   );
 
   // Find assistant by elevenlabs_agent_id
-  const { data: assistant } = await supabase
+  const { data: assistant, error: assistantErr } = await supabase
     .from("commpro_phone_assistants")
     .select("*")
     .eq("elevenlabs_agent_id", data.agent_id)
     .maybeSingle();
 
+  if (assistantErr) {
+    console.error("[POSTCALL] DB error finding assistant:", assistantErr.message);
+  }
+
   if (!assistant) {
-    console.log("No assistant found for ElevenLabs agent_id:", data.agent_id);
+    console.log("[POSTCALL] No assistant found for agent_id:", data.agent_id);
     return new Response("OK", { status: 200 });
   }
+
+  console.log("[POSTCALL] Matched assistant:", assistant.id, assistant.display_name);
 
   // Extract transcript from ElevenLabs format
   const transcript = data.transcript || "";
@@ -153,17 +171,27 @@ async function handleElevenLabsWebhook(req: Request): Promise<Response> {
 
   if (existingSession) {
     sessionId = existingSession.id;
-    await supabase
+    const { error: updateErr } = await supabase
       .from("commpro_phone_call_sessions")
       .update(sessionData)
       .eq("id", sessionId);
+    if (updateErr) {
+      console.error("[POSTCALL] DB UPDATE error:", updateErr.message, updateErr.details, updateErr.hint);
+    } else {
+      console.log("[POSTCALL] Session updated:", sessionId);
+    }
   } else {
-    const { data: newSession } = await supabase
+    const { data: newSession, error: insertErr } = await supabase
       .from("commpro_phone_call_sessions")
       .insert(sessionData)
       .select("id")
       .single();
+    if (insertErr) {
+      console.error("[POSTCALL] DB INSERT error:", insertErr.message, insertErr.details, insertErr.hint);
+      return new Response("OK", { status: 200 });
+    }
     sessionId = newSession?.id || "";
+    console.log("[POSTCALL] Session created:", sessionId);
   }
 
   // Generate LLM summary

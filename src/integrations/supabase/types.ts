@@ -4805,6 +4805,7 @@ export type Database = {
           twilio_call_sid: string | null
           twilio_price: number | null
           twilio_price_unit: string | null
+          updated_at: string
           user_id: string | null
         }
         Insert: {
@@ -4831,6 +4832,7 @@ export type Database = {
           twilio_call_sid?: string | null
           twilio_price?: number | null
           twilio_price_unit?: string | null
+          updated_at?: string
           user_id?: string | null
         }
         Update: {
@@ -4857,6 +4859,7 @@ export type Database = {
           twilio_call_sid?: string | null
           twilio_price?: number | null
           twilio_price_unit?: string | null
+          updated_at?: string
           user_id?: string | null
         }
         Relationships: [
