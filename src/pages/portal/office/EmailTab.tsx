@@ -17,6 +17,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -511,6 +518,7 @@ export function EmailTab() {
   const [composeInitialBody, setComposeInitialBody] = useState('');
   const [isLoadingBody, setIsLoadingBody] = useState(false);
   const [bodyFetchError, setBodyFetchError] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | 'all'>('__init__');
 
   const openCompose = (to = '', subject = '', body = '') => {
     setComposeInitialTo(to);
@@ -565,21 +573,45 @@ export function EmailTab() {
   });
 
   const hasConnectedAccount = accounts.length > 0;
-  const activeAccount = accounts[0]; // Use first account as default
 
-  // Fetch messages for selected account
+  // Initialize selectedAccountId to first account once loaded
+  useEffect(() => {
+    if (accounts.length > 0 && selectedAccountId === '__init__') {
+      setSelectedAccountId(accounts[0].id);
+    }
+  }, [accounts, selectedAccountId]);
+
+  // Reset selectedEmail when switching accounts
+  const handleAccountChange = (value: string) => {
+    setSelectedAccountId(value as string | 'all');
+    setSelectedEmail(null);
+  };
+
+  // Derive activeAccount from selectedAccountId (for compose, detail panel, etc.)
+  const activeAccount = selectedAccountId === 'all' || selectedAccountId === '__init__'
+    ? accounts[0]
+    : accounts.find(a => a.id === selectedAccountId) || accounts[0];
+
+  // Build account IDs for queries
+  const queryAccountIds = selectedAccountId === 'all' || selectedAccountId === '__init__'
+    ? accounts.map(a => a.id)
+    : [selectedAccountId];
+
+  // Fetch messages for selected account(s)
   const { data: messages = [], isLoading: isLoadingMessages, refetch: refetchMessages } = useQuery({
-    queryKey: ['email-messages', activeAccount?.id, selectedFolder],
+    queryKey: ['email-messages', selectedAccountId, selectedFolder],
     queryFn: async () => {
-      if (!activeAccount) return [];
+      if (queryAccountIds.length === 0) return [];
       
-      const { data, error } = await supabase
+      const query = supabase
         .from('mail_messages')
         .select('*')
-        .eq('account_id', activeAccount.id)
+        .in('account_id', queryAccountIds)
         .eq('folder', selectedFolder.toUpperCase())
         .order('received_at', { ascending: false })
         .limit(50);
+      
+      const { data, error } = await query;
       
       if (error) {
         console.error('Error fetching messages:', error);
@@ -587,13 +619,13 @@ export function EmailTab() {
       }
       return data;
     },
-    enabled: !!activeAccount,
+    enabled: hasConnectedAccount,
   });
 
   // ─── Background Polling: check for new messages every 60s ───
   const lastKnownIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!activeAccount) return;
+    if (!hasConnectedAccount) return;
     // Set initial known ID
     if (messages.length > 0) {
       lastKnownIdRef.current = messages[0]?.id;
@@ -603,19 +635,19 @@ export function EmailTab() {
         const { data } = await supabase
           .from('mail_messages')
           .select('id')
-          .eq('account_id', activeAccount.id)
+          .in('account_id', queryAccountIds)
           .eq('folder', selectedFolder.toUpperCase())
           .order('received_at', { ascending: false })
           .limit(1);
         const newestId = data?.[0]?.id;
         if (newestId && newestId !== lastKnownIdRef.current) {
           lastKnownIdRef.current = newestId;
-          queryClient.invalidateQueries({ queryKey: ['email-messages', activeAccount.id, selectedFolder] });
+          queryClient.invalidateQueries({ queryKey: ['email-messages', selectedAccountId, selectedFolder] });
         }
       } catch { /* silent */ }
     }, 60_000);
     return () => clearInterval(interval);
-  }, [activeAccount?.id, selectedFolder]);
+  }, [selectedAccountId, selectedFolder, hasConnectedAccount]);
 
   // Delete mutation - moves email to trash or permanently deletes if already in trash
   const deleteMutation = useMutation({
@@ -697,20 +729,25 @@ export function EmailTab() {
     },
   });
 
-  // Sync mutation
+  // Sync mutation — syncs all accounts sequentially when "all" is selected
   const syncMutation = useMutation({
     mutationFn: async () => {
-      if (!activeAccount) throw new Error('No account selected');
+      if (!hasConnectedAccount) throw new Error('No account selected');
       
-      const { data, error } = await supabase.functions.invoke('sot-mail-sync', {
-        body: { accountId: activeAccount.id, folder: selectedFolder },
-      });
+      const accountsToSync = selectedAccountId === 'all'
+        ? accounts
+        : [activeAccount].filter(Boolean);
       
-      if (error) throw error;
-      return data;
+      for (const account of accountsToSync) {
+        const { data, error } = await supabase.functions.invoke('sot-mail-sync', {
+          body: { accountId: account.id, folder: selectedFolder },
+        });
+        if (error) throw error;
+      }
+      return { synced: accountsToSync.length };
     },
-    onSuccess: () => {
-      toast.success('Postfach synchronisiert');
+    onSuccess: ({ synced }) => {
+      toast.success(synced > 1 ? `${synced} Konten synchronisiert` : 'Postfach synchronisiert');
       refetchMessages();
     },
     onError: (error: any) => {
@@ -874,8 +911,8 @@ export function EmailTab() {
             setComposeInitialBody('');
           }
         }}
-        accountId={activeAccount?.id || ''}
-        accountEmail={activeAccount?.email_address || ''}
+        accounts={accounts}
+        defaultAccountId={activeAccount?.id || ''}
         initialTo={composeInitialTo}
         initialSubject={composeInitialSubject}
         initialBody={composeInitialBody}
@@ -889,13 +926,37 @@ export function EmailTab() {
         <div className="grid grid-cols-12 h-full">
         {/* Left Sidebar - Folders */}
         <div className="col-span-2 border-r flex flex-col overflow-hidden">
-          <div className="p-3 border-b">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Mail className="h-3.5 w-3.5 text-primary" />
-              </div>
-              <span className="text-xs font-semibold">Postfach</span>
-            </div>
+          <div className="p-3 border-b space-y-3">
+            {/* Account Switcher */}
+            {accounts.length > 0 && (
+              <Select value={selectedAccountId} onValueChange={handleAccountChange}>
+                <SelectTrigger className="w-full h-8 text-xs">
+                  <SelectValue placeholder="Konto wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.length > 1 && (
+                    <SelectItem value="all">
+                      <span className="flex items-center gap-2">
+                        <Mail className="h-3 w-3" />
+                        Alle Konten
+                      </span>
+                    </SelectItem>
+                  )}
+                  {accounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      <span className="flex items-center gap-2">
+                        {acc.provider === 'google' ? (
+                          <svg className="h-3 w-3" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/></svg>
+                        ) : (
+                          <Settings className="h-3 w-3" />
+                        )}
+                        <span className="truncate">{acc.email_address}</span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button 
               className="w-full gap-2" 
               size="sm" 
@@ -985,6 +1046,15 @@ export function EmailTab() {
                             <span className={cn("text-sm truncate", !msg.is_read && "font-semibold")}>
                               {msg.from_name || msg.from_address}
                             </span>
+                            {/* Account badge in unified inbox mode */}
+                            {selectedAccountId === 'all' && accounts.length > 1 && (() => {
+                              const msgAccount = accounts.find(a => a.id === msg.account_id);
+                              return msgAccount ? (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">
+                                  {msgAccount.provider === 'google' ? 'Gmail' : msgAccount.email_address.split('@')[0]}
+                                </Badge>
+                              ) : null;
+                            })()}
                           </div>
                           <p className={cn("text-sm truncate", !msg.is_read && "font-medium")}>
                             {msg.subject || '(Kein Betreff)'}
@@ -1065,7 +1135,7 @@ export function EmailTab() {
                   } else {
                     // Optimistic cache update — patch this message in the query cache
                     queryClient.setQueryData(
-                      ['email-messages', activeAccount?.id, selectedFolder],
+                      ['email-messages', selectedAccountId, selectedFolder],
                       (oldMessages: any[] | undefined) => {
                         if (!oldMessages) return oldMessages;
                         return oldMessages.map((m: any) =>
