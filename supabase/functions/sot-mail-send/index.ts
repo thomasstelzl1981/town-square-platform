@@ -293,7 +293,7 @@ async function sendGoogleMail(
   const body = email.bodyHtml || email.bodyText || '';
   const contentType = email.bodyHtml ? 'text/html' : 'text/plain';
   
-  const rawMessage = [
+  const headers = [
     `From: ${account.email_address}`,
     `To: ${email.to.join(', ')}`,
     email.cc?.length ? `Cc: ${email.cc.join(', ')}` : '',
@@ -301,9 +301,9 @@ async function sendGoogleMail(
     `Subject: ${email.subject}`,
     `Content-Type: ${contentType}; charset=utf-8`,
     email.replyToMessageId ? `In-Reply-To: ${email.replyToMessageId}` : '',
-    '',
-    body,
   ].filter(Boolean).join('\r\n');
+
+  const rawMessage = headers + '\r\n\r\n' + body;
 
   const encodedMessage = btoa(unescape(encodeURIComponent(rawMessage)))
     .replace(/\+/g, '-')
