@@ -304,7 +304,7 @@ export function ComposeEmailDialog({
   };
 
   // AI assist
-  const handleAiAction = async (action: 'text_improve' | 'text_shorten' | 'suggest_subject' | 'quality_check') => {
+  const handleAiAction = async (action: 'text_improve' | 'text_shorten' | 'suggest_subject' | 'quality_check' | 'text_expand') => {
     const text = body.trim();
     if (!text) {
       toast.error('Bitte schreiben Sie zuerst einen Text');
@@ -332,8 +332,13 @@ export function ComposeEmailDialog({
 
     setAiLoading(true);
     try {
+      const requestBody: Record<string, string> = { action, text };
+      if (action === 'text_expand') {
+        if (subject) requestBody.subject = subject;
+        if (to) requestBody.recipientName = to.split('@')[0].replace(/[._-]/g, ' ');
+      }
       const { data, error } = await supabase.functions.invoke('sot-mail-ai-assist', {
-        body: { action, text },
+        body: requestBody,
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -343,7 +348,8 @@ export function ComposeEmailDialog({
         toast.success('Betreff vorgeschlagen');
       } else {
         setBody(data.result);
-        toast.success(action === 'text_improve' ? 'Text verbessert' : 'Text gekürzt');
+        const msgs: Record<string, string> = { text_improve: 'Text verbessert', text_shorten: 'Text gekürzt', text_expand: 'Text ausformuliert' };
+        toast.success(msgs[action] || 'Fertig');
       }
     } catch (err: any) {
       toast.error('KI-Fehler: ' + (err.message || 'Unbekannt'));
@@ -652,6 +658,10 @@ export function ComposeEmailDialog({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleAiAction('text_expand')}>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Ausformulieren
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleAiAction('text_improve')}>
                       <Wand2 className="h-4 w-4 mr-2" />
                       Text verbessern
