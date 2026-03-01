@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -22,13 +23,14 @@ import { toast } from 'sonner';
 import {
   Loader2, Send, X, ChevronDown, ChevronUp,
   Sparkles, Wand2, Scissors, MessageSquareText,
-  Settings,
+  Settings, FileText, ShieldCheck, AlertTriangle,
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { VoiceButton } from '@/components/shared/VoiceButton';
 import { useArmstrongVoice } from '@/hooks/useArmstrongVoice';
@@ -59,6 +61,15 @@ interface ContactSuggestion {
   last_name: string | null;
 }
 
+interface MailTemplate {
+  id: string;
+  name: string;
+  category: string;
+  subject_template: string;
+  body_template: string;
+  placeholders: any;
+}
+
 export function ComposeEmailDialog({
   open,
   onOpenChange,
@@ -74,7 +85,6 @@ export function ComposeEmailDialog({
   const accountId = selectedAccount?.id || '';
   const accountEmail = selectedAccount?.email_address || '';
 
-  // Reset selected account when dialog opens
   useEffect(() => {
     if (open) {
       setSelectedAccountId(defaultAccountId);
@@ -91,6 +101,20 @@ export function ComposeEmailDialog({
   const [dictationTarget, setDictationTarget] = useState<DictationTarget>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
+  // PR 3: Signature & Footer toggles
+  const [includeSignature, setIncludeSignature] = useState(true);
+  const [includeFooter, setIncludeFooter] = useState(false);
+  const [signatureText, setSignatureText] = useState('');
+  const [hasLetterhead, setHasLetterhead] = useState(false);
+
+  // PR 3: Quality check
+  const [qualityResult, setQualityResult] = useState<string | null>(null);
+  const [qualityLoading, setQualityLoading] = useState(false);
+
+  // PR 3: Templates
+  const [templates, setTemplates] = useState<MailTemplate[]>([]);
+  const [profileData, setProfileData] = useState<any>(null);
+
   // Contact typeahead state
   const [contactSuggestions, setContactSuggestions] = useState<ContactSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -99,42 +123,56 @@ export function ComposeEmailDialog({
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Load email signature on open (only for new emails without initial body)
+  const isReply = !!initialBody;
+
+  // Load profile + templates on open
   useEffect(() => {
     if (open) {
       setTo(initialTo);
       setSubject(initialSubject);
+      setQualityResult(null);
 
-      // Only load signature for new emails (no initial body = not a reply)
-      if (!initialBody) {
-        (async () => {
-          try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('email_signature')
-              .eq('id', user.id)
-              .single();
-            if (profile?.email_signature) {
-              setBody(`\n\n--\n${profile.email_signature}`);
-            } else {
-              setBody('');
-            }
-          } catch {
+      (async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('email_signature, letterhead_company_line, letterhead_extra_line, letterhead_website, letterhead_bank_name, letterhead_iban, letterhead_bic, first_name, last_name, phone')
+            .eq('id', user.id)
+            .single();
+
+          setProfileData(profile);
+          setSignatureText(profile?.email_signature || '');
+          const hasLh = !!(profile?.letterhead_company_line || profile?.letterhead_extra_line || profile?.letterhead_website);
+          setHasLetterhead(hasLh);
+          setIncludeFooter(hasLh);
+
+          // PR 3: No client-side signature appending — server handles it
+          if (!initialBody) {
             setBody('');
+          } else {
+            setBody(initialBody);
           }
-        })();
-      } else {
-        setBody(initialBody);
-      }
+
+          // Load templates
+          const { data: tpls } = await supabase
+            .from('mail_compose_templates')
+            .select('id, name, category, subject_template, body_template, placeholders')
+            .eq('is_active', true)
+            .order('category')
+            .order('name');
+          setTemplates((tpls as MailTemplate[]) || []);
+        } catch {
+          setBody(initialBody || '');
+        }
+      })();
     }
   }, [open, initialTo, initialSubject, initialBody]);
 
   const voice = useArmstrongVoice();
   const lastTranscriptRef = useRef('');
 
-  // Watch for transcript changes and append to the target field
   useEffect(() => {
     if (voice.transcript && voice.transcript !== lastTranscriptRef.current) {
       const newText = voice.transcript.slice(lastTranscriptRef.current.length);
@@ -148,7 +186,6 @@ export function ComposeEmailDialog({
     }
   }, [voice.transcript, dictationTarget]);
 
-  // Stop dictation when dialog closes
   useEffect(() => {
     if (!open && voice.isListening) {
       voice.stopListening();
@@ -156,7 +193,6 @@ export function ComposeEmailDialog({
     }
   }, [open, voice.isListening, voice.stopListening]);
 
-  // Close suggestions when clicking outside
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (
@@ -185,7 +221,6 @@ export function ComposeEmailDialog({
     }
   };
 
-  // Contact search
   const searchContacts = useCallback(async (query: string) => {
     if (query.length < 2) {
       setContactSuggestions([]);
@@ -212,7 +247,6 @@ export function ComposeEmailDialog({
 
   const handleToChange = (value: string) => {
     setTo(value);
-    // Get the last segment after comma/semicolon for searching
     const parts = value.split(/[,;]/);
     const lastPart = parts[parts.length - 1].trim();
     
@@ -228,13 +262,74 @@ export function ComposeEmailDialog({
     toInputRef.current?.focus();
   };
 
+  // PR 3: Template selection
+  const handleTemplateSelect = (template: MailTemplate) => {
+    let subjectText = template.subject_template;
+    let bodyTemplateText = template.body_template;
+
+    // Replace placeholders from profile
+    const replacements: Record<string, string> = {
+      '{{agent_name}}': [profileData?.first_name, profileData?.last_name].filter(Boolean).join(' ') || '',
+      '{{agent_phone}}': profileData?.phone || '',
+      '{{agent_email}}': accountEmail || '',
+    };
+
+    // Try to extract recipient name from 'to' field contact
+    const toEmail = to.split(/[,;]/)[0]?.trim();
+    if (toEmail) {
+      const matched = contactSuggestions.find(c => c.email === toEmail);
+      if (matched) {
+        replacements['{{first_name}}'] = matched.first_name || '';
+        replacements['{{last_name}}'] = matched.last_name || '';
+        replacements['{{company}}'] = '';
+      }
+    }
+
+    for (const [key, val] of Object.entries(replacements)) {
+      subjectText = subjectText.replaceAll(key, val);
+      bodyTemplateText = bodyTemplateText.replaceAll(key, val);
+    }
+
+    // Warn about unresolved placeholders
+    const unresolved = bodyTemplateText.match(/\{\{[^}]+\}\}/g);
+    if (unresolved) {
+      toast.warning(`Unaufgelöste Platzhalter: ${unresolved.join(', ')}`, {
+        description: 'Bitte manuell ersetzen oder Kontaktdaten vervollständigen.',
+      });
+    }
+
+    setSubject(subjectText);
+    setBody(bodyTemplateText);
+    toast.success(`Template "${template.name}" geladen`);
+  };
+
   // AI assist
-  const handleAiAction = async (action: 'text_improve' | 'text_shorten' | 'suggest_subject') => {
+  const handleAiAction = async (action: 'text_improve' | 'text_shorten' | 'suggest_subject' | 'quality_check') => {
     const text = body.trim();
     if (!text) {
       toast.error('Bitte schreiben Sie zuerst einen Text');
       return;
     }
+
+    if (action === 'quality_check') {
+      setQualityLoading(true);
+      setQualityResult(null);
+      try {
+        const fullText = subject ? `Betreff: ${subject}\n\n${text}` : text;
+        const { data, error } = await supabase.functions.invoke('sot-mail-ai-assist', {
+          body: { action: 'quality_check', text: fullText },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        setQualityResult(data.result);
+      } catch (err: any) {
+        toast.error('Qualitätscheck fehlgeschlagen: ' + (err.message || 'Unbekannt'));
+      } finally {
+        setQualityLoading(false);
+      }
+      return;
+    }
+
     setAiLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('sot-mail-ai-assist', {
@@ -268,6 +363,9 @@ export function ComposeEmailDialog({
     lastTranscriptRef.current = '';
     setContactSuggestions([]);
     setShowSuggestions(false);
+    setQualityResult(null);
+    setIncludeSignature(true);
+    setIncludeFooter(false);
   };
 
   const handleClose = () => {
@@ -304,6 +402,7 @@ export function ComposeEmailDialog({
         throw new Error('Ungültige E-Mail-Adresse');
       }
 
+      // PR 3: Send flags to server for body assembly
       const { data, error } = await supabase.functions.invoke('sot-mail-send', {
         body: {
           accountId,
@@ -313,6 +412,9 @@ export function ComposeEmailDialog({
           subject: subject.trim(),
           bodyText: body,
           bodyHtml: body ? `<pre style="font-family: inherit; white-space: pre-wrap;">${body}</pre>` : undefined,
+          includeSignature,
+          includeFooter,
+          isReply,
         },
       });
 
@@ -329,6 +431,24 @@ export function ComposeEmailDialog({
     } finally {
       setIsSending(false);
     }
+  };
+
+  // Group templates by category
+  const templatesByCategory = useMemo(() => {
+    const grouped: Record<string, MailTemplate[]> = {};
+    for (const t of templates) {
+      const cat = t.category || 'allgemein';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(t);
+    }
+    return grouped;
+  }, [templates]);
+
+  const categoryLabels: Record<string, string> = {
+    vertrieb: 'Vertrieb',
+    follow_up: 'Follow-up',
+    termin: 'Termine',
+    allgemein: 'Allgemein',
   };
 
   return (
@@ -477,11 +597,43 @@ export function ComposeEmailDialog({
             </div>
           </div>
 
-          {/* Body with Voice + AI Toolbar */}
+          {/* Body with Voice + AI Toolbar + Template Picker */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="email-body">Nachricht</Label>
               <div className="flex items-center gap-1">
+                {/* Template Picker */}
+                {templates.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs gap-1"
+                        disabled={isSending}
+                      >
+                        <FileText className="h-3 w-3" />
+                        Vorlage
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="max-h-64 overflow-y-auto">
+                      {Object.entries(templatesByCategory).map(([cat, tpls], idx) => (
+                        <div key={cat}>
+                          {idx > 0 && <DropdownMenuSeparator />}
+                          <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">
+                            {categoryLabels[cat] || cat}
+                          </div>
+                          {tpls.map(t => (
+                            <DropdownMenuItem key={t.id} onClick={() => handleTemplateSelect(t)}>
+                              {t.name}
+                            </DropdownMenuItem>
+                          ))}
+                        </div>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+
                 {/* AI Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -489,9 +641,9 @@ export function ComposeEmailDialog({
                       variant="ghost"
                       size="sm"
                       className="h-7 text-xs gap-1"
-                      disabled={aiLoading || isSending}
+                      disabled={aiLoading || qualityLoading || isSending}
                     >
-                      {aiLoading ? (
+                      {(aiLoading || qualityLoading) ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
                         <Sparkles className="h-3 w-3" />
@@ -512,6 +664,11 @@ export function ComposeEmailDialog({
                       <MessageSquareText className="h-4 w-4 mr-2" />
                       Betreff vorschlagen
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleAiAction('quality_check')}>
+                      <ShieldCheck className="h-4 w-4 mr-2" />
+                      Qualitätscheck
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
@@ -530,9 +687,9 @@ export function ComposeEmailDialog({
               id="email-body"
               placeholder="Ihre Nachricht... (Mikrofon-Button für Spracheingabe)"
               value={body}
-              onChange={(e) => setBody(e.target.value)}
+              onChange={(e) => { setBody(e.target.value); setQualityResult(null); }}
               disabled={isSending}
-              rows={12}
+              rows={10}
               className="resize-none"
             />
             {voice.isListening && dictationTarget === 'body' && (
@@ -540,6 +697,61 @@ export function ComposeEmailDialog({
                 🎤 Mikrofon aktiv — Sprechen Sie Ihre Nachricht...
               </p>
             )}
+
+            {/* PR 3: Quality Check Result */}
+            {qualityLoading && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground p-2 bg-muted/30 rounded-md">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Qualitätscheck läuft...
+              </div>
+            )}
+            {qualityResult && (
+              <div className="text-xs p-3 bg-muted/40 rounded-md border border-border/50 space-y-0.5 whitespace-pre-wrap">
+                <div className="flex items-center gap-1 font-medium text-foreground mb-1">
+                  <ShieldCheck className="h-3 w-3" />
+                  Qualitätscheck
+                </div>
+                {qualityResult}
+              </div>
+            )}
+          </div>
+
+          {/* PR 3: Signature & Footer Toggles */}
+          <div className="flex flex-col gap-2 pt-1 border-t border-border/30">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="sig-toggle"
+                checked={includeSignature}
+                onCheckedChange={(v) => setIncludeSignature(!!v)}
+                disabled={isSending || !signatureText}
+              />
+              <label htmlFor="sig-toggle" className="text-xs text-muted-foreground cursor-pointer select-none">
+                Signatur anhängen
+              </label>
+              {!signatureText && (
+                <span className="text-xs text-amber-500 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Keine Signatur in Profil hinterlegt
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="footer-toggle"
+                checked={includeFooter}
+                onCheckedChange={(v) => setIncludeFooter(!!v)}
+                disabled={isSending || !hasLetterhead}
+              />
+              <label htmlFor="footer-toggle" className="text-xs text-muted-foreground cursor-pointer select-none">
+                Rechtlicher Footer (Impressum)
+              </label>
+              {!hasLetterhead && (
+                <span className="text-xs text-amber-500 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Briefkopf-Daten in Stammdaten ausfüllen
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

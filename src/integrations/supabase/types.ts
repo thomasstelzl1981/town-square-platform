@@ -11963,6 +11963,56 @@ export type Database = {
           },
         ]
       }
+      mail_compose_templates: {
+        Row: {
+          body_template: string
+          category: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          placeholders: Json | null
+          subject_template: string
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          body_template?: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          placeholders?: Json | null
+          subject_template?: string
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          body_template?: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          placeholders?: Json | null
+          subject_template?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mail_compose_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mail_messages: {
         Row: {
           account_id: string
