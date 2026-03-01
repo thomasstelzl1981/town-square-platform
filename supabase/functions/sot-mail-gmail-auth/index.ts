@@ -52,23 +52,37 @@ Deno.serve(async (req) => {
     const messageObj = success
       ? { type: "gmail_auth_result", success: true }
       : { type: "gmail_auth_result", success: false, error: errorMsg || "unknown" };
-    const messageJson = JSON.stringify(JSON.stringify(messageObj));
+    const messageJson = JSON.stringify(messageObj);
     const bodyText = success
-      ? "Verbunden! Dieses Fenster schließt sich automatisch..."
+      ? "Verbunden! Dieses Fenster schliesst sich automatisch..."
       : `Fehler: ${errorMsg || "Unbekannt"}`;
     return new Response(
-      `<!DOCTYPE html><html><head><title>Gmail Auth</title></head><body>
+      `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Gmail Auth</title></head><body>
+<p id="status">${bodyText}</p>
 <script>
+(function() {
+  var result = ${JSON.stringify(messageJson)};
+  // 1. localStorage fallback (works even without window.opener)
+  try { localStorage.setItem('gmail_auth_result', result); } catch(e) {}
+  // 2. postMessage if opener exists
   if (window.opener) {
-    window.opener.postMessage(${messageJson}, "*");
-    window.close();
-  } else {
-    window.close();
+    try { window.opener.postMessage(result, "*"); } catch(e) {}
   }
+  // 3. Try closing with retry
+  function tryClose(attempts) {
+    if (attempts <= 0) {
+      document.getElementById('status').textContent = 
+        'Verbindung erfolgreich! Sie koennen dieses Fenster jetzt schliessen.';
+      return;
+    }
+    try { window.close(); } catch(e) {}
+    setTimeout(function() { tryClose(attempts - 1); }, 500);
+  }
+  tryClose(5);
+})();
 </script>
-<p>${bodyText}</p>
 </body></html>`,
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "text/html" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" } }
     );
   };
 
