@@ -1,22 +1,26 @@
 
 
-## Nummerntyp-Filter im Auswahl-Dialog + Bug-Fix
+## Problem
 
-### Aktueller Stand
-Die Edge Function sucht bereits nach Local, Mobile und TollFree getrennt und liefert den Typ pro Nummer zurueck. Die UI zeigt den Typ als Badge an, aber es gibt keinen Filter — alle Typen werden gemischt angezeigt.
+Twilio error 21651: **"Address not contained in bundle"**
 
-### Aenderungen
+The code sends both `AddressSid` and `BundleSid` in the purchase request. The `AddressSid` is fetched separately (line 219) and may not be the same address that's registered inside the bundle. When a `BundleSid` is provided, Twilio expects the address to come FROM the bundle — sending a separate `AddressSid` causes a mismatch.
 
-**1. UI: `StatusForwardingCard.tsx`** — Typ-Filter im Dialog
-- Neuer State `filterType` mit Werten `'all' | 'Local' | 'Mobile' | 'TollFree'`
-- Toggle-Buttons oberhalb der Nummernliste: "Alle", "Festnetz", "Mobil", "Gebührenfrei"
-- Gefilterte Liste basierend auf Auswahl
-- Default-Filter auf "Festnetz" (`Local`), da der User sich schoene Festnetznummern aussuchen moechte
+## Fix
 
-**2. Edge Function: Bug-Fix Zeile 235**
-- `number.phone_number` ist undefiniert (Variable heisst `numberToBuy`) — aendere zu `numberToBuy`
+**File: `supabase/functions/sot-phone-provision/index.ts`** (lines 257-259)
 
-### Technische Details
+When a `BundleSid` is being used (DE + Local), do **not** send `AddressSid` at all. The bundle already contains the verified address. Only fall back to `AddressSid` when no bundle is used.
 
-Keine neuen Dateien, kein neuer API-Call. Der Filter arbeitet rein client-seitig auf den bereits geladenen Nummern. Die Edge Function liefert schon alle 3 Typen.
+```text
+Current logic (broken):
+  if (addressSid) buyParams.AddressSid = addressSid    ← always added
+  if (bundleSid)  buyParams.BundleSid = bundleSid      ← also added → conflict
+
+Fixed logic:
+  if (bundleSid)  buyParams.BundleSid = bundleSid      ← bundle includes address
+  else if (addressSid) buyParams.AddressSid = addressSid ← fallback only
+```
+
+One change, ~5 lines affected. No UI changes needed.
 
