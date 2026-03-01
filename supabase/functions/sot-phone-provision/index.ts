@@ -129,20 +129,21 @@ Deno.serve(async (req) => {
     // ── SEARCH: return a list of available numbers ──
     if (action === "search") {
       const cc = country_code || "DE";
-      const types = ["Local", "Mobile", "TollFree"];
+      // DE numbers are restricted to area code 089 (Munich) to match the registered
+      // regulatory bundle address (Oberhaching). Only Local type has an approved bundle.
+      const types = cc === "DE" ? ["Local"] : ["Local", "Mobile", "TollFree"];
+      const hardcodedAreaCode = cc === "DE" ? "89" : null;
       const allNumbers: any[] = [];
 
       for (const host of twilioHosts) {
         for (const numType of types) {
           let searchUrl = `https://${host}/2010-04-01/Accounts/${TWILIO_SID}/AvailablePhoneNumbers/${cc}/${numType}.json?PageSize=10`;
-          // Support area_code search (e.g. +4989 → Contains=89)
-          if (area_code) {
-            const cleanCode = area_code.replace(/^\+?49/, '').replace(/^0/, '');
-            if (cleanCode) {
-              searchUrl += `&Contains=${encodeURIComponent(cleanCode)}`;
-            }
+          // For DE: always search +4989* numbers; for others: use client-supplied area_code
+          const effectiveCode = hardcodedAreaCode || (area_code ? area_code.replace(/^\+?49/, '').replace(/^0/, '') : null);
+          if (effectiveCode) {
+            searchUrl += `&Contains=${encodeURIComponent(effectiveCode)}`;
           }
-          console.log(`search ${cc} ${numType} on ${host}`, area_code ? `area_code=${area_code}` : '');
+          console.log(`search ${cc} ${numType} on ${host}`, `area_code=${effectiveCode || 'none'}`);
           const searchRes = await fetch(searchUrl, {
             headers: { Authorization: `Basic ${twilioAuth}` },
           });
