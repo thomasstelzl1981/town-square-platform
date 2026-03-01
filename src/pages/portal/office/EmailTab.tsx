@@ -100,242 +100,7 @@ const folders: EmailFolder[] = [
   { id: 'archive', name: 'Archiv', icon: <Archive className="h-4 w-4" /> },
 ];
 
-// ── IMAP Connection Form ──
-function ImapConnectionForm({ onConnect, isConnecting }: { onConnect: (data: any) => void; isConnecting: boolean }) {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    imap_host: '',
-    imap_port: '993',
-    smtp_host: '',
-    smtp_port: '587',
-  });
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-2 space-y-2">
-          <Label htmlFor="email">E-Mail-Adresse</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="ihre@email.de"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          />
-        </div>
-        <div className="col-span-2 space-y-2">
-          <Label htmlFor="password">Passwort / App-Passwort</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••"
-            value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="imap_host">IMAP Server</Label>
-          <Input
-            id="imap_host"
-            placeholder="imap.example.com"
-            value={formData.imap_host}
-            onChange={(e) => setFormData({ ...formData, imap_host: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="imap_port">IMAP Port</Label>
-          <Input
-            id="imap_port"
-            placeholder="993"
-            value={formData.imap_port}
-            onChange={(e) => setFormData({ ...formData, imap_port: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="smtp_host">SMTP Server</Label>
-          <Input
-            id="smtp_host"
-            placeholder="smtp.example.com"
-            value={formData.smtp_host}
-            onChange={(e) => setFormData({ ...formData, smtp_host: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="smtp_port">SMTP Port</Label>
-          <Input
-            id="smtp_port"
-            placeholder="587"
-            value={formData.smtp_port}
-            onChange={(e) => setFormData({ ...formData, smtp_port: e.target.value })}
-          />
-        </div>
-      </div>
-      <Button 
-        onClick={() => onConnect({ ...formData, provider: 'imap' })}
-        disabled={isConnecting || !formData.email || !formData.password || !formData.imap_host}
-        className="w-full"
-      >
-        {isConnecting ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            Verbindung wird hergestellt...
-          </>
-        ) : (
-          <>
-            <Link2 className="h-4 w-4 mr-2" />
-            IMAP-Konto verbinden
-          </>
-        )}
-      </Button>
-    </div>
-  );
-}
-
-// ── Connection Dialog ──
-function ConnectionDialog({ 
-  open, 
-  onOpenChange, 
-  onGoogleConnect, 
-  onMicrosoftConnect, 
-  onImapConnect, 
-  isConnecting 
-}: { 
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onGoogleConnect: () => void;
-  onMicrosoftConnect: () => void;
-  onImapConnect: (data: any) => void;
-  isConnecting: boolean;
-}) {
-  const [connectionTab, setConnectionTab] = useState<EmailProvider>('google');
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
-            E-Mail-Konto verbinden
-          </DialogTitle>
-          <DialogDescription>
-            Verbinden Sie Ihr E-Mail-Konto, um Nachrichten direkt in System of a Town zu empfangen und zu versenden.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <Tabs value={connectionTab} onValueChange={(v) => setConnectionTab(v as EmailProvider)}>
-          <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="google" className="gap-2">
-              <svg className="h-4 w-4" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              Google
-            </TabsTrigger>
-            <TabsTrigger value="microsoft" className="gap-2">
-              <svg className="h-4 w-4" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"/>
-              </svg>
-              Microsoft
-            </TabsTrigger>
-            <TabsTrigger value="imap" className="gap-2">
-              <Settings className="h-4 w-4" />
-              IMAP
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="mt-6">
-            <TabsContent value="google" className="space-y-4">
-              <div className="rounded-lg border p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
-                  <div>
-                    <p className="font-medium">Gmail & Google Workspace</p>
-                    <p className="text-sm text-muted-foreground">
-                      Verbinden Sie Ihr Google-Konto für nahtlose Gmail-Integration
-                    </p>
-                  </div>
-                </div>
-                <ul className="text-sm text-muted-foreground space-y-1 ml-8">
-                  <li>• Lesen und Senden von E-Mails</li>
-                  <li>• Automatische Synchronisation</li>
-                  <li>• Sichere OAuth 2.0 Authentifizierung</li>
-                </ul>
-              </div>
-              <Button 
-                onClick={onGoogleConnect} 
-                disabled={isConnecting}
-                className="w-full"
-              >
-                {isConnecting ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                )}
-                Mit Google anmelden
-              </Button>
-            </TabsContent>
-
-            <TabsContent value="microsoft" className="space-y-4">
-              <div className="rounded-lg border p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5" />
-                  <div>
-                    <p className="font-medium">Microsoft 365 & Outlook</p>
-                    <p className="text-sm text-muted-foreground">
-                      Verbinden Sie Ihr Microsoft-Konto für Outlook-Integration
-                    </p>
-                  </div>
-                </div>
-                <ul className="text-sm text-muted-foreground space-y-1 ml-8">
-                  <li>• Outlook.com & Microsoft 365</li>
-                  <li>• Exchange Online Support</li>
-                  <li>• Azure AD Authentifizierung</li>
-                </ul>
-              </div>
-              <Button 
-                onClick={onMicrosoftConnect}
-                disabled={isConnecting}
-                variant="outline"
-                className="w-full"
-              >
-                {isConnecting ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                )}
-                Mit Microsoft anmelden
-              </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                Microsoft-Integration wird in Kürze verfügbar sein
-              </p>
-            </TabsContent>
-
-            <TabsContent value="imap" className="space-y-4">
-              <div className="rounded-lg border p-4 space-y-3 mb-4">
-                <div className="flex items-start gap-3">
-                  <Settings className="h-5 w-5 text-primary mt-0.5" />
-                  <div>
-                    <p className="font-medium">IMAP/SMTP Konfiguration</p>
-                    <p className="text-sm text-muted-foreground">
-                      Manuelle Konfiguration für alle E-Mail-Anbieter
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <ImapConnectionForm 
-                onConnect={onImapConnect} 
-                isConnecting={isConnecting} 
-              />
-            </TabsContent>
-          </div>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
-  );
-}
+// (ConnectionDialog + ImapConnectionForm removed — replaced by AccountIntegrationDialog)
 
 // ── Thread Detail Panel — shows all messages in a thread ──
 function ThreadDetailPanel({
@@ -834,7 +599,7 @@ export function EmailTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('mail_accounts')
-        .select('*')
+        .select('id, provider, email_address, display_name, sync_status, last_sync_at, sync_error, sync_mail, sync_calendar, sync_contacts')
         .order('created_at', { ascending: false });
       if (error) { console.error('Error fetching mail accounts:', error); return []; }
       return data as EmailAccount[];
@@ -989,7 +754,7 @@ export function EmailTab() {
   // Whether there are more messages to load
   const hasMoreMessages = isSearchMode
     ? (searchCursor !== null)
-    : (loadedMessages.length > 0 ? loadedMessages.length % 50 === 0 : messages.length === 50);
+    : (loadedMessages.length > 0 ? messageCursor !== null : messages.length >= 50);
 
   // ─── Thread grouping (only in non-search mode) ───
   const threads: EmailThread[] = useMemo(() => {
@@ -1285,15 +1050,13 @@ export function EmailTab() {
     const threadId = msg.thread_id || msg.id;
     clearSearch();
     setSelectedThreadId(threadId);
-    // If the thread is not in currently loaded messages, we don't need to do anything
-    // special — the normal query will load it if it's within the first 50 messages.
-    // If it's older, we need a targeted fetch.
-    setTimeout(async () => {
-      // Check if thread is in the loaded messages after search clears
-      const currentMsgs = queryClient.getQueryData(['email-messages', selectedAccountId, selectedFolder]) as any[] | undefined;
-      const found = currentMsgs?.some((m: any) => (m.thread_id || m.id) === threadId);
+    // Wait for refetch to complete, then check if thread is in loaded messages
+    try {
+      const result = await refetchMessages();
+      const currentMsgs = result.data || [];
+      const found = currentMsgs.some((m: any) => (m.thread_id || m.id) === threadId);
       if (!found) {
-        // Fetch the thread messages directly and merge them into the cache
+        // Thread is older than the first 50 messages — fetch directly and merge into cache
         const { data } = await supabase
           .from('mail_messages')
           .select('*')
@@ -1310,7 +1073,9 @@ export function EmailTab() {
           });
         }
       }
-    }, 500);
+    } catch {
+      // Refetch failed — thread detail will show empty
+    }
   };
 
   if (isLoadingAccounts) {
