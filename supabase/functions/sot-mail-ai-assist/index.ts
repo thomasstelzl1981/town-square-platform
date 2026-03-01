@@ -29,6 +29,16 @@ serve(async (req) => {
       case "suggest_subject":
         systemPrompt = `Du bist ein E-Mail-Redakteur. Schlage basierend auf dem folgenden E-Mail-Text einen kurzen, prägnanten Betreff vor (max. 60 Zeichen). Antworte NUR mit dem Betreff, ohne Anführungszeichen und ohne Erklärungen. Sprache: ${lang === "de" ? "Deutsch" : "English"}.`;
         break;
+      case "quality_check":
+        systemPrompt = `Du bist ein E-Mail-Qualitätsprüfer. Prüfe die folgende E-Mail auf:
+1. Ton (professionell, höflich?)
+2. Vollständigkeit (Grußformel, Betreff-Bezug, Call-to-Action vorhanden?)
+3. Fehlende Informationen (Name, Kontaktdaten, Bezug?)
+4. Offensichtliche Fehler (Tippfehler, fehlende Anrede, doppelte Worte?)
+
+Antworte als kurze Checkliste mit Emojis (✅ = gut, ⚠️ = Verbesserungsvorschlag, ❌ = Problem).
+Format: Eine Zeile pro Punkt, maximal 6 Zeilen. Sprache: ${lang === "de" ? "Deutsch" : "English"}.`;
+        break;
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {
           status: 400, headers: { ...cors, "Content-Type": "application/json" },
