@@ -22,8 +22,12 @@ export default function SocialLoginButtons({
   const handleSocialLogin = async (provider: 'apple' | 'google') => {
     setLoading(provider);
     try {
+      // Portal login → redirect to /portal so brand-domain root guard doesn't intercept
+      const redirectTarget = variant === 'portal'
+        ? `${window.location.origin}/portal`
+        : window.location.origin;
       const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: window.location.origin,
+        redirect_uri: redirectTarget,
       });
       if (result.error) {
         toast.error(`Anmeldung fehlgeschlagen: ${result.error.message}`);
