@@ -9,7 +9,14 @@ const corsHeaders = {
 // Bundle map: approved Regulatory Bundles per number type for DE
 const DE_BUNDLES: Record<string, string | null> = {
   Local: "BU7b6e70441548870e7a0655d5b4d63474",
-  Mobile: null, // No approved bundle yet
+  Mobile: null,
+  TollFree: null,
+};
+
+// Address SIDs linked to the DE bundle profile (not exposed via ItemAssignments API)
+const DE_BUNDLE_ADDRESS: Record<string, string | null> = {
+  Local: "ADdfec635e3ea56ba7095db1d937345dce",
+  Mobile: null,
   TollFree: null,
 };
 
@@ -313,18 +320,21 @@ Deno.serve(async (req) => {
         StatusCallbackMethod: "POST",
         FriendlyName: friendlyName,
       };
-      // For DE: send BundleSid only. Do NOT send AddressSid — Twilio resolves
-      // the address from the bundle's own ItemAssignments (End-User contains address).
-      // Sending a separate AddressSid that isn't explicitly assigned in the bundle
-      // triggers error 21651 ("Address not contained in bundle").
+      // For DE: send BundleSid AND the bundle-profile AddressSid together.
+      // The AddressSid is embedded in the bundle profile but not returned by
+      // the ItemAssignments API, so we map it explicitly via DE_BUNDLE_ADDRESS.
       if (cc === "DE") {
         const bundleSid = DE_BUNDLES[purchaseType];
+        const bundleAddr = DE_BUNDLE_ADDRESS[purchaseType];
         if (bundleSid) {
           buyParams.BundleSid = bundleSid;
-          console.log("Using BundleSid for DE:", bundleSid, "type:", purchaseType);
+          console.log("Using BundleSid for DE:", bundleSid);
+        }
+        if (bundleAddr) {
+          buyParams.AddressSid = bundleAddr;
+          console.log("Using bundle AddressSid for DE:", bundleAddr);
         }
       } else if (addressSid) {
-        // Non-DE: use address if available
         buyParams.AddressSid = addressSid;
         console.log("Using AddressSid:", addressSid);
       }
