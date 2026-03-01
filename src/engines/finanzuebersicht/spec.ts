@@ -241,6 +241,7 @@ export interface FUInsuranceContract {
 export interface FUVorsorgeContract {
   id: string;
   contract_type?: string | null;
+  category?: string | null;
   provider?: string | null;
   premium?: number | null;
   payment_interval?: string | null;

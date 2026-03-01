@@ -148,8 +148,8 @@ export function calcExpenses(input: {
   const activeInsurance = input.insuranceData.filter(i => i.status !== 'gekuendigt');
   const insurancePremiums = activeInsurance.reduce((s, i) => s + monthlyFromInterval(i.premium, i.payment_interval), 0);
 
-  // Vorsorge
-  const activeVorsorge = input.vorsorgeData.filter(v => v.status !== 'gekuendigt');
+  // Vorsorge (exclude sachversicherung — those belong in insurance_contracts)
+  const activeVorsorge = input.vorsorgeData.filter(v => v.status !== 'gekuendigt' && v.category !== 'sachversicherung');
   const savingsOnlyContracts = activeVorsorge.filter(v =>
     (v.contract_type || '').toLowerCase().includes('spar') && !isInvestmentContract(v)
   );
@@ -236,10 +236,10 @@ export function calcAssets(
   // NEW: Investment depot positions
   const depotValue = depotPositions.reduce((s, dp) => s + (dp.current_value || 0), 0);
 
-  // NEW: Vorsorge contract balances (Rückkaufswerte / Guthaben)
+  // NEW: Vorsorge contract balances (Rückkaufswerte / Guthaben) — exclude sachversicherung
   const activeVorsorge = vorsorgeData.filter(v => {
     const status = (v.status || '').toLowerCase();
-    return status === 'aktiv' || status === 'active';
+    return (status === 'aktiv' || status === 'active') && v.category !== 'sachversicherung';
   });
   const vorsorgeBalance = activeVorsorge.reduce((s, v) => s + (v.current_balance || 0), 0);
 
@@ -519,7 +519,7 @@ export function calcFinanzuebersicht(input: FUInput): FUResult {
     avgInterestRate: input.portfolioSummary?.avgInterestRate,
   });
 
-  const activeVorsorge = input.vorsorgeData.filter(v => v.status !== 'gekuendigt');
+  const activeVorsorge = input.vorsorgeData.filter(v => v.status !== 'gekuendigt' && v.category !== 'sachversicherung');
   const contracts = buildContractLists({
     savingsOnlyContracts: expensesResult.savingsOnlyContracts,
     investmentVorsorge: expensesResult.investmentVorsorge,
