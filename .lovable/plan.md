@@ -1,58 +1,97 @@
 
 
-## Analyse: Zwei getrennte Probleme
+## Maximale Qualitaet: ElevenLabs Conversational AI Agent
 
-### Problem 1: Warum so viele Assistenten?
+### Das Problem mit dem aktuellen Ansatz
 
-Beide Hooks (`usePhoneAssistant.ts` für Zone 2 und `useBrandPhoneAssistant.ts` für Zone 1) haben **Auto-Create-Logik**: Wenn kein Assistent gefunden wird, wird automatisch einer angelegt.
+Der aktuelle Flow hat systembedingte Latenz, die nicht wegoptimiert werden kann:
 
-| Assistent | Quelle | Wie entstanden |
+```text
+Aktuell (Polly): ~4-6 Sekunden pro Antwort
+User spricht → Twilio STT (~2s) → HTTP an Edge Function → Gemini LLM (~1-2s) → Polly TTS (inline) → Antwort
+                    ↑                    ↑                       ↑
+              Gather wartet auf      HTTP Round-Trip        Warten auf
+              Stille (3s timeout)    nach Supabase          vollstaendige
+                                                            Antwort
+```
+
+Jeder Schritt ist ein separater HTTP-Request. Das fuehlt sich wie ein Anrufbeantworter an, nicht wie ein Gespraech.
+
+### Die Loesung: ElevenLabs Conversational AI + Twilio Native Integration
+
+ElevenLabs bietet eine **direkte Twilio-Integration** an. Dabei wird die Twilio-Nummer in ElevenLabs importiert, und ElevenLabs uebernimmt den gesamten Call-Flow in einem einzigen WebSocket-Loop:
+
+```text
+Ziel: ~0.5-1 Sekunde Latenz
+User spricht → ElevenLabs (STT + LLM + TTS in einem Stream) → Antwort
+                              ↑
+                    Alles in einem persistenten
+                    WebSocket, kein HTTP-Overhead,
+                    Streaming TTS (Antwort beginnt
+                    waehrend LLM noch generiert)
+```
+
+### Was sich aendert
+
+| Aspekt | Aktuell | Neu |
 |---|---|---|
-| 3x "Mein Telefonassistent" (user_id gesetzt) | `usePhoneAssistant.ts` Zeile 86-91 | Jeder User, der die KI-Telefon-Seite in Zone 2 öffnet, bekommt automatisch einen persönlichen Assistenten |
-| Acquiary, Otto, Ncore, Kaufy, Futureroom, Sot, Lennox | `useBrandPhoneAssistant.ts` Zeile 40-49 | Jede Brand-Seite in Zone 1, die besucht wird, erzeugt automatisch einen Brand-Assistenten |
+| STT | Twilio Gather (Google) | ElevenLabs Scribe |
+| LLM | Gemini via Edge Function | ElevenLabs-internes LLM oder Gemini via Tool |
+| TTS | Amazon Polly (robotisch) | ElevenLabs (natuerliche Stimme) |
+| Latenz | ~4-6 Sekunden | ~0.5-1 Sekunde |
+| Architektur | 3 Edge Functions (inbound → converse → postcall) | ElevenLabs Agent + 1 Webhook Edge Function |
 
-Das Auto-Create-Verhalten ist **gewollt** für Zone 1 (Brand-Assistenten) — aber die 3 persönlichen Assistenten sind Nebenprodukte davon, dass User die Zone-2-Telefon-Seite besucht haben. Das ist kein Bug, sondern erwartetes Verhalten des Zone-2-Hooks.
+### Umsetzungsplan
 
-**Aufräumen**: Die 3 persönlichen Assistenten (ohne Nummer, ohne Konfiguration) können gelöscht werden, falls Zone 2 noch nicht aktiv sein soll. Alternativ belassen wir sie — sie stören nicht.
+**1. ElevenLabs Agent erstellen (via API)**
 
-### Problem 2: Warum wird aufgelegt ("kann dieses Gespräch nicht fortsetzen")
+Eine neue Edge Function `sot-phone-agent-sync` synchronisiert die Assistenten-Konfiguration aus unserer DB in einen ElevenLabs Agent:
+- `behavior_prompt` → Agent System Prompt
+- `first_message` → Agent First Message
+- `documentation.knowledge_base` → Agent Knowledge Base
+- `voice_settings` → ElevenLabs Voice Config
+- Speichert die `elevenlabs_agent_id` zurueck in `commpro_phone_assistants`
 
-Die Fehlerkette im Log:
+**2. Twilio-Nummer in ElevenLabs importieren (via API)**
 
-```text
-1. sot-phone-inbound: Findet Ncore-Assistenten (is_enabled=true) ✅
-2. sot-phone-inbound: Versucht Call-Session zu erstellen mit user_id=NULL ❌
-   → DB-Fehler: 'null value in column "user_id" violates not-null constraint'
-   → Session wird NICHT erstellt
-3. sot-phone-inbound: Gibt trotzdem TwiML mit <Gather> zurück (Begrüßung spielt ab) ✅
-4. User spricht → Twilio sendet SpeechResult an sot-phone-converse
-5. sot-phone-converse: Sucht Session per CallSid → findet NICHTS (wurde nie erstellt)
-   → "No session for CallSid" → "Entschuldigung, ich kann dieses Gespräch nicht fortsetzen" → Hangup ❌
-```
+Gleiche Edge Function oder separater Aufruf:
+- Nutzt `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` (bereits konfiguriert)
+- Importiert `+498941433040` in ElevenLabs
+- ElevenLabs konfiguriert automatisch den Twilio-Webhook um
 
-**Root Cause**: Die Tabelle `commpro_phone_call_sessions` hat `user_id` als `NOT NULL`. Brand-Assistenten (Ncore) haben keinen `user_id`. Der Code im letzten Fix versuchte das zu handhaben (Zeile 87-92 in inbound), aber die DB-Constraint blockiert es.
+**3. Post-Call Webhook**
 
-### Fix-Plan
+ElevenLabs sendet nach jedem Gespraech einen Webhook mit dem kompletten Transkript. Eine neue (oder angepasste) Edge Function empfaengt das:
+- Erstellt/aktualisiert die Call-Session in unserer DB
+- Generiert Summary + Action Items (wie bisher)
+- Sendet Email-Benachrichtigung (wie bisher)
 
-**1. DB-Migration: `user_id` auf nullable setzen**
+**4. DB-Migration**
 
-```sql
-ALTER TABLE commpro_phone_call_sessions ALTER COLUMN user_id DROP NOT NULL;
-```
+Neue Spalten in `commpro_phone_assistants`:
+- `elevenlabs_agent_id` (text, nullable) — ElevenLabs Agent ID
+- `elevenlabs_phone_number_id` (text, nullable) — ElevenLabs Phone Number ID
 
-Das ist korrekt, weil Brand-Assistenten (Zone 1) keinen individuellen User haben — der Anruf gehört zur Marke, nicht zu einem User.
+**5. Zone-1-UI: Agent-Konfiguration**
 
-**2. Aufräumen der persönlichen Assistenten** (optional)
+Ein "Sync"-Button auf der Ncore-Seite, der die Konfiguration an ElevenLabs pusht. Aenderungen an Prompt, Wissensbasis oder Stimme werden sofort synchronisiert.
 
-Die 3 "Mein Telefonassistent"-Einträge löschen, da Zone 2 noch nicht live ist. Oder belassen — sie sind inaktiv und stören den Flow nicht.
+### Dateien
 
-**3. Keine Edge-Function-Änderungen nötig**
+| Datei | Aenderung |
+|---|---|
+| `supabase/functions/sot-phone-agent-sync/index.ts` | **NEU** — Synchronisiert Assistant-Config → ElevenLabs Agent |
+| `supabase/functions/sot-phone-postcall/index.ts` | Anpassen fuer ElevenLabs Webhook-Format (statt Twilio-Format) |
+| DB-Migration | `elevenlabs_agent_id` + `elevenlabs_phone_number_id` Spalten |
+| `sot-phone-inbound` + `sot-phone-converse` | Werden nicht mehr genutzt (ElevenLabs uebernimmt), bleiben aber als Fallback |
 
-Der Code in `sot-phone-inbound` behandelt `user_id: null` bereits korrekt (Zeile 87-92: `if (assistant.user_id) { sessionInsert.user_id = assistant.user_id; }`). Das Problem ist ausschließlich die DB-Constraint. Sobald die Spalte nullable ist, funktioniert der gesamte Flow.
+### Voraussetzungen
 
-### Erwartetes Ergebnis nach Fix
+- `ELEVENLABS_API_KEY` ist bereits konfiguriert
+- `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` sind bereits konfiguriert
+- `UNFREEZE INFRA-edge_functions` fuer die Edge Function Aenderungen
 
-```text
-Anruf → Begrüßung → User spricht → KI antwortet → Loop → Verabschiedung → Email an info@systemofatown.com
-```
+### Zusammenfassung
+
+Statt 3 Edge Functions mit HTTP-Ping-Pong uebernimmt ElevenLabs den gesamten Call-Flow. Unsere Infrastruktur reduziert sich auf: Konfiguration synchronisieren (Push) und Post-Call-Daten empfangen (Webhook). Das Ergebnis ist eine natuerliche Stimme mit Sub-Sekunden-Latenz.
 
