@@ -178,9 +178,12 @@ ${hasConversation ? `<h3>Gesprächsverlauf</h3><pre style="font-size:12px;backgr
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
-    // 5. Armstrong notification (Zone 2) — user's armstrong_email
+    // 5. Armstrong notification (Zone 2) — only for user-level assistants
     const documentation = assistant?.documentation as Record<string, any> | null;
     let armstrongEmail: string | null = null;
+
+    // Brand-level assistants (user_id is null) skip Armstrong lookup entirely
+    // — their notifications go exclusively through the Admin email (Step 6)
     if (assistant?.user_id) {
       const { data: profile } = await supabase
         .from("profiles")
