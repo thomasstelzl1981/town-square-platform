@@ -1,47 +1,56 @@
 
 
-## Diagnose
+## Analyse — 3 Probleme im E-Mail-Composer
 
-In `supabase/functions/sot-mail-send/index.ts`, Zeile 296-306:
+### 1. Fehlende E-Mail-Signatur (Impressum aus Stammdaten)
 
-```javascript
-const rawMessage = [
-  `From: ${account.email_address}`,
-  `To: ${email.to.join(', ')}`,
-  // ... headers ...
-  '',        // ← RFC 2822 Trennzeile (Header/Body)
-  body,
-].filter(Boolean).join('\r\n');
+**Ist-Zustand:** `ComposeEmailDialog.tsx` fuegt keinen Signatur-Footer an. Die `profiles`-Tabelle hat ein `email_signature`-Feld, das in Stammdaten → Profil gepflegt wird — aber der Compose-Dialog liest es nie aus.
+
+**Fix:** Beim Oeffnen des Compose-Dialogs die Signatur aus `profiles.email_signature` laden und als initialen Body-Footer einfuegen:
+```
+[Nachricht]
+
+--
+Max Mustermann
+Tel: +49 170 1234567
+...
 ```
 
-**Der Bug:** `.filter(Boolean)` entfernt die leere Zeile `''` (falsy). In RFC 2822 **muss** zwischen Headers und Body eine leere Zeile stehen (`\r\n\r\n`). Ohne diese Trennzeile interpretiert Gmail den Body als Header-Fortsetzung und der Inhalt geht verloren.
+**Dateien:**
+- `src/components/portal/office/ComposeEmailDialog.tsx` — Signatur aus DB laden (`profiles.email_signature`), als `\n\n--\n${signature}` ans Body-Ende anhaengen (nur bei neuer E-Mail, nicht bei Reply wo der Body schon befuellt ist)
 
-## Fix
+### 2. Betreffzeile zeigt Empfaenger-E-Mail
 
-In `supabase/functions/sot-mail-send/index.ts`:
+**Ist-Zustand:** Das `<Input id="email-subject">` hat kein `autoComplete="off"`. Der Browser erkennt das Wort "subject" und fuellt per Autofill die gespeicherte E-Mail-Adresse ein.
 
-1. Die Header-Zeilen mit `.filter(Boolean)` filtern (um optionale Header wie Cc/Bcc zu entfernen)
-2. Dann manuell die leere Trennzeile + Body anfuegen
+**Fix:** `autoComplete="off"` auf das Subject-Input setzen. Keine Backend-Aenderung noetig.
 
-```javascript
-const headers = [
-  `From: ${account.email_address}`,
-  `To: ${email.to.join(', ')}`,
-  email.cc?.length ? `Cc: ${email.cc.join(', ')}` : '',
-  email.bcc?.length ? `Bcc: ${email.bcc.join(', ')}` : '',
-  `Subject: ${email.subject}`,
-  `Content-Type: ${contentType}; charset=utf-8`,
-  email.replyToMessageId ? `In-Reply-To: ${email.replyToMessageId}` : '',
-].filter(Boolean).join('\r\n');
+**Datei:**
+- `src/components/portal/office/ComposeEmailDialog.tsx` — `autoComplete="off"` auf Subject-Input (Zeile 251)
 
-const rawMessage = headers + '\r\n\r\n' + body;
-```
+### 3. KI-Funktionen im E-Mail-Composer (ohne eigene Kachel)
 
-### Datei
-| Datei | Aenderung |
-|-------|-----------|
-| `supabase/functions/sot-mail-send/index.ts` | `.filter(Boolean)` nur auf Headers anwenden, Trennzeile manuell einfuegen |
+**Konzept:** Einen kleinen "KI-Assistent"-Button in die Toolbar des Compose-Dialogs einbauen. Funktionen:
+- **Text verbessern**: Markierten/gesamten Text stilistisch ueberarbeiten (Tonfall: professionell/freundlich)
+- **Text kuerzen**: Auf das Wesentliche reduzieren
+- **Betreff vorschlagen**: Aus dem Body-Text einen passenden Betreff generieren
+
+Technisch: Ein Dropdown-Button (z.B. `Sparkles`-Icon) oberhalb der Textarea mit 3 Optionen. Ruft eine Edge Function `sot-mail-ai-assist` auf, die den Text per Lovable AI (gemini-2.5-flash) verarbeitet.
+
+**Dateien:**
+- `supabase/functions/sot-mail-ai-assist/index.ts` — Neue Edge Function (text_improve, text_shorten, suggest_subject)
+- `src/components/portal/office/ComposeEmailDialog.tsx` — KI-Dropdown-Button ueber der Textarea
+
+### 4. Autofill fuer Kontaktfelder
+
+**Ist-Zustand:** Das "An"-Feld ist ein einfaches `<Input>` ohne Kontakt-Vorschlaege. Es gibt eine `ContactBookDialog` in MOD-12, aber keine Autofill-Suche im Compose-Dialog.
+
+**Fix:** Das "An"-Feld mit einer Typeahead-Suche erweitern, die beim Tippen aus der `contacts`-Tabelle passende Kontakte vorschlaegt (Name + E-Mail). Kein neues UI-Widget — eine simple Dropdown-Liste unter dem Input.
+
+**Datei:**
+- `src/components/portal/office/ComposeEmailDialog.tsx` — Typeahead auf dem "An"-Feld mit DB-Suche gegen `contacts` (email, first_name, last_name)
 
 ### Freeze-Check
-Edge Functions sind nicht eingefroren -- OK.
+- MOD-02: **unfrozen** — OK
+- Edge Functions: nicht eingefroren — OK
 
