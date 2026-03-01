@@ -10,11 +10,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   Loader2, Send, X, ChevronDown, ChevronUp,
   Sparkles, Wand2, Scissors, MessageSquareText,
+  Settings,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -25,11 +33,17 @@ import {
 import { VoiceButton } from '@/components/shared/VoiceButton';
 import { useArmstrongVoice } from '@/hooks/useArmstrongVoice';
 
+interface EmailAccountInfo {
+  id: string;
+  email_address: string;
+  provider: string;
+}
+
 interface ComposeEmailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  accountId: string;
-  accountEmail: string;
+  accounts: EmailAccountInfo[];
+  defaultAccountId: string;
   onSent: () => void;
   initialTo?: string;
   initialSubject?: string;
@@ -48,13 +62,25 @@ interface ContactSuggestion {
 export function ComposeEmailDialog({
   open,
   onOpenChange,
-  accountId,
-  accountEmail,
+  accounts,
+  defaultAccountId,
   onSent,
   initialTo = '',
   initialSubject = '',
   initialBody = '',
 }: ComposeEmailDialogProps) {
+  const [selectedAccountId, setSelectedAccountId] = useState(defaultAccountId);
+  const selectedAccount = accounts.find(a => a.id === selectedAccountId) || accounts[0];
+  const accountId = selectedAccount?.id || '';
+  const accountEmail = selectedAccount?.email_address || '';
+
+  // Reset selected account when dialog opens
+  useEffect(() => {
+    if (open) {
+      setSelectedAccountId(defaultAccountId);
+    }
+  }, [open, defaultAccountId]);
+
   const [to, setTo] = useState(initialTo);
   const [cc, setCc] = useState('');
   const [bcc, setBcc] = useState('');
@@ -316,12 +342,34 @@ export function ComposeEmailDialog({
         </DialogHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto py-4">
-          {/* From (read-only) */}
+          {/* From — selectable when multiple accounts */}
           <div className="space-y-2">
             <Label className="text-muted-foreground text-xs">Von</Label>
-            <div className="text-sm px-3 py-2 bg-muted/50 rounded-md">
-              {accountEmail}
-            </div>
+            {accounts.length > 1 ? (
+              <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      <span className="flex items-center gap-2">
+                        {acc.provider === 'google' ? (
+                          <svg className="h-3 w-3" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/></svg>
+                        ) : (
+                          <Settings className="h-3 w-3" />
+                        )}
+                        {acc.email_address}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="text-sm px-3 py-2 bg-muted/50 rounded-md">
+                {accountEmail}
+              </div>
+            )}
           </div>
 
           {/* To with typeahead */}
