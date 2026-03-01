@@ -37,7 +37,10 @@ export default function AcquiaryLayout() {
     return <div className="min-h-screen flex items-center justify-center"><div className="h-6 w-6 border-2 border-current border-t-transparent rounded-full animate-spin" /></div>;
   }
 
-  if (pinGateEnabled && !pinVerified) {
+  const legalPaths = ['/impressum', '/datenschutz'];
+  const isLegalPage = legalPaths.some(p => location.pathname.endsWith(p));
+
+  if (pinGateEnabled && !pinVerified && !isLegalPage) {
     return <WebsitePinGate brandName="Acquiary" sessionKey="acquiary_pin_verified" onVerified={() => setPinVerified(true)} />;
   }
 
