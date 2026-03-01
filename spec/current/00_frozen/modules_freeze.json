@@ -4,7 +4,7 @@
   "description": "SSOT for module freeze states. Lovable and all AI assistants MUST check this file before modifying any module code. If a module is frozen, changes to its paths are NOT ALLOWED without explicit unfreeze.",
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
-    "MOD-00": { "frozen": true, "frozen_at": "2026-02-28T12:05:00.000Z", "reason": "Re-frozen after Armstrong widget count fix" },
+    "MOD-00": { "frozen": false, "frozen_at": "2026-03-01T04:00:00.000Z", "reason": "Unfrozen for WeatherCard visual fix" },
     "MOD-01": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
     "MOD-02": { "frozen": false, "frozen_at": "2026-03-01T02:30:00.000Z", "reason": "Unfrozen for Briefgenerator CORS + display fix" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
