@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
       }
       const buyBody = new URLSearchParams(buyParams);
 
-      console.log("purchasing number:", number.phone_number);
+      console.log("purchasing number:", numberToBuy);
       const buyRes = await fetch(buyUrl, {
         method: "POST",
         headers: {
