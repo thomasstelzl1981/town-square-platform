@@ -1,11 +1,11 @@
 /**
  * BrandLinkWidget — Individual brand tile as a system widget
- * Renders as aspect-square with full brand gradient background
+ * Dark-theme glassmorphic design with brand accent glow
  */
 
 import { memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { ShoppingBag, Landmark, Building2, Search } from 'lucide-react';
+import { Store, TrendingUp, Cpu, Radar, ExternalLink } from 'lucide-react';
 
 interface BrandConfig {
   name: string;
@@ -13,9 +13,11 @@ interface BrandConfig {
   tagline: string;
   description: string;
   badge: string;
-  gradient: string;
+  accentHsl: string;        // HSL values for glow/accent
+  iconBg: string;           // Tailwind bg class for icon container
   icon: React.ReactNode;
   url: string;
+  domain: string;
 }
 
 const BRAND_CONFIGS: Record<string, BrandConfig> = {
@@ -24,9 +26,11 @@ const BRAND_CONFIGS: Record<string, BrandConfig> = {
     tagline: 'Marktplatz & Investment',
     description: 'Immobilien kaufen, verkaufen und als Kapitalanlage entdecken.',
     badge: 'Marktplatz',
-    gradient: 'from-[hsl(220,85%,55%)] to-[hsl(245,75%,60%)]',
-    icon: <ShoppingBag className="h-6 w-6 text-white" />,
+    accentHsl: '220, 85%, 55%',
+    iconBg: 'bg-[hsl(220,85%,55%)]',
+    icon: <Store className="h-5 w-5 text-white" />,
     url: 'https://kaufy.immo',
+    domain: 'kaufy.immo',
   },
   'SYS.BRAND.FUTUREROOM': {
     name: 'FutureRoom',
@@ -34,9 +38,11 @@ const BRAND_CONFIGS: Record<string, BrandConfig> = {
     tagline: 'Finanzierung',
     description: 'KI-gestützte Aufbereitung und digitale Bankeinreichung.',
     badge: '400+ Bankpartner',
-    gradient: 'from-[hsl(165,70%,36%)] to-[hsl(158,64%,52%)]',
-    icon: <Landmark className="h-6 w-6 text-white" />,
+    accentHsl: '165, 70%, 36%',
+    iconBg: 'bg-[hsl(165,70%,36%)]',
+    icon: <TrendingUp className="h-5 w-5 text-white" />,
     url: 'https://futureroom.online',
+    domain: 'futureroom.online',
   },
   'SYS.BRAND.SOT': {
     name: 'SystemofaTown',
@@ -44,18 +50,22 @@ const BRAND_CONFIGS: Record<string, BrandConfig> = {
     tagline: 'Management Suite',
     description: 'Immobilienverwaltung, KI-Office und operative Steuerung.',
     badge: 'All-in-One',
-    gradient: 'from-[hsl(0,0%,15%)] to-[hsl(0,0%,30%)]',
-    icon: <Building2 className="h-6 w-6 text-white" />,
+    accentHsl: '270, 60%, 55%',
+    iconBg: 'bg-[hsl(270,60%,55%)]',
+    icon: <Cpu className="h-5 w-5 text-white" />,
     url: 'https://systemofatown.com',
+    domain: 'systemofatown.com',
   },
   'SYS.BRAND.ACQUIARY': {
     name: 'ACQUIARY',
     tagline: 'Sourcing & Akquisition',
     description: 'Immobilien-Sourcing, Analyse und strategische Akquisition.',
     badge: 'Investment House',
-    gradient: 'from-[hsl(210,80%,50%)] to-[hsl(200,70%,40%)]',
-    icon: <Search className="h-6 w-6 text-white" />,
+    accentHsl: '32, 90%, 55%',
+    iconBg: 'bg-[hsl(32,90%,55%)]',
+    icon: <Radar className="h-5 w-5 text-white" />,
     url: 'https://acquiary.com',
+    domain: 'acquiary.com',
   },
 };
 
@@ -68,28 +78,48 @@ export const BrandLinkWidget = memo(function BrandLinkWidget({ code }: BrandLink
   if (!config) return null;
 
   return (
-    <Card className="h-[260px] md:h-auto md:aspect-square overflow-hidden border-0 shadow-card">
+    <Card
+      className="h-[260px] md:h-auto md:aspect-square overflow-hidden border-border/50 bg-card/80 backdrop-blur-sm"
+      style={{
+        boxShadow: `inset 0 2px 0 0 hsla(${config.accentHsl}, 0.5), 0 4px 20px -4px hsla(${config.accentHsl}, 0.15)`,
+      }}
+    >
       <CardContent className="p-0 h-full">
         <a
           href={config.url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`h-full bg-gradient-to-br ${config.gradient} p-5 flex flex-col items-center justify-center text-white text-center gap-3 group transition-all hover:brightness-110`}
+          className="h-full p-5 flex flex-col justify-between group transition-all hover:bg-muted/20"
         >
-          <div className="h-12 w-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
-            {config.icon}
-          </div>
-          <div>
-            <h3 className="text-lg font-bold tracking-tight">
-              {config.nameElement || config.name}
-            </h3>
-            <p className="text-xs text-white/70 uppercase tracking-wider mt-0.5">
-              {config.tagline}
+          {/* Header: Icon + Brand Name */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className={`h-10 w-10 rounded-xl ${config.iconBg} flex items-center justify-center shrink-0 shadow-lg`}>
+                {config.icon}
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-bold tracking-tight text-foreground">
+                  {config.nameElement || config.name}
+                </h3>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                  {config.tagline}
+                </p>
+              </div>
+            </div>
+
+            {/* Description — full text, no clamp */}
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {config.description}
             </p>
           </div>
-          <p className="text-sm text-white/80 leading-relaxed line-clamp-2 max-w-[180px]">
-            {config.description}
-          </p>
+
+          {/* Footer: Domain link */}
+          <div className="flex items-center justify-between pt-3 mt-auto border-t border-border/40">
+            <span className="text-xs text-muted-foreground font-medium">
+              {config.domain}
+            </span>
+            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+          </div>
         </a>
       </CardContent>
     </Card>
