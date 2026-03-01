@@ -3,12 +3,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /**
  * sot-phone-agent-sync — Synchronizes assistant config to ElevenLabs Conversational AI Agent
  *
+ * NOW with Knowledge Store: Automatically assembles behavior_prompt from
+ * armstrong_knowledge_items (brand-specific + global Armstrong persona).
+ *
  * Actions:
  * 1. create_agent — Creates or updates ElevenLabs Agent from commpro_phone_assistants config
  * 2. import_number — Imports Twilio number into ElevenLabs and assigns agent
  * 3. sync — Does both (create/update agent + assign to number)
- *
- * Request body: { action: "create_agent" | "import_number" | "sync", assistant_id: string }
  */
 
 const corsHeaders = {
@@ -58,33 +59,21 @@ Deno.serve(async (req) => {
     if (action === "create_agent" || action === "sync") {
       const voiceSettings = (assistant.voice_settings as Record<string, any>) || {};
       const rules = (assistant.rules as Record<string, any>) || {};
-      const documentation = (assistant.documentation as Record<string, any>) || {};
 
-      // Build system prompt with knowledge base inline
-      let systemPrompt = assistant.behavior_prompt || "Du bist ein freundlicher Telefonassistent.";
-      
-      if (documentation.knowledge_base) {
-        systemPrompt += `\n\nWissensbasis:\n${documentation.knowledge_base}`;
-      }
+      // ═══════════════════════════════════════════════════════
+      // KNOWLEDGE STORE: Auto-assemble behavior_prompt
+      // ═══════════════════════════════════════════════════════
+      const brandKey = assistant.brand_key || null;
+      const systemPrompt = await assemblePrompt(supabase, brandKey, assistant, rules);
 
-      // Add rules
-      const rulesList: string[] = [];
-      if (rules.collect_name) rulesList.push("Frage nach dem Namen des Anrufers falls unbekannt.");
-      if (rules.collect_reason) rulesList.push("Frage nach dem Anliegen des Anrufers.");
-      if (rules.max_call_seconds) rulesList.push(`Maximale Gesprächsdauer: ${rules.max_call_seconds} Sekunden. Weise freundlich darauf hin, wenn die Zeit knapp wird.`);
-      
-      if (rulesList.length > 0) {
-        systemPrompt += `\n\nWICHTIGE REGELN:\n${rulesList.map(r => `- ${r}`).join("\n")}`;
-      }
-
-      // Always add phone-specific instructions
-      systemPrompt += `\n\n- Antworte auf Deutsch, kurz und natürlich (max 2-3 Sätze pro Antwort)
-- Du wirst am Telefon vorgelesen, formuliere klar und ohne Sonderzeichen
-- Keine Markdown, keine Aufzählungszeichen, keine URLs
-- Wenn du eine Frage nicht beantworten kannst, biete an, eine Nachricht weiterzuleiten`;
+      console.log(`[SYNC] Brand: ${brandKey}, Prompt length: ${systemPrompt.length} chars`);
 
       // ElevenLabs voice ID — use configured or default German voice
       const voiceId = voiceSettings.voice_id || "FGY2WhTYpPnrIDTdsKH5"; // Laura (German-friendly)
+
+      // Build first_message — use stored or generate from persona
+      const firstMessage = assistant.first_message ||
+        `Guten Tag, Sie sprechen mit dem Assistenten von ${assistant.display_name?.replace(' Telefonassistent', '') || 'unserem Team'}. Wie kann ich Ihnen helfen?`;
 
       const agentConfig = {
         conversation_config: {
@@ -95,7 +84,7 @@ Deno.serve(async (req) => {
               temperature: 0.7,
               max_tokens: 300,
             },
-            first_message: assistant.first_message || "Guten Tag, wie kann ich Ihnen helfen?",
+            first_message: firstMessage,
             language: "de",
           },
           tts: {
@@ -115,7 +104,7 @@ Deno.serve(async (req) => {
           },
         },
         name: `SOT-${assistant.display_name || "Assistant"}`,
-        tags: ["sot-platform", assistant.brand_key || "default"],
+        tags: ["sot-platform", brandKey || "default"],
       };
 
       let agentId = assistant.elevenlabs_agent_id;
@@ -135,7 +124,6 @@ Deno.serve(async (req) => {
           const errText = await updateRes.text();
           console.error("ElevenLabs agent update failed:", updateRes.status, errText);
           
-          // If agent not found, create new one
           if (updateRes.status === 404) {
             agentId = null;
           } else {
@@ -168,10 +156,15 @@ Deno.serve(async (req) => {
         results.agent = { status: "created", agent_id: agentId };
       }
 
-      // Save agent_id back to DB
+      // Save agent_id + generated prompt back to DB
       await supabase
         .from("commpro_phone_assistants")
-        .update({ elevenlabs_agent_id: agentId, updated_at: new Date().toISOString() })
+        .update({
+          elevenlabs_agent_id: agentId,
+          behavior_prompt: systemPrompt,
+          first_message: firstMessage,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", assistant_id);
     }
 
@@ -189,7 +182,6 @@ Deno.serve(async (req) => {
         let phoneNumberId = assistant.elevenlabs_phone_number_id;
 
         if (!phoneNumberId) {
-          // Import number into ElevenLabs
           const importRes = await fetch(`${ELEVENLABS_API}/convai/phone-numbers`, {
             method: "POST",
             headers: {
@@ -213,7 +205,6 @@ Deno.serve(async (req) => {
             const importData = await importRes.json();
             phoneNumberId = importData.phone_number_id;
 
-            // Save phone_number_id to DB
             await supabase
               .from("commpro_phone_assistants")
               .update({
@@ -228,7 +219,7 @@ Deno.serve(async (req) => {
           results.phone = { status: "already_imported", phone_number_id: phoneNumberId };
         }
 
-        // Assign agent to phone number (if both exist)
+        // Assign agent to phone number
         const finalAgentId = assistant.elevenlabs_agent_id || results.agent?.agent_id;
         if (phoneNumberId && finalAgentId) {
           const assignRes = await fetch(`${ELEVENLABS_API}/convai/phone-numbers/${phoneNumberId}`, {
@@ -237,9 +228,7 @@ Deno.serve(async (req) => {
               "xi-api-key": ELEVENLABS_API_KEY,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              agent_id: finalAgentId,
-            }),
+            body: JSON.stringify({ agent_id: finalAgentId }),
           });
 
           if (!assignRes.ok) {
@@ -253,11 +242,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Step 3: Set up post-call webhook ──
+    // ── Step 3: Webhook info ──
     if (action === "sync") {
       const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sot-phone-postcall`;
-      // Note: Post-call webhooks are configured at workspace level in ElevenLabs settings
-      // We log the URL so the admin knows what to configure
       results.webhook = {
         status: "info",
         message: "Post-call webhook URL for ElevenLabs workspace settings",
@@ -271,6 +258,102 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: err instanceof Error ? err.message : "Unknown error" }, 500);
   }
 });
+
+// ═══════════════════════════════════════════════════════
+// KNOWLEDGE STORE: Prompt Assembly
+// ═══════════════════════════════════════════════════════
+
+interface KnowledgeItem {
+  item_code: string;
+  category: string;
+  title_de: string;
+  content: string;
+  phone_prompt_priority: number;
+}
+
+async function assemblePrompt(
+  supabase: any,
+  brandKey: string | null,
+  assistant: any,
+  rules: Record<string, any>
+): Promise<string> {
+  const sections: string[] = [];
+
+  // 1. Fetch brand-specific knowledge items
+  if (brandKey) {
+    const { data: brandItems } = await supabase
+      .from("armstrong_knowledge_items")
+      .select("item_code, category, title_de, content, phone_prompt_priority")
+      .eq("brand_key", brandKey)
+      .eq("status", "published")
+      .order("phone_prompt_priority", { ascending: true })
+      .limit(20);
+
+    if (brandItems && brandItems.length > 0) {
+      // Separate persona from knowledge
+      const persona = brandItems.find((i: KnowledgeItem) => i.category === "brand_persona");
+      const knowledge = brandItems.filter((i: KnowledgeItem) => i.category !== "brand_persona");
+
+      if (persona) {
+        sections.push(persona.content);
+      }
+
+      if (knowledge.length > 0) {
+        const knowledgeBlock = knowledge
+          .map((i: KnowledgeItem) => `### ${i.title_de}\n${i.content}`)
+          .join("\n\n");
+        sections.push(`\n## WISSENSBASIS — ${brandKey.toUpperCase()}\n\n${knowledgeBlock}`);
+      }
+    }
+  }
+
+  // 2. Fetch global Armstrong system knowledge (persona, tonality)
+  const { data: globalItems } = await supabase
+    .from("armstrong_knowledge_items")
+    .select("item_code, category, title_de, content, phone_prompt_priority")
+    .is("brand_key", null)
+    .eq("status", "published")
+    .eq("category", "system")
+    .in("item_code", ["KB.SYSTEM.001", "KB.SYSTEM.006"]) // Armstrong identity + tonality
+    .order("phone_prompt_priority", { ascending: true });
+
+  if (globalItems && globalItems.length > 0 && sections.length === 0) {
+    // Only use global persona if no brand persona exists
+    sections.push("Du bist Armstrong, ein professioneller KI-Telefonassistent.");
+  }
+
+  // 3. If no knowledge found at all, use fallback
+  if (sections.length === 0) {
+    sections.push(
+      assistant.behavior_prompt ||
+      "Du bist ein freundlicher und professioneller Telefonassistent. Erfasse das Anliegen des Anrufers, notiere Kontaktdaten und organisiere einen Rückruf."
+    );
+  }
+
+  // 4. Add call rules
+  const rulesList: string[] = [];
+  if (rules.collect_name) rulesList.push("Frage nach dem Namen des Anrufers falls unbekannt.");
+  if (rules.collect_reason) rulesList.push("Frage nach dem Anliegen des Anrufers.");
+  if (rules.collect_urgency) rulesList.push("Frage nach der Dringlichkeit.");
+  if (rules.confirm_callback_number) rulesList.push("Bestätige die Rückrufnummer.");
+  if (rules.collect_preferred_times) rulesList.push("Frage nach bevorzugten Rückrufzeiten.");
+  if (rules.max_call_seconds) rulesList.push(`Maximale Gesprächsdauer: ${rules.max_call_seconds} Sekunden.`);
+
+  if (rulesList.length > 0) {
+    sections.push(`\n## GESPRÄCHSREGELN\n${rulesList.map(r => `- ${r}`).join("\n")}`);
+  }
+
+  // 5. Always add phone-specific formatting instructions
+  sections.push(`
+## FORMATIERUNG (TELEFON)
+- Antworte auf Deutsch, kurz und natürlich (max 2-3 Sätze pro Antwort)
+- Du wirst am Telefon vorgelesen, formuliere klar und ohne Sonderzeichen
+- Keine Markdown, keine Aufzählungszeichen, keine URLs
+- Wenn du eine Frage nicht beantworten kannst, biete an, eine Nachricht weiterzuleiten
+- Beende das Gespräch freundlich wenn das Anliegen erfasst ist`);
+
+  return sections.join("\n\n");
+}
 
 function jsonResponse(data: any, status = 200) {
   return new Response(JSON.stringify(data), {
