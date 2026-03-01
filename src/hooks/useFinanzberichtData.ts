@@ -180,7 +180,7 @@ export function useFinanzberichtData(): FinanzberichtData {
     queryKey: ['fb-vorsorge', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
-      const { data } = await supabase.from('vorsorge_contracts').select('id, contract_type, provider, premium, payment_interval, contract_no, status, current_balance').eq('tenant_id', activeTenantId);
+      const { data } = await supabase.from('vorsorge_contracts').select('id, contract_type, category, provider, premium, payment_interval, contract_no, status, current_balance').eq('tenant_id', activeTenantId);
       return data || [];
     },
     enabled: !!activeTenantId,
@@ -253,7 +253,8 @@ export function useFinanzberichtData(): FinanzberichtData {
 
     // Filter out demo data from DB results when demo is OFF
     const filteredInsurance = demoEnabled ? insuranceData : insuranceData.filter(r => !isDemoId(r.id));
-    const filteredVorsorge = demoEnabled ? vorsorgeData : vorsorgeData.filter(r => !isDemoId(r.id));
+    const filteredVorsorge = (demoEnabled ? vorsorgeData : vorsorgeData.filter(r => !isDemoId(r.id)))
+      .filter(r => r.category !== 'sachversicherung');
     const filteredSubscriptions = demoEnabled ? subscriptions : (subscriptions as any[]).filter(r => !isDemoId(r.id));
     const filteredPvPlants = demoEnabled ? pvPlants : (pvPlants as any[]).filter(r => !isDemoId(r.id));
     const filteredPrivateLoans = demoEnabled ? privateLoansList : (privateLoansList as any[]).filter(r => !isDemoId(r.id));
