@@ -1,41 +1,54 @@
 
 
-## Vermietereinheit bearbeiten + Plus-Button statt Kachel
+## Diagnose
+
+Magic Intake hat Versicherungsvertraege (KFZ, Rechtsschutz, Haftpflicht etc.) faelschlicherweise in die Tabelle `vorsorge_contracts` mit `category: 'sachversicherung'` geschrieben — statt in `insurance_contracts`.
+
+**Aktueller Datenstand** (8 fehlerhafte Eintraege in `vorsorge_contracts`):
+- 5x KFZ-Versicherung (VHV, HDI, Versicherungskammer Bayern, Bayerisches Mopedschild)
+- 1x Rechtsschutzversicherung (ARAG)
+- 1x Vermögensschadenhaftpflicht (Hans John)
+- 1x Reiseversicherung (Würzburger)
+
+**Warum tauchen sie in der Uebersicht auf:**
+Die Finanzuebersicht-Engine (`calcFinanzuebersicht`) liest ALLE `vorsorge_contracts` ohne Category-Filter. Die Sachversicherungs-Eintraege werden als Vorsorge-/Sparvertraege mitgezaehlt.
+
+**Warum fehlen Widgets im Sachversicherungen-Tab:**
+Der SachversicherungenTab liest aus `insurance_contracts`, nicht aus `vorsorge_contracts` — dort liegen die Daten aber gar nicht.
+
+---
+
+## Fix (3 Schritte)
+
+### 1. Engine-Fix: `vorsorge_contracts` mit `category = 'sachversicherung'` ausschliessen
+
+**Datei:** `src/engines/finanzuebersicht/engine.ts`
+
+Zeile 152: `activeVorsorge` Filter erweitern:
+```typescript
+const activeVorsorge = input.vorsorgeData
+  .filter(v => v.status !== 'gekuendigt')
+  .filter(v => v.category !== 'sachversicherung');
+```
+
+Ebenso in der `buildContractSummaries`-Funktion dasselbe Filter anwenden.
+
+### 2. Daten-Migration: Fehlklassifizierte Records nach `insurance_contracts` verschieben
+
+SQL-Migration:
+- Fuer jeden der 8 `vorsorge_contracts` mit `category = 'sachversicherung'` einen entsprechenden INSERT in `insurance_contracts` mit korrekt gemappten Feldern (provider → insurer, premium, payment_interval, contract_no → policy_no, status)
+- Danach die 8 Records aus `vorsorge_contracts` loeschen
+
+### 3. Engine-Daten-Input: `useFinanzberichtData` — Vorsorge-Daten ebenfalls filtern
+
+**Datei:** `src/hooks/useFinanzberichtData.ts`
+
+Als zusaetzliche Absicherung: `filteredVorsorge` um den Category-Filter erweitern, damit `sachversicherung`-Eintraege nie in die Engine gelangen.
+
+---
 
 ### Freeze-Check
-MOD-04: **unfrozen** — OK
-
-### Aenderungen in `src/pages/portal/immobilien/PortfolioTab.tsx`
-
-**1. Neuen State fuer Edit-Modus:**
-```typescript
-const [editContext, setEditContext] = useState<LandlordContext | null>(null);
-```
-
-**2. Edit-Button auf jedem Vermietereinheit-Widget (neben "Zuordnen"):**
-Ein kleiner Bearbeiten-Button (Pencil-Icon) im Footer jedes Context-Widgets. Klick oeffnet `CreateContextDialog` mit `editContext={ctx}`.
-
-**3. "Neue Vermietereinheit"-Kachel entfernen (Zeilen 904-923):**
-Das gesamte `<DesktopOnly><WidgetCell>` mit dem Plus-Icon und "Neue Vermietereinheit" wird geloescht.
-
-**4. Plus-Button in der Ueberschrift-Zeile:**
-Vor der WidgetGrid (Zeile 753-755) einen Header mit Plus-Button einfuegen:
-```
-Vermietereinheiten                    [+]
-```
-Der Plus-Button oeffnet `setShowCreateContextDialog(true)`.
-
-**5. CreateContextDialog mit editContext verbinden:**
-```tsx
-<CreateContextDialog 
-  open={showCreateContextDialog || !!editContext} 
-  onOpenChange={(open) => { 
-    if (!open) { setShowCreateContextDialog(false); setEditContext(null); }
-  }}
-  editContext={editContext}
-/>
-```
-
-### Keine Backend-Aenderung noetig
-`CreateContextDialog` unterstuetzt bereits den `editContext`-Prop mit Update-Logik.
+- MOD-18: **unfrozen** ✅
+- ENG-FINUEB: **unfrozen** ✅
+- `useFinanzberichtData.ts` liegt ausserhalb von Modul-Pfaden → frei editierbar ✅
 
