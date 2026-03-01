@@ -26,8 +26,8 @@ function Loading() {
   );
 }
 
-// Lazy-load the brand phone assistant panel
-const BrandPhonePanel = lazy(() => import('@/components/communication-pro/phone-assistant/BrandPhonePanel'));
+// Lazy-load the Zone 1 brand assistant panel
+const BrandAssistantPanel = lazy(() => import('@/components/admin/desks/commpro/BrandAssistantPanel'));
 
 export default function CommProDesk() {
   const location = useLocation();
@@ -61,7 +61,7 @@ export default function CommProDesk() {
             <Route
               key={tab.value}
               path={tab.path}
-              element={<BrandPhonePanel brandKey={tab.value} brandLabel={tab.label} tier="premium" />}
+              element={<BrandAssistantPanel brandKey={tab.value} brandLabel={tab.label} />}
             />
           ))}
           <Route path="*" element={<Navigate to="/admin/commpro-desk/kaufy" replace />} />
