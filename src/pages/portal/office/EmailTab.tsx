@@ -773,6 +773,13 @@ export function EmailTab() {
   const [isLoadingBody, setIsLoadingBody] = useState(false);
   const [bodyFetchError, setBodyFetchError] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<string | 'all'>('__init__');
+  // Pagination state
+  const [loadedMessages, setLoadedMessages] = useState<any[]>([]);
+  const [messageCursor, setMessageCursor] = useState<string | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [searchLoadedMessages, setSearchLoadedMessages] = useState<any[]>([]);
+  const [searchCursor, setSearchCursor] = useState<string | null>(null);
+  const [isLoadingMoreSearch, setIsLoadingMoreSearch] = useState(false);
   // Search filters
   const [filterUnread, setFilterUnread] = useState(false);
   const [filterStarred, setFilterStarred] = useState(false);
@@ -845,6 +852,10 @@ export function EmailTab() {
   const handleAccountChange = (value: string) => {
     setSelectedAccountId(value as string | 'all');
     setSelectedThreadId(null);
+    setLoadedMessages([]);
+    setMessageCursor(null);
+    setSearchLoadedMessages([]);
+    setSearchCursor(null);
   };
 
   const activeAccount = selectedAccountId === 'all' || selectedAccountId === '__init__'
@@ -854,6 +865,17 @@ export function EmailTab() {
   const queryAccountIds = selectedAccountId === 'all' || selectedAccountId === '__init__'
     ? accounts.map(a => a.id)
     : [selectedAccountId];
+
+  // Reset pagination when folder/search changes
+  useEffect(() => {
+    setLoadedMessages([]);
+    setMessageCursor(null);
+  }, [selectedAccountId, selectedFolder]);
+
+  useEffect(() => {
+    setSearchLoadedMessages([]);
+    setSearchCursor(null);
+  }, [debouncedSearch, filterUnread, filterStarred, filterAttachments, selectedAccountId, selectedFolder]);
 
   // ─── Normal message fetch (non-search mode) ───
   const { data: messages = [], isLoading: isLoadingMessages, refetch: refetchMessages } = useQuery({
@@ -868,10 +890,40 @@ export function EmailTab() {
         .order('received_at', { ascending: false })
         .limit(50);
       if (error) { console.error('Error fetching messages:', error); return []; }
+      // Reset accumulated messages on fresh fetch
+      setLoadedMessages([]);
+      setMessageCursor(null);
       return data;
     },
     enabled: hasConnectedAccount && !isSearchMode,
   });
+
+  // Load more messages (normal mode)
+  const handleLoadMore = async () => {
+    const allMsgs = loadedMessages.length > 0 ? loadedMessages : messages;
+    if (allMsgs.length === 0) return;
+    const oldest = allMsgs[allMsgs.length - 1];
+    setIsLoadingMore(true);
+    try {
+      const { data, error } = await supabase
+        .from('mail_messages')
+        .select('*')
+        .in('account_id', queryAccountIds)
+        .eq('folder', selectedFolder.toUpperCase())
+        .lt('received_at', oldest.received_at)
+        .order('received_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      const combined = [...allMsgs, ...(data || [])];
+      setLoadedMessages(combined);
+      if (!data || data.length < 50) setMessageCursor(null); // no more
+      else setMessageCursor(data[data.length - 1].received_at);
+    } catch (err: any) {
+      toast.error('Weitere E-Mails konnten nicht geladen werden');
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   // ─── Search query (search mode) ───
   const { data: searchResults, isLoading: isLoadingSearch } = useQuery({
@@ -890,13 +942,54 @@ export function EmailTab() {
         },
       });
       if (error) { console.error('Search error:', error); return { messages: [], nextCursor: null }; }
+      setSearchLoadedMessages([]);
+      setSearchCursor(data?.nextCursor || null);
       return data as { messages: any[]; nextCursor: string | null };
     },
     enabled: hasConnectedAccount && isSearchMode,
   });
 
+  // Load more search results
+  const handleLoadMoreSearch = async () => {
+    const allMsgs = searchLoadedMessages.length > 0 ? searchLoadedMessages : (searchResults?.messages || []);
+    if (allMsgs.length === 0) return;
+    const cursorToUse = searchCursor || allMsgs[allMsgs.length - 1]?.received_at;
+    if (!cursorToUse) return;
+    setIsLoadingMoreSearch(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-mail-search', {
+        body: {
+          accountIds: queryAccountIds,
+          q: debouncedSearch || undefined,
+          folder: selectedFolder.toUpperCase(),
+          unreadOnly: filterUnread || undefined,
+          starredOnly: filterStarred || undefined,
+          hasAttachments: filterAttachments || undefined,
+          limit: 50,
+          cursor: cursorToUse,
+        },
+      });
+      if (error) throw error;
+      const newMsgs = data?.messages || [];
+      const combined = [...allMsgs, ...newMsgs];
+      setSearchLoadedMessages(combined);
+      setSearchCursor(data?.nextCursor || null);
+    } catch {
+      toast.error('Weitere Ergebnisse konnten nicht geladen werden');
+    } finally {
+      setIsLoadingMoreSearch(false);
+    }
+  };
+
   // Active message list: search results (flat) or normal messages (threaded)
-  const activeMessages = isSearchMode ? (searchResults?.messages || []) : messages;
+  const activeMessages = isSearchMode
+    ? (searchLoadedMessages.length > 0 ? searchLoadedMessages : (searchResults?.messages || []))
+    : (loadedMessages.length > 0 ? loadedMessages : messages);
+
+  // Whether there are more messages to load
+  const hasMoreMessages = isSearchMode
+    ? (searchCursor !== null)
+    : (loadedMessages.length > 0 ? loadedMessages.length % 50 === 0 : messages.length === 50);
 
   // ─── Thread grouping (only in non-search mode) ───
   const threads: EmailThread[] = useMemo(() => {
@@ -1183,6 +1276,41 @@ export function EmailTab() {
     setFilterUnread(false);
     setFilterStarred(false);
     setFilterAttachments(false);
+    setSearchLoadedMessages([]);
+    setSearchCursor(null);
+  };
+
+  // "Thread anzeigen" — jump from search result to thread view
+  const handleShowThread = async (msg: any) => {
+    const threadId = msg.thread_id || msg.id;
+    clearSearch();
+    setSelectedThreadId(threadId);
+    // If the thread is not in currently loaded messages, we don't need to do anything
+    // special — the normal query will load it if it's within the first 50 messages.
+    // If it's older, we need a targeted fetch.
+    setTimeout(async () => {
+      // Check if thread is in the loaded messages after search clears
+      const currentMsgs = queryClient.getQueryData(['email-messages', selectedAccountId, selectedFolder]) as any[] | undefined;
+      const found = currentMsgs?.some((m: any) => (m.thread_id || m.id) === threadId);
+      if (!found) {
+        // Fetch the thread messages directly and merge them into the cache
+        const { data } = await supabase
+          .from('mail_messages')
+          .select('*')
+          .in('account_id', queryAccountIds)
+          .or(`thread_id.eq.${threadId},id.eq.${threadId}`)
+          .order('received_at', { ascending: false })
+          .limit(20);
+        if (data && data.length > 0) {
+          queryClient.setQueryData(['email-messages', selectedAccountId, selectedFolder], (old: any[] | undefined) => {
+            const existing = old || [];
+            const existingIds = new Set(existing.map((m: any) => m.id));
+            const newMsgs = data.filter((m: any) => !existingIds.has(m.id));
+            return [...existing, ...newMsgs];
+          });
+        }
+      }
+    }, 500);
   };
 
   if (isLoadingAccounts) {
@@ -1418,6 +1546,16 @@ export function EmailTab() {
                               <p className="text-xs text-muted-foreground truncate">
                                 {msg.snippet}
                               </p>
+                              {/* "Thread anzeigen" button in search mode */}
+                              {isSearchMode && msg.thread_id && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleShowThread(msg); }}
+                                  className="inline-flex items-center gap-1 mt-1 text-xs text-primary hover:underline"
+                                >
+                                  <MessageSquare className="h-3 w-3" />
+                                  Thread anzeigen
+                                </button>
+                              )}
                             </div>
                             <div className="text-xs text-muted-foreground whitespace-nowrap group-hover:hidden">
                               {new Date(msg.received_at).toLocaleDateString('de-DE')}
@@ -1438,6 +1576,25 @@ export function EmailTab() {
                         </div>
                       );
                     })}
+                    {/* "Weitere laden" Button */}
+                    {hasMoreMessages && (
+                      <div className="p-3 text-center border-t">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-2"
+                          disabled={isLoadingMore || isLoadingMoreSearch}
+                          onClick={isSearchMode ? handleLoadMoreSearch : handleLoadMore}
+                        >
+                          {(isLoadingMore || isLoadingMoreSearch) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                          Weitere laden
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="p-8 text-center text-muted-foreground">
