@@ -15,6 +15,7 @@ import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-do
 import { PathNormalizer } from './PathNormalizer';
 import { legacyRoutes } from '@/manifests/routesManifest';
 import { getDomainEntry } from '@/hooks/useDomainRouter';
+import { useAuth } from '@/contexts/AuthContext';
 import NotFound from '@/pages/NotFound';
 
 // =============================================================================
@@ -42,6 +43,25 @@ function LegacyRedirect({ to }: { to: string }) {
   
   const fullPath = `${redirectPath}${location.search}${location.hash}`;
   return <Navigate to={fullPath} replace />;
+}
+
+// =============================================================================
+// Portal Guard — Auth-aware redirect for brand domains
+// =============================================================================
+function PortalOrWebsiteRedirect({ domainEntry }: { domainEntry: { base: string } }) {
+  const { session, isLoading } = useAuth();
+
+  if (isLoading) return <LoadingFallback />;
+
+  if (session) {
+    return (
+      <React.Suspense fallback={<LoadingFallback />}>
+        <Zone2Router />
+      </React.Suspense>
+    );
+  }
+
+  return <Navigate to={domainEntry.base} replace />;
 }
 
 // =============================================================================
@@ -76,10 +96,10 @@ export function ManifestRouter() {
           </React.Suspense>
         } />
 
-        {/* Zone 2: User Portal — on brand domains, redirect to website instead */}
+        {/* Zone 2: User Portal — on brand domains, auth check first */}
         <Route path="/portal/*" element={
           domainEntry ? (
-            <Navigate to={domainEntry.base} replace />
+            <PortalOrWebsiteRedirect domainEntry={domainEntry} />
           ) : (
             <React.Suspense fallback={<LoadingFallback />}>
               <Zone2Router />
