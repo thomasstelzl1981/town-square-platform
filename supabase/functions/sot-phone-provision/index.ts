@@ -6,6 +6,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Bundle map: approved Regulatory Bundles per number type for DE
+const DE_BUNDLES: Record<string, string | null> = {
+  Local: "BU7b6e70441548870e7a0655d5b4d63474",
+  Mobile: null, // No approved bundle yet
+  TollFree: null,
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -27,7 +34,6 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Fixed: use getUser() instead of non-existent getClaims()
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
     if (userErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -38,8 +44,8 @@ Deno.serve(async (req) => {
     const userId = user.id;
     console.log("authenticated user:", userId);
 
-    const { action, country_code, brand_key, phone_number: requestedNumber } = await req.json();
-    console.log("action:", action, "country_code:", country_code, "brand_key:", brand_key);
+    const { action, country_code, brand_key, phone_number: requestedNumber, number_type, area_code } = await req.json();
+    console.log("action:", action, "country_code:", country_code, "brand_key:", brand_key, "number_type:", number_type, "area_code:", area_code);
 
     const TWILIO_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
     const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
@@ -66,7 +72,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Prefer Account SID + Auth Token, fallback to API Key auth
     const usingAuthToken = hasTokenAuth;
     const twilioAuth = usingAuthToken
       ? btoa(`${TWILIO_SID}:${TWILIO_AUTH_TOKEN ?? ""}`)
@@ -74,7 +79,6 @@ Deno.serve(async (req) => {
     const webhookBaseUrl = Deno.env.get("SUPABASE_URL") + "/functions/v1";
     console.log("Twilio auth mode:", usingAuthToken ? "account_token" : "api_key");
 
-    // Twilio regional host handling (API Keys can be region-bound, e.g. ie1)
     const configuredRegion = (Deno.env.get("TWILIO_REGION") || "").trim().toLowerCase();
     const hostFromRegion = (region: string) =>
       region === "us1" ? "api.twilio.com" : `api.${region}.twilio.com`;
@@ -82,7 +86,6 @@ Deno.serve(async (req) => {
       ? [hostFromRegion(configuredRegion)]
       : ["api.twilio.com", "api.ie1.twilio.com"];
 
-    // Determine lookup: brand_key (Zone 1) or user_id (Zone 2)
     const isBrandMode = !!brand_key;
     const lookupFilter = isBrandMode
       ? { column: "brand_key", value: brand_key }
@@ -131,8 +134,15 @@ Deno.serve(async (req) => {
 
       for (const host of twilioHosts) {
         for (const numType of types) {
-          const searchUrl = `https://${host}/2010-04-01/Accounts/${TWILIO_SID}/AvailablePhoneNumbers/${cc}/${numType}.json?PageSize=10`;
-          console.log(`search ${cc} ${numType} on ${host}`);
+          let searchUrl = `https://${host}/2010-04-01/Accounts/${TWILIO_SID}/AvailablePhoneNumbers/${cc}/${numType}.json?PageSize=10`;
+          // Support area_code search (e.g. +4989 → Contains=89)
+          if (area_code) {
+            const cleanCode = area_code.replace(/^\+?49/, '').replace(/^0/, '');
+            if (cleanCode) {
+              searchUrl += `&Contains=${encodeURIComponent(cleanCode)}`;
+            }
+          }
+          console.log(`search ${cc} ${numType} on ${host}`, area_code ? `area_code=${area_code}` : '');
           const searchRes = await fetch(searchUrl, {
             headers: { Authorization: `Basic ${twilioAuth}` },
           });
@@ -150,7 +160,7 @@ Deno.serve(async (req) => {
             }
           } catch { /* skip */ }
         }
-        if (allNumbers.length > 0) break; // found numbers on this host
+        if (allNumbers.length > 0) break;
       }
 
       return new Response(
@@ -164,10 +174,12 @@ Deno.serve(async (req) => {
       const cc = country_code || "DE";
       let numberToBuy = requestedNumber;
       let selectedHost = twilioHosts[0];
+      // Determine the number type from request or default to Local
+      const purchaseType = number_type || "Local";
 
       // If no specific number requested, search for one
       if (!numberToBuy) {
-        const types = ["Local", "Mobile", "TollFree"];
+        const types = [purchaseType]; // Only search for the requested type
         let searchData: any = { available_phone_numbers: [] };
 
         hostLoop:
@@ -218,8 +230,19 @@ Deno.serve(async (req) => {
         console.warn("Could not fetch Twilio addresses:", e);
       }
 
-      // Regulatory Bundles for DE numbers (type-specific)
-      const DE_BUNDLE_SID = "BU7b6e70441548870e7a0655d5b4d63474";
+      // Check if we have an approved bundle for this number type
+      if (cc === "DE") {
+        const bundleSid = DE_BUNDLES[purchaseType];
+        if (!bundleSid) {
+          return new Response(
+            JSON.stringify({
+              error: `Kein genehmigtes Regulatory Bundle für ${purchaseType}-Nummern vorhanden`,
+              details: `Für den Nummerntyp "${purchaseType}" muss zunächst ein Bundle bei Twilio erstellt und genehmigt werden. Aktuell ist nur "Local" (Festnetz) genehmigt.`,
+            }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
 
       const buyUrl = `https://${selectedHost}/2010-04-01/Accounts/${TWILIO_SID}/IncomingPhoneNumbers.json`;
       const buyParams: Record<string, string> = {
@@ -235,12 +258,15 @@ Deno.serve(async (req) => {
       }
       // For regulated countries (DE), include the approved BundleSid
       if (cc === "DE") {
-        buyParams.BundleSid = DE_BUNDLE_SID;
-        console.log("Using BundleSid for DE:", DE_BUNDLE_SID);
+        const bundleSid = DE_BUNDLES[purchaseType];
+        if (bundleSid) {
+          buyParams.BundleSid = bundleSid;
+          console.log("Using BundleSid for DE:", bundleSid, "type:", purchaseType);
+        }
       }
       const buyBody = new URLSearchParams(buyParams);
 
-      console.log("purchasing number:", numberToBuy);
+      console.log("purchasing number:", numberToBuy, "type:", purchaseType);
       const buyRes = await fetch(buyUrl, {
         method: "POST",
         headers: {
@@ -255,7 +281,11 @@ Deno.serve(async (req) => {
       if (!buyRes.ok) {
         console.error("Twilio purchase failed:", buyData);
         return new Response(
-          JSON.stringify({ error: "Nummernkauf fehlgeschlagen", details: buyData.message }),
+          JSON.stringify({
+            error: "Nummernkauf fehlgeschlagen",
+            details: buyData.message || buyData.more_info || "Unbekannter Twilio-Fehler",
+            twilio_code: buyData.code,
+          }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -343,7 +373,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: "Unknown action. Use 'purchase' or 'release'." }),
+      JSON.stringify({ error: "Unknown action. Use 'search', 'purchase' or 'release'." }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

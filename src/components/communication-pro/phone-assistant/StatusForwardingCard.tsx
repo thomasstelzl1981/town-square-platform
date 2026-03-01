@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Copy, Info, Phone, Search, ShoppingCart, Trash2, Loader2, MapPin, CheckCircle2 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Copy, Info, Phone, Search, ShoppingCart, Trash2, Loader2, MapPin, CheckCircle2, ChevronDown, ArrowRightLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { PhoneAssistantConfig } from '@/hooks/usePhoneAssistant';
@@ -37,8 +38,9 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
   const [searching, setSearching] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([]);
-  const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
-  const [filterType, setFilterType] = useState<'all' | 'Local' | 'Mobile' | 'TollFree'>('Mobile');
+  const [selectedNumber, setSelectedNumber] = useState<AvailableNumber | null>(null);
+  const [filterType, setFilterType] = useState<'all' | 'Local' | 'Mobile' | 'TollFree'>('Local');
+  const [forwardingOpen, setForwardingOpen] = useState(false);
 
   const hasNumber = !!config.twilio_phone_number_e164;
 
@@ -76,16 +78,30 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
     if (!selectedNumber) return;
     setPurchasing(true);
     try {
-      const body: Record<string, string> = { action: 'purchase', country_code: 'DE', phone_number: selectedNumber };
+      const body: Record<string, string> = {
+        action: 'purchase',
+        country_code: 'DE',
+        phone_number: selectedNumber.phone_number,
+        number_type: selectedNumber.type,
+      };
       if (brandKey) body.brand_key = brandKey;
       const { data, error } = await supabase.functions.invoke('sot-phone-provision', { body });
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (data?.error) {
+        // Show details in toast but keep dialog open
+        toast({
+          title: 'Fehler beim Nummernkauf',
+          description: data.details || data.error,
+          variant: 'destructive',
+        });
+        return;
+      }
       toast({ title: 'Nummer gekauft', description: data.phone_number });
       setDialogOpen(false);
       onRefresh?.();
     } catch (err: any) {
       toast({ title: 'Fehler beim Nummernkauf', description: err.message, variant: 'destructive' });
+      // Keep dialog open on error
     } finally {
       setPurchasing(false);
     }
@@ -129,7 +145,7 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <Phone className="h-4 w-4 text-primary" />
-            Status &amp; Rufweiterleitung
+            Status &amp; Telefonnummer
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -140,7 +156,7 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
 
           {/* Number management */}
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Weiterleitungs-Nummer</label>
+            <label className="text-xs text-muted-foreground">KI-Telefonnummer</label>
             {hasNumber ? (
               <div className="flex gap-2">
                 <Input
@@ -187,39 +203,52 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
             </Badge>
           </div>
 
-          {/* GSM forwarding codes */}
+          {/* GSM forwarding codes – optional, collapsible */}
           {hasNumber && (
-            <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-2">
-              <div className="flex gap-2 text-xs font-medium text-foreground">
-                <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                <span>GSM-Rufweiterleitung einrichten</span>
-              </div>
-              <div className="space-y-1.5 pl-6">
-                {GSM_CODES.map((g) => (
-                  <div key={g.provider} className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">{g.provider}:</span>
-                    <div className="mt-0.5 space-y-0.5">
-                      <div>
-                        <span className="text-muted-foreground">Nach 30s: </span>
-                        <code className="bg-muted px-1 rounded text-[11px]">
-                          {g.delayed.replace('{nr}', config.twilio_phone_number_e164 || '')}
-                        </code>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Sofort: </span>
-                        <code className="bg-muted px-1 rounded text-[11px]">
-                          {g.immediate.replace('{nr}', config.twilio_phone_number_e164 || '')}
-                        </code>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Deaktivieren: </span>
-                        <code className="bg-muted px-1 rounded text-[11px]">{g.cancel}</code>
-                      </div>
-                    </div>
+            <Collapsible open={forwardingOpen} onOpenChange={setForwardingOpen}>
+              <CollapsibleTrigger asChild>
+                <button className="flex w-full items-center gap-2 rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/40 transition-colors">
+                  <ArrowRightLeft className="h-3.5 w-3.5 text-primary" />
+                  <span className="flex-1 text-left">Rufweiterleitung einrichten (optional)</span>
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${forwardingOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="rounded-md border border-primary/20 bg-primary/5 p-3 mt-2 space-y-2">
+                  <div className="flex gap-2 text-xs text-muted-foreground">
+                    <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <span>
+                      Sie können Ihre bestehende Mobilnummer so einrichten, dass Anrufe automatisch an den KI-Assistenten weitergeleitet werden. Dies ist <strong>optional</strong> — Sie können die KI-Nummer auch direkt verwenden.
+                    </span>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="space-y-1.5 pl-6">
+                    {GSM_CODES.map((g) => (
+                      <div key={g.provider} className="text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">{g.provider}:</span>
+                        <div className="mt-0.5 space-y-0.5">
+                          <div>
+                            <span className="text-muted-foreground">Nach 30s: </span>
+                            <code className="bg-muted px-1 rounded text-[11px]">
+                              {g.delayed.replace('{nr}', config.twilio_phone_number_e164 || '')}
+                            </code>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Sofort: </span>
+                            <code className="bg-muted px-1 rounded text-[11px]">
+                              {g.immediate.replace('{nr}', config.twilio_phone_number_e164 || '')}
+                            </code>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Deaktivieren: </span>
+                            <code className="bg-muted px-1 rounded text-[11px]">{g.cancel}</code>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           )}
 
           {/* Info box when no number */}
@@ -228,7 +257,7 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
               <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
               <span>
                 Suchen Sie eine eigene Telefonnummer aus, um den KI-Assistenten zu aktivieren.
-                Danach richten Sie bei Ihrem Mobilfunkanbieter eine Rufumleitung ein.
+                Die Nummer kann direkt verwendet oder optional per Rufweiterleitung mit Ihrer bestehenden Nummer verbunden werden.
               </span>
             </div>
           )}
@@ -244,7 +273,7 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
               Deutsche Nummer auswählen
             </DialogTitle>
             <DialogDescription>
-              Wählen Sie eine verfügbare Telefonnummer für Ihren KI-Assistenten.
+              Wählen Sie eine verfügbare Telefonnummer für Ihren KI-Assistenten. Festnetznummern mit lokaler Vorwahl werden empfohlen.
             </DialogDescription>
           </DialogHeader>
 
@@ -261,7 +290,7 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
             <>
               {/* Type filter toggles */}
               <div className="flex gap-1 flex-wrap">
-                {([['all', 'Alle'], ['Local', 'Festnetz'], ['Mobile', 'Mobil'], ['TollFree', 'Gebührenfrei']] as const).map(([value, label]) => {
+                {([['all', 'Alle'], ['Local', 'Festnetz ⭐'], ['Mobile', 'Mobil'], ['TollFree', 'Gebührenfrei']] as const).map(([value, label]) => {
                   const count = value === 'all' ? availableNumbers.length : availableNumbers.filter(n => n.type === value).length;
                   return (
                     <Button
@@ -282,11 +311,12 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
                   {availableNumbers
                     .filter(n => filterType === 'all' || n.type === filterType)
                     .map((n) => {
-                    const isSelected = selectedNumber === n.phone_number;
+                    const isSelected = selectedNumber?.phone_number === n.phone_number;
+                    const hasBundle = n.type === 'Local'; // Only Local has approved bundle
                     return (
                       <button
                         key={n.phone_number}
-                        onClick={() => setSelectedNumber(n.phone_number)}
+                        onClick={() => setSelectedNumber(n)}
                         className={`w-full text-left rounded-lg border p-3 transition-all ${
                           isSelected
                             ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
@@ -309,6 +339,11 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                             {n.type === 'Local' ? 'Festnetz' : n.type === 'Mobile' ? 'Mobil' : 'Gebührenfrei'}
                           </Badge>
+                          {!hasBundle && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 text-amber-600">
+                              Bundle fehlt
+                            </Badge>
+                          )}
                         </div>
                       </button>
                     );
