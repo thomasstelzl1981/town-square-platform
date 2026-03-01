@@ -392,6 +392,7 @@ ${senderLine}`);
       ].filter(Boolean).join('\n') || undefined : undefined,
       subject,
       body: generatedBody,
+      font: letterFont,
     };
   };
 

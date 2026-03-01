@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState } from 'react';
+import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import defaultLetterheadLogo from '@/assets/logos/armstrong_logo_light.jpg';
 import { formatDateLong } from '@/lib/formatters';
 
@@ -15,6 +15,13 @@ const FONT_STACKS: Record<LetterFont, string> = {
 // A4 page proportions at 420px width: 420 x 594px
 const PAGE_WIDTH = 420;
 const PAGE_HEIGHT = Math.round(PAGE_WIDTH * (297 / 210)); // 594px
+
+// Margins in px (proportional to A4 mm margins)
+const TOP_MARGIN = Math.round(PAGE_HEIGHT * 0.067); // ~40px ≈ 20mm
+const BOTTOM_MARGIN = Math.round(PAGE_HEIGHT * 0.067);
+const LEFT_MARGIN = Math.round(PAGE_WIDTH * 0.119); // ~50px ≈ 25mm
+const RIGHT_MARGIN = Math.round(PAGE_WIDTH * 0.095); // ~40px ≈ 20mm
+const USABLE_HEIGHT = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN;
 
 interface LetterPreviewProps {
   senderName?: string;
@@ -54,25 +61,56 @@ export function LetterPreview({
   const senderLineParts = [senderCompany, senderName, senderAddress?.replace(/\n/g, ', ')].filter(Boolean);
   const senderLine = senderLineParts.length > 0 ? senderLineParts.join(' · ') : 'Absender';
 
-  // Split body into lines for pagination
-  const bodyLines = useMemo(() => {
+  // Measure header + body to calculate proper page breaks
+  const headerRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [bodyLineHeights, setBodyLineHeights] = useState<number[]>([]);
+
+  // Body split into paragraphs/lines for per-line pagination
+  const bodyParagraphs = useMemo(() => {
     if (!body) return [];
     return body.split('\n');
   }, [body]);
 
-  // Measure content and paginate
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [pageCount, setPageCount] = useState(1);
-
+  // Measure after render
   useEffect(() => {
-    if (contentRef.current) {
-      const contentHeight = contentRef.current.scrollHeight;
-      // Usable content area per page: page height minus top/bottom margins (~6.7% each = ~40px each)
-      const usableHeight = PAGE_HEIGHT - 80; // ~514px
-      const pages = Math.max(1, Math.ceil(contentHeight / usableHeight));
-      setPageCount(pages);
+    if (headerRef.current) {
+      setHeaderHeight(headerRef.current.scrollHeight);
     }
-  }, [body, subject, recipientName, recipientAddress, recipientCompany, senderLine]);
+    if (bodyRef.current) {
+      const children = bodyRef.current.children;
+      const heights: number[] = [];
+      for (let i = 0; i < children.length; i++) {
+        heights.push((children[i] as HTMLElement).offsetHeight);
+      }
+      setBodyLineHeights(heights);
+    }
+  }, [body, subject, recipientName, recipientAddress, recipientCompany, senderLine, font]);
+
+  // Calculate which lines go on which page
+  const pages = useMemo(() => {
+    if (bodyParagraphs.length === 0) return [[]] as number[][];
+
+    const result: number[][] = [];
+    let currentPage: number[] = [];
+    let remainingHeight = USABLE_HEIGHT - headerHeight; // Page 1 has header
+    
+    for (let i = 0; i < bodyParagraphs.length; i++) {
+      const lineH = bodyLineHeights[i] || 12; // fallback
+      if (remainingHeight < lineH && currentPage.length > 0) {
+        result.push(currentPage);
+        currentPage = [];
+        remainingHeight = USABLE_HEIGHT; // Continuation pages: full height
+      }
+      currentPage.push(i);
+      remainingHeight -= lineH;
+    }
+    if (currentPage.length > 0 || result.length === 0) {
+      result.push(currentPage);
+    }
+    return result;
+  }, [bodyParagraphs, headerHeight, bodyLineHeights]);
 
   // Header block (sender line, recipient, date, subject) — only on page 1
   const headerBlock = (
@@ -117,14 +155,14 @@ export function LetterPreview({
       {subject ? (
         <div
           className="font-bold text-gray-900"
-          style={{ fontSize: '1.08em', marginBottom: '10px' }}
+          style={{ fontSize: '1em', marginBottom: '10px' }}
         >
           {subject}
         </div>
       ) : (
         <div
           className="text-gray-300 italic"
-          style={{ fontSize: '1.08em', marginBottom: '10px' }}
+          style={{ fontSize: '1em', marginBottom: '10px' }}
         >
           Betreff...
         </div>
@@ -132,11 +170,9 @@ export function LetterPreview({
     </>
   );
 
-  // For single-page or measuring: render everything in one flow
-  // We use a hidden measurer to calculate page count, then render visible pages
   return (
     <div className="flex flex-col items-center gap-4" style={{ width: '100%', maxWidth: `${PAGE_WIDTH}px`, margin: '0 auto' }}>
-      {/* Hidden measurer */}
+      {/* Hidden measurer for header */}
       <div
         style={{
           position: 'absolute',
@@ -147,16 +183,21 @@ export function LetterPreview({
           pointerEvents: 'none',
         }}
       >
-        <div ref={contentRef} style={{ padding: '40px 40px 40px 50px' }}>
+        <div ref={headerRef} style={{ padding: `0 ${RIGHT_MARGIN}px 0 ${LEFT_MARGIN}px` }}>
           {headerBlock}
-          <div className="whitespace-pre-wrap text-gray-800" style={{ fontSize: '1em', lineHeight: '1.6' }}>
-            {body || ''}
-          </div>
+        </div>
+        {/* Hidden measurer for body lines */}
+        <div ref={bodyRef} style={{ padding: `0 ${RIGHT_MARGIN}px 0 ${LEFT_MARGIN}px` }}>
+          {bodyParagraphs.map((line, i) => (
+            <div key={i} className="whitespace-pre-wrap text-gray-800" style={{ fontSize: '1em', lineHeight: '1.6', minHeight: '1px' }}>
+              {line || '\u00A0'}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Visible pages */}
-      {Array.from({ length: pageCount }, (_, pageIndex) => (
+      {pages.map((pageLineIndices, pageIndex) => (
         <div
           key={pageIndex}
           className="bg-white rounded-sm shadow-lg border border-border/30 relative"
@@ -186,64 +227,45 @@ export function LetterPreview({
           <div
             className="absolute flex flex-col"
             style={{
-              top: pageIndex === 0 ? '6.7%' : '6.7%',
-              left: '11.9%',
-              right: '9.5%',
-              bottom: '6.7%',
+              top: `${TOP_MARGIN}px`,
+              left: `${LEFT_MARGIN}px`,
+              right: `${RIGHT_MARGIN}px`,
+              bottom: `${BOTTOM_MARGIN}px`,
               overflow: 'hidden',
             }}
           >
-            {pageIndex === 0 ? (
-              <>
-                {headerBlock}
-                {/* Body — first page, fills remaining space */}
-                <div className="flex-1 overflow-hidden">
-                  {body ? (
-                    <div
-                      className="whitespace-pre-wrap text-gray-800"
-                      style={{ fontSize: '1em', lineHeight: '1.6' }}
-                    >
-                      {body}
-                    </div>
-                  ) : (
-                    <div
-                      className="flex flex-col items-center justify-center h-full text-gray-300"
-                      style={{ fontSize: '1em' }}
-                    >
-                      Ihr Brief erscheint hier...
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              /* Continuation pages: offset body text */
+            {pageIndex === 0 && headerBlock}
+
+            {/* Body lines for this page */}
+            {pageLineIndices.length > 0 ? (
               <div className="flex-1 overflow-hidden">
-                <div
-                  className="whitespace-pre-wrap text-gray-800"
-                  style={{
-                    fontSize: '1em',
-                    lineHeight: '1.6',
-                    // Offset the text upward to show the continuation
-                    marginTop: `-${pageIndex * (PAGE_HEIGHT - 80)}px`,
-                  }}
-                >
-                  {/* Re-render header as invisible spacer + full body */}
-                  <div style={{ visibility: 'hidden' }}>
-                    <div style={{ height: '220px' }} /> {/* Approximate header height */}
+                {pageLineIndices.map((lineIdx) => (
+                  <div
+                    key={lineIdx}
+                    className="whitespace-pre-wrap text-gray-800"
+                    style={{ fontSize: '1em', lineHeight: '1.6' }}
+                  >
+                    {bodyParagraphs[lineIdx] || '\u00A0'}
                   </div>
-                  {body}
-                </div>
+                ))}
               </div>
-            )}
+            ) : !body ? (
+              <div
+                className="flex flex-col items-center justify-center flex-1 text-gray-300"
+                style={{ fontSize: '1em' }}
+              >
+                Ihr Brief erscheint hier...
+              </div>
+            ) : null}
           </div>
 
           {/* Page number for multi-page */}
-          {pageCount > 1 && (
+          {pages.length > 1 && (
             <div
               className="absolute text-gray-400 text-center"
               style={{ bottom: '2%', left: '0', right: '0', fontSize: '0.7em' }}
             >
-              Seite {pageIndex + 1} von {pageCount}
+              Seite {pageIndex + 1} von {pages.length}
             </div>
           )}
         </div>
