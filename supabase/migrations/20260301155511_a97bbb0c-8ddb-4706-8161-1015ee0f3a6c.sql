@@ -1,0 +1,1 @@
+ALTER TABLE commpro_phone_call_sessions ALTER COLUMN user_id DROP NOT NULL;
