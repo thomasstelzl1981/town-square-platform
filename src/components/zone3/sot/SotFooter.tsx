@@ -27,6 +27,7 @@ const footerLinks = {
   rechtliches: [
     { label: 'Impressum', href: '/website/sot/impressum' },
     { label: 'Datenschutz', href: '/website/sot/datenschutz' },
+    { label: 'Nutzungsbedingungen', href: '/website/sot/nutzungsbedingungen' },
   ],
   marken: [
     { label: 'KAUFY — Kapitalanlage', href: 'https://kaufy.immo', external: true },

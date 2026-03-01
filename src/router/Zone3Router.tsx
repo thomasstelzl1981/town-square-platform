@@ -163,6 +163,7 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
     RatgeberRenditeberechnung,
     SotImpressum: React.lazy(() => import('@/pages/zone3/sot/SotImpressum')),
     SotDatenschutz: React.lazy(() => import('@/pages/zone3/sot/SotDatenschutz')),
+    SotNutzungsbedingungen: React.lazy(() => import('@/pages/zone3/sot/SotNutzungsbedingungen')),
   },
   acquiary: {
     AcquiaryHome,
