@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
       }
 
       // Regulatory Bundles for DE numbers (type-specific)
-      const DE_BUNDLE_SID = "IT497b63a248b6146837a24319559bf722";
+      const DE_BUNDLE_SID = "BU7b6e70441548870e7a0655d5b4d63474";
 
       const buyUrl = `https://${selectedHost}/2010-04-01/Accounts/${TWILIO_SID}/IncomingPhoneNumbers.json`;
       const buyParams: Record<string, string> = {
