@@ -32,7 +32,7 @@ export function AgentSyncCard({ brandKey, config, onRefresh }: Props) {
     setLastResult(null);
     try {
       const { data, error } = await supabase.functions.invoke('sot-phone-agent-sync', {
-        body: { action: 'sync', brand_key: brandKey },
+        body: { action: 'sync', assistant_id: config.id, brand_key: brandKey },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);

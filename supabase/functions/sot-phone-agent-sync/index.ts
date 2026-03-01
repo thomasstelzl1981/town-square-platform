@@ -31,10 +31,10 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "ELEVENLABS_API_KEY not configured" }, 500);
     }
 
-    const { action, assistant_id } = await req.json();
+    const { action, assistant_id, brand_key } = await req.json();
 
-    if (!assistant_id) {
-      return jsonResponse({ error: "assistant_id required" }, 400);
+    if (!assistant_id && !brand_key) {
+      return jsonResponse({ error: "assistant_id or brand_key required" }, 400);
     }
 
     const supabase = createClient(
@@ -42,12 +42,14 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Load assistant config
-    const { data: assistant, error: loadErr } = await supabase
-      .from("commpro_phone_assistants")
-      .select("*")
-      .eq("id", assistant_id)
-      .maybeSingle();
+    // Load assistant config — support both assistant_id and brand_key lookup
+    let query = supabase.from("commpro_phone_assistants").select("*");
+    if (assistant_id) {
+      query = query.eq("id", assistant_id);
+    } else {
+      query = query.eq("brand_key", brand_key);
+    }
+    const { data: assistant, error: loadErr } = await query.maybeSingle();
 
     if (loadErr || !assistant) {
       return jsonResponse({ error: "Assistant not found", details: loadErr?.message }, 404);
@@ -165,7 +167,7 @@ Deno.serve(async (req) => {
           first_message: firstMessage,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", assistant_id);
+        .eq("id", assistant.id);
     }
 
     // ── Step 2: Import Twilio Number ──
@@ -211,7 +213,7 @@ Deno.serve(async (req) => {
                 elevenlabs_phone_number_id: phoneNumberId,
                 updated_at: new Date().toISOString(),
               })
-              .eq("id", assistant_id);
+              .eq("id", assistant.id);
 
             results.phone = { status: "imported", phone_number_id: phoneNumberId };
           }
