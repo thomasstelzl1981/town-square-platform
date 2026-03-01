@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Send, X, ChevronDown, ChevronUp, Mic, MicOff } from 'lucide-react';
+import {
+  Loader2, Send, X, ChevronDown, ChevronUp,
+  Sparkles, Wand2, Scissors, MessageSquareText,
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { VoiceButton } from '@/components/shared/VoiceButton';
 import { useArmstrongVoice } from '@/hooks/useArmstrongVoice';
 
@@ -28,6 +37,13 @@ interface ComposeEmailDialogProps {
 }
 
 type DictationTarget = 'subject' | 'body' | null;
+
+interface ContactSuggestion {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+}
 
 export function ComposeEmailDialog({
   open,
@@ -47,13 +63,45 @@ export function ComposeEmailDialog({
   const [isSending, setIsSending] = useState(false);
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [dictationTarget, setDictationTarget] = useState<DictationTarget>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
-  // Sync initial values when they change (reply/forward)
+  // Contact typeahead state
+  const [contactSuggestions, setContactSuggestions] = useState<ContactSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionLoading, setSuggestionLoading] = useState(false);
+  const toInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Load email signature on open (only for new emails without initial body)
   useEffect(() => {
     if (open) {
       setTo(initialTo);
       setSubject(initialSubject);
-      setBody(initialBody);
+
+      // Only load signature for new emails (no initial body = not a reply)
+      if (!initialBody) {
+        (async () => {
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('email_signature')
+              .eq('id', user.id)
+              .single();
+            if (profile?.email_signature) {
+              setBody(`\n\n--\n${profile.email_signature}`);
+            } else {
+              setBody('');
+            }
+          } catch {
+            setBody('');
+          }
+        })();
+      } else {
+        setBody(initialBody);
+      }
     }
   }, [open, initialTo, initialSubject, initialBody]);
 
@@ -82,20 +130,104 @@ export function ComposeEmailDialog({
     }
   }, [open, voice.isListening, voice.stopListening]);
 
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (
+        suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node) &&
+        toInputRef.current && !toInputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
   const handleDictation = (target: DictationTarget) => {
     if (voice.isListening && dictationTarget === target) {
-      // Stop current dictation
       voice.stopListening();
       setDictationTarget(null);
       lastTranscriptRef.current = '';
     } else {
-      // Start new dictation for this target
       if (voice.isListening) {
         voice.stopListening();
       }
       setDictationTarget(target);
       lastTranscriptRef.current = voice.transcript || '';
       voice.startListening();
+    }
+  };
+
+  // Contact search
+  const searchContacts = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setContactSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    setSuggestionLoading(true);
+    try {
+      const { data } = await supabase
+        .from('contacts')
+        .select('id, email, first_name, last_name')
+        .or(`email.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
+        .not('email', 'is', null)
+        .limit(8);
+      const filtered = (data || []).filter(c => c.email) as ContactSuggestion[];
+      setContactSuggestions(filtered);
+      setShowSuggestions(filtered.length > 0);
+    } catch {
+      setContactSuggestions([]);
+    } finally {
+      setSuggestionLoading(false);
+    }
+  }, []);
+
+  const handleToChange = (value: string) => {
+    setTo(value);
+    // Get the last segment after comma/semicolon for searching
+    const parts = value.split(/[,;]/);
+    const lastPart = parts[parts.length - 1].trim();
+    
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => searchContacts(lastPart), 250);
+  };
+
+  const selectContact = (contact: ContactSuggestion) => {
+    const parts = to.split(/[,;]/);
+    parts[parts.length - 1] = ` ${contact.email}`;
+    setTo(parts.join(',').replace(/^,\s*/, ''));
+    setShowSuggestions(false);
+    toInputRef.current?.focus();
+  };
+
+  // AI assist
+  const handleAiAction = async (action: 'text_improve' | 'text_shorten' | 'suggest_subject') => {
+    const text = body.trim();
+    if (!text) {
+      toast.error('Bitte schreiben Sie zuerst einen Text');
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-mail-ai-assist', {
+        body: { action, text },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (action === 'suggest_subject') {
+        setSubject(data.result);
+        toast.success('Betreff vorgeschlagen');
+      } else {
+        setBody(data.result);
+        toast.success(action === 'text_improve' ? 'Text verbessert' : 'Text gekürzt');
+      }
+    } catch (err: any) {
+      toast.error('KI-Fehler: ' + (err.message || 'Unbekannt'));
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -108,6 +240,8 @@ export function ComposeEmailDialog({
     setShowCcBcc(false);
     setDictationTarget(null);
     lastTranscriptRef.current = '';
+    setContactSuggestions([]);
+    setShowSuggestions(false);
   };
 
   const handleClose = () => {
@@ -120,7 +254,6 @@ export function ComposeEmailDialog({
   };
 
   const handleSend = async () => {
-    // Validate
     if (!to.trim()) {
       toast.error('Bitte geben Sie einen Empfänger an');
       return;
@@ -132,8 +265,7 @@ export function ComposeEmailDialog({
 
     setIsSending(true);
     try {
-      // Parse email addresses (comma or semicolon separated)
-      const parseEmails = (input: string) => 
+      const parseEmails = (input: string) =>
         input.split(/[,;]/)
           .map(e => e.trim())
           .filter(e => e.length > 0 && e.includes('@'));
@@ -192,7 +324,7 @@ export function ComposeEmailDialog({
             </div>
           </div>
 
-          {/* To */}
+          {/* To with typeahead */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="email-to">An</Label>
@@ -206,13 +338,40 @@ export function ComposeEmailDialog({
                 CC/BCC
               </Button>
             </div>
-            <Input
-              id="email-to"
-              placeholder="empfaenger@email.de"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              disabled={isSending}
-            />
+            <div className="relative">
+              <Input
+                ref={toInputRef}
+                id="email-to"
+                placeholder="empfaenger@email.de"
+                value={to}
+                onChange={(e) => handleToChange(e.target.value)}
+                onFocus={() => { if (contactSuggestions.length > 0) setShowSuggestions(true); }}
+                disabled={isSending}
+                autoComplete="off"
+              />
+              {showSuggestions && contactSuggestions.length > 0 && (
+                <div
+                  ref={suggestionsRef}
+                  className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto"
+                >
+                  {contactSuggestions.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 hover:bg-accent text-sm flex items-center gap-2 transition-colors"
+                      onClick={() => selectContact(c)}
+                    >
+                      <span className="font-medium truncate">
+                        {[c.first_name, c.last_name].filter(Boolean).join(' ') || c.email}
+                      </span>
+                      {(c.first_name || c.last_name) && (
+                        <span className="text-muted-foreground text-xs truncate">{c.email}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">
               Mehrere Empfänger mit Komma trennen
             </p>
@@ -255,6 +414,8 @@ export function ComposeEmailDialog({
                 onChange={(e) => setSubject(e.target.value)}
                 disabled={isSending}
                 className="flex-1"
+                autoComplete="off"
+                name="email-subject-field"
               />
               <VoiceButton
                 isListening={voice.isListening && dictationTarget === 'subject'}
@@ -268,19 +429,54 @@ export function ComposeEmailDialog({
             </div>
           </div>
 
-          {/* Body with Voice */}
+          {/* Body with Voice + AI Toolbar */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="email-body">Nachricht</Label>
-              <VoiceButton
-                isListening={voice.isListening && dictationTarget === 'body'}
-                isProcessing={voice.isProcessing && dictationTarget === 'body'}
-                isSpeaking={voice.isSpeaking}
-                isConnected={voice.isConnected}
-                error={voice.error}
-                onToggle={() => handleDictation('body')}
-                size="sm"
-              />
+              <div className="flex items-center gap-1">
+                {/* AI Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      disabled={aiLoading || isSending}
+                    >
+                      {aiLoading ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3 w-3" />
+                      )}
+                      KI
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleAiAction('text_improve')}>
+                      <Wand2 className="h-4 w-4 mr-2" />
+                      Text verbessern
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleAiAction('text_shorten')}>
+                      <Scissors className="h-4 w-4 mr-2" />
+                      Text kürzen
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleAiAction('suggest_subject')}>
+                      <MessageSquareText className="h-4 w-4 mr-2" />
+                      Betreff vorschlagen
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <VoiceButton
+                  isListening={voice.isListening && dictationTarget === 'body'}
+                  isProcessing={voice.isProcessing && dictationTarget === 'body'}
+                  isSpeaking={voice.isSpeaking}
+                  isConnected={voice.isConnected}
+                  error={voice.error}
+                  onToggle={() => handleDictation('body')}
+                  size="sm"
+                />
+              </div>
             </div>
             <Textarea
               id="email-body"

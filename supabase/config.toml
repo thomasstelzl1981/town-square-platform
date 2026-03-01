@@ -277,3 +277,6 @@ verify_jwt = false
 
 [functions.sot-phone-postcall]
 verify_jwt = false
+
+[functions.sot-mail-ai-assist]
+verify_jwt = false
