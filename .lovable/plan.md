@@ -1,250 +1,241 @@
 
 
-# PR 2 — Threading + Professionelle Suche: Detailplan & Risikoanalyse
+# Zustandsanalyse E-Mail-Client + PR 3 Risikoanalyse & Umsetzungsplan
 
 ---
 
-## 1. Ist-Zustand (Analyse-Ergebnis)
+## Teil 1: PR 1 Audit — Multi-Account + Unified Inbox
 
-### Datenbank — thread_id
+### Umsetzungsstatus: SAUBER UMGESETZT
 
-| Provider | thread_id Quelle | Format | Beispiel |
-|----------|-----------------|--------|----------|
-| IMAP | `envelope.messageId` (RFC Message-ID Header) | `<uuid@domain>` | `<AM0PR07MB6305BC27...@eurprd07.prod.outlook.com>` |
-| Google | `detail.threadId` (Gmail-interner Thread-Identifier) | Alphanumerischer String | `19abc3f4e5d6` |
-| Microsoft | `msg.conversationId` (Graph API) | GUID-artiger String | `AAQkAGI2...` |
+| Feature | Status | Details |
+|---------|--------|---------|
+| `selectedAccountId` State | OK | Zeile 775: `useState<string \| 'all'>('__init__')` mit Init-Guard (Z. 839-843) |
+| AccountSwitcher Dropdown | OK | Zeilen 1226-1253: Select mit "Alle Konten" + Provider-Icons |
+| Query-Logik unified | OK | Zeilen 854-856: `queryAccountIds` nutzt `.in()` bei "all" |
+| selectedEmail Reset | OK | Zeile 848: `setSelectedThreadId(null)` bei Account-Wechsel |
+| Sync bei "Alle Konten" | OK | Zeilen 1021-1031: Sequentiell alle Accounts syncen |
+| ComposeEmailDialog accounts | OK | Zeilen 1206-1218: `accounts` Array + `defaultAccountId` |
+| From-Dropdown im Compose | OK | Zeilen 346-373: Select bei >1 Account, read-only bei 1 |
+| Account-Badge in Liste | TEILWEISE | Badges in ThreadDetailPanel vorhanden, aber in der Thread-Liste fehlen sie im "Alle Konten"-Modus |
+| Polling unified | OK | Zeilen 941-963: `.in('account_id', queryAccountIds)` |
 
-**Datenlage (Produktion):**
-- 25 Nachrichten gesamt, 22 mit thread_id, 3 ohne
-- **0 Threads mit >1 Nachricht** — alle 22 thread_ids sind einzigartig
-- Bestehender Index: `idx_mail_messages_thread` (btree auf thread_id)
+### Offene Punkte PR 1
+1. **Account-Badge in Message-Liste fehlt**: Im "Alle Konten"-Modus wird in der Thread-Liste (mittlere Spalte) nicht angezeigt, von welchem Konto die Nachricht stammt. Nur im Detail-Panel gibt es Account-Info.
+2. **Kein Fehlerfall-UI bei Account-Wechsel**: Wenn ein Account `sync_status: 'error'` hat, wird das im Dropdown nicht visuell markiert.
 
-### Kritisches Problem: IMAP thread_id = Message-ID, NICHT Thread-ID
-
-Zeile 676 in `sot-mail-sync`:
-```
-thread_id: envelope.messageId || null
-```
-
-`envelope.messageId` ist die **einzigartige Message-ID** jeder einzelnen E-Mail (RFC 5322 `Message-ID`), **nicht** eine Thread-Gruppierung. Jede Nachricht bekommt dadurch eine eigene "thread_id". Das ist der Grund, warum alle 22 thread_ids einzigartig sind.
-
-**Gmail** nutzt korrekt `detail.threadId` (native Thread-Gruppierung).
-**Microsoft** nutzt korrekt `msg.conversationId` (native Thread-Gruppierung).
-**IMAP** hat **keine native Thread-ID** — muss per Heuristik gebaut werden.
-
-### Suche — Aktueller Zustand
-
-- `searchQuery` State existiert (Zeile 512), Input-Feld vorhanden (Zeile 1005-1011)
-- **searchQuery wird nirgends zum Filtern verwendet** — das Eingabefeld ist funktionslos
-- Alle Nachrichten werden mit `limit(50)` geladen, keine Pagination
-- Kein serverseitiger Suchendpoint vorhanden
+**Bewertung**: Kernfunktionalitaet ist stabil. Keine Regression.
 
 ---
 
-## 2. Geplante Aenderungen
+## Teil 2: PR 2 Audit — Threading + Suche
 
-### 2.1 IMAP Threading-Fix (Backend — sot-mail-sync)
+### Umsetzungsstatus: SAUBER UMGESETZT
 
-**Problem**: `envelope.messageId` ist keine Thread-ID.
+| Feature | Status | Details |
+|---------|--------|---------|
+| IMAP thread_id Fix | OK | `sot-mail-sync` Z. 390-413: `normalizeSubject()` + SHA-256 Hash → `imap_thread_<hash>` |
+| Gmail/Microsoft threadId | OK | Unveraendert (native IDs) |
+| Thread-Gruppierung | OK | Z. 902-937: `useMemo` gruppiert nach `thread_id`, sortiert nach `latestMessage.received_at` |
+| ThreadDetailPanel | OK | Z. 340-458: Multi-Message-View mit Collapsible, Lazy-Load Body |
+| SingleEmailDetail | OK | Z. 589-757: Fallback fuer Einzel-Nachrichten-Threads |
+| sot-mail-search | OK | Neue Edge Function mit RLS-Guard, ILIKE, Cursor-Pagination |
+| Search-Input debounced | OK | Z. 784-787: 300ms Debounce |
+| Filter-Chips | OK | Z. 777-781: `filterUnread`, `filterStarred`, `filterAttachments` |
+| Search-Mode Flat-Liste | OK | Z. 903-911: Bei Suche kein Threading, jede Nachricht einzeln |
+| Body-Fetch Lazy-Load | OK | Z. 491-496: `useEffect` in `ThreadMessage` laedt Body bei Expand |
 
-**Loesung — Subject-Normalisierung + In-Reply-To Heuristik**:
+### Offene Punkte PR 2
+1. **Pagination "Weitere laden" fehlt**: Die Planung sah einen "Weitere laden"-Button mit Cursor vor. Aktuell wird nur `limit(50)` verwendet, ohne Moeglichkeit, aeltere Nachrichten nachzuladen.
+2. **Suche zeigt keinen "Thread anzeigen"-Button**: Search-Results sind flat, aber es gibt keinen Link zurueck zur Thread-Ansicht eines Treffers.
 
-IMAP liefert per Envelope:
-- `messageId` — einzigartige ID dieser Nachricht
-- `inReplyTo` — Message-ID der Nachricht, auf die geantwortet wird (sofern vorhanden)
-- `subject` — Betreff
-
-**Algorithmus**:
-1. Normalisiere Subject: entferne `Re:`, `Fwd:`, `AW:`, `WG:` Prefixe, trimme
-2. Generiere `thread_id` als deterministischen Hash aus `account_id + normalized_subject`
-3. Nachrichten mit gleichem normalisierten Betreff im selben Account → gleiche thread_id
-
-**Warum nicht In-Reply-To allein?** Weil In-Reply-To nur bei Antworten gesetzt wird, nicht bei der Ursprungsmail. Subject-Heuristik deckt alle Faelle ab (Gmail und Outlook nutzen intern dasselbe Prinzip).
-
-**Format**: `imap_thread_<sha256(account_id + normalized_subject)>` — deterministisch, idempotent bei Re-Sync
-
-### 2.2 Frontend — Konversationsansicht
-
-**Aenderung in EmailTab.tsx:**
-
-1. Nachrichten nach `thread_id` gruppieren (Fallback: eigene Nachricht = eigener Thread)
-2. Message-Liste zeigt **Thread-Header** statt Einzelnachrichten:
-   - Absender der letzten Nachricht
-   - Thread-Subject
-   - Badge: Anzahl Nachrichten im Thread (wenn >1)
-   - Unread-Status: Fett wenn mindestens eine Nachricht ungelesen
-3. Detail-Panel: Bei Thread-Klick → alle Nachrichten chronologisch, mit Collapse/Expand
-
-**Gruppierungslogik** (client-seitig, da max 50 Nachrichten geladen):
-```typescript
-const threads = useMemo(() => {
-  const grouped = new Map<string, typeof messages>();
-  for (const msg of messages) {
-    const key = msg.thread_id || msg.id; // Fallback: eigene ID
-    const existing = grouped.get(key) || [];
-    existing.push(msg);
-    grouped.set(key, existing);
-  }
-  return Array.from(grouped.values())
-    .map(msgs => ({
-      threadId: msgs[0].thread_id || msgs[0].id,
-      messages: msgs.sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime()),
-      latestMessage: msgs[msgs.length - 1],
-      unreadCount: msgs.filter(m => !m.is_read).length,
-    }))
-    .sort((a, b) => new Date(b.latestMessage.received_at).getTime() - new Date(a.latestMessage.received_at).getTime());
-}, [messages]);
-```
-
-### 2.3 Serverseitige Suche — Neue Edge Function
-
-**Neue Edge Function: `sot-mail-search`**
-
-**Parameter**:
-```typescript
-interface SearchRequest {
-  accountIds: string[];       // Filter auf Konten (RLS-geprüft)
-  q?: string;                 // Freitext: subject, from_address, from_name, snippet
-  folder?: string;            // INBOX, SENT, etc.
-  unreadOnly?: boolean;
-  starredOnly?: boolean;
-  hasAttachments?: boolean;
-  fromDate?: string;          // ISO date
-  toDate?: string;            // ISO date
-  limit?: number;             // Default 50, max 100
-  cursor?: string;            // received_at ISO timestamp für Pagination
-}
-```
-
-**Implementierung**: SQL-Query mit dynamischen WHERE-Bedingungen.
-Freitext-Suche ueber `subject ILIKE '%q%' OR from_address ILIKE '%q%' OR from_name ILIKE '%q%' OR snippet ILIKE '%q%'`.
-
-**Kein Volltextindex noetig** bei <10.000 Nachrichten pro User. ILIKE genuegt.
-
-### 2.4 Frontend — Suchleiste + Filterbar
-
-**EmailTab.tsx:**
-
-1. Such-Input aktivieren (aktuell funktionslos) — Debounce 300ms
-2. Bei Eingabe: Edge-Function `sot-mail-search` aufrufen statt lokale Query
-3. Filter-Chips unterhalb der Suchleiste:
-   - Ungelesen | Mit Anhang | Markiert | Zeitraum
-4. Pagination: "Weitere laden" Button am Ende der Liste (Cursor-basiert)
-
-### 2.5 Neuer DB-Index fuer Suche
-
-```sql
-CREATE INDEX idx_mail_messages_search 
-  ON mail_messages (account_id, folder, received_at DESC)
-  WHERE folder IS NOT NULL;
-```
-
-Bestehender `idx_mail_messages_account_folder` deckt bereits `(account_id, folder)` ab — genuegt fuer ILIKE-Queries mit Folder-Filter. Kein zusaetzlicher Index zwingend noetig.
+**Bewertung**: Kernfunktionalitaet stabil. Threading und Suche funktionieren. Pagination ist ein bekannter Scope-Rueckstand.
 
 ---
 
-## 3. Risikoanalyse
+## Teil 3: PR 3 — Signature/Impressum-Engine + Templates + Armstrong Assist
 
-### HOCH — Thread-ID Migration (IMAP)
+### Ist-Zustand der relevanten Datenquellen
+
+**Profil-Felder (profiles Tabelle)**:
+
+| Feld | Typ | Aktueller Wert (Thomas Stelzl) |
+|------|-----|-------------------------------|
+| `email_signature` | text | "Mit freundlichen Gruessen\n\nThomas Stelzl\nMobil: +49 16090117358..." |
+| `letterhead_company_line` | text | (leer) |
+| `letterhead_extra_line` | text | (leer) |
+| `letterhead_website` | text | (leer) |
+| `letterhead_bank_name` | text | (leer) |
+| `letterhead_iban` | text | (leer) |
+| `letterhead_bic` | text | (leer) |
+
+**Bestehende Signatur-Nutzung**: `ComposeEmailDialog` laedt `email_signature` bei neuen E-Mails (Z. 102-132) und haengt sie als `\n\n--\n{signature}` an.
+
+**Bestehende Template-Infrastruktur**:
+- Tabelle `admin_email_templates` existiert (Zone 1) mit 5 Templates: Onboarding, Follow-Up, Sales, Partner, Finance
+- Tabelle `acq_email_templates` existiert (Akquise-Modul)
+- Beide sind Zone 1 / Admin-Templates, NICHT fuer den User-Email-Client (Zone 2) gedacht
+
+**Bestehende AI-Assist**:
+- `sot-mail-ai-assist` Edge Function mit 3 Actions: `text_improve`, `text_shorten`, `suggest_subject`
+- Nutzt Lovable AI Gateway (google/gemini-2.5-flash)
+
+**Impressum-Quellen**:
+- Zone 3 Websites haben `Zone3LegalPage` mit DB-gestuetztem Impressum (per Brand)
+- Compliance-Docs werden aus DB geladen (`website_imprint_{brand}`)
+- Fuer E-Mail-Footer: Es gibt KEINE dedizierte Impressum-Datenquelle fuer den E-Mail-Client
+
+---
+
+### Geplante Aenderungen PR 3
+
+#### 3.1 Signature/Impressum Toggle im Compose Dialog
+
+**ComposeEmailDialog.tsx** — Checkboxen + Live-Preview:
+
+```
+[x] Signatur anhaengen (aus Profil)
+[x] Rechtlicher Footer anhaengen (Impressum)
+```
+
+- Bei "Signatur": bestehende `email_signature` aus Profil (bereits geladen)
+- Bei "Impressum": Neuer Block aus `letterhead_*` Feldern + Tenant-Info
+- Live-Preview-Bereich zeigt finalen HTML-Body vor dem Senden
+- Beides wird beim Senden serverseitig zusammengebaut
+
+#### 3.2 BuildOutboundEmail — Serverseitige Body-Assembly
+
+**Neues Pattern in `sot-mail-send`** (kein neuer Endpoint):
+
+Wenn `includeSignature: true` oder `includeFooter: true` im Request:
+1. Laedt `profiles.email_signature` + `letterhead_*` Felder
+2. Laedt Tenant-Impressum aus `compliance_documents` (Key: `email_footer_{tenant}`)
+3. Baut deterministisch zusammen:
+   ```
+   [User Body]
+   ---
+   [Signatur]
+   ---
+   [Rechtlicher Footer: Firma, Adresse, HRB, USt-IdNr, Website]
+   ```
+4. HTML-Version mit professionellem Styling
+
+#### 3.3 Templates fuer den User-Email-Client
+
+**Neue DB-Tabelle: `mail_compose_templates`**
+
+| Feld | Typ |
+|------|-----|
+| id | uuid PK |
+| tenant_id | uuid |
+| user_id | uuid (nullable — tenant-weite Templates) |
+| name | text |
+| category | text (vertrieb, follow_up, termin, allgemein) |
+| subject_template | text |
+| body_template | text |
+| placeholders | jsonb |
+| is_active | boolean |
+| created_at | timestamptz |
+
+Mitgelieferte Default-Templates (via Demo Seed):
+- Vertrieb: Erstansprache
+- Follow-up: Nachfass
+- Terminbestaetigung
+- Allgemein: Informationsanfrage
+
+**Platzhalter-System**: `{{first_name}}`, `{{last_name}}`, `{{company}}`, `{{agent_name}}`, `{{agent_phone}}`, `{{agent_email}}`
+
+**UI**: Template-Dropdown im Compose Dialog neben dem "KI"-Button. Auswahl fuellt Subject + Body, Platzhalter werden client-seitig ersetzt (aus Profil + To-Kontakt).
+
+#### 3.4 Armstrong Assist — Qualitaetscheck vor dem Senden
+
+**Neue Action in `sot-mail-ai-assist`**: `quality_check`
+
+Prompt:
+```
+Pruefe die folgende E-Mail auf:
+1. Ton (professionell, hoeflich?)
+2. Vollstaendigkeit (Gruss, Betreff-Bezug, Call-to-Action?)
+3. Fehlende Felder (Name, Kontaktdaten?)
+4. Offensichtliche Fehler (Tippfehler, fehlende Anrede?)
+Antworte als kurze Checkliste mit Emojis (✅/⚠️/❌).
+```
+
+**UI**: Neuer Button "Qualitaetscheck" im Compose Dialog (neben KI-Dropdown). Zeigt Ergebnis als Inline-Feedback unterhalb des Body-Textfelds.
+
+---
+
+### Risikoanalyse PR 3
+
+#### HOCH
 
 | Risiko | Beschreibung | Mitigation |
 |--------|-------------|------------|
-| Bestehende thread_ids werden ueberschrieben | 22 IMAP-Nachrichten haben `envelope.messageId` als thread_id. Beim naechsten Sync wuerden sie neue Hash-basierte thread_ids bekommen | **Migration-Strategie**: Beim naechsten Sync werden alle IMAP-Nachrichten mit neuer thread_id geupdated. Da Upsert auf `(account_id, message_id)`, kein Datenverlust. Alter thread_id-Wert war ohnehin falsch/nutzlos |
-| Subject-Heuristik fehlerhaft | "Rechnung" und "Re: Rechnung" werden korrekt gruppiert, aber zwei verschiedene Rechnungs-Mails vom selben Absender ebenfalls | **Akzeptierbar**: Gmail hat dasselbe "Problem" by design. Thread-Splitting ist kein Feature fuer PR 2 |
-| Cross-Account Thread-Merging | Wenn User IMAP + Gmail hat: Dieselbe Konversation hat in IMAP eine Hash-ID und in Gmail eine native threadId. Diese werden NICHT gemergt | **Bewusste Entscheidung**: Cross-Account Thread-Merging ist Scope PR 4+. Threads sind account-scoped |
+| Body-Assembly Duplikation | Signatur wird aktuell client-seitig angehaengt (ComposeEmailDialog Z. 119-121). Wenn serverseitig nochmal angehaengt wird → doppelte Signatur | **Loesung**: Client haengt Signatur NICHT mehr inline an. Stattdessen sendet er Flags `includeSignature` + `includeFooter` an `sot-mail-send`. Server baut Body zusammen. BREAKING CHANGE in ComposeEmailDialog |
+| Impressum-Daten fehlen | `letterhead_*` Felder sind bei allen Usern leer. Ohne Daten kein Footer | **Loesung**: UI-Hinweis "Bitte fuellen Sie Ihre Briefkopf-Daten in Stammdaten > Profil aus". Leere Felder = Footer wird weggelassen |
+| Reply/Forward Body-Corruption | Bei Reply wird `initialBody` mit quoted Text uebergeben. Wenn Server nochmal Signatur anhaengt, wird die Signatur VOR dem Quote eingefuegt | **Loesung**: Server erkennt `isReply: true` Flag und fuegt Signatur zwischen neuen Text und Quote ein |
 
-### HOCH — Regression bei bestehendem E-Mail-Fluss
-
-| Risiko | Beschreibung | Mitigation |
-|--------|-------------|------------|
-| selectedEmail Mapping bricht | Aktuell: `selectedEmail = message.id`. Bei Thread-View: selectedThread? | **Loesung**: Zwei States: `selectedThreadId` + `selectedMessageId`. Thread-Klick setzt Thread, Detail zeigt alle Messages. Single-Message-Klick innerhalb Thread setzt scrollTarget |
-| Delete/Archive/Star auf Thread vs. Message | Aktuell: Operationen auf Einzel-Message-ID | **Loesung**: Thread-Level-Actions (Delete Thread = alle Messages loeschen) + Message-Level-Actions im expandierten Thread |
-| Body-Fetch bei Thread-Expand | Wenn Thread 5 Nachrichten hat, muessen ggf. 5 Bodies geladen werden | **Loesung**: Lazy-Load — nur die sichtbar expandierte Nachricht fetched Body on-demand. Collapsed Messages zeigen nur Snippet |
-
-### MITTEL — Serverseitige Suche
+#### MITTEL
 
 | Risiko | Beschreibung | Mitigation |
 |--------|-------------|------------|
-| ILIKE Performance bei vielen Mails | `ILIKE '%text%'` kann nicht Index-gestuetzt laufen | Bei <10.000 Mails pro User: <50ms. Bei >100k: pg_trgm Index noetig → Scope PR 4+ |
-| RLS-Bypass in Edge Function | `sot-mail-search` nutzt Service-Role-Key | **Muss**: Explizite WHERE `account_id IN (SELECT id FROM mail_accounts WHERE user_id = $auth_user_id)` als Guard |
-| Suchresultate vs. Thread-Gruppierung | Suche findet 3 von 5 Thread-Messages — Thread-Ansicht verwirrend | **Loesung**: Suchresultate als flache Liste anzeigen (kein Threading), mit "Thread anzeigen" Button pro Treffer |
+| Template-Tabelle RLS | Neue Tabelle braucht RLS fuer tenant_id-Isolation | Standard-RLS: `tenant_id = (SELECT tenant_id FROM profiles WHERE id = auth.uid())` |
+| Platzhalter nicht aufgeloest | User sendet Template mit `{{first_name}}` ohne Kontakt-Daten | **Loesung**: Unaufgeloeste Platzhalter werden als Warnung angezeigt, aber nicht blockiert |
+| sot-mail-send Aenderung | Bestehender Send-Contract wird erweitert (neue Felder). Alte Clients ohne neue Felder muessen weiter funktionieren | **Loesung**: Neue Felder sind optional mit Default `false`. Bestehende Aufrufe bleiben kompatibel |
 
-### MITTEL — UX-Konsistenz
-
-| Risiko | Beschreibung | Mitigation |
-|--------|-------------|------------|
-| Thread-Ansicht vs. Flat-Ansicht Toggle | User erwartet ggf. beide Modi | **PR 2 Scope**: Nur Thread-Ansicht (Default). Flat-Mode bleibt als Fallback bei Suche |
-| Pagination-UX | "Mehr laden" vs. Infinite Scroll | **Loesung**: Expliziter "Weitere laden" Button — einfacher, kein Scroll-Listener noetig |
-| Leere Threads bei Folder-Wechsel | Thread hat Messages in INBOX + SENT. Im Folder-View erscheint nur die INBOX-Haelfte | **Bewusste Entscheidung**: Threads werden per Folder gefiltert angezeigt. Cross-Folder-Thread-View = Scope PR 4+ |
-
-### NIEDRIG
+#### NIEDRIG
 
 | Risiko | Beschreibung | Mitigation |
 |--------|-------------|------------|
-| Google threadId Format-Stabilitaet | Gmail threadId ist stabil und aendert sich nicht | Kein Risiko — native API-Garantie |
-| Microsoft conversationId Stabilitaet | Graph API conversationId ist stabil | Kein Risiko — native API-Garantie |
-| Filter-State Persistenz | Filter-Auswahl geht bei Tab-Wechsel verloren | URL-Params oder lokaler State — akzeptabel fuer PR 2 |
+| AI Quality-Check Latenz | Gemini-Flash-Call ~1-2s | Akzeptabel, Button zeigt Spinner |
+| Template-Kategorien zu wenig | Nur 4 Kategorien initial | Erweiterbar, kein Risiko |
+| HTML-Signatur vs. Plain-Text | `email_signature` ist Plain-Text, E-Mail wird als HTML gesendet | **Loesung**: Server wrappet Signatur in `<pre>` mit professionellem Styling |
 
-### KEIN RISIKO
+#### KEIN RISIKO
 
 - **OAuth-Flows**: Nicht angefasst
-- **sot-mail-send**: Keine Aenderung (sendet Einzel-Messages, kein Thread-Kontext noetig)
-- **RLS-Policies**: Bestehende Policies bleiben korrekt
-- **sot-mail-fetch-body**: Keine Aenderung (arbeitet auf message.id, account-agnostisch via DB-Join)
-- **ComposeEmailDialog**: Keine Aenderung in PR 2
-- **Login/Routing**: Kein Kontakt
+- **sot-mail-sync**: Nicht angefasst
+- **sot-mail-search**: Nicht angefasst
+- **Threading**: Nicht angefasst
+- **RLS bestehender Tabellen**: Nicht angefasst
 
 ---
 
-## 4. Dateien & Umfang
+### Dateien & Umfang
 
 | Datei | Aenderung | Risiko |
 |-------|-----------|--------|
-| `supabase/functions/sot-mail-sync/index.ts` | IMAP: thread_id Heuristik (Subject-Hash statt messageId) | HOCH |
-| `supabase/functions/sot-mail-search/index.ts` | **NEU** — Serverseitige Suche mit Filtern + Pagination | MITTEL |
-| `src/pages/portal/office/EmailTab.tsx` | Thread-Gruppierung, Thread-Detail-View, Such-Integration, Filter-Chips, Pagination | HOCH |
-| DB-Migration | Optional: Trigram-Index fuer Volltextsuche (nur bei >10k Messages noetig) | NIEDRIG |
+| `src/components/portal/office/ComposeEmailDialog.tsx` | Signatur-Toggle, Impressum-Toggle, Template-Dropdown, Quality-Check-Button, Live-Preview | HOCH |
+| `supabase/functions/sot-mail-send/index.ts` | Body-Assembly mit Signature + Footer (neue optionale Felder) | HOCH |
+| `supabase/functions/sot-mail-ai-assist/index.ts` | Neue Action `quality_check` | NIEDRIG |
+| DB-Migration | Neue Tabelle `mail_compose_templates` + RLS + Seed-Daten | MITTEL |
+| Keine neuen Edge Functions | — | — |
 
-**Geschaetzter Umfang**: ~300 Zeilen geaendert/hinzugefuegt in 2-3 Dateien + 1 neue Edge Function (~150 Zeilen).
-
----
-
-## 5. Scope-Grenzen PR 2
-
-| In Scope | Nicht in Scope |
-|----------|----------------|
-| IMAP thread_id Fix (Subject-Hash) | Cross-Account Thread-Merging |
-| Client-seitige Thread-Gruppierung | Volltextindex (pg_trgm) |
-| Serverseitige Suche (ILIKE) | Thread-Splitting bei gleichem Subject |
-| Filter: unread, starred, attachments, date | Saved Searches / Search History |
-| Cursor-basierte Pagination | Infinite Scroll |
-| Thread-Detail mit Collapse/Expand | Cross-Folder Thread-View |
-| Flat-List bei Suchresultaten | Signatur/Impressum (PR 3) |
+**Geschaetzter Umfang**: ~250 Zeilen geaendert in 3 Dateien + 1 DB-Migration.
 
 ---
 
-## 6. Empfohlene Reihenfolge
+### Empfohlene Reihenfolge
 
-1. **Schritt 1**: `sot-mail-sync` IMAP thread_id Fix (Backend, isoliert testbar)
-2. **Schritt 2**: `sot-mail-search` Edge Function (Backend, isoliert testbar)
-3. **Schritt 3**: EmailTab Thread-Gruppierung + Thread-Detail (Frontend)
-4. **Schritt 4**: Such-Integration + Filter-Chips (Frontend)
-5. **Schritt 5**: Pagination "Weitere laden" (Frontend)
+1. **Schritt 1**: DB-Migration `mail_compose_templates` mit RLS + Default-Templates
+2. **Schritt 2**: `sot-mail-send` um Body-Assembly erweitern (Signature + Footer-Felder laden, HTML zusammenbauen)
+3. **Schritt 3**: `sot-mail-ai-assist` um `quality_check` Action erweitern
+4. **Schritt 4**: `ComposeEmailDialog` um Toggles, Template-Picker, Quality-Check und Preview erweitern
+5. **Schritt 5**: Client-seitige Signatur-Logik entfernen (Server uebernimmt)
 
-Schritte 1+2 koennen parallel implementiert werden. Schritte 3-5 bauen aufeinander auf.
+Schritte 1-3 sind unabhaengig voneinander. Schritt 4+5 muessen zusammen deployed werden.
 
 ---
 
-## 7. Testplan
+### Testplan
 
-1. **IMAP Sync nach Fix**: Bestehende 22 Nachrichten bekommen neue thread_ids. Nachrichten mit gleichem normalisierten Subject gruppieren sich
-2. **Gmail Sync**: Thread-IDs bleiben unveraendert (native threadId)
-3. **Thread-Ansicht**: Threads mit >1 Nachricht zeigen Badge, expandieren korrekt
-4. **Single-Message Thread**: Verhaelt sich wie bisher (kein visueller Unterschied)
-5. **Suche**: Freitext findet Nachrichten ueber Subject, Absender, Snippet
-6. **Filter**: Ungelesen-Filter zeigt nur ungelesene Nachrichten/Threads
-7. **Pagination**: "Weitere laden" laedt naechste 50 Nachrichten korrekt
-8. **Regression**: Reply/Forward/Delete/Archive/Star funktionieren wie bisher
-9. **Body-Fetch**: On-demand Fetch im Thread-Detail funktioniert pro Nachricht
-10. **Unified Inbox + Threading**: Threads werden per Account gruppiert (kein Cross-Account-Merge)
+1. **Neue E-Mail ohne Signatur/Footer**: Body wird wie bisher gesendet (Backwards-Compatibility)
+2. **Neue E-Mail mit Signatur**: Signatur aus Profil wird korrekt angehaengt
+3. **Neue E-Mail mit Impressum-Footer**: Letterhead-Daten erscheinen im Footer
+4. **Reply mit Signatur**: Signatur steht zwischen neuem Text und Quote
+5. **Template waehlen**: Subject + Body werden korrekt gefuellt, Platzhalter ersetzt
+6. **Template mit fehlendem Platzhalter**: Warnung erscheint, Senden moeglich
+7. **Quality-Check**: KI-Feedback erscheint als Checkliste
+8. **Leere Letterhead-Felder**: Kein Footer, stattdessen Hinweis auf Profil-Vervollstaendigung
+9. **Regression**: Bestehender Reply/Forward/Compose-Flow funktioniert unveraendert
 
