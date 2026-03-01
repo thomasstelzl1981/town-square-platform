@@ -11,6 +11,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { ImapClient } from 'jsr:@workingdevshero/deno-imap';
 import { decode as decodeBase64 } from 'https://deno.land/std@0.168.0/encoding/base64.ts';
+import { crypto } from 'https://deno.land/std@0.168.0/crypto/mod.ts';
+import { encode as encodeHex } from 'https://deno.land/std@0.168.0/encoding/hex.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -380,6 +382,36 @@ function truncate(str: string, maxLen: number): string {
 }
 
 // IMAP Mail sync using @workingdevshero/deno-imap with manual MIME parsing
+
+/**
+ * Normalize email subject for thread grouping:
+ * Strip Re:, Fwd:, AW:, WG:, Antwort:, Aw: prefixes (case-insensitive, repeated)
+ */
+function normalizeSubject(subject: string): string {
+  return subject
+    .replace(/^(\s*(Re|Fwd|Fw|AW|WG|Antwort|Aw|SV|VS)\s*:\s*)+/gi, '')
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Generate a deterministic thread_id for IMAP messages based on account_id + normalized subject.
+ * Messages with the same normalized subject in the same account get the same thread_id.
+ */
+async function generateImapThreadId(accountId: string, subject: string): Promise<string> {
+  const normalized = normalizeSubject(subject);
+  if (!normalized || normalized === '(kein betreff)') {
+    // Don't group messages with empty/no subject
+    return `imap_single_${crypto.randomUUID()}`;
+  }
+  const input = `${accountId}::${normalized}`;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashHex = new TextDecoder().decode(encodeHex(new Uint8Array(hashBuffer)));
+  return `imap_thread_${hashHex.substring(0, 16)}`;
+}
+
 // Map standard folder names to common IMAP folder names
 const FOLDER_MAPPINGS: Record<string, string[]> = {
   'INBOX': ['INBOX'],
@@ -667,13 +699,16 @@ async function syncImapMail(
         // Decode subject with RFC 2047
         const decodedSubject = decodeRfc2047(envelope.subject || '') || '(Kein Betreff)';
 
+        // Generate deterministic thread_id from normalized subject
+        const imapThreadId = await generateImapThreadId(account.id, decodedSubject);
+
         // Upsert message with body content
         const { error } = await supabase
           .from('mail_messages')
           .upsert({
             account_id: account.id,
             message_id: msg.uid?.toString() || `imap_${Date.now()}_${synced}`,
-            thread_id: envelope.messageId || null,
+            thread_id: imapThreadId,
             folder: folder.toUpperCase(),
             subject: decodedSubject,
             from_address: fromEmail,
