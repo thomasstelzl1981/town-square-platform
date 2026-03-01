@@ -121,12 +121,12 @@ export default function OttoHome() {
           <h2 className="mb-10 text-2xl font-bold text-slate-800">Ihre Berater</h2>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-10 sm:gap-16 mb-8">
             <div className="flex flex-col items-center">
-              <img src={ottoStelzlImg} alt="Otto Stelzl — Geschäftsführer" className="h-40 w-40 rounded-full object-cover shadow-md mb-4" />
+              <img src={ottoStelzlImg} alt="Otto Stelzl — Geschäftsführer" className="h-40 w-40 rounded-full object-cover object-top shadow-md mb-4" />
               <p className="font-semibold text-lg text-slate-800">Otto Stelzl</p>
               <p className="text-sm text-slate-500">Geschäftsführer</p>
             </div>
             <div className="flex flex-col items-center">
-              <img src={thomasStelzlImg} alt="Thomas Otto Stelzl — Finanzberater" className="h-40 w-40 rounded-full object-cover shadow-md mb-4" />
+              <img src={thomasStelzlImg} alt="Thomas Otto Stelzl — Finanzberater" className="h-40 w-40 rounded-full object-cover object-top shadow-md mb-4" />
               <p className="font-semibold text-lg text-slate-800">Thomas Otto Stelzl</p>
               <p className="text-sm text-slate-500">Finanzberater</p>
             </div>
