@@ -1,24 +1,28 @@
 
 
-## Problem Analysis
+## Fix: Correct Twilio Regulatory Compliance API URL
 
-Two bugs in `sot-phone-provision/index.ts`:
+### Problem
+The `ItemAssignments` lookup returns **404** because the URL path is wrong:
+- Current (broken): `https://api.ie1.twilio.com/2010-04-01/Accounts/{SID}/RegulatoryCompliance/Bundles/{bundle}/ItemAssignments.json`
+- Correct: `https://api.twilio.com/v2/RegulatoryCompliance/Bundles/{bundle}/ItemAssignments`
 
-### Bug 1: Search returns numbers from all of Germany
-Line 144 uses `Contains=89` which matches any number containing "89" anywhere (e.g. Berlin +4930758**89**49). The Twilio `Contains` parameter does substring matching, not prefix matching.
+Two issues:
+1. Regulatory Compliance is a **v2 API** — not under `/2010-04-01/Accounts/`
+2. The v2 API may only be available on `api.twilio.com` (not regional `api.ie1.twilio.com`)
 
-**Fix**: Change the hardcoded area code from `"89"` to `"+4989"` so it matches the international prefix, filtering to only Munich numbers.
+Because the 404 triggers the fallback, the generic account address (`AD0aed...`) is used, which is NOT the one inside the bundle → Twilio rejects with error 21651.
 
-### Bug 2: Purchase fails with error 21631 (AddressSid empty)
-The previous fix (for error 21651) removed `AddressSid` when `BundleSid` is present. But Twilio requires BOTH for German local numbers. The catch: the `AddressSid` must be the one registered INSIDE the bundle — not a random address from the account.
+### Fix (single file: `supabase/functions/sot-phone-provision/index.ts`)
 
-Currently line 219 fetches the first address from the general `Addresses.json` endpoint, which may not be the address registered in the bundle (that caused error 21651).
+**Line 223** — Change the URL to use `api.twilio.com` directly with the correct v2 path:
+```typescript
+// Before (wrong path + regional host):
+const assignUrl = `https://${selectedHost}/2010-04-01/Accounts/${TWILIO_SID}/RegulatoryCompliance/Bundles/${bundleSid}/ItemAssignments.json`;
 
-**Fix**: Query the Regulatory Bundle's Item Assignments API (`/v2/RegulatoryCompliance/Bundles/{BundleSid}/ItemAssignments`) to find the correct address SID that belongs to the bundle, then send both `BundleSid` AND `AddressSid` in the purchase request.
+// After (correct v2 path on main host):
+const assignUrl = `https://api.twilio.com/v2/RegulatoryCompliance/Bundles/${bundleSid}/ItemAssignments`;
+```
 
-### Changes — single file: `supabase/functions/sot-phone-provision/index.ts`
-
-1. **Line 135**: Change `"89"` to `"+4989"` so `Contains=%2B4989` only returns Munich numbers
-2. **Lines 216-232**: Replace the generic address lookup with a bundle-specific item assignment query that extracts the address SID from the approved bundle
-3. **Lines 259-269**: Send BOTH `BundleSid` and the bundle's own `AddressSid` for DE purchases
+No other changes needed. Once the URL is correct, the bundle's actual address SID will be returned and used for the purchase — no more fallback, no more mismatch.
 
