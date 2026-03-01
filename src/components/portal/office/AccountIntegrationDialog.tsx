@@ -313,32 +313,55 @@ export function AccountIntegrationDialog({ open, onOpenChange }: AccountIntegrat
         'width=600,height=700,menubar=no,toolbar=no,location=yes'
       );
 
-      // 3. Listen for postMessage from popup callback
+      // Helper to handle the auth result
+      const handleResult = (msg: any) => {
+        cleanup();
+        if (msg.success) {
+          toast.success('Gmail erfolgreich verbunden!');
+          queryClient.invalidateQueries({ queryKey: ['mail-accounts-integration'] });
+          queryClient.invalidateQueries({ queryKey: ['email-accounts'] });
+          setActiveTab('accounts');
+        } else {
+          toast.error('Gmail-Verbindung fehlgeschlagen: ' + (msg.error || 'Unbekannt'));
+        }
+        setIsConnecting(false);
+      };
+
+      // Cleanup function to remove all listeners
+      const cleanup = () => {
+        window.removeEventListener('message', handleMessage);
+        window.removeEventListener('storage', handleStorage);
+        clearInterval(pollTimer);
+      };
+
+      // 3a. Listen for postMessage from popup callback
       const handleMessage = (event: MessageEvent) => {
         try {
           const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
           if (msg?.type === 'gmail_auth_result') {
-            window.removeEventListener('message', handleMessage);
-            if (msg.success) {
-              toast.success('Gmail erfolgreich verbunden!');
-              queryClient.invalidateQueries({ queryKey: ['mail-accounts-integration'] });
-              queryClient.invalidateQueries({ queryKey: ['email-accounts'] });
-              setActiveTab('accounts');
-            } else {
-              toast.error('Gmail-Verbindung fehlgeschlagen: ' + (msg.error || 'Unbekannt'));
-            }
-            setIsConnecting(false);
+            handleResult(msg);
           }
         } catch { /* ignore non-JSON messages */ }
       };
 
+      // 3b. Listen for localStorage fallback (works when window.opener is null)
+      const handleStorage = (e: StorageEvent) => {
+        if (e.key === 'gmail_auth_result' && e.newValue) {
+          try {
+            const msg = JSON.parse(e.newValue);
+            localStorage.removeItem('gmail_auth_result');
+            handleResult(msg);
+          } catch { /* ignore parse errors */ }
+        }
+      };
+
       window.addEventListener('message', handleMessage);
+      window.addEventListener('storage', handleStorage);
 
       // 4. Fallback: poll if popup is closed without postMessage
       const pollTimer = setInterval(() => {
         if (popup && popup.closed) {
-          clearInterval(pollTimer);
-          window.removeEventListener('message', handleMessage);
+          cleanup();
           setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['mail-accounts-integration'] });
             queryClient.invalidateQueries({ queryKey: ['email-accounts'] });
