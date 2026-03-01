@@ -185,8 +185,9 @@ export default function NcoreKontakt() {
                     <Phone className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-700">Telefon</p>
-                    <p className="text-sm text-slate-500">Auf Anfrage</p>
+                    <p className="text-sm font-medium text-slate-700">Telefon — Armstrong KI-Assistent</p>
+                    <a href="tel:+498941433040" className="text-sm text-emerald-600 hover:text-emerald-500">+49 89 4143 3040</a>
+                    <p className="text-xs text-slate-400 mt-0.5">Rufen Sie an — unser KI-Assistent hilft sofort weiter.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">

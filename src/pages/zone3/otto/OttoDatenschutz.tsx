@@ -34,7 +34,7 @@ export default function OttoDatenschutz() {
                 94327 Bogen, Deutschland
               </p>
               <p className="mt-2">
-                Telefon: +49 (0)9422 4845<br />
+                Telefon: +49 89 4143 2903<br />
                 E-Mail: info@otto2advisory.com
               </p>
               <p className="mt-2">

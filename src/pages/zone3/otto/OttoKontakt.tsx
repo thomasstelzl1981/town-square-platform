@@ -174,10 +174,11 @@ export default function OttoKontakt() {
                     <Phone className="h-6 w-6 text-[#0055A4]" />
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-1 text-slate-800">Telefon</h3>
-                    <a href="tel:+4994224845" className="text-[#0055A4] hover:underline text-sm">
-                      +49 (0)9422 4845
+                    <h3 className="font-semibold mb-1 text-slate-800">Telefon — Armstrong KI-Assistent</h3>
+                    <a href="tel:+498941432903" className="text-[#0055A4] hover:underline text-sm">
+                      +49 89 4143 2903
                     </a>
+                    <p className="text-xs text-slate-400 mt-1">Rufen Sie an — unser KI-Assistent hilft Ihnen sofort weiter.</p>
                   </div>
                 </div>
 

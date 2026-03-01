@@ -212,7 +212,8 @@ export default function FutureRoomLayout() {
             <h4 className="fr-footer-title">Kontakt</h4>
             <ul className="fr-footer-links">
               <li>info@futureroom.online</li>
-              <li>089 66667788</li>
+              <li><a href="tel:+498941432401">+49 89 4143 2401</a></li>
+              <li className="text-xs opacity-70">Armstrong KI-Assistent erreichbar</li>
             </ul>
           </div>
         </div>

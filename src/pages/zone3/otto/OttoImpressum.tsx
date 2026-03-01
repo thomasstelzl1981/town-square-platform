@@ -33,7 +33,7 @@ export default function OttoImpressum() {
             <div>
               <h2 className="text-lg font-semibold text-slate-800 mb-2">Kontakt</h2>
               <p>
-                Telefon: +49 (0)9422 4845<br />
+                Telefon: <a href="tel:+498941432903" className="underline">+49 89 4143 2903</a> (Armstrong KI-Assistent)<br />
                 E-Mail: info@otto2advisory.com
               </p>
             </div>
