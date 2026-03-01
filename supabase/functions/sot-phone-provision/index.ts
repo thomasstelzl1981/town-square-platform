@@ -94,9 +94,12 @@ Deno.serve(async (req) => {
       : ["api.twilio.com", "api.ie1.twilio.com"];
 
     const isBrandMode = !!brand_key;
+    // For brand assistants: match by brand_key
+    // For personal assistants: match by user_id AND ensure brand_key IS NULL
+    // to avoid colliding with brand-specific assistants for the same user
     const lookupFilter = isBrandMode
-      ? { column: "brand_key", value: brand_key }
-      : { column: "user_id", value: userId };
+      ? { column: "brand_key", value: brand_key, nullFilter: null }
+      : { column: "user_id", value: userId, nullFilter: "brand_key" };
 
     // Debug action: list all Twilio addresses
     if (action === "list_addresses") {
@@ -365,16 +368,24 @@ Deno.serve(async (req) => {
       }
 
       // Update assistant record (by brand_key or user_id)
-      const { error: updateErr } = await supabase
+      let updateQuery = supabase
         .from("commpro_phone_assistants")
         .update({
           twilio_number_sid: buyData.sid,
           twilio_phone_number_e164: buyData.phone_number,
           forwarding_number_e164: buyData.phone_number,
           binding_status: "active",
+          is_enabled: true,
           updated_at: new Date().toISOString(),
         })
         .eq(lookupFilter.column, lookupFilter.value);
+
+      // For personal assistants: ensure we only match the one without brand_key
+      if (lookupFilter.nullFilter) {
+        updateQuery = updateQuery.is(lookupFilter.nullFilter, null);
+      }
+
+      const { error: updateErr } = await updateQuery;
 
       if (updateErr) {
         console.error("DB update failed:", updateErr);
@@ -392,11 +403,14 @@ Deno.serve(async (req) => {
     }
 
     if (action === "release") {
-      const { data: assistant } = await supabase
+      let releaseQuery = supabase
         .from("commpro_phone_assistants")
         .select("twilio_number_sid")
-        .eq(lookupFilter.column, lookupFilter.value)
-        .single();
+        .eq(lookupFilter.column, lookupFilter.value);
+      if (lookupFilter.nullFilter) {
+        releaseQuery = releaseQuery.is(lookupFilter.nullFilter, null);
+      }
+      const { data: assistant } = await releaseQuery.single();
 
       if (!assistant?.twilio_number_sid) {
         return new Response(
@@ -429,16 +443,21 @@ Deno.serve(async (req) => {
         );
       }
 
-      await supabase
+      let releaseUpdateQuery = supabase
         .from("commpro_phone_assistants")
         .update({
           twilio_number_sid: null,
           twilio_phone_number_e164: null,
           forwarding_number_e164: null,
           binding_status: "pending",
+          is_enabled: false,
           updated_at: new Date().toISOString(),
         })
         .eq(lookupFilter.column, lookupFilter.value);
+      if (lookupFilter.nullFilter) {
+        releaseUpdateQuery = releaseUpdateQuery.is(lookupFilter.nullFilter, null);
+      }
+      await releaseUpdateQuery;
 
       return new Response(
         JSON.stringify({ success: true }),

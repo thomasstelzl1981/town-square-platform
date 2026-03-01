@@ -53,15 +53,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. Contact matching
+    // 2. Contact matching — only if assistant has a tenant_id (brand assistants may not)
     let contactName: string | null = null;
-    if (callerNumber) {
+    if (callerNumber && assistant.tenant_id) {
       const normalizedCaller = callerNumber.replace(/\s/g, "");
       const { data: contacts } = await supabase
         .from("contacts")
         .select("first_name, last_name")
         .or(`phone.eq.${normalizedCaller},phone_mobile.eq.${normalizedCaller}`)
-        .eq("tenant_id", assistant.tenant_id || "")
+        .eq("tenant_id", assistant.tenant_id)
         .limit(1);
 
       if (contacts?.length) {
@@ -70,25 +70,32 @@ Deno.serve(async (req) => {
     }
 
     // 3. Create call session with empty conversation_turns
+    // Note: user_id may be null for brand-level assistants (Zone 1)
+    const sessionInsert: Record<string, any> = {
+      assistant_id: assistant.id,
+      direction: "inbound",
+      from_number_e164: callerNumber || "unknown",
+      to_number_e164: calledNumber,
+      started_at: new Date().toISOString(),
+      status: "in_progress",
+      twilio_call_sid: callSid,
+      conversation_turns: [],
+      match: {
+        matched_type: contactName ? "contact" : "unknown",
+        matched_id: null,
+        match_type: contactName ? "phone" : "none",
+        contact_name: contactName,
+      },
+    };
+
+    // Only set user_id if assistant has one (brand assistants don't)
+    if (assistant.user_id) {
+      sessionInsert.user_id = assistant.user_id;
+    }
+
     const { error: sessionErr } = await supabase
       .from("commpro_phone_call_sessions")
-      .insert({
-        user_id: assistant.user_id,
-        assistant_id: assistant.id,
-        direction: "inbound",
-        from_number_e164: callerNumber || "unknown",
-        to_number_e164: calledNumber,
-        started_at: new Date().toISOString(),
-        status: "in_progress",
-        twilio_call_sid: callSid,
-        conversation_turns: [],
-        match: {
-          matched_type: contactName ? "contact" : "unknown",
-          matched_id: null,
-          match_type: contactName ? "phone" : "none",
-          contact_name: contactName,
-        },
-      });
+      .insert(sessionInsert);
 
     if (sessionErr) {
       console.error("Failed to create call session:", sessionErr);
