@@ -92,6 +92,10 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'PetmanagerMonitor': Eye,
   // Compliance Desk
   'ComplianceDeskRouter': Scale,
+  // Ncore, Otto², CommPro Desks
+  'NcoreDeskRouter': Globe,
+  'OttoDeskRouter': Landmark,
+  'CommProDeskRouter': Bot,
 };
 
 // Group configuration for grouping routes
@@ -151,7 +155,8 @@ function getGroupKey(path: string, component: string): string {
   // Operative Desks (Desks + LeadPool + Provisionen + Landing Pages)
   if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
        path.startsWith('acquiary') || path.startsWith('lead-desk') || path.startsWith('projekt-desk') ||
-       path.startsWith('pet-desk') || path.startsWith('service-desk')) {
+       path.startsWith('pet-desk') || path.startsWith('service-desk') ||
+       path.startsWith('ncore-desk') || path.startsWith('otto-desk') || path.startsWith('commpro-desk')) {
     return 'desks';
   }
   // Compliance Desk
@@ -180,7 +185,8 @@ function shouldShowInNav(path: string): boolean {
   // Show main desk entries
   if (path === 'sales-desk' || path === 'finance-desk' || path === 'acquiary' || 
       path === 'futureroom' || path === 'lead-desk' || 
-      path === 'projekt-desk' || path === 'pet-desk' || path === 'service-desk') {
+      path === 'projekt-desk' || path === 'pet-desk' || path === 'service-desk' ||
+      path === 'ncore-desk' || path === 'otto-desk' || path === 'commpro-desk') {
     return true;
   }
   // KI Office items — consolidated 3
@@ -205,7 +211,8 @@ function shouldShowInNav(path: string): boolean {
     path.startsWith('lead-desk/') ||
     path.startsWith('projekt-desk/') ||
     path.startsWith('pet-desk/') ||
-    path.startsWith('service-desk/')
+    path.startsWith('service-desk/') ||
+    path.startsWith('ncore-desk/') || path.startsWith('otto-desk/') || path.startsWith('commpro-desk/')
   )) {
     return false;
   }
