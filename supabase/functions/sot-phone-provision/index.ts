@@ -218,6 +218,9 @@ Deno.serve(async (req) => {
         console.warn("Could not fetch Twilio addresses:", e);
       }
 
+      // Lookup approved Regulatory Bundle for DE numbers
+      const DE_BUNDLE_SID = "BU7b6e70441548870e7a0655d5b4d63474";
+
       const buyUrl = `https://${selectedHost}/2010-04-01/Accounts/${TWILIO_SID}/IncomingPhoneNumbers.json`;
       const buyParams: Record<string, string> = {
         PhoneNumber: numberToBuy,
@@ -229,6 +232,11 @@ Deno.serve(async (req) => {
       };
       if (addressSid) {
         buyParams.AddressSid = addressSid;
+      }
+      // For regulated countries (DE), include the approved BundleSid
+      if (cc === "DE") {
+        buyParams.BundleSid = DE_BUNDLE_SID;
+        console.log("Using BundleSid for DE:", DE_BUNDLE_SID);
       }
       const buyBody = new URLSearchParams(buyParams);
 
