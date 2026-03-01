@@ -2401,6 +2401,7 @@ export type Database = {
       }
       armstrong_knowledge_items: {
         Row: {
+          brand_key: string | null
           category: string
           confidence: string | null
           content: string
@@ -2410,6 +2411,7 @@ export type Database = {
           id: string
           item_code: string
           org_id: string | null
+          phone_prompt_priority: number | null
           published_at: string | null
           reviewed_by: string | null
           scope: string
@@ -2423,6 +2425,7 @@ export type Database = {
           version: string | null
         }
         Insert: {
+          brand_key?: string | null
           category: string
           confidence?: string | null
           content: string
@@ -2432,6 +2435,7 @@ export type Database = {
           id?: string
           item_code: string
           org_id?: string | null
+          phone_prompt_priority?: number | null
           published_at?: string | null
           reviewed_by?: string | null
           scope?: string
@@ -2445,6 +2449,7 @@ export type Database = {
           version?: string | null
         }
         Update: {
+          brand_key?: string | null
           category?: string
           confidence?: string | null
           content?: string
@@ -2454,6 +2459,7 @@ export type Database = {
           id?: string
           item_code?: string
           org_id?: string | null
+          phone_prompt_priority?: number | null
           published_at?: string | null
           reviewed_by?: string | null
           scope?: string
