@@ -5,6 +5,7 @@
  * Sektion 3: Privatkredite (CRUD aus private_loans)
  */
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
@@ -18,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -54,6 +56,7 @@ const STATUS_OPTIONS = [
 
 export default function DarlehenTab() {
   const { activeTenantId, user } = useAuth();
+  const navigate = useNavigate();
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-KONTEN');
   const queryClient = useQueryClient();
@@ -204,9 +207,27 @@ export default function DarlehenTab() {
         title="Darlehen"
         description="Konsolidierte Übersicht aller privaten Verbindlichkeiten"
         actions={
-          <Button variant="glass" size="icon-round" onClick={() => { setShowNew(true); setSelectedId(null); setSelectedSection(null); }}>
-            <Plus className="h-5 w-5" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="glass" size="icon-round">
+                <Plus className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => navigate('/portal/miety')}>
+                <Home className="h-4 w-4 mr-2" />
+                Immobilien-Darlehen
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/portal/photovoltaik')}>
+                <Sun className="h-4 w-4 mr-2" />
+                Photovoltaik-Darlehen
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setShowNew(true); setSelectedId(null); setSelectedSection(null); }}>
+                <CreditCard className="h-4 w-4 mr-2" />
+                Privatkredit
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         }
       />
 
