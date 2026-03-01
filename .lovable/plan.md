@@ -1,109 +1,198 @@
 
 
-# PR 1 — Multi-Account + Unified Inbox: Detailplan & Risikoanalyse
+# PR 2 — Threading + Professionelle Suche: Detailplan & Risikoanalyse
 
 ---
 
 ## 1. Ist-Zustand (Analyse-Ergebnis)
 
-### Datenbank
-| Tabelle | Relevante Spalten | Indizes |
-|---------|-------------------|---------|
-| `mail_accounts` | id, tenant_id, user_id, provider, email_address, sync_status, ... | PK, user_id via RLS |
-| `mail_messages` | id, account_id, message_id, thread_id, folder, subject, from_address, is_read, received_at | `idx_mail_messages_account_folder`, `idx_mail_messages_thread`, `idx_mail_messages_received` |
+### Datenbank — thread_id
 
-### Aktuelle Konten in Produktion
-| E-Mail | Provider | User | Messages |
-|--------|----------|------|----------|
-| thomas.stelzl@systemofatown.com | IMAP | Thomas Stelzl | 23 (22 mit thread_id) |
-| otto.stelzl@zl-wohnbau.de | Google | Otto Stelzl (anderer Tenant) | 2 |
+| Provider | thread_id Quelle | Format | Beispiel |
+|----------|-----------------|--------|----------|
+| IMAP | `envelope.messageId` (RFC Message-ID Header) | `<uuid@domain>` | `<AM0PR07MB6305BC27...@eurprd07.prod.outlook.com>` |
+| Google | `detail.threadId` (Gmail-interner Thread-Identifier) | Alphanumerischer String | `19abc3f4e5d6` |
+| Microsoft | `msg.conversationId` (Graph API) | GUID-artiger String | `AAQkAGI2...` |
 
-### Code-Zustand
-- **EmailTab.tsx** (1123 Zeilen): `accounts[0]` hardcoded als `activeAccount` (Zeile 568)
-- **ComposeEmailDialog.tsx** (527 Zeilen): Empfaengt `accountId` + `accountEmail` als Props — kein Account-Switcher
-- **AccountIntegrationDialog.tsx** (696 Zeilen): Kann bereits mehrere Konten verwalten (Add/Delete/Sync-Toggles)
-- **sot-mail-sync**: Akzeptiert `accountId` — bereits Multi-Account-faehig
-- **sot-mail-send**: Akzeptiert `accountId` — bereits Multi-Account-faehig
-- **RLS**: `mail_messages` gefiltert ueber `account_id IN (SELECT id FROM mail_accounts WHERE user_id = auth.uid())` — korrekt fuer Multi-Account
+**Datenlage (Produktion):**
+- 25 Nachrichten gesamt, 22 mit thread_id, 3 ohne
+- **0 Threads mit >1 Nachricht** — alle 22 thread_ids sind einzigartig
+- Bestehender Index: `idx_mail_messages_thread` (btree auf thread_id)
 
-### Fazit: Backend ist bereits Multi-Account-faehig. Nur das Frontend muss angepasst werden.
+### Kritisches Problem: IMAP thread_id = Message-ID, NICHT Thread-ID
+
+Zeile 676 in `sot-mail-sync`:
+```
+thread_id: envelope.messageId || null
+```
+
+`envelope.messageId` ist die **einzigartige Message-ID** jeder einzelnen E-Mail (RFC 5322 `Message-ID`), **nicht** eine Thread-Gruppierung. Jede Nachricht bekommt dadurch eine eigene "thread_id". Das ist der Grund, warum alle 22 thread_ids einzigartig sind.
+
+**Gmail** nutzt korrekt `detail.threadId` (native Thread-Gruppierung).
+**Microsoft** nutzt korrekt `msg.conversationId` (native Thread-Gruppierung).
+**IMAP** hat **keine native Thread-ID** — muss per Heuristik gebaut werden.
+
+### Suche — Aktueller Zustand
+
+- `searchQuery` State existiert (Zeile 512), Input-Feld vorhanden (Zeile 1005-1011)
+- **searchQuery wird nirgends zum Filtern verwendet** — das Eingabefeld ist funktionslos
+- Alle Nachrichten werden mit `limit(50)` geladen, keine Pagination
+- Kein serverseitiger Suchendpoint vorhanden
 
 ---
 
 ## 2. Geplante Aenderungen
 
-### 2.1 EmailTab.tsx — Account-Switcher + Unified Inbox
+### 2.1 IMAP Threading-Fix (Backend — sot-mail-sync)
 
-**Problem**: Zeile 568 `const activeAccount = accounts[0]` ignoriert alle weiteren Konten.
+**Problem**: `envelope.messageId` ist keine Thread-ID.
 
-**Loesung**:
-- Neuer State: `selectedAccountId: string | 'all'` (Default: erstes Konto)
-- Account-Dropdown im Sidebar-Header (oberhalb des "Neue E-Mail"-Buttons)
-- Option "Alle Konten" als erster Eintrag im Dropdown
-- Provider-Badge (Google/IMAP-Icon) neben jedem Konto-Eintrag
+**Loesung — Subject-Normalisierung + In-Reply-To Heuristik**:
 
-**Query-Logik bei "Alle Konten"**:
+IMAP liefert per Envelope:
+- `messageId` — einzigartige ID dieser Nachricht
+- `inReplyTo` — Message-ID der Nachricht, auf die geantwortet wird (sofern vorhanden)
+- `subject` — Betreff
+
+**Algorithmus**:
+1. Normalisiere Subject: entferne `Re:`, `Fwd:`, `AW:`, `WG:` Prefixe, trimme
+2. Generiere `thread_id` als deterministischen Hash aus `account_id + normalized_subject`
+3. Nachrichten mit gleichem normalisierten Betreff im selben Account → gleiche thread_id
+
+**Warum nicht In-Reply-To allein?** Weil In-Reply-To nur bei Antworten gesetzt wird, nicht bei der Ursprungsmail. Subject-Heuristik deckt alle Faelle ab (Gmail und Outlook nutzen intern dasselbe Prinzip).
+
+**Format**: `imap_thread_<sha256(account_id + normalized_subject)>` — deterministisch, idempotent bei Re-Sync
+
+### 2.2 Frontend — Konversationsansicht
+
+**Aenderung in EmailTab.tsx:**
+
+1. Nachrichten nach `thread_id` gruppieren (Fallback: eigene Nachricht = eigener Thread)
+2. Message-Liste zeigt **Thread-Header** statt Einzelnachrichten:
+   - Absender der letzten Nachricht
+   - Thread-Subject
+   - Badge: Anzahl Nachrichten im Thread (wenn >1)
+   - Unread-Status: Fett wenn mindestens eine Nachricht ungelesen
+3. Detail-Panel: Bei Thread-Klick → alle Nachrichten chronologisch, mit Collapse/Expand
+
+**Gruppierungslogik** (client-seitig, da max 50 Nachrichten geladen):
+```typescript
+const threads = useMemo(() => {
+  const grouped = new Map<string, typeof messages>();
+  for (const msg of messages) {
+    const key = msg.thread_id || msg.id; // Fallback: eigene ID
+    const existing = grouped.get(key) || [];
+    existing.push(msg);
+    grouped.set(key, existing);
+  }
+  return Array.from(grouped.values())
+    .map(msgs => ({
+      threadId: msgs[0].thread_id || msgs[0].id,
+      messages: msgs.sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime()),
+      latestMessage: msgs[msgs.length - 1],
+      unreadCount: msgs.filter(m => !m.is_read).length,
+    }))
+    .sort((a, b) => new Date(b.latestMessage.received_at).getTime() - new Date(a.latestMessage.received_at).getTime());
+}, [messages]);
 ```
-// Statt .eq('account_id', activeAccount.id):
-selectedAccountId === 'all'
-  ? .in('account_id', accounts.map(a => a.id))
-  : .eq('account_id', selectedAccountId)
+
+### 2.3 Serverseitige Suche — Neue Edge Function
+
+**Neue Edge Function: `sot-mail-search`**
+
+**Parameter**:
+```typescript
+interface SearchRequest {
+  accountIds: string[];       // Filter auf Konten (RLS-geprüft)
+  q?: string;                 // Freitext: subject, from_address, from_name, snippet
+  folder?: string;            // INBOX, SENT, etc.
+  unreadOnly?: boolean;
+  starredOnly?: boolean;
+  hasAttachments?: boolean;
+  fromDate?: string;          // ISO date
+  toDate?: string;            // ISO date
+  limit?: number;             // Default 50, max 100
+  cursor?: string;            // received_at ISO timestamp für Pagination
+}
 ```
 
-**Auswirkungen auf bestehende Features**:
-- `syncMutation`: Bei "all" → sync alle Konten sequentiell oder nur aktives
-- `selectedEmail` Reset bei Account-Wechsel
-- Polling-Interval: Bei "all" → Query ueber alle account_ids
-- Delete/Archive/Star-Mutations: Bleiben unveraendert (arbeiten auf message.id)
+**Implementierung**: SQL-Query mit dynamischen WHERE-Bedingungen.
+Freitext-Suche ueber `subject ILIKE '%q%' OR from_address ILIKE '%q%' OR from_name ILIKE '%q%' OR snippet ILIKE '%q%'`.
 
-### 2.2 Message-Liste — Account-Badge bei Unified Inbox
+**Kein Volltextindex noetig** bei <10.000 Nachrichten pro User. ILIKE genuegt.
 
-- Wenn `selectedAccountId === 'all'`: Zeige kleine Badge mit Account-Email oder Provider-Icon neben jeder Nachricht
-- Nur sichtbar im "Alle Konten"-Modus, nicht bei einzelnem Account
+### 2.4 Frontend — Suchleiste + Filterbar
 
-### 2.3 ComposeEmailDialog — From-Account waehlbar
+**EmailTab.tsx:**
 
-**Problem**: `accountId` und `accountEmail` sind feste Props.
+1. Such-Input aktivieren (aktuell funktionslos) — Debounce 300ms
+2. Bei Eingabe: Edge-Function `sot-mail-search` aufrufen statt lokale Query
+3. Filter-Chips unterhalb der Suchleiste:
+   - Ungelesen | Mit Anhang | Markiert | Zeitraum
+4. Pagination: "Weitere laden" Button am Ende der Liste (Cursor-basiert)
 
-**Loesung**:
-- Neue Prop: `accounts: EmailAccount[]` (statt einzelner accountId/accountEmail)
-- Neue Prop: `defaultAccountId: string`
-- Im Dialog: "Von"-Feld wird zu einem Select-Dropdown statt read-only Text
-- Sende-Request nutzt den ausgewaehlten Account
+### 2.5 Neuer DB-Index fuer Suche
 
-### 2.4 EmailDetailPanel — Account-Info
+```sql
+CREATE INDEX idx_mail_messages_search 
+  ON mail_messages (account_id, folder, received_at DESC)
+  WHERE folder IS NOT NULL;
+```
 
-- Bei Unified Inbox: Zeige welches Konto die Mail empfangen hat (kleines Badge im Header)
+Bestehender `idx_mail_messages_account_folder` deckt bereits `(account_id, folder)` ab — genuegt fuer ILIKE-Queries mit Folder-Filter. Kein zusaetzlicher Index zwingend noetig.
 
 ---
 
 ## 3. Risikoanalyse
 
-### HOCH — Regression bei bestehendem Konto
-| Risiko | Beschreibung | Mitigation |
-|--------|-------------|------------|
-| selectedEmail Stale-Ref | Bei Account-Wechsel zeigt Detail-Panel eine Mail vom alten Account | Reset `selectedEmail = null` bei Account-Wechsel |
-| Body-Fetch mit falschem Account | `sot-mail-fetch-body` braucht Account-Kontext fuer IMAP-Credentials | Pruefe: Fetch-Body nutzt `email.id` + `email.message_id` → account kommt aus DB-Join, kein Client-seitiger Account noetig |
-| Sync-Button bei "Alle Konten" | Was passiert bei Klick? Alle synchen = mehrere Edge-Function-Calls parallel | Loesung: Bei "all" → sync alle Konten nacheinander mit Toast-Fortschritt |
+### HOCH — Thread-ID Migration (IMAP)
 
-### MITTEL — Query-Performance
 | Risiko | Beschreibung | Mitigation |
 |--------|-------------|------------|
-| `.in('account_id', [...])` Performance | Bei vielen Konten + vielen Mails | Bestehender Index `idx_mail_messages_account_folder` genuegt. Limit 50 bleibt. |
-| Polling bei "Alle Konten" | Aktuelle Polling-Query checkt nur einen Account | Polling-Query anpassen auf `.in(...)` analog zur Haupt-Query |
+| Bestehende thread_ids werden ueberschrieben | 22 IMAP-Nachrichten haben `envelope.messageId` als thread_id. Beim naechsten Sync wuerden sie neue Hash-basierte thread_ids bekommen | **Migration-Strategie**: Beim naechsten Sync werden alle IMAP-Nachrichten mit neuer thread_id geupdated. Da Upsert auf `(account_id, message_id)`, kein Datenverlust. Alter thread_id-Wert war ohnehin falsch/nutzlos |
+| Subject-Heuristik fehlerhaft | "Rechnung" und "Re: Rechnung" werden korrekt gruppiert, aber zwei verschiedene Rechnungs-Mails vom selben Absender ebenfalls | **Akzeptierbar**: Gmail hat dasselbe "Problem" by design. Thread-Splitting ist kein Feature fuer PR 2 |
+| Cross-Account Thread-Merging | Wenn User IMAP + Gmail hat: Dieselbe Konversation hat in IMAP eine Hash-ID und in Gmail eine native threadId. Diese werden NICHT gemergt | **Bewusste Entscheidung**: Cross-Account Thread-Merging ist Scope PR 4+. Threads sind account-scoped |
 
-### NIEDRIG — UI-Konsistenz
+### HOCH — Regression bei bestehendem E-Mail-Fluss
+
 | Risiko | Beschreibung | Mitigation |
 |--------|-------------|------------|
-| Folder-Counts pro Account | "Eingang (5)" bezieht sich auf welches Konto? | Vorerst keine Counts bei "Alle Konten", nur bei Einzel-Account |
-| ComposeEmailDialog State | Account-Wechsel waehrend Compose offen | Default-Account beim Oeffnen setzen, danach frei waehlbar |
+| selectedEmail Mapping bricht | Aktuell: `selectedEmail = message.id`. Bei Thread-View: selectedThread? | **Loesung**: Zwei States: `selectedThreadId` + `selectedMessageId`. Thread-Klick setzt Thread, Detail zeigt alle Messages. Single-Message-Klick innerhalb Thread setzt scrollTarget |
+| Delete/Archive/Star auf Thread vs. Message | Aktuell: Operationen auf Einzel-Message-ID | **Loesung**: Thread-Level-Actions (Delete Thread = alle Messages loeschen) + Message-Level-Actions im expandierten Thread |
+| Body-Fetch bei Thread-Expand | Wenn Thread 5 Nachrichten hat, muessen ggf. 5 Bodies geladen werden | **Loesung**: Lazy-Load — nur die sichtbar expandierte Nachricht fetched Body on-demand. Collapsed Messages zeigen nur Snippet |
+
+### MITTEL — Serverseitige Suche
+
+| Risiko | Beschreibung | Mitigation |
+|--------|-------------|------------|
+| ILIKE Performance bei vielen Mails | `ILIKE '%text%'` kann nicht Index-gestuetzt laufen | Bei <10.000 Mails pro User: <50ms. Bei >100k: pg_trgm Index noetig → Scope PR 4+ |
+| RLS-Bypass in Edge Function | `sot-mail-search` nutzt Service-Role-Key | **Muss**: Explizite WHERE `account_id IN (SELECT id FROM mail_accounts WHERE user_id = $auth_user_id)` als Guard |
+| Suchresultate vs. Thread-Gruppierung | Suche findet 3 von 5 Thread-Messages — Thread-Ansicht verwirrend | **Loesung**: Suchresultate als flache Liste anzeigen (kein Threading), mit "Thread anzeigen" Button pro Treffer |
+
+### MITTEL — UX-Konsistenz
+
+| Risiko | Beschreibung | Mitigation |
+|--------|-------------|------------|
+| Thread-Ansicht vs. Flat-Ansicht Toggle | User erwartet ggf. beide Modi | **PR 2 Scope**: Nur Thread-Ansicht (Default). Flat-Mode bleibt als Fallback bei Suche |
+| Pagination-UX | "Mehr laden" vs. Infinite Scroll | **Loesung**: Expliziter "Weitere laden" Button — einfacher, kein Scroll-Listener noetig |
+| Leere Threads bei Folder-Wechsel | Thread hat Messages in INBOX + SENT. Im Folder-View erscheint nur die INBOX-Haelfte | **Bewusste Entscheidung**: Threads werden per Folder gefiltert angezeigt. Cross-Folder-Thread-View = Scope PR 4+ |
+
+### NIEDRIG
+
+| Risiko | Beschreibung | Mitigation |
+|--------|-------------|------------|
+| Google threadId Format-Stabilitaet | Gmail threadId ist stabil und aendert sich nicht | Kein Risiko — native API-Garantie |
+| Microsoft conversationId Stabilitaet | Graph API conversationId ist stabil | Kein Risiko — native API-Garantie |
+| Filter-State Persistenz | Filter-Auswahl geht bei Tab-Wechsel verloren | URL-Params oder lokaler State — akzeptabel fuer PR 2 |
 
 ### KEIN RISIKO
-- **OAuth-Flows**: Werden nicht angefasst (nur Frontend-Wiring)
-- **sot-mail-send / sot-mail-sync**: Keine Aenderungen noetig (akzeptieren bereits accountId)
-- **RLS-Policies**: Bereits Multi-Account-sicher (user_id-basiert)
-- **Login/Routing**: Kein Kontakt mit Auth-System
-- **Zone 1 / Admin-Email**: Komplett separater Code-Pfad
+
+- **OAuth-Flows**: Nicht angefasst
+- **sot-mail-send**: Keine Aenderung (sendet Einzel-Messages, kein Thread-Kontext noetig)
+- **RLS-Policies**: Bestehende Policies bleiben korrekt
+- **sot-mail-fetch-body**: Keine Aenderung (arbeitet auf message.id, account-agnostisch via DB-Join)
+- **ComposeEmailDialog**: Keine Aenderung in PR 2
+- **Login/Routing**: Kein Kontakt
 
 ---
 
@@ -111,34 +200,51 @@ selectedAccountId === 'all'
 
 | Datei | Aenderung | Risiko |
 |-------|-----------|--------|
-| `src/pages/portal/office/EmailTab.tsx` | Account-State, Dropdown, Query-Logik, Polling, Sync-Button | MITTEL |
-| `src/components/portal/office/ComposeEmailDialog.tsx` | accounts-Prop, From-Dropdown | NIEDRIG |
-| Keine neuen Dateien | — | — |
-| Keine DB-Migration | — | — |
-| Keine Edge-Function-Aenderung | — | — |
+| `supabase/functions/sot-mail-sync/index.ts` | IMAP: thread_id Heuristik (Subject-Hash statt messageId) | HOCH |
+| `supabase/functions/sot-mail-search/index.ts` | **NEU** — Serverseitige Suche mit Filtern + Pagination | MITTEL |
+| `src/pages/portal/office/EmailTab.tsx` | Thread-Gruppierung, Thread-Detail-View, Such-Integration, Filter-Chips, Pagination | HOCH |
+| DB-Migration | Optional: Trigram-Index fuer Volltextsuche (nur bei >10k Messages noetig) | NIEDRIG |
 
-**Geschaetzter Umfang**: ~150 Zeilen geaendert/hinzugefuegt in 2 Dateien.
-
----
-
-## 5. Was wir NICHT anfassen (Scope-Grenzen PR 1)
-
-- Kein Threading (PR 2)
-- Keine serverseitige Suche (PR 2)
-- Keine Signature/Impressum-Engine (PR 3)
-- Keine neuen Edge Functions
-- Keine DB-Schema-Aenderungen
-- Kein neuer Index noetig (bestehende Indizes reichen)
+**Geschaetzter Umfang**: ~300 Zeilen geaendert/hinzugefuegt in 2-3 Dateien + 1 neue Edge Function (~150 Zeilen).
 
 ---
 
-## 6. Testplan
+## 5. Scope-Grenzen PR 2
 
-1. Einzelnes Konto: Alles funktioniert wie bisher (Regression-Check)
-2. Account-Wechsel: Mails wechseln, selectedEmail wird zurueckgesetzt
-3. "Alle Konten": Mails beider Konten gemischt, Account-Badge sichtbar
-4. Compose im "Alle Konten"-Modus: From-Account waehlbar, korrekte accountId beim Senden
-5. Reply/Forward: Verwendet das Konto der Original-Mail
-6. Sync bei "Alle Konten": Alle verbundenen Konten werden synchronisiert
-7. Body-Fetch: Funktioniert bei beiden Providern (IMAP + Google)
+| In Scope | Nicht in Scope |
+|----------|----------------|
+| IMAP thread_id Fix (Subject-Hash) | Cross-Account Thread-Merging |
+| Client-seitige Thread-Gruppierung | Volltextindex (pg_trgm) |
+| Serverseitige Suche (ILIKE) | Thread-Splitting bei gleichem Subject |
+| Filter: unread, starred, attachments, date | Saved Searches / Search History |
+| Cursor-basierte Pagination | Infinite Scroll |
+| Thread-Detail mit Collapse/Expand | Cross-Folder Thread-View |
+| Flat-List bei Suchresultaten | Signatur/Impressum (PR 3) |
+
+---
+
+## 6. Empfohlene Reihenfolge
+
+1. **Schritt 1**: `sot-mail-sync` IMAP thread_id Fix (Backend, isoliert testbar)
+2. **Schritt 2**: `sot-mail-search` Edge Function (Backend, isoliert testbar)
+3. **Schritt 3**: EmailTab Thread-Gruppierung + Thread-Detail (Frontend)
+4. **Schritt 4**: Such-Integration + Filter-Chips (Frontend)
+5. **Schritt 5**: Pagination "Weitere laden" (Frontend)
+
+Schritte 1+2 koennen parallel implementiert werden. Schritte 3-5 bauen aufeinander auf.
+
+---
+
+## 7. Testplan
+
+1. **IMAP Sync nach Fix**: Bestehende 22 Nachrichten bekommen neue thread_ids. Nachrichten mit gleichem normalisierten Subject gruppieren sich
+2. **Gmail Sync**: Thread-IDs bleiben unveraendert (native threadId)
+3. **Thread-Ansicht**: Threads mit >1 Nachricht zeigen Badge, expandieren korrekt
+4. **Single-Message Thread**: Verhaelt sich wie bisher (kein visueller Unterschied)
+5. **Suche**: Freitext findet Nachrichten ueber Subject, Absender, Snippet
+6. **Filter**: Ungelesen-Filter zeigt nur ungelesene Nachrichten/Threads
+7. **Pagination**: "Weitere laden" laedt naechste 50 Nachrichten korrekt
+8. **Regression**: Reply/Forward/Delete/Archive/Star funktionieren wie bisher
+9. **Body-Fetch**: On-demand Fetch im Thread-Detail funktioniert pro Nachricht
+10. **Unified Inbox + Threading**: Threads werden per Account gruppiert (kein Cross-Account-Merge)
 
