@@ -1,47 +1,52 @@
 
+Kurzbefund (Tiefenanalyse Login-Flow):
+1) Primärer Fehler liegt nicht mehr nur im Portal-Guard, sondern im OAuth-Return-Pfad:
+   - `src/components/auth/SocialLoginButtons.tsx` nutzt `redirect_uri: window.location.origin`
+   - Nach Google-Login landet der Nutzer auf `/`
+   - `src/App.tsx` leitet auf Brand-Domains bei `/` immer auf Zone 3 weiter (`getDomainEntry() ? domainEntry.base : /portal`)
+   - Ergebnis: erfolgreicher Login, aber Rückleitung auf Website statt Zone 2.
 
-## Problem: Portal-Guard blockiert authentifizierte Nutzer auf Brand-Domains
+2) Sekundärer Härtungspunkt:
+   - `src/router/ManifestRouter.tsx` prüft im Brand-Domain-Guard aktuell `session`.
+   - Für robuste Übergänge sollte die Entscheidung auf konsistentem Auth-State basieren (mind. `user || session`, mit Loading-Gate), damit keine Race-Conditions beim Initialisieren zu Website-Redirects führen.
 
-### Ursache
+Betroffene Dateien (direkt):
+- `src/components/auth/SocialLoginButtons.tsx`
+- `src/App.tsx`
+- `src/router/ManifestRouter.tsx`
+- `src/pages/Auth.tsx` (nur als Redirect-Referenz, vermutlich ohne Logikänderung)
 
-In `ManifestRouter.tsx` (Zeile 82-88) gibt es einen Portal-Guard:
+Betroffene Dateien (prüfen/Regression):
+- `src/pages/zone3/futureroom/FutureRoomLogin.tsx` (nutzt dieselben Social Buttons)
+- `src/contexts/AuthContext.tsx` (nur Verifikation des State-Timings, keine Strukturänderung geplant)
 
-```text
-Route /portal/* →
-  IF domainEntry exists (= Brand-Domain wie systemofatown.com)
-    → REDIRECT to /website/sot   ← PROBLEM
-  ELSE
-    → Zone2Router
-```
+Umsetzungsplan (konkret):
+1) OAuth-Redirect zielgerichtet machen
+   - In `SocialLoginButtons` Redirect-Ziel kontextabhängig setzen:
+     - Portal-Login (`variant="portal"`): `redirect_uri = ${window.location.origin}/portal`
+     - FutureRoom-Login (`variant="futureroom"`): eigener Zielpfad (z. B. aktueller Pfad oder definierter FutureRoom-Flow)
+2) Root-Route in `App.tsx` auth-aware machen (Fail-safe)
+   - Bei Brand-Domain + aktivem Login nicht pauschal auf Website umleiten.
+   - Ziel: eingeloggte Nutzer dürfen von `/` nach `/portal`, anonyme Nutzer weiter auf Brand-Website.
+3) Portal-Guard in `ManifestRouter.tsx` robust machen
+   - Guard-Entscheidung an stabilen Auth-Status koppeln (Loading beachten, dann `user/session`).
+4) Optionales Debug-Instrument (temporär)
+   - Kurze, gezielte Debug-Logs im Redirect-Pfad (nur DEV), um final zu bestätigen:
+     `origin path -> oauth return -> auth state -> final route`.
+5) Regressionstest End-to-End
+   - Brand-Domain (`systemofatown.com`): `/auth` -> Google -> erwartetes Ziel `/portal`
+   - Otto/ZL-Domain (`zl-wohnbau.de`): gleicher Test
+   - Logout + erneuter Login
+   - FutureRoom-Social-Login separat prüfen, damit dort kein Redirect-Bruch entsteht.
 
-Wenn der Nutzer sich auf `systemofatown.com` einloggt, navigiert `Auth.tsx` (Zeile 34) nach `/portal`. Der Guard erkennt die Brand-Domain und leitet sofort zurück zur Website — **unabhängig davon, ob der Nutzer eingeloggt ist**.
+Codex-Review Empfehlung:
+Ja, unbedingt parallel von Codex gegenprüfen lassen, mit Fokus auf:
+- Redirect-Kette (OAuth return URI -> `/` route -> domain redirect)
+- Auth-State-Race beim App-Start
+- Unterschied `user` vs `session` als Guard-Kriterium
+- Regression auf Zone 3 Login-Flows
 
-### Lösung
-
-Den Portal-Guard in `ManifestRouter.tsx` so anpassen, dass **authentifizierte Nutzer** auf Brand-Domains trotzdem Zone 2 erreichen. Nur **nicht-authentifizierte** Besucher werden zur Website umgeleitet.
-
-### Änderungen
-
-**1. `src/router/ManifestRouter.tsx`** — Portal-Guard um Auth-Check erweitern:
-- Neuen Guard-Komponenten `PortalOrWebsiteRedirect` erstellen, der den Auth-Status prüft
-- Wenn User eingeloggt → Zone2Router laden
-- Wenn User nicht eingeloggt → zur Brand-Website weiterleiten (bisheriges Verhalten)
-
-```text
-Route /portal/* →
-  IF domainEntry exists
-    IF user authenticated → Zone2Router  ← NEU
-    ELSE → REDIRECT to /website/sot     ← wie bisher
-  ELSE
-    → Zone2Router
-```
-
-**2. Auth-Status**: Nutzt den bestehenden `useAuth()` Hook aus `@/contexts/AuthContext` — kein neuer State nötig.
-
-### Technische Details
-
-- Die Komponente `PortalOrWebsiteRedirect` wird inline im ManifestRouter definiert
-- Sie nutzt `useAuth()` für den Session-Check und zeigt einen Loading-Spinner während `isLoading`
-- Keine Änderungen an Zone-Grenzen, Manifests oder Freeze-geschützten Modulen nötig
-- Betrifft nur `ManifestRouter.tsx` (nicht frozen, kein Modul-Pfad)
-
+Antwort zu Credits (offizielle Policy):
+- Monatscredits werden pro Abrechnungsperiode zurückgesetzt (am monatlichen Verlängerungszeitpunkt deines Plans, nicht zwingend am 1. Kalendertag).
+- Tägliche Credits resetten täglich um 00:00 UTC.
+- Falls dein Konto heute nicht korrekt zurückgesetzt wurde, ist sehr wahrscheinlich der Billing-Cycle-Zeitpunkt noch nicht erreicht oder es betrifft die Free-Plan-/Monatsgrenze; bitte in Settings → Plans & Credits den exakten Reset-Zeitpunkt prüfen.
