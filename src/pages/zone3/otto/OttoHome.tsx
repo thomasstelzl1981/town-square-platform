@@ -12,6 +12,8 @@ import {
   Settings, ClipboardCheck, RefreshCw, Heart
 } from 'lucide-react';
 import heroFamilyImg from '@/assets/otto/hero-family-home.jpg';
+import ottoStelzlImg from '@/assets/otto/otto-stelzl.jpg';
+import thomasStelzlImg from '@/assets/otto/thomas-stelzl.jpg';
 import advisoryImg from '@/assets/otto/advisory-session.jpg';
 import natureImg from '@/assets/otto/bavarian-nature.jpg';
 import houseImg from '@/assets/otto/modern-house.jpg';
@@ -110,6 +112,34 @@ export default function OttoHome() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Ihre Berater */}
+      <section className="py-16 px-4 border-t border-slate-100 bg-white">
+        <div className="mx-auto max-w-3xl text-center">
+          <h2 className="mb-10 text-2xl font-bold text-slate-800">Ihre Berater</h2>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-10 sm:gap-16 mb-8">
+            <div className="flex flex-col items-center">
+              <img src={ottoStelzlImg} alt="Otto Stelzl — Geschäftsführer" className="h-40 w-40 rounded-full object-cover shadow-md mb-4" />
+              <p className="font-semibold text-lg text-slate-800">Otto Stelzl</p>
+              <p className="text-sm text-slate-500">Geschäftsführer</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img src={thomasStelzlImg} alt="Thomas Otto Stelzl — Finanzberater" className="h-40 w-40 rounded-full object-cover shadow-md mb-4" />
+              <p className="font-semibold text-lg text-slate-800">Thomas Otto Stelzl</p>
+              <p className="text-sm text-slate-500">Finanzberater</p>
+            </div>
+          </div>
+          <p className="mx-auto max-w-xl text-slate-600 italic leading-relaxed mb-8">
+            „Herzlich willkommen bei Otto² Advisory! Wir freuen uns darauf, Sie kennenzulernen. Unser Versprechen: Pragmatisch und ehrlich beraten — immer. Wir laden Sie herzlich ein zu einem unverbindlichen Kennenlernen."
+          </p>
+          <Link
+            to="/website/otto-advisory/kontakt"
+            className="inline-flex items-center gap-2 text-sm font-medium text-[#0055A4] hover:underline"
+          >
+            Kontakt aufnehmen <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
 
