@@ -1,61 +1,53 @@
 
 
-# Analyse CommPro Desk — Befunde und Maßnahmen
+# Analyse: Speichern, Sync und Stimmenauswahl im CommPro Desk
 
-## Befund 1: Sync-Button ist defekt (kritischer Bug)
+## Deine Fragen beantwortet
 
-Die `AgentSyncCard` sendet `brand_key` an die Edge Function, aber `sot-phone-agent-sync` erwartet `assistant_id`. Jeder Klick auf "Agent synchronisieren" liefert den Fehler `assistant_id required`. Der Sync funktioniert für keine einzige Marke über die UI.
+### 1. "Speichert das automatisch?"
+Ja. Der `useBrandPhoneAssistant`-Hook hat einen **Auto-Save mit 500ms Debounce**. Jede Änderung (Slider, Preset-Auswahl etc.) wird automatisch in die Datenbank geschrieben. Du siehst oben rechts kurz "Speichern..." und dann "Gespeichert". Es gibt absichtlich keinen manuellen Speichern-Button.
 
-**Fix:** `AgentSyncCard` muss die `config.id` (= assistant_id) aus dem Hook mitsenden.
+### 2. "Muss man danach synchronisieren?"
+Ja. Auto-Save speichert nur in die **Datenbank**. Damit ElevenLabs die neuen Einstellungen übernimmt, muss danach "Agent synchronisieren" oder "Alle synchronisieren" geklickt werden. Das ist by design zweistufig: erst alles in Ruhe konfigurieren, dann einmal synchronisieren.
 
-## Befund 2: 6 von 7 Brands haben keinen ElevenLabs-Agent
+### 3. "Wie kriegen wir die Stimmenauswahl hin?"
+Die `VoiceSettingsCard` zeigt aktuell nur 6 Presets (Warm, Klar, etc.) und 3 Slider, aber **keine echte ElevenLabs-Stimmenauswahl** (Voice ID). Der "Voice Provider" Dropdown steht auf "Connect folgt...". Das ist der fehlende Baustein.
 
-| Brand | Telefonnummer | ElevenLabs Agent | Prompt | Status |
-|-------|--------------|-----------------|--------|--------|
-| Ncore | +4989... | Vorhanden | 2.700+ Zeichen | Funktionsfähig |
-| Kaufy | +498941432270 | FEHLT | LEER | Nicht funktionsfähig |
-| FutureRoom | +498941432401 | FEHLT | LEER | Nicht funktionsfähig |
-| Acquiary | +498941432188 | FEHLT | LEER | Nicht funktionsfähig |
-| SoT | (vorhanden) | FEHLT | LEER | Nicht funktionsfähig |
-| Lennox | +498941434901 | FEHLT | LEER | Nicht funktionsfähig |
-| Otto² | (vorhanden) | FEHLT | LEER | Nicht funktionsfähig |
+## Plan: Echte ElevenLabs-Stimmenauswahl einbauen
 
-Die Telefonnummern existieren in Twilio, sind aber nicht mit ElevenLabs verbunden. Anrufe werden derzeit nicht beantwortet.
+Da die `VoiceSettingsCard` in MOD-14 (frozen) liegt, erstelle ich eine **Zone-1-eigene Variante** in `src/components/admin/desks/commpro/`.
 
-**Fix:** Nach dem Bug-Fix muss jede Marke einmal synchronisiert werden. Dafür baue ich zusätzlich einen "Alle synchronisieren"-Button.
+### Was gebaut wird
 
-## Befund 3: Wissensbasis ist dünn und enthält keine Website-Inhalte
+1. **`BrandVoiceCard.tsx`** (neue Datei in `src/components/admin/desks/commpro/`)
+   - Dropdown mit den wichtigsten ElevenLabs-Stimmen (deutsche + internationale Top-Stimmen)
+   - Die bestehenden Presets und Slider bleiben erhalten
+   - Zusätzlich: Feld für `elevenlabs_voice_id` das bei Sync an ElevenLabs übergeben wird
+   - Hinweis "Nach Änderung bitte synchronisieren" als visueller Reminder
 
-Jede Marke (außer Ncore) hat nur 3 Knowledge-Items mit jeweils 100-300 Zeichen:
-- Persona (Begrüßung)
-- Kontaktinfos (Adresse)
-- Kernleistungen (1-2 Sätze)
+2. **`BrandAssistantPanel.tsx`** anpassen
+   - `VoiceSettingsCard` (frozen MOD-14 import) ersetzen durch die neue `BrandVoiceCard`
 
-Es gibt **keinen Bezug auf die Zone-3-Websites**. Armstrong kennt die Inhalte der Websites nicht.
+3. **DB-Feld prüfen**
+   - Sicherstellen, dass `commpro_phone_assistants` ein Feld für die Voice-ID hat (oder im `voice_settings` JSON-Objekt speichern)
 
-**Fix:** Ich reichere die Knowledge Items für alle 6 Brands erheblich an — mit konkreten Leistungen, USPs, Zielgruppen und FAQ-Szenarien, basierend auf dem bekannten Brand-Wissen. Die Website-Inhalte fließen als Knowledge Items in den Store.
+4. **Edge Function `sot-phone-agent-sync`** anpassen
+   - Voice-ID aus der Config auslesen und beim Sync an ElevenLabs als `voice.voice_id` übergeben
 
-## Implementierungsplan
+### Stimmen-Auswahl (vorgeschlagen)
 
-### Schritt 1: AgentSyncCard Bug-Fix
-- `config.id` als `assistant_id` an die Edge Function übergeben statt `brand_key`
-- Auch `brand_key` weiterhin mitsenden (für Logging)
+| Name | ID | Charakter |
+|------|-----|-----------|
+| Roger | CwhRBWXzGAHq8TQ4Fs17 | Professionell, männlich |
+| Sarah | EXAVITQu4vr4xnSDxMaL | Freundlich, weiblich |
+| Laura | FGY2WhTYpPnrIDTdsKH5 | Warm, weiblich |
+| George | JBFqnCBsd6RMkjVDRZzb | Seriös, männlich |
+| Callum | N2lVS1w4EtoT3dr4eOWO | Ruhig, männlich |
+| Alice | Xb7hH8MSUJpSbSDYk0k2 | Klar, weiblich |
+| Daniel | onwK4e9ZLuTAKqWW03F9 | Deutsch-optimiert, männlich |
 
-### Schritt 2: "Alle Brands synchronisieren"-Button
-- Neuer Button im CommProDesk-Header oder in der AgentSyncCard
-- Iteriert über alle 7 Assistenten und ruft sync für jeden auf
-- Fortschrittsanzeige (3/7 synchronisiert...)
-
-### Schritt 3: Knowledge-Items anreichern (SQL Migration)
-Für jede der 6 Brands (Kaufy, FutureRoom, Acquiary, SoT, Lennox, Otto²) werden die bestehenden 3 Items inhaltlich erweitert und 2-4 zusätzliche Items hinzugefügt:
-
-- **Kaufy**: KI-Exposé-Analyse, Immobilienmarktplatz, Käufer/Verkäufer-Matching, Preisvergleich
-- **FutureRoom**: Digitale Immobilienplattform, Mieterverwaltung, Smart-Home-Integration
-- **Acquiary**: Institutionelle Investmentanalyse, Portfolio-Bewertung, Due Diligence
-- **SoT**: Plattform-Governance, Multi-Brand-Orchestrierung, Technologie-Stack
-- **Lennox**: Pet-Services, Tracker, Lakefields Futter, Robyn Gebhard als Gründerin
-- **Otto²**: Baufinanzierung, Versicherungsberatung, Ruselstraße 16 Bogen
-
-### Schritt 4: Edge Function anpassen
-- Optional `brand_key` als alternativen Lookup akzeptieren (Fallback wenn `assistant_id` fehlt)
+### Nicht geändert
+- `VoiceSettingsCard.tsx` (MOD-14 frozen, bleibt unberührt)
+- Auto-Save-Logik (funktioniert korrekt, bleibt wie ist)
+- Sync-Button-Logik (zweistufiger Prozess bleibt)
 
