@@ -38,6 +38,7 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([]);
   const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<'all' | 'Local' | 'Mobile' | 'TollFree'>('Local');
 
   const hasNumber = !!config.twilio_phone_number_e164;
 
@@ -258,9 +259,29 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
             </div>
           ) : (
             <>
+              {/* Type filter toggles */}
+              <div className="flex gap-1 flex-wrap">
+                {([['all', 'Alle'], ['Local', 'Festnetz'], ['Mobile', 'Mobil'], ['TollFree', 'Gebührenfrei']] as const).map(([value, label]) => {
+                  const count = value === 'all' ? availableNumbers.length : availableNumbers.filter(n => n.type === value).length;
+                  return (
+                    <Button
+                      key={value}
+                      size="sm"
+                      variant={filterType === value ? 'default' : 'outline'}
+                      onClick={() => { setFilterType(value); setSelectedNumber(null); }}
+                      className="text-xs"
+                    >
+                      {label} ({count})
+                    </Button>
+                  );
+                })}
+              </div>
+
               <ScrollArea className="max-h-[360px] pr-2">
                 <div className="space-y-2">
-                  {availableNumbers.map((n) => {
+                  {availableNumbers
+                    .filter(n => filterType === 'all' || n.type === filterType)
+                    .map((n) => {
                     const isSelected = selectedNumber === n.phone_number;
                     return (
                       <button
@@ -292,6 +313,11 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
                       </button>
                     );
                   })}
+                  {availableNumbers.filter(n => filterType === 'all' || n.type === filterType).length === 0 && (
+                    <div className="text-center py-6 text-muted-foreground text-sm">
+                      Keine Nummern dieses Typs verfügbar.
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
 
