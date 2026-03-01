@@ -126,6 +126,30 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Debug action: inspect bundle item assignments
+    if (action === "debug_bundle") {
+      const bundleSid = DE_BUNDLES["Local"];
+      if (!bundleSid) {
+        return new Response(JSON.stringify({ error: "No Local bundle configured" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const assignUrl = `https://numbers.twilio.com/v2/RegulatoryCompliance/Bundles/${bundleSid}/ItemAssignments`;
+      console.log("debug_bundle: fetching", assignUrl);
+      const assignRes = await fetch(assignUrl, {
+        headers: { Authorization: `Basic ${twilioAuth}` },
+      });
+      const rawText = await assignRes.text();
+      console.log("debug_bundle: status", assignRes.status, "body:", rawText);
+      let parsed: any = null;
+      try { parsed = JSON.parse(rawText); } catch { /* */ }
+      return new Response(JSON.stringify({
+        bundle_sid: bundleSid,
+        status: assignRes.status,
+        raw: parsed || rawText,
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ── SEARCH: return a list of available numbers ──
     if (action === "search") {
       const cc = country_code || "DE";
@@ -289,15 +313,18 @@ Deno.serve(async (req) => {
         StatusCallbackMethod: "POST",
         FriendlyName: friendlyName,
       };
-      // For DE: send BOTH BundleSid AND the bundle's own AddressSid
+      // For DE: send BundleSid only. Do NOT send AddressSid — Twilio resolves
+      // the address from the bundle's own ItemAssignments (End-User contains address).
+      // Sending a separate AddressSid that isn't explicitly assigned in the bundle
+      // triggers error 21651 ("Address not contained in bundle").
       if (cc === "DE") {
         const bundleSid = DE_BUNDLES[purchaseType];
         if (bundleSid) {
           buyParams.BundleSid = bundleSid;
           console.log("Using BundleSid for DE:", bundleSid, "type:", purchaseType);
         }
-      }
-      if (addressSid) {
+      } else if (addressSid) {
+        // Non-DE: use address if available
         buyParams.AddressSid = addressSid;
         console.log("Using AddressSid:", addressSid);
       }
