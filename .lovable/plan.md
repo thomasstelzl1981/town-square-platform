@@ -1,25 +1,83 @@
 
 
-## Analyse
+## Status-Übersicht: Was ist schon gebaut, was fehlt?
 
-Der Kauf hat funktioniert (Status 200, Nummer `+498941433040` erfolgreich zugewiesen). Das Problem: Nach dem Kauf zeigt die UI nur einen kurzen Toast "Nummer gekauft" und schliesst den Dialog. Die Karte aktualisiert sich zwar (die Nummer erscheint im Input-Feld), aber es fehlt ein visueller Erfolgs-Moment.
+### Bereits funktionsfähig
 
-## Plan
+| Komponente | Status | Beschreibung |
+|---|---|---|
+| **Nummernkauf** (`sot-phone-provision`) | ✅ Fertig | DE Local mit Bundle + Address |
+| **Anruf-Empfang** (`sot-phone-inbound`) | ⚠️ Nur Anrufbeantworter | Begrüßung per TwiML `<Say>` → `<Record>` (Voicemail) |
+| **Post-Call** (`sot-phone-postcall`) | ✅ Fertig | LLM-Zusammenfassung, Action Items, Armstrong-Email (Zone 2) |
+| **UI-Konfiguration** (`KiTelefonPage`) | ✅ Fertig | Stimme, Begrüßung, Regeln, Dokumentation |
+| **Admin-Email (Zone 1)** | ❌ Fehlt | Kein Benachrichtigungs-Email an den Admin |
 
-**Datei:** `src/components/communication-pro/phone-assistant/StatusForwardingCard.tsx`
+### Wer geht ans Telefon? — Aktueller Stand
 
-Einen **Success-State** nach dem Kauf einbauen:
+Aktuell funktioniert das System als **intelligenter Anrufbeantworter**: Twilio spielt eine TTS-Begrüßung ab (Amazon Polly.Marlene), dann wird eine Voicemail aufgenommen. Danach erstellt die KI eine Zusammenfassung und sendet sie per E-Mail an die Armstrong-Adresse des Nutzers.
 
-1. Neuen State `purchaseSuccess` + `purchasedNumber` hinzufuegen
-2. Nach erfolgreichem Kauf (`handlePurchaseSelected`): statt Dialog sofort zu schliessen, auf eine Erfolgsansicht im Dialog umschalten
-3. Erfolgsansicht zeigt:
-   - Gruenes Haekchen-Icon mit Animation
-   - "Herzlichen Glueckwunsch!" Ueberschrift
-   - "Ihre neue Business-Nummer: +49 89 414 33040" (formatiert)
-   - Kurzer Hinweistext: "Sie koennen diese Nummer direkt nutzen oder Ihre bisherige Nummer per Rufweiterleitung darauf umleiten."
-   - Button "Verstanden" der den Dialog schliesst und `onRefresh()` ausfuehrt
+Es gibt **kein echtes KI-Gespräch** — der Anrufer kann nicht mit der KI interagieren.
 
-4. `onRefresh()` wird erst beim Schliessen des Erfolgs-Dialogs aufgerufen (nicht sofort nach Kauf), damit der Nutzer die Erfolgsmeldung in Ruhe lesen kann.
+### Die drei Ausbaustufen
 
-Keine weiteren Dateien betroffen. Keine DB-Aenderungen noetig.
+```text
+┌─────────────────────────────────────────────────────────┐
+│ Stufe 1: Anrufbeantworter (AKTUELL)                     │
+│ Twilio <Say> → <Record> → LLM-Summary → Email          │
+│ Anrufer spricht auf Band, KI fasst zusammen             │
+├─────────────────────────────────────────────────────────┤
+│ Stufe 2: Twilio <Gather> + LLM Loop (NÄCHSTER SCHRITT)  │
+│ Anrufer spricht → Speech-to-Text → LLM antwortet       │
+│ → TTS spricht zurück → Loop bis Gespräch beendet        │
+│ Latenz: ~3-5 Sek pro Antwort, aber funktional           │
+├─────────────────────────────────────────────────────────┤
+│ Stufe 3: ElevenLabs Conversational AI (PREMIUM/ZUKUNFT) │
+│ Twilio <Stream> → WebSocket → ElevenLabs Agent          │
+│ Echtzeit-Konversation, <1s Latenz, natürliche Stimme    │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Vorgeschlagener Plan — 3 Aufgaben
+
+**1. Admin-Email (Zone 1) im Postcall ergänzen**
+
+In `sot-phone-postcall/index.ts`: Nach der Armstrong-Email (Zone 2) eine zweite E-Mail an eine Admin-Adresse senden. Quelle: aus der `commpro_phone_assistants`-Tabelle das Feld `brand_key` lesen → falls vorhanden, Admin-Empfänger aus einer Konfig-Tabelle oder Konstante ziehen. Für User-Assistenten (Zone 2) geht die Admin-Kopie an eine zentrale Adresse (z.B. `info@systemofatown.com`).
+
+**2. Stufe 2 implementieren: Echtes KI-Gespräch via Gather-Loop**
+
+In `sot-phone-inbound/index.ts` den aktuellen `<Record>`-Ansatz durch einen `<Gather input="speech">` Loop ersetzen:
+
+- Anrufer spricht → Twilio transkribiert per STT
+- Transkript wird an neue Edge Function `sot-phone-converse` gesendet
+- LLM generiert Antwort basierend auf `behavior_prompt` und Gesprächskontext
+- TwiML `<Say>` spricht die Antwort → neuer `<Gather>` für nächste Runde
+- Loop endet nach Stille, "Tschüss"-Erkennung, oder Max-Dauer
+- Am Ende → `sot-phone-postcall` für Summary + Email
+
+Konfiguration erfolgt komplett über die bestehende UI (Begrüßung, Regeln, Verhaltensprompt).
+
+**3. Gesprächskontext-Speicher**
+
+Neue Hilfstabelle oder JSON-Feld in `commpro_phone_call_sessions` für den laufenden Gesprächsverlauf (turns), damit der LLM bei jedem Gather-Callback den bisherigen Dialog kennt.
+
+### Technische Details
+
+**Gather-Loop Architektur:**
+```text
+Anrufer ruft an
+  → sot-phone-inbound: TwiML <Say> Begrüßung + <Gather input="speech">
+    → Twilio STT transkribiert
+    → POST an sot-phone-converse mit SpeechResult + CallSid
+      → Lade Gesprächsverlauf aus DB
+      → LLM (gemini-2.5-flash) generiert Antwort
+      → Speichere Turn in DB
+      → Return TwiML: <Say> Antwort + <Gather> (nächste Runde)
+    → Bei Stille/Timeout: <Say> Verabschiedung + <Hangup>
+  → Twilio ruft StatusCallback → sot-phone-postcall
+    → Summary + Armstrong-Email + Admin-Email
+```
+
+**Keine neuen Secrets nötig** — nutzt bestehenden Lovable AI Gateway.
+
+**Keine UI-Änderungen nötig** — die vorhandenen Felder (Begrüßung, Verhaltensprompt, Regeln, Max-Dauer) steuern das Verhalten bereits.
 
