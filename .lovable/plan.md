@@ -1,135 +1,133 @@
 
 
-# Research & Search Engine Audit — Apollo-Elimination + Provider-Klarheit
+# Zone 2 Search Engines — Tiefenanalyse & Eignungsbewertung
 
-## Befund nach tiefer Analyse
+## Uebersicht: 5 Search-Implementierungen in Zone 2
 
-### Die zentrale Engine: `sot-research-engine` (1206 Zeilen)
+### 1. MOD-04 Immobilien — Sanierung: Handwerker-Suche
 
-Die zentrale Engine existiert und funktioniert. Sie nutzt **3 aktive Provider**:
+| Eigenschaft | Detail |
+|-------------|--------|
+| **Datei** | `src/components/portal/immobilien/sanierung/tender/ProviderSearchPanel.tsx` |
+| **Hook** | `useResearchEngine` (shared) |
+| **Intent** | `find_contractors` |
+| **Provider** | Google Places → Firecrawl (E-Mail) |
+| **Suchzweck** | Sanitaer, Elektriker, Dachdecker etc. nach Kategorie + Standort finden |
+| **Bewertung** | **GEEIGNET** — Nutzt den shared Hook korrekt, Auto-Suche bei Standort, manuelle E-Mail-Eingabe als Fallback, Progress-Indicator vorhanden |
 
-| Provider | Secret | Status | Zweck |
-|----------|--------|--------|-------|
-| **Google Places** (New API) | `GOOGLE_MAPS_API_KEY` | Konfiguriert, aktiv | Discovery: Firmen finden nach Name/Ort |
-| **Apify** | `APIFY_API_TOKEN` | Konfiguriert, aktiv | Portal-Scraping (ImmoScout, Immowelt, eBay) + Google Maps Scraper |
-| **Firecrawl** | `FIRECRAWL_API_KEY` | Konfiguriert, aktiv | E-Mail-Extraktion von Firmenwebsites |
-| **Netrows** | `NETROWS_API_KEY` | Konfiguriert, aktiv | LinkedIn-Scraping (Person/Company) |
-| **Lovable AI** | `LOVABLE_API_KEY` | Konfiguriert, aktiv | Merge, Deduplizierung, Scoring |
+**Staerken:** Saubere Architektur, Kategorie-Mapping (sanitaer→"Sanitaer Installateur"), automatische Suche bei Standort-Aenderung, Checkbox-Selektion mit manueller E-Mail-Ergaenzung.
 
-**Apollo ist KEIN Provider in `sot-research-engine`.** Die Engine hat Apollo nie als Provider genutzt — sie nutzt Google Places, Apify, Firecrawl und Netrows.
+**Schwaechen:** Keine.
+
+---
+
+### 2. MOD-11 Finanzierungsmanager — Bankensuche
+
+| Eigenschaft | Detail |
+|-------------|--------|
+| **Datei** | `src/pages/portal/finanzierungsmanager/FMEinreichung.tsx` |
+| **Hook** | `useResearchEngine` (shared) |
+| **Intent** | `find_companies` |
+| **Provider** | Google Places |
+| **Suchzweck** | Regionalbanken nach PLZ/Ort finden fuer Finanzierungseinreichung |
+| **Bewertung** | **GEEIGNET** — Nutzt den shared Hook korrekt, Auto-Suche aus Falldaten (PLZ/Stadt), Ergebnisse direkt als Bank-Auswahl nutzbar |
+
+**Staerken:** Auto-Suchbegriff aus Antragsdaten, Reset bei Fall-Wechsel.
+
+**Schwaechen:** Keine.
 
 ---
 
-### Apollo Dead Code — Vollstaendige Liste
+### 3. MOD-12 Akquise — Tools: Portal-Recherche
 
-| Typ | Datei/Stelle | Problem |
-|-----|-------------|---------|
-| **Edge Function** | `supabase/functions/sot-apollo-search/` | Komplette Apollo.io API-Integration, wird von NIEMANDEM aufgerufen |
-| **Edge Function** | `supabase/functions/sot-research-pro-contacts/` | Stub das "Apollo-Ersatz" sein sollte, liefert nur Mock-Daten |
-| **UI-Code** | `src/pages/portal/akquise-manager/AkquiseMandate.tsx` | `handleApolloSearch`, `showApolloDialog`, `apolloForm`, `apolloLoading`, SOURCE_CONFIG mit `apollo`-Eintrag — Button "Apollo" in UI |
-| **UI-Code** | `src/pages/portal/akquise-manager/components/SourcingTab.tsx` | Identische Duplikation: `handleApolloSearch`, Apollo-Dialog, Apollo-Button |
-| **Hook** | `src/hooks/useAdminResearch.ts` | Interface `ApolloSearchParams`, `ApolloContact`, Funktion `startApolloSearch` — alles Apollo-benannt, ruft aber `sot-research-engine` auf |
-| **Hook** | `src/hooks/useAcqContacts.ts` | Type `ContactStagingSource` enthaelt `'apollo'` als Wert |
-| **Manifest** | `src/manifests/armstrongManifest.ts` | Zeile 648: "Sucht professionelle Kontakte ueber Apollo" |
+| Eigenschaft | Detail |
+|-------------|--------|
+| **Datei** | `src/pages/portal/akquise-manager/components/PortalSearchTool.tsx` |
+| **Hook** | `usePortalSearch` aus `useAcqTools.ts` |
+| **Intent** | `search_portals` |
+| **Provider** | Apify (Portal-Scraping) |
+| **Suchzweck** | ImmoScout24, Immowelt, eBay durchsuchen nach Listings oder Maklern |
+| **Bewertung** | **GEEIGNET** — Eigener Hook mit Mutation-Pattern, Portal-spezifische Config (Preisfilter, Objekttypen), sauber ueber `sot-research-engine` geroutet |
 
-### Weitere tote/doppelte Edge Functions
+**Staerken:** Portal-Auswahl, Preis-Range, Objekttyp-Filter, Broker/Listing-Toggle.
 
-| Function | Status | Empfehlung |
-|----------|--------|------------|
-| `sot-apollo-search` | **DEAD** — 0 Aufrufe, braucht `APOLLO_API_KEY` (nicht konfiguriert) | **Loeschen** |
-| `sot-research-pro-contacts` | **STUB** — liefert nur Mock-Daten, 0 echte Logik | **Loeschen** |
-| `sot-places-search` | **DEAD** — 0 Frontend-Aufrufe, Duplikat von `searchGooglePlaces()` in `sot-research-engine` | **Loeschen** |
-
-### Google Places — NICHT abgeschafft
-
-Google Places ist **aktiv und korrekt integriert** in `sot-research-engine` als Discovery-Provider. Der Key `GOOGLE_MAPS_API_KEY` ist konfiguriert. Es gibt zusaetzlich:
-- `sot-google-maps-key` — liefert den Key ans Frontend fuer Map-Rendering (korrekt, behalten)
-- `sot-places-search` — separate Edge Function die dasselbe macht wie `sot-research-engine` intern (Duplikat, loeschen)
-- `sot-solar-insights` — nutzt Google Maps fuer PV-Analyse (korrekt, behalten)
-- `pvgis-proxy` — nutzt Google Maps fuer Geocoding (korrekt, behalten)
-
-### Wer nutzt die zentrale Engine korrekt?
-
-| Konsument | Hook/Datei | Intent | Nutzt Engine korrekt? |
-|-----------|-----------|--------|----------------------|
-| MOD-04 Sanierung | `ProviderSearchPanel.tsx` via `useResearchEngine` | `find_contractors` | Ja |
-| MOD-11 FM | `FMEinreichung.tsx` via `useResearchEngine` | `find_companies` | Ja |
-| MOD-12 Akquise Tools | `useAcqTools.ts` | `search_portals` | Ja (direkt invoke) |
-| MOD-12 Akquise Mandate | `AkquiseMandate.tsx` | `find_brokers` | Ja, aber Apollo-benannt |
-| MOD-12 SourcingTab | `SourcingTab.tsx` | `find_brokers` | Ja, aber Apollo-benannt + Duplikat |
-| Zone 1 Admin | `useAdminResearch.ts` | `find_contacts` | Ja, aber Apollo-benannt |
-| Zone 1 Desk | `useDeskContacts.ts` | `find_contacts` | Ja |
-| Zone 1 SOAT | `useSoatSearchEngine.ts` | `find_contacts` | Ja |
-| Dossier Auto | `useDossierAutoResearch.ts` | via `sot-dossier-auto-research` | Ja (eigene Function) |
-
-**Alle Konsumenten rufen `sot-research-engine` auf — keiner ruft Apollo direkt auf.** Das "Apollo" ist nur noch in Labels, Variablennamen und UI-Texten.
+**Schwaechen:** Keine.
 
 ---
+
+### 4. MOD-12 Akquise — Mandate/Sourcing: Kontaktrecherche
+
+| Eigenschaft | Detail |
+|-------------|--------|
+| **Datei** | `AkquiseMandate.tsx` (Z. 342-383, 438-470) + `SourcingTab.tsx` (Z. 106-169) |
+| **Hook** | **KEINER** — Direkte `supabase.functions.invoke` Aufrufe |
+| **Intent** | `find_brokers` + `search_portals` |
+| **Provider** | Google Places + Firecrawl + Apify |
+| **Suchzweck** | Makler/Broker finden und in `contact_staging` importieren |
+| **Bewertung** | **PROBLEMATISCH — Code-Duplikation + kein shared Hook** |
+
+**Probleme:**
+1. **AkquiseMandate.tsx hat 3 identische `sot-research-engine` Aufrufe** (Z. 346, 369, 442) — derselbe Code der in SourcingTab auch steht
+2. **SourcingTab.tsx hat 2 weitere identische Aufrufe** (Z. 109, 151) — exakt gleiche Logik
+3. **Weder `useResearchEngine` noch ein anderer shared Hook** wird verwendet — stattdessen manuelles State-Management mit `searchLoading`, `apifyLoading`
+4. **AkquiseMandate.tsx ist 1132 Zeilen** und enthaelt sowohl die Mandate-Logik ALS AUCH den kompletten Sourcing-Code, obwohl `SourcingTab` als Extraktion existiert
+
+**Empfehlung:** 
+- AkquiseMandate.tsx: Sourcing-Code komplett entfernen, nur noch `<SourcingTab>` rendern
+- SourcingTab.tsx: Auf `useResearchEngine` Hook umstellen statt direkte `invoke` Calls
+- Das wuerde ~150 Zeilen Duplikat-Code eliminieren
+
+---
+
+### 5. MOD-22 Pets — Caring: Anbieter-Suche
+
+| Eigenschaft | Detail |
+|-------------|--------|
+| **Datei** | `src/pages/portal/pets/PetsCaring.tsx` + `CaringProviderDetail.tsx` |
+| **Hook** | `usePetProviderSearch` (eigener Hook) |
+| **Intent** | Keiner — **direkte Datenbank-Abfrage**, NICHT ueber `sot-research-engine` |
+| **Provider** | Supabase DB (`pet_providers` + `pet_services` Tabellen) |
+| **Suchzweck** | Pet-Service-Anbieter (Gassi, Betreuung, Pflege) nach PLZ/Ort + Kategorie finden |
+| **Bewertung** | **GEEIGNET fuer den Zweck** — Das ist eine Marktplatz-Suche in eigenen Daten, keine externe Recherche |
+
+**Klarstellung:** Dieser Hook durchsucht die eigene `pet_providers`-Tabelle (registrierte Anbieter auf der Plattform), nicht das Internet. Das ist korrekt so — `sot-research-engine` waere hier falsch, weil keine externen Kontakte gesucht werden.
+
+**Schwaechen:** Client-seitige PLZ-Filterung (Kommentar sagt "Engine wird ersetzen") — bei wenigen Anbietern akzeptabel, bei Skalierung muesste das serverseitig passieren.
+
+---
+
+### 6. MOD-22 Pets — Shop: Produkt-Suche
+
+| Eigenschaft | Detail |
+|-------------|--------|
+| **Datei** | `src/pages/portal/pets/PetsShop.tsx` |
+| **Hook** | Keiner — inline `filter()` auf geladene Produkte |
+| **Provider** | Client-seitiger String-Match |
+| **Suchzweck** | Produkte im Shop nach Name filtern |
+| **Bewertung** | **GEEIGNET** — Simple In-Memory-Filterung, voellig ausreichend fuer Produktkataloge |
+
+---
+
+## Zusammenfassung
+
+```text
+Zone 2 Search Engines — Status
+
+✅ MOD-04 Sanierung     → useResearchEngine (shared)     → SAUBER
+✅ MOD-11 FM            → useResearchEngine (shared)     → SAUBER
+✅ MOD-12 Tools         → usePortalSearch (useAcqTools)   → SAUBER
+⚠️  MOD-12 Mandate      → Direkte invoke (DUPLIKAT)      → BEREINIGUNG NOETIG
+✅ MOD-22 Pets Caring   → usePetProviderSearch (DB)       → KORREKT (eigene Daten)
+✅ MOD-22 Pets Shop     → Inline filter                   → KORREKT (trivial)
+```
 
 ## Bereinigungsplan
 
-### Schritt 1: Edge Functions loeschen (3 Funktionen)
+### Einziger Handlungsbedarf: MOD-12 Akquise Mandate/Sourcing
 
-- `supabase/functions/sot-apollo-search/` — Dead Code, 0 Aufrufe
-- `supabase/functions/sot-research-pro-contacts/` — Stub mit Mock-Daten, 0 echte Nutzer
-- `supabase/functions/sot-places-search/` — Duplikat, 0 Frontend-Aufrufe
+**Schritt 1:** `AkquiseMandate.tsx` — Alle Sourcing-Funktionen entfernen (`handleEngineSearch`, `handleApifySearch`, Search-Dialoge, zugehoerige States). Stattdessen nur `<SourcingTab>` rendern.
 
-### Schritt 2: Apollo-Referenzen in MOD-12 bereinigen
+**Schritt 2:** `SourcingTab.tsx` — Die beiden direkten `supabase.functions.invoke('sot-research-engine')` Aufrufe durch `useResearchEngine` Hook ersetzen.
 
-**`AkquiseMandate.tsx`:**
-- `handleApolloSearch` umbenennen zu `handleEngineSearch`
-- `showApolloDialog` → `showSearchDialog`
-- `apolloForm` → `searchForm`
-- `apolloLoading` → `searchLoading`
-- SOURCE_CONFIG: `apollo` → `engine` (Label: "KI-Recherche")
-- Apollo-Dialog: Titel aendern zu "KI-Kontaktrecherche"
-- `source: 'apollo'` → `source: 'engine'`
-
-**`SourcingTab.tsx`:**
-- Identische Bereinigung wie AkquiseMandate.tsx (gleicher Code)
-
-### Schritt 3: Apollo-Referenzen in Zone 1 bereinigen
-
-**`useAdminResearch.ts`:**
-- `ApolloSearchParams` → `ResearchSearchParams`
-- `ApolloContact` → `ResearchContact`
-- `startApolloSearch` → `startResearch`
-- Kommentar Zeile 3 korrigieren
-
-### Schritt 4: Type + Manifest bereinigen
-
-**`useAcqContacts.ts`:**
-- `ContactStagingSource`: `'apollo'` → `'engine'`
-
-**`armstrongManifest.ts`:**
-- Zeile 648: "ueber Apollo" → "ueber die Research Engine"
-- `sot-research-pro-contacts` Eintrag entfernen (Function wird geloescht)
-
-### Schritt 5: Datenbank-Check
-
-- Pruefen ob `contact_staging.source` Eintraege mit `'apollo'` existieren → per Migration auf `'engine'` updaten
-
----
-
-## Ergebnis nach Bereinigung
-
-```text
-Aktive Provider-Architektur:
-
-sot-research-engine (ZENTRAL)
-├── Google Places (New API)  → Discovery
-├── Apify                    → Portal-Scraping + Google Maps Scraper
-├── Firecrawl                → E-Mail-Extraktion
-├── Netrows                  → LinkedIn-Scraping
-└── Lovable AI               → Merge & Scoring
-
-Geloescht:
-├── sot-apollo-search        (Dead Code)
-├── sot-research-pro-contacts (Stub)
-└── sot-places-search        (Duplikat)
-
-Umbenannt:
-├── "Apollo" → "KI-Recherche" (UI)
-└── "apollo" → "engine" (Source-Typ)
-```
+**Ergebnis:** ~150 Zeilen Dead-Code weg, einheitliches Pattern in allen Zone-2-Modulen.
 
