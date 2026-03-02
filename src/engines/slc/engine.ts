@@ -26,12 +26,18 @@ import {
  * Determines the current phase based on the event history.
  * Walks through events chronologically and applies phase transitions.
  */
+/**
+ * @internal @recovery
+ * Determines the current phase based on the event history.
+ * Not used in production flow (phase is tracked in DB via useSLCEventRecorder).
+ * Retained for audit/recovery scenarios where phase must be recomputed from events.
+ */
 export function determineCurrentPhase(events: Pick<SLCEvent, 'event_type' | 'created_at'>[]): SLCPhase {
   const sorted = [...events].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
-  let phase: SLCPhase = 'mandate_active';
+  let phase: SLCPhase = 'captured';
 
   for (const event of sorted) {
     const nextPhase = SLC_EVENT_PHASE_MAP[event.event_type as SLCEventType];
@@ -68,8 +74,10 @@ export function isValidTransition(from: SLCPhase, to: SLCPhase): boolean {
 // ─── Drift Detection ──────────────────────────────────────────
 
 /**
+ * @internal @recovery
  * Computes drift status for channel publications.
- * A channel is "drifted" when expected_hash ≠ last_synced_hash.
+ * Not used in production (Cron + useChannelDrift compute inline).
+ * Retained for batch-audit and recovery tooling.
  */
 export function computeChannelDrift(
   publications: Pick<ChannelProjection, 'expected_hash' | 'last_synced_hash' | 'channel' | 'listing_id'>[]
@@ -84,6 +92,7 @@ export function computeChannelDrift(
 }
 
 /**
+ * @internal @recovery
  * Returns the count of drifted channels.
  */
 export function countDriftedChannels(projections: ChannelProjection[]): number {
@@ -131,7 +140,9 @@ export function getPhaseProgress(phase: SLCPhase): number {
 // ─── Event Summary ────────────────────────────────────────────
 
 /**
+ * @internal @recovery
  * Groups events by category for timeline display.
+ * Not currently used — retained for future dashboard analytics.
  */
 export function groupEventsByCategory(events: Pick<SLCEvent, 'event_type'>[]): Record<string, number> {
   const groups: Record<string, number> = {};
@@ -143,7 +154,9 @@ export function groupEventsByCategory(events: Pick<SLCEvent, 'event_type'>[]): R
 }
 
 /**
+ * @internal @recovery
  * Finds the last event of a given type from a list of events.
+ * Not currently used — retained for recovery/audit tooling.
  */
 export function findLastEventOfType(
   events: SLCEvent[],

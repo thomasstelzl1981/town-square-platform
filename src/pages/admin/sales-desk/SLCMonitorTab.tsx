@@ -25,10 +25,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 const PHASE_COLORS: Partial<Record<SLCPhase, string>> = {
+  captured: 'bg-slate-500/15 text-slate-600',
+  readiness_check: 'bg-yellow-500/15 text-yellow-600',
   mandate_active: 'bg-muted text-muted-foreground',
   published: 'bg-primary/15 text-primary',
   inquiry: 'bg-accent text-accent-foreground',
   reserved: 'bg-orange-500/15 text-orange-600',
+  finance_submitted: 'bg-cyan-500/15 text-cyan-600',
   contract_draft: 'bg-blue-500/15 text-blue-600',
   notary_scheduled: 'bg-violet-500/15 text-violet-600',
   notary_completed: 'bg-emerald-500/15 text-emerald-600',
@@ -47,12 +50,22 @@ const STATUS_LABELS: Record<string, string> = {
   expired: 'Abgelaufen',
 };
 
-/** Phase advance actions available per phase */
+/** Phase advance actions available per phase — must match SLC_EVENT_PHASE_MAP */
 const PHASE_ACTIONS: Partial<Record<SLCPhase, { label: string; eventType: SLCEventType }[]>> = {
-  inquiry: [{ label: 'Kaufvertrag erstellt', eventType: 'deal.contract_drafted' }],
-  contract_draft: [{ label: 'Kaufvertrag erstellt', eventType: 'deal.contract_drafted' }],
+  captured: [{ label: 'Verkaufsbereitschaft prüfen', eventType: 'asset.readiness_approved' }],
+  readiness_check: [{ label: 'Mandat aktivieren', eventType: 'mandate.activated' }],
+  mandate_active: [{ label: 'Veröffentlichen', eventType: 'channel.published' }],
+  published: [{ label: 'Anfrage eingegangen', eventType: 'deal.inquiry_received' }],
+  inquiry: [{ label: 'Reservieren', eventType: 'deal.reserved' }],
+  reserved: [
+    { label: 'Finanzierung eingereicht', eventType: 'deal.finance_submitted' },
+    { label: 'Kaufvertrag erstellt', eventType: 'deal.contract_drafted' },
+  ],
+  finance_submitted: [{ label: 'Kaufvertrag erstellt', eventType: 'deal.contract_drafted' }],
+  contract_draft: [{ label: 'Notartermin vereinbart', eventType: 'deal.notary_scheduled' }],
+  notary_scheduled: [{ label: 'Beurkundung erfolgt', eventType: 'deal.notary_completed' }],
   notary_completed: [{ label: 'Übergabe durchgeführt', eventType: 'deal.handover_completed' }],
-  handover: [{ label: 'Abrechnung erstellt', eventType: 'deal.commission_calculated' }],
+  handover: [{ label: 'Settlement abgeschlossen', eventType: 'deal.platform_share_settled' }],
   settlement: [{ label: 'Abgeschlossen (Verkauf)', eventType: 'case.closed_won' }],
 };
 

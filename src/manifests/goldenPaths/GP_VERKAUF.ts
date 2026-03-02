@@ -151,6 +151,29 @@ export const GP_VERKAUF_GOLDEN_PATH: GoldenPathDefinition = {
       },
     },
 
+    // PHASE 4a: FINANZIERUNG EINGEREICHT
+    {
+      id: 'finance_submitted',
+      phase: 4.5,
+      label: 'Finanzierung eingereicht',
+      type: 'action',
+      task_kind: 'user_task',
+      camunda_key: 'GP_VERKAUF_04A_FINANCE',
+      preconditions: [
+        { key: 'reserved', source: 'sales_cases', description: 'Reservierung muss bestehen' },
+      ],
+      completion: [
+        { key: 'finance_submitted', source: 'sales_cases', check: 'exists', description: 'Finanzierungsbestätigung eingereicht' },
+      ],
+      on_timeout: {
+        ledger_event: 'slc.finance.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        escalate_to: 'Z1',
+        description: 'Finanzierungsbestätigung nicht innerhalb 21 Tagen eingereicht — Käufer kontaktieren',
+      },
+    },
+
     // PHASE 5: KAUFVERTRAGSENTWURF
     {
       id: 'contract_drafted',

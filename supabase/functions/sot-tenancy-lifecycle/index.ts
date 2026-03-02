@@ -88,7 +88,7 @@ function analyzePaymentStatus(expectedMonthly: number, payments: Array<{month: s
     const monthPayments = payments.filter(p => p.month === month);
     const received = monthPayments.reduce((sum, p) => sum + p.amount, 0);
     const dueDate = new Date(d.getFullYear(), d.getMonth(), paymentDueDay);
-    const daysOverdue = month <= currentMonth && received < expectedMonthly * 0.5
+    const daysOverdue = month <= currentMonth && received < expectedMonthly * 0.95
       ? Math.max(0, Math.floor((todayDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)))
       : 0;
 
@@ -383,6 +383,8 @@ serve(async (req: Request) => {
         const rentCheck = checkRentIncreaseEligibility(lease, today);
         if (rentCheck.isEligible) {
           const currentRent = Number(lease.rent_cold_eur) || 0;
+          // NOTE: Cron has no access to historical rent (rentThreeYearsAgo).
+          // Proposals are estimated based on current rent — marked as 'estimated'.
           const maxIncrease = currentRent * (rentCheck.capPercent / 100);
           const proposals = [
             { strategy: "konservativ", factor: 0.5, risk: "niedrig" },
@@ -392,6 +394,8 @@ serve(async (req: Request) => {
             ...p,
             increaseEur: Math.round(maxIncrease * p.factor * 100) / 100,
             newRent: Math.round((currentRent + maxIncrease * p.factor) * 100) / 100,
+            estimated: true,
+            disclaimer: "Kappungsgrenze geschätzt auf Basis der aktuellen Miete. Bitte historische Miete (vor 3 Jahren) prüfen.",
           }));
 
           events.push({
