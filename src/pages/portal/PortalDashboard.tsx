@@ -28,6 +28,7 @@ import { RadioWidget } from '@/components/dashboard/widgets/RadioWidget';
 import { PVLiveWidget } from '@/components/dashboard/widgets/PVLiveWidget';
 import { BrandLinkWidget } from '@/components/dashboard/widgets/BrandLinkWidget';
 import { MeetingRecorderWidget } from '@/components/dashboard/MeetingRecorderWidget';
+import { TLCWidget } from '@/components/dashboard/widgets/TLCWidget';
 import { NotesWidget } from '@/components/dashboard/widgets/NotesWidget';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,7 @@ const WIDGET_CODE_TO_ID: Record<string, string> = {
   'SYS.BRAND.ACQUIARY': 'system_brand_acquiary',
   'SYS.MEET.RECORDER': 'system_meeting_recorder',
   'SYS.FIN.ACCOUNTS': 'system_accounts',
+  'SYS.TLC.LIFECYCLE': 'system_tlc',
 };
 
 /** Placeholder card shown in preview for disabled heavy widgets */
@@ -165,6 +167,7 @@ export default function PortalDashboard() {
     if (widgetId === 'system_brand_futureroom') return <BrandLinkWidget code="SYS.BRAND.FUTUREROOM" />;
     if (widgetId === 'system_brand_sot') return <BrandLinkWidget code="SYS.BRAND.SOT" />;
     if (widgetId === 'system_brand_acquiary') return <BrandLinkWidget code="SYS.BRAND.ACQUIARY" />;
+    if (widgetId === 'system_tlc') return <TLCWidget />;
 
     const taskWidget = taskWidgets.find(w => w.id === widgetId);
     if (taskWidget) {
