@@ -4,7 +4,7 @@
  * 
  * This is the SINGLE entry point for all SLC event recording.
  * Components/hooks call recordEvent() — this hook handles:
- * 1. Insert into sales_lifecycle_events
+ * 1. Insert into sales_lifecycle_events (with idempotency)
  * 2. Update sales_cases.current_phase (if event triggers transition)
  * 3. Invalidate relevant queries
  */
@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SLC_EVENT_PHASE_MAP } from '@/engines/slc/spec';
 import { isValidTransition } from '@/engines/slc/engine';
 import type { SLCEventType, SLCEventSeverity, SLCPhase } from '@/engines/slc/spec';
+import type { SLCEventSource, SLCActorType } from '@/engines/slc/conventions';
 
 export interface RecordSLCEventInput {
   caseId: string;
@@ -23,6 +24,11 @@ export interface RecordSLCEventInput {
   currentPhase: SLCPhase;
   tenantId: string;
   payload?: Record<string, unknown>;
+  // F2: New audit fields
+  eventSource?: SLCEventSource | string;
+  actorType?: SLCActorType | string;
+  idempotencyKey?: string;
+  correlationKey?: string;
 }
 
 export function useSLCEventRecorder() {
@@ -36,7 +42,7 @@ export function useSLCEventRecorder() {
         ? targetPhase
         : null;
 
-      // 1. Insert event
+      // 1. Insert event (with idempotency — duplicate key → 23505 skip)
       const { error: eventError } = await supabase
         .from('sales_lifecycle_events')
         .insert({
@@ -46,11 +52,22 @@ export function useSLCEventRecorder() {
           phase_before: input.currentPhase as any,
           phase_after: (phaseAfter || input.currentPhase) as any,
           actor_id: user?.id || null,
+          actor_type: (input.actorType || 'user') as any,
+          event_source: input.eventSource || null,
+          idempotency_key: input.idempotencyKey || null,
+          correlation_key: input.correlationKey || null,
           payload: (input.payload || {}) as any,
           tenant_id: input.tenantId,
         });
 
-      if (eventError) throw eventError;
+      if (eventError) {
+        // Idempotent duplicate → skip silently
+        if (eventError.code === '23505' && input.idempotencyKey) {
+          console.log(`[SLC] Idempotent skip: ${input.idempotencyKey}`);
+          return { phaseAfter: input.currentPhase, skipped: true };
+        }
+        throw eventError;
+      }
 
       // 2. Advance phase if valid transition
       if (phaseAfter) {
@@ -62,7 +79,7 @@ export function useSLCEventRecorder() {
         if (caseError) throw caseError;
       }
 
-      return { phaseAfter: phaseAfter || input.currentPhase };
+      return { phaseAfter: phaseAfter || input.currentPhase, skipped: false };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales-desk-cases'] });

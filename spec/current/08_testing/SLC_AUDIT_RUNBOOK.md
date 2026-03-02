@@ -254,12 +254,12 @@ LIMIT 10;
 
 | Fix | Aufwand | Kritikalität | Status |
 |-----|---------|--------------|--------|
-| F1: Eventlog-Spalten + Idempotency Index | S | 🔴 Blocker | ⬜ TODO |
-| F2: EventRecorder erweitern | S | 🔴 Blocker | ⬜ TODO |
-| F3: Stuck-Clock Phase-Change | M | 🟡 Hoch | ⬜ TODO |
-| F4: Cron Idempotency Keys | S | 🟡 Hoch | ⬜ TODO |
-| F5: Settlement Unique Constraint | XS | 🟡 Hoch | ⬜ TODO |
-| F6: SLC Conventions File | S | 🟡 Mittel | ⬜ TODO |
+| F1: Eventlog-Spalten + Idempotency Index | S | 🔴 Blocker | ✅ DONE (Migration) |
+| F2: EventRecorder erweitern | S | 🔴 Blocker | ✅ DONE (useSLCEventRecorder.ts) |
+| F3: Stuck-Clock Phase-Change | M | 🟡 Hoch | ✅ DONE (findPhaseEnteredAt in Cron) |
+| F4: Cron Idempotency Keys | S | 🟡 Hoch | ✅ DONE (idempotency_key in all Cron events) |
+| F5: Settlement Unique Constraint | XS | 🟡 Hoch | ✅ DONE (Migration) |
+| F6: SLC Conventions File | S | 🟡 Mittel | ✅ DONE (src/engines/slc/conventions.ts) |
 
 ---
 

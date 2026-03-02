@@ -18384,10 +18384,14 @@ export type Database = {
       sales_lifecycle_events: {
         Row: {
           actor_id: string | null
+          actor_type: string | null
           case_id: string
+          correlation_key: string | null
           created_at: string
+          event_source: string | null
           event_type: string
           id: string
+          idempotency_key: string | null
           payload: Json | null
           phase_after: Database["public"]["Enums"]["slc_phase"] | null
           phase_before: Database["public"]["Enums"]["slc_phase"] | null
@@ -18396,10 +18400,14 @@ export type Database = {
         }
         Insert: {
           actor_id?: string | null
+          actor_type?: string | null
           case_id: string
+          correlation_key?: string | null
           created_at?: string
+          event_source?: string | null
           event_type: string
           id?: string
+          idempotency_key?: string | null
           payload?: Json | null
           phase_after?: Database["public"]["Enums"]["slc_phase"] | null
           phase_before?: Database["public"]["Enums"]["slc_phase"] | null
@@ -18408,10 +18416,14 @@ export type Database = {
         }
         Update: {
           actor_id?: string | null
+          actor_type?: string | null
           case_id?: string
+          correlation_key?: string | null
           created_at?: string
+          event_source?: string | null
           event_type?: string
           id?: string
+          idempotency_key?: string | null
           payload?: Json | null
           phase_after?: Database["public"]["Enums"]["slc_phase"] | null
           phase_before?: Database["public"]["Enums"]["slc_phase"] | null

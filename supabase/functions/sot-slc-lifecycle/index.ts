@@ -10,13 +10,14 @@ const corsHeaders = {
  * sot-slc-lifecycle — Sales Lifecycle Controller Cron Function
  * 
  * Daily CRON (04:00 UTC) — monitors SLC process health:
- * 1. Stuck-Cases: sales_cases vs SLC_STUCK_THRESHOLDS
+ * 1. Stuck-Cases: phase-change timestamp vs SLC_STUCK_THRESHOLDS
  * 2. Expired Reservations: auto-event deal.reservation_expired
  * 3. Channel Drift: expected_hash ≠ last_synced_hash
  * 4. Pending Settlements: notary_completed >14d without settlement
  * 5. AI Summary: Gemini generates "Next Best Actions"
  * 
- * Results → sales_lifecycle_events + process_health_log
+ * All events use idempotency_key for safe retries.
+ * Stuck-clock uses phase-change timestamp (NOT updated_at).
  */
 
 // ─── Inline SLC constants (mirroring src/engines/slc/spec.ts) ───
@@ -57,6 +58,32 @@ function daysSince(dateStr: string, now: Date): number {
   return (now.getTime() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24);
 }
 
+/**
+ * F3: Find the timestamp when the case entered its current phase.
+ * Looks for the last event where phase_after = currentPhase AND phase_before != phase_after.
+ * Falls back to opened_at if no phase-change event is found.
+ */
+async function findPhaseEnteredAt(
+  supabase: any,
+  caseId: string,
+  currentPhase: string,
+  fallbackDate: string
+): Promise<string> {
+  const { data: phaseEvents } = await supabase
+    .from("sales_lifecycle_events")
+    .select("created_at")
+    .eq("case_id", caseId)
+    .eq("phase_after", currentPhase)
+    .neq("phase_before", currentPhase)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (phaseEvents && phaseEvents.length > 0) {
+    return phaseEvents[0].created_at;
+  }
+  return fallbackDate;
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -82,7 +109,6 @@ serve(async (req: Request) => {
     if (!cases || cases.length === 0) {
       console.log("[SLC-Lifecycle] No active cases found");
       
-      // Write empty health log
       await supabase.from("process_health_log").insert({
         system: "slc",
         run_date: today,
@@ -93,7 +119,7 @@ serve(async (req: Request) => {
         details: { message: "No active cases" },
       });
 
-      return new Response(JSON.stringify({ processed: 0, version: "1.0.0" }), {
+      return new Response(JSON.stringify({ processed: 0, version: "1.1.0" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -111,44 +137,48 @@ serve(async (req: Request) => {
       const findings: string[] = [];
 
       if (threshold) {
-        const phaseDate = slcCase.updated_at || slcCase.opened_at;
-        const days = daysSince(phaseDate, now);
+        // F3: Use phase-change timestamp, NOT updated_at
+        const phaseEnteredAt = await findPhaseEnteredAt(
+          supabase, slcCase.id, phase, slcCase.opened_at
+        );
+        const days = daysSince(phaseEnteredAt, now);
 
         if (days > threshold) {
           totalIssues++;
+          const isSLA = days > threshold * 2;
           findings.push(`Stuck in "${SLC_PHASE_LABELS[phase] || phase}" seit ${Math.round(days)} Tagen (Schwellwert: ${threshold}d)`);
 
-          // Idempotency: check if stuck event already exists for this phase today
-          const { data: existingStuck } = await supabase
-            .from("sales_lifecycle_events")
-            .select("id")
-            .eq("case_id", slcCase.id)
-            .eq("event_type", "case.stuck_detected")
-            .gte("created_at", `${today}T00:00:00`)
-            .limit(1);
-
-          if (existingStuck && existingStuck.length > 0) {
-            // Already reported today — skip
-            findings.push(`Stuck in "${SLC_PHASE_LABELS[phase] || phase}" seit ${Math.round(days)} Tagen (bereits gemeldet)`);
-          } else {
-          // Write stuck event
-          const { error: evtErr } = await supabase.from("sales_lifecycle_events").insert({
+          // F4: Idempotency key for stuck events
+          const stuckKey = `stuck:${slcCase.id}:${phase}:${today}`;
+          const { error: stuckErr } = await supabase.from("sales_lifecycle_events").insert({
             case_id: slcCase.id,
             event_type: "case.stuck_detected",
-            severity: days > threshold * 2 ? "error" : "warning",
+            severity: isSLA ? "error" : "warning",
             phase_before: phase,
             phase_after: phase,
             actor_id: null,
+            actor_type: "cron",
+            event_source: "edge_fn:sot-slc-lifecycle",
+            idempotency_key: stuckKey,
             payload: {
               triggered_by: "cron",
               check_type: "stuck_detection",
               days_in_phase: Math.round(days),
               threshold_days: threshold,
+              is_sla_breach: isSLA,
+              phase_entered_at: phaseEnteredAt,
             },
             tenant_id: slcCase.tenant_id,
           });
 
-          if (!evtErr) totalEvents++;
+          if (stuckErr) {
+            if (stuckErr.code === "23505") {
+              findings.push(`(idempotent skip — bereits gemeldet)`);
+            } else {
+              console.error(`[SLC-Lifecycle] Stuck event error for ${slcCase.id}:`, stuckErr);
+            }
+          } else {
+            totalEvents++;
           }
         }
       }
@@ -169,7 +199,8 @@ serve(async (req: Request) => {
           // Auto-expire the reservation
           await supabase.from("sales_reservations").update({ status: "expired" }).eq("id", res.id);
 
-          // Write event
+          // F4: Idempotency key for reservation expiry
+          const expiryKey = `reservation_expired:${res.id}`;
           const { error: evtErr } = await supabase.from("sales_lifecycle_events").insert({
             case_id: slcCase.id,
             event_type: "deal.reservation_expired",
@@ -177,6 +208,9 @@ serve(async (req: Request) => {
             phase_before: phase,
             phase_after: phase,
             actor_id: null,
+            actor_type: "cron",
+            event_source: "edge_fn:sot-slc-lifecycle",
+            idempotency_key: expiryKey,
             payload: {
               triggered_by: "cron",
               reservation_id: res.id,
@@ -185,7 +219,13 @@ serve(async (req: Request) => {
             tenant_id: slcCase.tenant_id,
           });
 
-          if (!evtErr) totalEvents++;
+          if (evtErr) {
+            if (evtErr.code === "23505") {
+              findings.push(`(idempotent skip — reservation expiry already recorded)`);
+            }
+          } else {
+            totalEvents++;
+          }
         }
       }
 
@@ -202,35 +242,33 @@ serve(async (req: Request) => {
             totalIssues++;
             findings.push(`Channel-Drift: ${pub.channel} (Hash-Mismatch)`);
 
-            // Idempotency: check if drift event already exists for this publication today
-            const { data: existingDrift } = await supabase
-              .from("sales_lifecycle_events")
-              .select("id")
-              .eq("case_id", slcCase.id)
-              .eq("event_type", "channel.sync_failed")
-              .gte("created_at", `${today}T00:00:00`)
-              .limit(1);
+            // F4: Idempotency key for drift events
+            const driftKey = `drift:${slcCase.id}:${pub.channel}:${today}`;
+            const { error: evtErr } = await supabase.from("sales_lifecycle_events").insert({
+              case_id: slcCase.id,
+              event_type: "channel.sync_failed",
+              severity: "warning",
+              phase_before: phase,
+              phase_after: phase,
+              actor_id: null,
+              actor_type: "cron",
+              event_source: "edge_fn:sot-slc-lifecycle",
+              idempotency_key: driftKey,
+              payload: {
+                triggered_by: "cron",
+                check_type: "channel_drift",
+                channel: pub.channel,
+                publication_id: pub.id,
+              },
+              tenant_id: slcCase.tenant_id,
+            });
 
-            if (existingDrift && existingDrift.length > 0) {
-              findings.push(`Channel-Drift: ${pub.channel} (bereits gemeldet)`);
+            if (evtErr) {
+              if (evtErr.code === "23505") {
+                findings.push(`(idempotent skip — drift already reported)`);
+              }
             } else {
-              const { error: evtErr } = await supabase.from("sales_lifecycle_events").insert({
-                case_id: slcCase.id,
-                event_type: "channel.sync_failed",
-                severity: "warning",
-                phase_before: phase,
-                phase_after: phase,
-                actor_id: null,
-                payload: {
-                  triggered_by: "cron",
-                  check_type: "channel_drift",
-                  channel: pub.channel,
-                  publication_id: pub.id,
-                },
-                tenant_id: slcCase.tenant_id,
-              });
-
-              if (!evtErr) totalEvents++;
+              totalEvents++;
             }
           }
         }
@@ -238,11 +276,12 @@ serve(async (req: Request) => {
 
       // ─── 5. Check pending settlements (notary_completed > 14d) ───
       if (phase === "notary_completed" || phase === "handover") {
-        const phaseDate = slcCase.updated_at || slcCase.opened_at;
-        const days = daysSince(phaseDate, now);
+        const phaseEnteredAt = await findPhaseEnteredAt(
+          supabase, slcCase.id, phase, slcCase.opened_at
+        );
+        const days = daysSince(phaseEnteredAt, now);
 
         if (days > 14) {
-          // Check if settlement already exists
           const { data: settlements } = await supabase
             .from("sales_settlements")
             .select("id")
@@ -253,34 +292,32 @@ serve(async (req: Request) => {
             totalIssues++;
             findings.push(`Settlement ausstehend seit ${Math.round(days)} Tagen nach Beurkundung/Übergabe`);
 
-            // Idempotency: check if settlement_pending event already exists today
-            const { data: existingSettlement } = await supabase
-              .from("sales_lifecycle_events")
-              .select("id")
-              .eq("case_id", slcCase.id)
-              .eq("event_type", "deal.settlement_pending")
-              .gte("created_at", `${today}T00:00:00`)
-              .limit(1);
+            // F4: Idempotency key for settlement pending
+            const settlementKey = `settlement_pending:${slcCase.id}:${today}`;
+            const { error: evtErr } = await supabase.from("sales_lifecycle_events").insert({
+              case_id: slcCase.id,
+              event_type: "deal.settlement_pending",
+              severity: "warning",
+              phase_before: phase,
+              phase_after: phase,
+              actor_id: null,
+              actor_type: "cron",
+              event_source: "edge_fn:sot-slc-lifecycle",
+              idempotency_key: settlementKey,
+              payload: {
+                triggered_by: "cron",
+                check_type: "settlement_pending",
+                days_since_phase: Math.round(days),
+              },
+              tenant_id: slcCase.tenant_id,
+            });
 
-            if (existingSettlement && existingSettlement.length > 0) {
-              findings.push(`Settlement-Pending bereits gemeldet`);
+            if (evtErr) {
+              if (evtErr.code === "23505") {
+                findings.push(`(idempotent skip — settlement pending already reported)`);
+              }
             } else {
-              const { error: evtErr } = await supabase.from("sales_lifecycle_events").insert({
-                case_id: slcCase.id,
-                event_type: "deal.settlement_pending",
-                severity: "warning",
-                phase_before: phase,
-                phase_after: phase,
-                actor_id: null,
-                payload: {
-                  triggered_by: "cron",
-                  check_type: "settlement_pending",
-                  days_since_notary: Math.round(days),
-                },
-                tenant_id: slcCase.tenant_id,
-              });
-
-              if (!evtErr) totalEvents++;
+              totalEvents++;
             }
           }
         }
@@ -314,7 +351,7 @@ Antworte NUR mit der Zusammenfassung. Priorisiere nach Dringlichkeit.`;
           method: "POST",
           headers: { Authorization: `Bearer ${lovableApiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "google/gemini-2.5-pro",
+            model: "google/gemini-2.5-flash",
             messages: [{ role: "user", content: prompt }],
             max_tokens: 800,
           }),
@@ -343,12 +380,12 @@ Antworte NUR mit der Zusammenfassung. Priorisiere nach Dringlichkeit.`;
       status: "success",
       details: {
         findings: allFindings,
-        version: "1.0.0",
+        version: "1.1.0",
       },
     });
 
     const result = {
-      version: "1.0.0",
+      version: "1.1.0",
       processed: cases.length,
       issuesFound: totalIssues,
       eventsCreated: totalEvents,
@@ -365,7 +402,6 @@ Antworte NUR mit der Zusammenfassung. Priorisiere nach Dringlichkeit.`;
   } catch (err) {
     console.error("[SLC-Lifecycle] Error:", err);
 
-    // Try to log the error
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -381,7 +417,7 @@ Antworte NUR mit der Zusammenfassung. Priorisiere nach Dringlichkeit.`;
       });
     } catch (_) { /* ignore logging errors */ }
 
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error", version: "1.0.0" }), {
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error", version: "1.1.0" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
