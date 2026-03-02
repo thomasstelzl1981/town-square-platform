@@ -21750,6 +21750,7 @@ export type Database = {
           due_date: string | null
           escalation_level: number | null
           id: string
+          idempotency_key: string | null
           lease_id: string | null
           lifecycle_event_id: string | null
           location_detail: string | null
@@ -21782,6 +21783,7 @@ export type Database = {
           due_date?: string | null
           escalation_level?: number | null
           id?: string
+          idempotency_key?: string | null
           lease_id?: string | null
           lifecycle_event_id?: string | null
           location_detail?: string | null
@@ -21814,6 +21816,7 @@ export type Database = {
           due_date?: string | null
           escalation_level?: number | null
           id?: string
+          idempotency_key?: string | null
           lease_id?: string | null
           lifecycle_event_id?: string | null
           location_detail?: string | null
