@@ -14,7 +14,7 @@ const AkquiseMandate = lazy(() => import('./akquise-manager/AkquiseMandate'));
 const AkquiseMandateDetail = lazy(() => import('./akquise-manager/AkquiseMandateDetail'));
 const AkquiseTools = lazy(() => import('./akquise-manager/AkquiseTools'));
 const AkquiseDatenbank = lazy(() => import('./akquise-manager/AkquiseDatenbank'));
-const AkquiseSystemgebuehr = lazy(() => import('./akquise-manager/AkquiseSystemgebuehr'));
+const AkquiseProvisionen = lazy(() => import('./akquise-manager/AkquiseProvisionen'));
 
 export default function AkquiseManagerPage() {
   return (
@@ -36,7 +36,7 @@ export default function AkquiseManagerPage() {
       } />
       <Route path="tools" element={<AkquiseTools />} />
       <Route path="datenbank" element={<AkquiseDatenbank />} />
-      <Route path="systemgebuehr" element={<AkquiseSystemgebuehr />} />
+      <Route path="provisionen" element={<AkquiseProvisionen />} />
       <Route path="*" element={<Navigate to="/portal/akquise-manager" replace />} />
     </Routes>
   );

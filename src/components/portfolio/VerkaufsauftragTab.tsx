@@ -675,7 +675,7 @@ export function VerkaufsauftragTab({
                             }
                           />
                           <Label htmlFor="system-fee" className="text-sm leading-relaxed cursor-pointer">
-                            Ich akzeptiere die Systemgebühr von 2.000 € netto bei erfolgreichem Abschluss.
+                            Ich akzeptiere den Plattformanteil (25% der Provision) bei erfolgreichem Abschluss.
                           </Label>
                         </div>
                       </div>

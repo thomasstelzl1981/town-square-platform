@@ -51,30 +51,38 @@ export interface TippgeberResult {
   remaining: number;
 }
 
-/** Eingabe fuer die Systemgebuehr-Berechnung */
-export interface SystemFeeInput {
+/** Eingabe fuer die Plattformanteil-Berechnung (ehemals Systemgebuehr) */
+export interface PlatformShareInput {
   /** Brutto-Provision des Managers */
   grossCommission: number;
-  /** Systemgebuehr-Satz in % (Standard: 25%) */
-  systemFeePct?: number;
+  /** Plattformanteil in % (Standard: 25%) */
+  platformSharePct?: number;
 }
 
-/** Ergebnis der Systemgebuehr-Berechnung */
-export interface SystemFeeResult {
-  /** Systemgebuehr die an SoT abgefuehrt wird */
-  systemFee: number;
+/** Ergebnis der Plattformanteil-Berechnung */
+export interface PlatformShareResult {
+  /** Plattformanteil der an SoT abgefuehrt wird */
+  platformShare: number;
   /** Netto-Betrag der beim Manager verbleibt */
   managerNetto: number;
 }
 
-/** Typ-Konfiguration fuer die ManagerSystemgebuehr-Komponente */
-export interface SystemFeeConfig {
+/** Typ-Konfiguration fuer die Manager-Provisionsvereinbarung */
+export interface ManagerCommissionConfig {
   commissionType: 'finance_tipp' | 'immo_vermittlung' | 'acq_erfolgsgebuehr';
   agreementTemplateCode: string;
-  systemFeePct: number;
+  platformSharePct: number;
   managerLabel: string;
   description: string;
 }
+
+// ─── Legacy Aliases (Uebergangsphase, nicht in neuem Code verwenden) ────
+/** @deprecated Use PlatformShareInput */
+export type SystemFeeInput = PlatformShareInput;
+/** @deprecated Use PlatformShareResult */
+export type SystemFeeResult = PlatformShareResult;
+/** @deprecated Use ManagerCommissionConfig */
+export type SystemFeeConfig = ManagerCommissionConfig;
 
 export const PROVISION_DEFAULTS = {
   buyerCommissionPercent: 3.57,
@@ -83,31 +91,36 @@ export const PROVISION_DEFAULTS = {
   partnerSharePercent: 50,
   sotSharePercent: 50,
   tippgeberSharePercent: 25,
-  /** Standard-Systemgebuehr fuer alle Manager-Module */
+  /** Standard-Plattformanteil fuer alle Manager-Module (25%) */
+  platformSharePct: 25,
+  /** @deprecated Use platformSharePct */
   systemFeePct: 25,
 } as const;
 
-/** Vorkonfigurierte Systemgebuehr-Configs pro Manager */
-export const SYSTEM_FEE_CONFIGS: Record<string, SystemFeeConfig> = {
+/** Vorkonfigurierte Provisions-Configs pro Manager */
+export const MANAGER_COMMISSION_CONFIGS: Record<string, ManagerCommissionConfig> = {
   finance: {
     commissionType: 'finance_tipp',
     agreementTemplateCode: 'FINANCE_TIPP_AGREEMENT',
-    systemFeePct: PROVISION_DEFAULTS.systemFeePct,
+    platformSharePct: PROVISION_DEFAULTS.platformSharePct,
     managerLabel: 'Finanzierungs',
-    description: 'Als Finanzierungsmanager nutzen Sie die Plattform von System of a Town für Lead-Zulieferung, CRM und operative Tools. Bei erfolgreichem Abschluss eines Mandats wird eine erfolgsabhängige Systemgebühr in Höhe von 25% Ihrer Netto-Provision fällig.',
+    description: 'Als Finanzierungsmanager nutzen Sie die Plattform von System of a Town für Lead-Zulieferung, CRM und operative Tools. Bei erfolgreichem Abschluss eines Mandats werden 25% Ihrer Provision als Plattformanteil fällig.',
   },
   immo: {
     commissionType: 'immo_vermittlung',
     agreementTemplateCode: 'IMMO_SYSTEM_FEE_AGREEMENT',
-    systemFeePct: PROVISION_DEFAULTS.systemFeePct,
+    platformSharePct: PROVISION_DEFAULTS.platformSharePct,
     managerLabel: 'Immobilien',
-    description: 'Als Immobilienmanager nutzen Sie die Plattform von System of a Town für Lead-Zulieferung, CRM und operative Tools. Bei erfolgreichem Abschluss eines Mandats wird eine erfolgsabhängige Systemgebühr in Höhe von 25% Ihrer Netto-Provision fällig.',
+    description: 'Als Immobilienmanager nutzen Sie die Plattform von System of a Town für Lead-Zulieferung, CRM und operative Tools. Bei erfolgreichem Abschluss eines Mandats werden 25% Ihrer Provision als Plattformanteil fällig.',
   },
   akquise: {
     commissionType: 'acq_erfolgsgebuehr',
     agreementTemplateCode: 'ACQ_SYSTEM_FEE_AGREEMENT',
-    systemFeePct: PROVISION_DEFAULTS.systemFeePct,
+    platformSharePct: PROVISION_DEFAULTS.platformSharePct,
     managerLabel: 'Akquise',
-    description: 'Als Akquisemanager nutzen Sie die Plattform von System of a Town für Lead-Zulieferung, CRM und operative Tools. Bei erfolgreichem Abschluss eines Mandats wird eine erfolgsabhängige Systemgebühr in Höhe von 25% Ihrer Netto-Provision fällig.',
+    description: 'Als Akquisemanager nutzen Sie die Plattform von System of a Town für Lead-Zulieferung, CRM und operative Tools. Bei erfolgreichem Abschluss eines Mandats werden 25% Ihrer Provision als Plattformanteil fällig.',
   },
 } as const;
+
+/** @deprecated Use MANAGER_COMMISSION_CONFIGS */
+export const SYSTEM_FEE_CONFIGS = MANAGER_COMMISSION_CONFIGS;

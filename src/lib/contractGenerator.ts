@@ -61,9 +61,9 @@ export async function generateContract(
 }
 
 /**
- * Calculate platform fee (30% of gross commission).
+ * Calculate platform share (25% of gross commission).
  */
-export function calculatePlatformFee(grossCommission: number, sharePct: number = 30): {
+export function calculatePlatformFee(grossCommission: number, sharePct: number = 25): {
   platformFee: number;
   netCommission: number;
 } {
@@ -254,7 +254,7 @@ export async function storeContractAndCreateRecords(params: {
       liable_user_id: liableUserId,
       liable_role: liableRole,
       gross_commission: grossCommission,
-      platform_share_pct: 30,
+      platform_share_pct: 25,
       platform_fee: platformFee,
       reference_id: referenceId,
       reference_type: referenceType,
