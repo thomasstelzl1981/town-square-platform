@@ -8058,6 +8058,76 @@ export type Database = {
           },
         ]
       }
+      finance_lifecycle_events: {
+        Row: {
+          actor_id: string | null
+          actor_type: string
+          correlation_key: string | null
+          created_at: string
+          event_source: string | null
+          event_type: string
+          finance_mandate_id: string | null
+          finance_request_id: string
+          future_room_case_id: string | null
+          id: string
+          idempotency_key: string | null
+          metadata: Json
+          phase: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_type?: string
+          correlation_key?: string | null
+          created_at?: string
+          event_source?: string | null
+          event_type: string
+          finance_mandate_id?: string | null
+          finance_request_id: string
+          future_room_case_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json
+          phase?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_type?: string
+          correlation_key?: string | null
+          created_at?: string
+          event_source?: string | null
+          event_type?: string
+          finance_mandate_id?: string | null
+          finance_request_id?: string
+          future_room_case_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json
+          phase?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_lifecycle_events_finance_mandate_id_fkey"
+            columns: ["finance_mandate_id"]
+            isOneToOne: false
+            referencedRelation: "finance_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_lifecycle_events_finance_request_id_fkey"
+            columns: ["finance_request_id"]
+            isOneToOne: false
+            referencedRelation: "finance_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_lifecycle_events_future_room_case_id_fkey"
+            columns: ["future_room_case_id"]
+            isOneToOne: false
+            referencedRelation: "future_room_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_mandates: {
         Row: {
           accepted_at: string | null
