@@ -58,10 +58,12 @@ import { de } from 'date-fns/locale';
 import { getJsPDF } from '@/lib/lazyJspdf';
 import { AcqProfilePreview } from '@/components/akquise/AcqProfilePreview';
 import { ContactBookDialog } from '@/components/akquise/ContactBookDialog';
+import { SourcingTab } from './components/SourcingTab';
 import logoLight from '@/assets/logos/armstrong_logo_light.png';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { isDemoId } from '@/engines/demoData/engine';
 import { DictationButton } from '@/components/shared/DictationButton';
+import { useResearchEngine } from '@/hooks/useResearchEngine';
 
 // ── Types ──
 interface ExtractedProfile {
@@ -110,6 +112,7 @@ export default function AkquiseMandate() {
   const createMandate = useCreateAcqMandate();
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-AKQUISE-MANDAT');
+  const researchEngine = useResearchEngine();
 
   const [isSplitView, setIsSplitView] = useState(false);
 
@@ -147,17 +150,9 @@ export default function AkquiseMandate() {
   const [previewData, setPreviewData] = useState<ExtractedProfile | null>(null);
   const [previewTextLong, setPreviewTextLong] = useState('');
 
-  // ─── Kachel 3: Kontaktrecherche ───
+  // ─── Kachel 3: Kontaktrecherche (managed by SourcingTab, but some state needed for Kachel 4) ───
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showSearchDialog, setShowSearchDialog] = useState(false);
-  const [showApifyDialog, setShowApifyDialog] = useState(false);
   const [showContactBookDialog, setShowContactBookDialog] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [apifyLoading, setApifyLoading] = useState(false);
-  const [manualForm, setManualForm] = useState({ company_name: '', first_name: '', last_name: '', email: '', phone: '', website_url: '', role_guess: '', service_area: '' });
-  const [searchForm, setSearchForm] = useState({ jobTitles: 'Makler, Immobilienmakler, Geschäftsführer', locations: '', industries: 'Real Estate', limit: 25 });
-  const [apifyForm, setApifyForm] = useState({ portalUrl: '', searchType: 'brokers', limit: 50 });
 
   // ─── Kachel 4: E-Mail ───
   const [emailSubject, setEmailSubject] = useState('');
@@ -331,84 +326,6 @@ export default function AkquiseMandate() {
     }
   };
 
-  // ── Sourcing Handlers ──
-  const handleManualSubmit = async () => {
-    if (!activeMandateId) return;
-    await createContact.mutateAsync({ mandate_id: activeMandateId, source: 'manual', ...manualForm });
-    setManualForm({ company_name: '', first_name: '', last_name: '', email: '', phone: '', website_url: '', role_guess: '', service_area: '' });
-    setShowAddDialog(false);
-  };
-
-  const handleEngineSearch = async () => {
-    if (!activeMandateId) return;
-    setSearchLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('sot-research-engine', {
-        body: {
-          intent: 'find_brokers',
-          query: searchForm.jobTitles,
-          location: searchForm.locations,
-          max_results: searchForm.limit,
-          filters: { must_have_email: true, industry: searchForm.industries },
-          context: { module: 'akquise', reference_id: activeMandateId },
-        },
-      });
-      if (error) throw error;
-      if (data?.results?.length) {
-        await bulkCreate.mutateAsync({ mandateId: activeMandateId, contacts: data.results.map((c: any) => ({ source: 'engine' as const, source_id: `engine_${Date.now()}_${Math.random()}`, company_name: c.name, first_name: '', last_name: '', email: c.email, phone: c.phone, role_guess: '', service_area: c.address, quality_score: c.confidence || 50 })) });
-      }
-      setShowSearchDialog(false);
-    } catch (err) { toast.error('Kontaktrecherche fehlgeschlagen'); } 
-    finally { setSearchLoading(false); }
-  };
-
-  const handleApifySearch = async () => {
-    if (!activeMandateId) return;
-    setApifyLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('sot-research-engine', {
-        body: {
-          intent: 'search_portals',
-          query: apifyForm.portalUrl || 'Immobilien',
-          max_results: apifyForm.limit,
-          portal_config: { search_type: apifyForm.searchType },
-          context: { module: 'akquise', reference_id: activeMandateId },
-        },
-      });
-      if (error) throw error;
-      toast.success(`Portal-Recherche: ${data?.results?.length || 0} Ergebnisse`);
-      setShowApifyDialog(false);
-    } catch (err) { toast.error('Portal-Recherche fehlgeschlagen'); }
-    finally { setApifyLoading(false); }
-  };
-
-  // ── E-Mail Send ──
-  const handleSendEmails = async () => {
-    if (!activeMandateId || selectedApprovedContacts.length === 0) return;
-    const template = templates[0];
-    if (!template) { toast.error('Keine E-Mail-Vorlage verfügbar'); return; }
-
-    try {
-      await bulkSend.mutateAsync({
-        mandateId: activeMandateId,
-        contactIds: selectedApprovedContacts.map(c => c.id),
-        templateCode: template.code,
-        variables: {
-          mandate_code: activeMandateCode,
-          client_name: clientName,
-          search_area: profileData?.region || '',
-          asset_focus: profileData?.asset_focus?.join(', ') || '',
-          custom_subject: emailSubject,
-          custom_body: emailBody,
-        },
-      });
-      setSelectedContactIds(new Set());
-      toast.success(`${selectedApprovedContacts.length} E-Mails gesendet`);
-    } catch (err) {
-      toast.error('Versand fehlgeschlagen');
-    }
-  };
-
   // ── "Ankaufsprofil übernehmen" — Orchestration ──
   const handleApplyProfile = async () => {
     if (!profileData) return;
@@ -435,24 +352,22 @@ export default function AkquiseMandate() {
       `Mit freundlichen Grüßen`
     );
 
-    // 3. Auto-Kontaktrecherche starten (Research Engine)
+    // 3. Auto-Kontaktrecherche starten (über shared useResearchEngine Hook)
     if (activeMandateId) {
       try {
         const searchLocation = profileData.region || 'Deutschland';
-        const { data, error } = await supabase.functions.invoke('sot-research-engine', {
-          body: {
-            intent: 'find_brokers',
-            query: 'Immobilienmakler Geschäftsführer',
-            location: searchLocation,
-            max_results: 25,
-            filters: { must_have_email: true, industry: 'Real Estate' },
-            context: { module: 'akquise', reference_id: activeMandateId },
-          },
+        const response = await researchEngine.search({
+          intent: 'find_brokers',
+          query: 'Immobilienmakler Geschäftsführer',
+          location: searchLocation,
+          max_results: 25,
+          filters: { must_have_email: true, industry: 'Real Estate' },
+          context: { module: 'akquise', reference_id: activeMandateId },
         });
-        if (!error && data?.results?.length) {
+        if (response?.results?.length) {
           await bulkCreate.mutateAsync({
             mandateId: activeMandateId,
-            contacts: data.results.map((c: any) => ({
+            contacts: response.results.map((c) => ({
               source: 'engine' as const,
               source_id: `engine_${Date.now()}_${Math.random()}`,
               company_name: c.name,
@@ -465,7 +380,7 @@ export default function AkquiseMandate() {
               quality_score: c.confidence || 50,
             })),
           });
-          toast.success(`Ankaufsprofil übernommen — E-Mail vorbereitet, ${data.results.length} Kontakte gefunden`);
+          toast.success(`Ankaufsprofil übernommen — E-Mail vorbereitet, ${response.results.length} Kontakte gefunden`);
         } else {
           toast.success('Ankaufsprofil übernommen — E-Mail vorbereitet');
         }
@@ -497,6 +412,33 @@ export default function AkquiseMandate() {
       toast.success(`${importedContacts.length} Kontakte aus dem Kontaktbuch übernommen`);
     } catch {
       toast.error('Import fehlgeschlagen');
+    }
+  };
+
+  // ── E-Mail Send ──
+  const handleSendEmails = async () => {
+    if (!activeMandateId || selectedApprovedContacts.length === 0) return;
+    const template = templates[0];
+    if (!template) { toast.error('Keine E-Mail-Vorlage verfügbar'); return; }
+
+    try {
+      await bulkSend.mutateAsync({
+        mandateId: activeMandateId,
+        contactIds: selectedApprovedContacts.map(c => c.id),
+        templateCode: template.code,
+        variables: {
+          mandate_code: activeMandateCode,
+          client_name: clientName,
+          search_area: profileData?.region || '',
+          asset_focus: profileData?.asset_focus?.join(', ') || '',
+          custom_subject: emailSubject,
+          custom_body: emailBody,
+        },
+      });
+      setSelectedContactIds(new Set());
+      toast.success(`${selectedApprovedContacts.length} E-Mails gesendet`);
+    } catch (err) {
+      toast.error('Versand fehlgeschlagen');
     }
   };
 
@@ -774,79 +716,16 @@ export default function AkquiseMandate() {
 
       {/* ═══ KACHEL 3 + 4: Kontaktrecherche + E-Mail-Versand ═══ */}
       <div className={`${DESIGN.FORM_GRID.FULL} ${!mandateCreated ? 'opacity-40 pointer-events-none' : ''}`}>
-        {/* ── KACHEL 3: Kontaktrecherche ── */}
+        {/* ── KACHEL 3: Kontaktrecherche (delegiert an SourcingTab) ── */}
         <Card className="min-h-[500px]">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Search className="h-4 w-4" />
-                Kontaktrecherche
-                {contacts.length > 0 && (
-                  <Badge variant="secondary" className="text-xs ml-2">
-                    {approvedContacts.length} / {contacts.length}
-                  </Badge>
-                )}
-              </CardTitle>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="sm" onClick={() => setShowSearchDialog(true)} title="KI-Recherche">
-                  <Database className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setShowApifyDialog(true)} title="Portal Scraper">
-                  <Globe className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setShowAddDialog(true)} title="Manuell">
-                  <UserPlus className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setShowContactBookDialog(true)} title="Kontaktbuch">
-                  <BookOpen className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {contacts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Search className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Noch keine Kontakte</p>
-                <p className="text-xs mt-1">Nutzen Sie KI-Recherche, Portal Scraper oder manuelle Eingabe</p>
-              </div>
-            ) : (
-              <div className="space-y-1 max-h-[400px] overflow-y-auto">
-                {/* Pending contacts first */}
-                {pendingContacts.map(contact => (
-                  <div key={contact.id} className="flex items-center gap-3 p-2 rounded-lg border hover:bg-muted/50 text-sm">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        {contact.first_name || contact.last_name ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() : contact.company_name || 'Unbekannt'}
-                      </div>
-                      <div className="text-xs text-muted-foreground truncate">{contact.email || '–'}</div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500" onClick={() => rejectContact.mutate(contact.id)}>
-                        <XCircle className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-green-600" onClick={() => approveContact.mutate({ stagingId: contact.id, mandateId: activeMandateId! })}>
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {/* Approved contacts with checkboxes */}
-                {approvedContacts.map(contact => (
-                  <div key={contact.id} className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer hover:bg-muted/50 text-sm ${selectedContactIds.has(contact.id) ? 'bg-primary/5 border-primary/30' : ''}`} onClick={() => toggleContactSelection(contact.id)}>
-                    <Checkbox checked={selectedContactIds.has(contact.id)} className="h-4 w-4" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        {contact.first_name || contact.last_name ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() : contact.company_name || 'Unbekannt'}
-                      </div>
-                      <div className="text-xs text-muted-foreground truncate">{contact.email || '–'}</div>
-                    </div>
-                    <Badge variant="default" className="text-[10px]">Übernommen</Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
+          {mandateCreated && activeMandateId ? (
+            <SourcingTab mandateId={activeMandateId} mandateCode={activeMandateCode} />
+          ) : (
+            <CardContent className="flex flex-col items-center justify-center h-full py-12 text-muted-foreground">
+              <Search className="h-10 w-10 mb-3 opacity-30" />
+              <p className="text-sm">Erstellen Sie zuerst ein Mandat</p>
+            </CardContent>
+          )}
         </Card>
 
         {/* ── KACHEL 4: E-Mail-Fenster ── */}
@@ -976,123 +855,6 @@ export default function AkquiseMandate() {
         </>
       )}
 
-      {/* ═══ Dialoge (KI-Recherche, Apify, Manuell) ═══ */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Kontakt manuell hinzufügen</DialogTitle>
-            <DialogDescription>Fügen Sie einen neuen Kontakt hinzu.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Vorname</Label><Input value={manualForm.first_name} onChange={e => setManualForm(f => ({ ...f, first_name: e.target.value }))} /></div>
-              <div className="space-y-2"><Label>Nachname</Label><Input value={manualForm.last_name} onChange={e => setManualForm(f => ({ ...f, last_name: e.target.value }))} /></div>
-            </div>
-            <div className="space-y-2"><Label>Firma</Label><Input value={manualForm.company_name} onChange={e => setManualForm(f => ({ ...f, company_name: e.target.value }))} /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>E-Mail</Label><Input type="email" value={manualForm.email} onChange={e => setManualForm(f => ({ ...f, email: e.target.value }))} /></div>
-              <div className="space-y-2"><Label>Telefon</Label><Input type="tel" value={manualForm.phone} onChange={e => setManualForm(f => ({ ...f, phone: e.target.value }))} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Rolle</Label>
-                <Select value={manualForm.role_guess} onValueChange={v => setManualForm(f => ({ ...f, role_guess: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Auswählen..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Makler">Makler</SelectItem>
-                    <SelectItem value="Eigentümer">Eigentümer</SelectItem>
-                    <SelectItem value="Verwalter">Verwalter</SelectItem>
-                    <SelectItem value="Bauträger">Bauträger</SelectItem>
-                    <SelectItem value="Investor">Investor</SelectItem>
-                    <SelectItem value="Sonstiges">Sonstiges</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2"><Label>Region</Label><Input value={manualForm.service_area} onChange={e => setManualForm(f => ({ ...f, service_area: e.target.value }))} placeholder="z.B. Berlin" /></div>
-            </div>
-            <div className="space-y-2"><Label>Website</Label><Input type="url" value={manualForm.website_url} onChange={e => setManualForm(f => ({ ...f, website_url: e.target.value }))} placeholder="https://..." /></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddDialog(false)}>Abbrechen</Button>
-            <Button onClick={handleManualSubmit} disabled={createContact.isPending}>
-              {createContact.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Hinzufügen
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Database className="h-5 w-5 text-blue-600" />KI-Kontaktrecherche</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2"><Label>Job-Titel</Label><Input value={searchForm.jobTitles} onChange={e => setSearchForm(f => ({ ...f, jobTitles: e.target.value }))} /></div>
-            <div className="space-y-2"><Label>Standorte</Label><Input value={searchForm.locations} onChange={e => setSearchForm(f => ({ ...f, locations: e.target.value }))} placeholder="Berlin, Hamburg" /></div>
-            <div className="space-y-2"><Label>Branchen</Label><Input value={searchForm.industries} onChange={e => setSearchForm(f => ({ ...f, industries: e.target.value }))} /></div>
-            <div className="space-y-2">
-              <Label>Max. Ergebnisse</Label>
-              <Select value={String(searchForm.limit)} onValueChange={v => setSearchForm(f => ({ ...f, limit: Number(v) }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSearchDialog(false)}>Abbrechen</Button>
-            <Button onClick={handleEngineSearch} disabled={searchLoading}>
-              {searchLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Suchen
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showApifyDialog} onOpenChange={setShowApifyDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Globe className="h-5 w-5 text-purple-600" />Portal Scraper (Apify)</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2"><Label>Portal-URL</Label><Input value={apifyForm.portalUrl} onChange={e => setApifyForm(f => ({ ...f, portalUrl: e.target.value }))} placeholder="https://immobilienscout24.de/..." /></div>
-            <div className="space-y-2">
-              <Label>Such-Typ</Label>
-              <Select value={apifyForm.searchType} onValueChange={v => setApifyForm(f => ({ ...f, searchType: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="brokers">Makler-Kontakte</SelectItem>
-                  <SelectItem value="listings">Objekt-Listings</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Max. Ergebnisse</Label>
-              <Select value={String(apifyForm.limit)} onValueChange={v => setApifyForm(f => ({ ...f, limit: Number(v) }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowApifyDialog(false)}>Abbrechen</Button>
-            <Button onClick={handleApifySearch} disabled={apifyLoading}>
-              {apifyLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Job starten
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* ═══ Kontaktbuch Dialog ═══ */}
       <ContactBookDialog
         open={showContactBookDialog}
@@ -1114,19 +876,10 @@ function ProfileRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PdfPreviewRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex gap-4">
-      <span className="text-gray-400 font-medium w-36 flex-shrink-0 text-xs">{label}</span>
-      <span className="text-gray-700 text-xs">{value}</span>
-    </div>
-  );
-}
-
 function formatPriceRange(min?: number | null, max?: number | null): string {
-  if (!min && !max) return '–';
-  const parts: string[] = [];
-  if (min) parts.push(`ab ${(min / 1000000).toFixed(1)}M €`);
-  if (max) parts.push(`bis ${(max / 1000000).toFixed(1)}M €`);
-  return parts.join(' – ');
+  const fmt = (n: number) => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)} Mio €` : `${(n / 1_000).toFixed(0)}T €`;
+  if (min && max) return `${fmt(min)} – ${fmt(max)}`;
+  if (min) return `ab ${fmt(min)}`;
+  if (max) return `bis ${fmt(max)}`;
+  return '–';
 }

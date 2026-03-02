@@ -1,5 +1,6 @@
 /**
  * Sourcing Tab — KI-Recherche, Apify, Firecrawl, Manual Entry
+ * Uses the shared useResearchEngine hook for all external searches.
  */
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -24,9 +25,9 @@ import {
   useBulkCreateStagingContacts,
   type ContactStaging 
 } from '@/hooks/useAcqContacts';
+import { useResearchEngine } from '@/hooks/useResearchEngine';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface SourcingTabProps {
@@ -56,11 +57,11 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
   const rejectContact = useRejectContact();
   const enrichContact = useEnrichContact();
   const bulkCreate = useBulkCreateStagingContacts();
+  const researchEngine = useResearchEngine();
   
   const [showAddDialog, setShowAddDialog] = React.useState(false);
   const [showSearchDialog, setShowSearchDialog] = React.useState(false);
   const [showApifyDialog, setShowApifyDialog] = React.useState(false);
-  const [searchLoading, setSearchLoading] = React.useState(false);
   const [apifyLoading, setApifyLoading] = React.useState(false);
   
   // Manual entry form
@@ -104,25 +105,20 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
   };
 
   const handleEngineSearch = async () => {
-    setSearchLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sot-research-engine', {
-        body: {
-          intent: 'find_brokers',
-          query: searchForm.jobTitles,
-          location: searchForm.locations,
-          max_results: searchForm.limit,
-          filters: { must_have_email: true, industry: searchForm.industries },
-          context: { module: 'akquise', reference_id: mandateId },
-        },
+      const response = await researchEngine.search({
+        intent: 'find_brokers',
+        query: searchForm.jobTitles,
+        location: searchForm.locations,
+        max_results: searchForm.limit,
+        filters: { must_have_email: true, industry: searchForm.industries },
+        context: { module: 'akquise', reference_id: mandateId },
       });
       
-      if (error) throw error;
-      
-      if (data?.results?.length) {
+      if (response?.results?.length) {
         await bulkCreate.mutateAsync({
           mandateId,
-          contacts: data.results.map((c: any) => ({
+          contacts: response.results.map((c) => ({
             source: 'engine' as const,
             source_id: `engine_${Date.now()}_${Math.random()}`,
             company_name: c.name,
@@ -139,30 +135,25 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
       
       setShowSearchDialog(false);
     } catch (err) {
-      toast.error('Kontaktrecherche fehlgeschlagen: ' + (err as Error).message);
-    } finally {
-      setSearchLoading(false);
+      // Error toast is handled by useResearchEngine hook
     }
   };
 
   const handleApifySearch = async () => {
     setApifyLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sot-research-engine', {
-        body: {
-          intent: 'search_portals',
-          query: apifyForm.portalUrl || 'Immobilien',
-          max_results: apifyForm.limit,
-          portal_config: { search_type: apifyForm.searchType },
-          context: { module: 'akquise', reference_id: mandateId },
-        },
+      const response = await researchEngine.search({
+        intent: 'search_portals',
+        query: apifyForm.portalUrl || 'Immobilien',
+        max_results: apifyForm.limit,
+        portal_config: { search_type: apifyForm.searchType as any },
+        context: { module: 'akquise', reference_id: mandateId },
       });
       
-      if (error) throw error;
-      toast.success(`Portal-Recherche: ${data?.results?.length || 0} Ergebnisse`);
+      toast.success(`Portal-Recherche: ${response?.results?.length || 0} Ergebnisse`);
       setShowApifyDialog(false);
     } catch (err) {
-      toast.error('Portal-Recherche fehlgeschlagen: ' + (err as Error).message);
+      // Error toast is handled by useResearchEngine hook
     } finally {
       setApifyLoading(false);
     }
@@ -175,7 +166,7 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between p-6 pb-0">
         <div>
           <h2 className="text-xl font-semibold">Sourcing</h2>
           <p className="text-sm text-muted-foreground">
@@ -199,7 +190,7 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-4 gap-4 px-6">
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold">{contacts.length}</div>
@@ -232,7 +223,7 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
 
       {/* Pending Contacts */}
       {pendingContacts.length > 0 && (
-        <Card>
+        <Card className="mx-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Loader2 className="h-5 w-5 text-orange-500" />
@@ -258,7 +249,7 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
 
       {/* All Contacts */}
       {processedContacts.length > 0 && (
-        <Card>
+        <Card className="mx-6">
           <CardHeader>
             <CardTitle>Bearbeitete Kontakte ({processedContacts.length})</CardTitle>
           </CardHeader>
@@ -292,7 +283,7 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
       )}
 
       {contacts.length === 0 && (
-        <Card>
+        <Card className="mx-6">
           <CardContent className="p-12 text-center">
             <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold">Keine Kontakte</h3>
@@ -420,8 +411,8 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSearchDialog(false)}>Abbrechen</Button>
-            <Button onClick={handleEngineSearch} disabled={searchLoading}>
-              {searchLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            <Button onClick={handleEngineSearch} disabled={researchEngine.isSearching}>
+              {researchEngine.isSearching && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Suchen
             </Button>
           </DialogFooter>
@@ -472,8 +463,8 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowApifyDialog(false)}>Abbrechen</Button>
-            <Button onClick={handleApifySearch} disabled={apifyLoading}>
-              {apifyLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            <Button onClick={handleApifySearch} disabled={apifyLoading || researchEngine.isSearching}>
+              {(apifyLoading || researchEngine.isSearching) && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Job starten
             </Button>
           </DialogFooter>
