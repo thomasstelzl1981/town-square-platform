@@ -738,6 +738,44 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     phase: 'done',
   },
 
+  // ─── MOD-07: Privatkredit ───────────────────────────────
+  {
+    id: 'GP-PRIVATKREDIT',
+    moduleCode: 'MOD-07',
+    moduleName: 'Finanzierung',
+    tilePath: '/portal/finanzierung/privatkredit',
+    processName: 'Privatkredit',
+    description: 'Ratenkredite verwalten, Konditionen vergleichen und Kreditanfragen einreichen.',
+    menuPoints: 1,
+    menuPointPaths: ['/portal/finanzierung/privatkredit'],
+    compliance: {
+      modulePageHeader: true,
+      widgetGrid: true,
+      widgetCell: true,
+      demoWidget: true,
+      inlineFlow: true,
+      noSubNavigation: true,
+    },
+    demoWidget: {
+      id: '__demo__',
+      title: 'Demo: Privatkredit',
+      subtitle: '2 aktive Ratenkredite (Auto + Möbel)',
+      status: 'demo',
+      badgeLabel: 'Demo',
+      data: {
+        loans: 2,
+        totalBalance: 27200,
+        monthlyTotal: 770,
+      },
+      resetOnClose: true,
+    },
+    sections: [
+      { id: 'overview', title: 'Übersicht', component: 'PrivatkreditOverview', readOnlyInDemo: true },
+      { id: 'calculator', title: 'Rechner', component: 'LoanCalculator', readOnlyInDemo: false },
+    ],
+    phase: 'done',
+  },
+
 ];
 
 // =============================================================================

@@ -558,6 +558,9 @@ export const ALL_DEMO_IDS: readonly string[] = [
   ...DEMO_PORTFOLIO.vehicleIds,
   ...DEMO_PORTFOLIO.pvPlantIds,
   DEMO_PORTFOLIO.landlordContextId,
+  // DB-geseedte Fahrzeuge (Migration-IDs — Porsche 911, BMW M5)
+  '00000000-0000-4000-a000-000000000301',
+  '00000000-0000-4000-a000-000000000302',
   // Kontakte (DB-geseedet)
   ID_CONTACT_MAX, ID_CONTACT_LISA, ID_CONTACT_BERGMANN, ID_CONTACT_HOFFMANN, ID_CONTACT_WEBER,
   // Finance Request (DB-geseedet)
