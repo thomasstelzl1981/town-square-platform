@@ -64,11 +64,11 @@ const modules = [
   },
   { 
     id: "MOD-05", 
-    name: "Website Builder", 
+    name: "Pets", 
     icon: Globe, 
     status: "spec_ready",
     db: "complete", ui: "complete", logic: "complete", 
-    description: "KI-Website-Baukasten"
+    description: "Haustier-Verwaltung (Website Builder)"
   },
   { 
     id: "MOD-06", 
@@ -352,7 +352,7 @@ export default function PresentationPage() {
 │                     ZONE 2 — USER PORTALS                        │
 ├─────────────────────────────────────────────────────────────────┤
 │  MOD-01 Stammdaten  │  MOD-02 KI Office  │  MOD-03 DMS          │
-│  MOD-04 Immobilien  │  MOD-05 MSV        │  MOD-06 Verkauf      │
+│  MOD-04 Immobilien  │  MOD-05 Pets       │  MOD-06 Verkauf      │
 │  MOD-07 Partner     │  MOD-08 Finanz     │  MOD-09 Leads        │
 └───────────────────────────┬─────────────────────────────────────┘
                             │

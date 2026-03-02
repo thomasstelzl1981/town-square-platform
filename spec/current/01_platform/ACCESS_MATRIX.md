@@ -32,7 +32,7 @@
 ### 14 Basis-Module (alle Rollen)
 
 MOD-00 Dashboard, MOD-01 Stammdaten, MOD-02 KI Office, MOD-03 DMS,
-MOD-04 Immobilien, MOD-05 MSV, MOD-06 Verkauf, MOD-07 Finanzierung,
+MOD-04 Immobilien, MOD-05 Pets, MOD-06 Verkauf, MOD-07 Finanzierung,
 MOD-08 Investment-Suche, MOD-15 Fortbildung, MOD-16 Services,
 MOD-17 Car-Management, MOD-18 Finanzanalyse, MOD-20 Miety
 

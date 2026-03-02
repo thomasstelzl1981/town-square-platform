@@ -26,7 +26,7 @@ flowchart TB
         Z2_M2["MOD-02: KI Office"]
         Z2_M3["MOD-03: DMS"]
         Z2_M4["MOD-04: Immobilien"]
-        Z2_M5["MOD-05: MSV"]
+        Z2_M5["MOD-05: Pets"]
         Z2_M6["MOD-06: Verkauf"]
         Z2_M7["MOD-07: Finanzierung"]
         Z2_M8["MOD-08: Investment-Suche"]
@@ -111,7 +111,7 @@ Operative Arbeit für Tenants (Vermieter, Partner, Käufer).
 | 02 | KI Office | Core | Alle |
 | 03 | DMS | Core | Alle |
 | 04 | Immobilien | Core | Vermieter |
-| 05 | MSV | Freemium | Vermieter |
+| 05 | Pets | Core | Alle |
 | 06 | Verkauf | Standard | Verkäufer |
 | 07 | Finanzierung | Standard | Käufer/Verkäufer |
 | 08 | Investment-Suche | Standard | Investoren |

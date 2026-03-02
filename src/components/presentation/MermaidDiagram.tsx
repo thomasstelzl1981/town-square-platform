@@ -111,7 +111,7 @@ flowchart TB
         subgraph Z2_ROW2["Asset Modules"]
             direction LR
             Z2_M4["<b>MOD-04</b><br/>🏠 Immobilien<br/><i>Portfolio • Exposé • Sanierung</i>"]
-            Z2_M5["<b>MOD-05</b><br/>🔑 MSV<br/><i>Mieter • Eingang • Vermietung</i>"]
+            Z2_M5["<b>MOD-05</b><br/>🐾 Pets<br/><i>Website Builder • Haustiere</i>"]
             Z2_M6["<b>MOD-06</b><br/>🏷️ Verkauf<br/><i>Objekte • Reservierung</i>"]
         end
         subgraph Z2_ROW3["Business Modules"]
@@ -203,7 +203,7 @@ flowchart LR
 
     subgraph ASSETS["Asset Modules"]
         M4["MOD-04<br/>Immobilien"]
-        M5["MOD-05<br/>MSV"]
+        M5["MOD-05<br/>Pets"]
         M6["MOD-06<br/>Verkauf"]
     end
 
