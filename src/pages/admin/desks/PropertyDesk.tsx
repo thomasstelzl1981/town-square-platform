@@ -316,7 +316,7 @@ function LeasesTab() {
                     {l.end_date ? new Date(l.end_date).toLocaleDateString('de-DE') : 'unbefristet'}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {l.rent_amount_cents ? `${(l.rent_amount_cents / 100).toFixed(2)}` : l.base_rent ? `${l.base_rent}` : '–'}
+                    {l.monthly_rent ? `${Number(l.monthly_rent).toFixed(2)}` : l.rent_cold_eur ? `${Number(l.rent_cold_eur).toFixed(2)}` : '–'}
                   </TableCell>
                 </TableRow>
               ))}

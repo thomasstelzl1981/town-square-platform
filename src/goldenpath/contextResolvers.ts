@@ -625,6 +625,7 @@ const gpVerkaufResolver: ContextResolver = async ({ tenantId, entityId: caseId }
     published: false,
     inquiry_received: false,
     reserved: false,
+    finance_submitted: false,
     contract_drafted: false,
     notary_scheduled: false,
     notary_completed: false,
@@ -645,7 +646,7 @@ const gpVerkaufResolver: ContextResolver = async ({ tenantId, entityId: caseId }
     if (salesCase) {
       flags.case_exists = true;
       const phase = salesCase.phase;
-      // Progressive flag activation — synced with SLC_PHASE_ORDER from src/engines/slc/spec.ts v1.1
+      // Progressive flag activation — synced with SLC_PHASE_ORDER from src/engines/slc/spec.ts v1.2
       const PHASE_ORDER = [
         'captured', 'readiness_check', 'mandate_active', 'published',
         'inquiry', 'reserved', 'finance_submitted', 'contract_draft',
@@ -658,6 +659,7 @@ const gpVerkaufResolver: ContextResolver = async ({ tenantId, entityId: caseId }
       flags.published = phaseIndex >= 3;
       flags.inquiry_received = phaseIndex >= 4;
       flags.reserved = phaseIndex >= 5;
+      flags.finance_submitted = phaseIndex >= 6;
       flags.contract_drafted = phaseIndex >= 7;
       flags.notary_scheduled = phaseIndex >= 8;
       flags.notary_completed = phaseIndex >= 9;
