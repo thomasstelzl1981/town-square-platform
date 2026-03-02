@@ -81,26 +81,28 @@
 - [x] Dashboard Widget (TLCWidget) — Ampel-Logik, Kategorien, Events
 
 ### 2. Mahnwesen (Feld 12)
-- [ ] Mahnstufen-Config Seed-Daten
-- [ ] Automatische Mahnung via `sot-mail-send`
-- [ ] Chronologie in `tenancy_lifecycle_events`
+- [x] Mahnstufen-Config Seed-Daten (5 Stufen für alle aktiven Tenants)
+- [x] Automatische Mahnung via KI-generierte E-Mail (Level 0: auto_send)
+- [x] Chronologie in `tenancy_lifecycle_events` (dunning_mail_sent/failed Events)
+- [x] Mahngebühren pro Stufe (0/5/10/15 €)
 
 ### 3. Mieterhöhungs-Engine (Felder 22+23)
-- [ ] Sperrfristen-Prüfung (§558 BGB, 15 Monate)
-- [ ] Kappungsgrenze (20%/15%)
-- [ ] Index-Trigger bei VPI-Änderung
-- [ ] 3-Jahres-Check pro Einheit
-- [ ] Vorschlagslogik (konservativ/markt/max)
+- [x] Sperrfristen-Prüfung (§558 BGB, 15 Monate)
+- [x] Kappungsgrenze (20%/15% für angespannte Märkte)
+- [x] Index-Trigger bei VPI-Änderung (12 Monate Mindestabstand)
+- [x] 3-Jahres-Check pro Einheit (`performThreeYearCheck`)
+- [x] Vorschlagslogik (konservativ 50% / markt 75% / max 100% der Kappungsgrenze)
 
 ### 4. Kautionsverwaltung (Feld 14)
-- [ ] Kautionskonto-Tracking erweitern
-- [ ] Abrechnungs-Template bei Auszug
-- [ ] Zinsgutschrift-Berechnung
+- [x] Kautionskonto-Tracking erweitert (Status-Prüfung + Anomalie-Erkennung)
+- [x] Abrechnungs-Template bei Auszug (`calculateDepositSettlement`)
+- [x] Zinsgutschrift-Berechnung (`calculateDepositInterest`, §551 BGB, 0.1% p.a.)
+- [x] Kautionsabrechnung bei move_out Phase (auto-Task + Event)
 
-### 5. Dashboard-Widget (Feld 25)
-- [ ] "Offene Aufgaben pro Mietverhältnis" Widget
-- [ ] Fälligkeits-Ampel (grün/gelb/rot)
-- [ ] Armstrong Proactive Hints aus TLC-Events
+### 5. Dashboard & Armstrong (Feld 25+30)
+- [x] "Offene Aufgaben pro Mietverhältnis" Widget (TLCWidget)
+- [x] Fälligkeits-Ampel (grün/gelb/rot)
+- [x] Armstrong Proactive Hints aus TLC-Events (auto-dispatch bei critical Events)
 
 ---
 

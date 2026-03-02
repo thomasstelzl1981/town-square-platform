@@ -4,7 +4,7 @@
  * Pure types, interfaces, constants. NO logic, NO side effects.
  * 
  * @engine ENG-TLC
- * @version 1.0.0
+ * @version 1.1.0
  * @module MOD-04 (Immobilien)
  */
 
@@ -41,6 +41,7 @@ export type TLCEventType =
   // Dunning
   | 'dunning_reminder' | 'dunning_level_1' | 'dunning_level_2' | 'dunning_final'
   | 'dunning_escalation_inkasso'
+  | 'dunning_mail_sent' | 'dunning_mail_failed'
   // NK
   | 'nk_period_opened' | 'nk_settlement_created' | 'nk_settlement_finalized'
   | 'nk_objection_received' | 'nk_prepayment_adjusted'
@@ -51,7 +52,7 @@ export type TLCEventType =
   | 'index_trigger_detected' | 'staffel_step_due'
   // Deposit
   | 'deposit_received' | 'deposit_partial' | 'deposit_settlement_started'
-  | 'deposit_settled' | 'deposit_payout'
+  | 'deposit_settled' | 'deposit_payout' | 'deposit_interest_calculated'
   // Defects/Damage
   | 'defect_reported' | 'defect_dispatched' | 'defect_resolved'
   | 'damage_reported' | 'damage_insurance_filed' | 'damage_settled'
@@ -117,6 +118,8 @@ export const RENT_INCREASE_DEFAULTS = {
   capPeriodYears: 3,           // Vergleichszeitraum
   indexMinMonths: 12,          // Mindestabstand Indexerhöhung
   staffelMinMonths: 12,        // Mindestabstand Staffelschritt
+  depositInterestRate: 0.001,  // 0.1% Sparbuchzins (§551 BGB)
+  depositSettlementMonths: 6,  // 6 Monate Abrechnungsfrist nach Auszug
 } as const;
 
 // ─── Lease Analysis Input ─────────────────────────────────────
@@ -171,4 +174,4 @@ export interface TLCTaskCandidate {
 }
 
 // ─── Engine Version ───────────────────────────────────────────
-export const TLC_ENGINE_VERSION = '1.0.0';
+export const TLC_ENGINE_VERSION = '1.1.0';

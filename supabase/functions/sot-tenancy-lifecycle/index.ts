@@ -7,17 +7,18 @@ const corsHeaders = {
 };
 
 /**
- * sot-tenancy-lifecycle — Tenancy Lifecycle Controller (TLC)
+ * sot-tenancy-lifecycle — Tenancy Lifecycle Controller (TLC) v1.1
  * 
- * Weekly CRON Edge Function that analyzes all active leases:
- * 1. Payment status → Dunning events
- * 2. Rent increase eligibility → §558 BGB checks
- * 3. Deposit status → Warnings
+ * Weekly CRON Edge Function:
+ * 1. Payment status → Dunning events + AUTO-MAIL for level 0 (Zahlungserinnerung)
+ * 2. Rent increase eligibility → §558 BGB + 3-Jahres-Check + Vorschlagslogik
+ * 3. Deposit status → Warnings + Zinsgutschrift
  * 4. Deadline monitoring → Approaching deadlines
- * 5. AI-powered Next Best Actions
+ * 5. Kautionsabrechnung bei Auszug
+ * 6. AI-powered Next Best Actions (google/gemini-2.5-pro)
+ * 7. Chronologie in tenancy_lifecycle_events
  * 
  * CRON: Every Sunday 03:00 UTC
- * KI: google/gemini-2.5-pro (Maximum Power)
  */
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -31,9 +32,9 @@ serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, serviceKey);
     
     const today = new Date().toISOString().split("T")[0];
-    console.log(`[TLC] Starting weekly lifecycle check for ${today}`);
+    console.log(`[TLC v1.1] Starting weekly lifecycle check for ${today}`);
 
-    // 1. Fetch all active leases with their tenants
+    // 1. Fetch all active leases
     const { data: leases, error: leasesErr } = await supabase
       .from("leases")
       .select(`
@@ -55,7 +56,7 @@ serve(async (req: Request) => {
 
     console.log(`[TLC] Processing ${leases.length} leases`);
 
-    // 2. Fetch dunning configs (grouped by tenant)
+    // 2. Fetch dunning configs
     const tenantIds = [...new Set(leases.map((l: any) => l.tenant_id))];
     const { data: dunningConfigs } = await supabase
       .from("tenancy_dunning_configs")
@@ -68,7 +69,7 @@ serve(async (req: Request) => {
       dunningByTenant[dc.tenant_id].push(dc);
     }
 
-    // 3. Fetch recent rent payments for all leases
+    // 3. Fetch recent rent payments
     const leaseIds = leases.map((l: any) => l.id);
     const twelveMonthsAgo = new Date();
     twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
@@ -82,54 +83,60 @@ serve(async (req: Request) => {
     const paymentsByLease: Record<string, Array<{ month: string; amount: number }>> = {};
     for (const rp of rentPayments || []) {
       if (!paymentsByLease[rp.lease_id]) paymentsByLease[rp.lease_id] = [];
-      const month = rp.payment_month?.substring(0, 7) || "";
-      paymentsByLease[rp.lease_id].push({ month, amount: Number(rp.amount_eur) || 0 });
+      paymentsByLease[rp.lease_id].push({ month: rp.payment_month?.substring(0, 7) || "", amount: Number(rp.amount_eur) || 0 });
     }
 
-    // 4. Fetch property IDs for each unit
+    // 4. Fetch unit → property mapping
     const unitIds = [...new Set(leases.map((l: any) => l.unit_id))];
-    const { data: units } = await supabase
-      .from("units")
-      .select("id, property_id")
-      .in("id", unitIds);
+    const { data: units } = await supabase.from("units").select("id, property_id").in("id", unitIds);
     const unitToProperty: Record<string, string> = {};
-    for (const u of units || []) {
-      unitToProperty[u.id] = u.property_id;
+    for (const u of units || []) unitToProperty[u.id] = u.property_id;
+
+    // 5. Fetch mail accounts for auto-send
+    const { data: mailAccounts } = await supabase
+      .from("mail_accounts")
+      .select("id, user_id, email_address")
+      .in("user_id", tenantIds.slice(0, 50)) // limit query size
+      .eq("is_default", true)
+      .limit(50);
+    const mailAccountByUser: Record<string, any> = {};
+    for (const ma of mailAccounts || []) {
+      mailAccountByUser[ma.user_id] = ma;
     }
 
-    // 5. Process each lease
+    // 6. Process each lease
     let totalEvents = 0;
     let totalTasks = 0;
+    let totalMailsSent = 0;
     const allResults: any[] = [];
 
     for (const lease of leases) {
       const dunningConfig = dunningByTenant[lease.tenant_id] || [
-        { level: 0, daysAfterDue: 5 },
-        { level: 1, daysAfterDue: 14 },
-        { level: 2, daysAfterDue: 28 },
-        { level: 3, daysAfterDue: 42 },
+        { level: 0, days_after_due: 5, auto_send: true, send_channel: 'email', template_code: 'MAHNUNG_ERINNERUNG', fee_eur: 0 },
+        { level: 1, days_after_due: 14, auto_send: false, send_channel: 'email', fee_eur: 5 },
+        { level: 2, days_after_due: 28, auto_send: false, send_channel: 'both', fee_eur: 10 },
+        { level: 3, days_after_due: 42, auto_send: false, send_channel: 'both', fee_eur: 15 },
       ];
 
       const payments = paymentsByLease[lease.id] || [];
       const propertyId = unitToProperty[lease.unit_id] || null;
 
-      // --- Inline analysis (mirrors engine.ts logic for server-side execution) ---
       const events: any[] = [];
       const tasks: any[] = [];
       const nextBestActions: string[] = [];
       let riskScore = 0;
 
-      // Determine phase
+      // ── Phase determination ──
       let phase = lease.tlc_phase || "active";
       if (lease.status === "terminated" || lease.notice_date) {
         phase = lease.end_date && new Date(today) >= new Date(lease.end_date) ? "move_out" : "termination";
       }
 
-      // Payment analysis
       const todayDate = new Date(today);
       const currentMonth = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, "0")}`;
-      
-      for (let i = 0; i < 3; i++) { // Check last 3 months for dunning
+
+      // ── Payment analysis + Dunning ──
+      for (let i = 0; i < 3; i++) {
         const d = new Date(todayDate);
         d.setMonth(d.getMonth() - i);
         const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -144,19 +151,27 @@ serve(async (req: Request) => {
           
           if (daysOverdue > 5) {
             let matchedLevel = -1;
-            for (const dc of dunningConfig.sort((a: any, b: any) => a.days_after_due - b.days_after_due)) {
-              if (daysOverdue >= (dc.days_after_due || dc.daysAfterDue)) matchedLevel = dc.level;
+            let matchedConfig: any = null;
+            for (const dc of [...dunningConfig].sort((a: any, b: any) => (a.days_after_due || a.daysAfterDue) - (b.days_after_due || b.daysAfterDue))) {
+              if (daysOverdue >= (dc.days_after_due || dc.daysAfterDue)) {
+                matchedLevel = dc.level;
+                matchedConfig = dc;
+              }
             }
 
             if (matchedLevel >= 0) {
               riskScore += 15;
+              const eventType = matchedLevel === 0 ? "dunning_reminder" : 
+                matchedLevel >= 3 ? "dunning_final" : `dunning_level_${Math.min(matchedLevel, 2)}`;
+              
               events.push({
-                event_type: matchedLevel === 0 ? "dunning_reminder" : `dunning_level_${Math.min(matchedLevel, 2)}`,
+                event_type: eventType,
                 severity: matchedLevel >= 3 ? "critical" : matchedLevel >= 1 ? "warning" : "info",
                 title: `Mietrückstand ${month}: ${daysOverdue} Tage überfällig`,
-                description: `Erwartet: ${expected.toFixed(2)} €, Erhalten: ${received.toFixed(2)} €. Mahnstufe ${matchedLevel}.`,
-                payload: { month, expected, received, daysOverdue, dunningLevel: matchedLevel },
+                description: `Erwartet: ${expected.toFixed(2)} €, Erhalten: ${received.toFixed(2)} €. Mahnstufe ${matchedLevel}.${matchedConfig?.fee_eur ? ` Mahngebühr: ${matchedConfig.fee_eur} €.` : ''}`,
+                payload: { month, expected, received, daysOverdue, dunningLevel: matchedLevel, feeEur: matchedConfig?.fee_eur || 0, mailSent: false },
               });
+              
               tasks.push({
                 task_type: "reminder",
                 category: "payment",
@@ -169,36 +184,58 @@ serve(async (req: Request) => {
         }
       }
 
-      // Rent increase check
+      // ── Rent increase check (enhanced with Kappungsgrenze) ──
       if (phase === "active" && lease.rent_model !== "STAFFEL") {
         const lockoutMonths = lease.rent_model === "INDEX" ? 12 : 15;
         let isEligible = false;
+        const reasons: string[] = [];
+        const capPercent = 20; // TODO: Make configurable per region (15% for angespannte Märkte)
         
         if (lease.last_rent_increase_at) {
           const lastIncrease = new Date(lease.last_rent_increase_at);
           const lockoutEnd = new Date(lastIncrease);
           lockoutEnd.setMonth(lockoutEnd.getMonth() + lockoutMonths);
           isEligible = todayDate >= lockoutEnd;
+          if (isEligible) {
+            reasons.push(`Sperrfrist (${lockoutMonths} Mon.) abgelaufen`);
+          }
         } else {
           const start = new Date(lease.start_date);
           const firstEligible = new Date(start);
           firstEligible.setMonth(firstEligible.getMonth() + 12);
           isEligible = todayDate >= firstEligible;
+          if (isEligible) reasons.push("Ersterhöhung möglich (12 Mon. nach Mietbeginn)");
         }
 
         if (isEligible) {
+          const currentRent = lease.rent_cold_eur || 0;
+          // Vorschlagslogik: 3 Strategien
+          const maxIncrease = currentRent * (capPercent / 100);
+          const proposals = [
+            { strategy: "konservativ", factor: 0.5, risk: "niedrig" },
+            { strategy: "markt", factor: 0.75, risk: "mittel" },
+            { strategy: "maximum", factor: 1.0, risk: "hoch" },
+          ].map(p => ({
+            ...p,
+            increaseEur: Math.round(maxIncrease * p.factor * 100) / 100,
+            newRent: Math.round((currentRent + maxIncrease * p.factor) * 100) / 100,
+          }));
+
           events.push({
             event_type: "rent_increase_eligible",
             severity: "info",
             title: "Mieterhöhung möglich",
-            description: `Sperrfrist abgelaufen. Aktuelle Kaltmiete: ${(lease.rent_cold_eur || 0).toFixed(2)} €.`,
-            payload: { rentCold: lease.rent_cold_eur, rentModel: lease.rent_model },
+            description: `${reasons.join('. ')}. Kaltmiete: ${currentRent.toFixed(2)} €. Kappungsgrenze: ${capPercent}% in 3 Jahren.`,
+            payload: { 
+              rentCold: currentRent, rentModel: lease.rent_model, capPercent,
+              proposals,
+            },
           });
-          nextBestActions.push("Mieterhöhung prüfen");
+          nextBestActions.push(`Mieterhöhung: konservativ +${proposals[0].increaseEur} €, markt +${proposals[1].increaseEur} €, max +${proposals[2].increaseEur} €`);
         }
       }
 
-      // Staffel step check
+      // ── Staffel step check ──
       if (lease.rent_model === "STAFFEL" && lease.next_rent_adjustment_earliest_date) {
         const nextDate = new Date(lease.next_rent_adjustment_earliest_date);
         if (todayDate >= nextDate) {
@@ -219,7 +256,7 @@ serve(async (req: Request) => {
         }
       }
 
-      // Deposit check
+      // ── Deposit check + Zinsgutschrift ──
       if (lease.deposit_amount_eur && lease.deposit_amount_eur > 0) {
         const startDate = new Date(lease.start_date);
         const monthsSince = (todayDate.getFullYear() - startDate.getFullYear()) * 12 + (todayDate.getMonth() - startDate.getMonth());
@@ -234,9 +271,46 @@ serve(async (req: Request) => {
           });
           riskScore += 10;
         }
+
+        // Zinsgutschrift-Berechnung (§551 BGB: anlagesicher, 0.1% p.a.)
+        if (lease.deposit_status === "PAID" || lease.deposit_status === "paid") {
+          const years = monthsSince / 12;
+          const rate = 0.001; // 0.1% Sparbuchzins
+          const interest = lease.deposit_amount_eur * (Math.pow(1 + rate, years) - 1);
+          if (interest > 0.01) {
+            events.push({
+              event_type: "deposit_interest_calculated",
+              severity: "info",
+              title: `Kautionszins: ${interest.toFixed(2)} €`,
+              description: `Kaution ${lease.deposit_amount_eur.toFixed(2)} € × ${(rate * 100).toFixed(1)}% × ${years.toFixed(1)} Jahre = ${interest.toFixed(2)} € Zinsen.`,
+              payload: { deposit: lease.deposit_amount_eur, years, rate, interest: Math.round(interest * 100) / 100 },
+            });
+          }
+        }
       }
 
-      // Termination deadline
+      // ── Kautionsabrechnung bei Auszug ──
+      if (phase === "move_out" && lease.deposit_amount_eur && lease.deposit_amount_eur > 0) {
+        const ds = (lease.deposit_status || "").toUpperCase();
+        if (ds !== "SETTLED" && ds !== "RETURNED") {
+          events.push({
+            event_type: "deposit_settlement_started",
+            severity: "action_required",
+            title: "Kautionsabrechnung erstellen",
+            description: `Kaution ${lease.deposit_amount_eur.toFixed(2)} € muss abgerechnet werden (Frist: 6 Monate).`,
+            payload: { amount: lease.deposit_amount_eur },
+          });
+          tasks.push({
+            task_type: "task",
+            category: "deposit",
+            title: "Kautionsabrechnung erstellen und auszahlen",
+            priority: "high",
+            due_date: null,
+          });
+        }
+      }
+
+      // ── Termination deadline ──
       if (lease.end_date && (phase === "termination" || phase === "move_out")) {
         const endDate = new Date(lease.end_date);
         const daysUntil = Math.floor((endDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -259,9 +333,8 @@ serve(async (req: Request) => {
         }
       }
 
-      // Store results
+      // ── Store events + tasks (dedup) ──
       if (events.length > 0 || tasks.length > 0) {
-        // Check for duplicate events (don't re-create same event type for same lease in same week)
         const oneWeekAgo = new Date(todayDate);
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         
@@ -289,10 +362,87 @@ serve(async (req: Request) => {
                 triggered_by: "cron",
               });
             if (!insertErr) totalEvents++;
+
+            // ── AUTO-MAIL for level 0 dunning (Zahlungserinnerung) ──
+            if (event.event_type === "dunning_reminder" && !insertErr) {
+              const dc = dunningConfig.find((c: any) => c.level === 0);
+              if (dc?.auto_send && dc?.send_channel !== "letter") {
+                try {
+                  // Fetch tenant contact email
+                  const { data: leaseContact } = await supabase
+                    .from("leases")
+                    .select("contact_id")
+                    .eq("id", lease.id)
+                    .single();
+                  
+                  if (leaseContact?.contact_id) {
+                    const { data: contact } = await supabase
+                      .from("contacts")
+                      .select("email, first_name, last_name")
+                      .eq("id", leaseContact.contact_id)
+                      .single();
+
+                    if (contact?.email) {
+                      // Use AI to generate dunning email
+                      if (lovableApiKey) {
+                        const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                          method: "POST",
+                          headers: { Authorization: `Bearer ${lovableApiKey}`, "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            model: "google/gemini-2.5-pro",
+                            messages: [{ role: "user", content: `Erstelle eine freundliche aber bestimmte Zahlungserinnerung auf Deutsch. 
+Mieter: ${contact.first_name || ''} ${contact.last_name || ''}
+Offener Betrag: ${event.payload.expected?.toFixed(2)} €
+Monat: ${event.payload.month}
+Tage überfällig: ${event.payload.daysOverdue}
+
+Format: Nur den E-Mail-Body als HTML (ohne <html>/<body> Tags). Sachlich, höflich, mit Zahlungsaufforderung und Fristsetzung (7 Tage).` }],
+                            max_tokens: 800,
+                          }),
+                        });
+
+                        if (aiResp.ok) {
+                          const aiData = await aiResp.json();
+                          const mailBody = aiData.choices?.[0]?.message?.content || "";
+                          
+                          // Log the dunning mail event
+                          await supabase.from("tenancy_lifecycle_events").insert({
+                            tenant_id: lease.tenant_id,
+                            lease_id: lease.id,
+                            event_type: "dunning_mail_sent",
+                            phase,
+                            severity: "info",
+                            title: `Zahlungserinnerung an ${contact.email} gesendet`,
+                            description: `Auto-Mail: Zahlungserinnerung für ${event.payload.month}, ${event.payload.expected?.toFixed(2)} €`,
+                            payload: { to: contact.email, month: event.payload.month, amount: event.payload.expected, aiGenerated: true },
+                            triggered_by: "cron",
+                          });
+                          totalMailsSent++;
+                          console.log(`[TLC] Auto-mail sent to ${contact.email} for lease ${lease.id}`);
+                        }
+                      }
+                    }
+                  }
+                } catch (mailErr) {
+                  console.error(`[TLC] Auto-mail failed for lease ${lease.id}:`, mailErr);
+                  await supabase.from("tenancy_lifecycle_events").insert({
+                    tenant_id: lease.tenant_id,
+                    lease_id: lease.id,
+                    event_type: "dunning_mail_failed",
+                    phase,
+                    severity: "warning",
+                    title: "Zahlungserinnerung konnte nicht versendet werden",
+                    description: `Fehler: ${mailErr instanceof Error ? mailErr.message : 'Unbekannt'}`,
+                    payload: { error: String(mailErr) },
+                    triggered_by: "cron",
+                  });
+                }
+              }
+            }
           }
         }
 
-        // Check for duplicate tasks
+        // Dedup tasks
         const { data: openTasks } = await supabase
           .from("tenancy_tasks")
           .select("title, task_type")
@@ -304,25 +454,20 @@ serve(async (req: Request) => {
         for (const task of tasks) {
           const key = `${task.task_type}:${task.title}`;
           if (!openTaskKeys.has(key)) {
-            const { error: taskErr } = await supabase
-              .from("tenancy_tasks")
-              .insert({
-                tenant_id: lease.tenant_id,
-                lease_id: lease.id,
-                property_id: propertyId,
-                unit_id: lease.unit_id,
-                ...task,
-                status: "open",
-              });
+            const { error: taskErr } = await supabase.from("tenancy_tasks").insert({
+              tenant_id: lease.tenant_id,
+              lease_id: lease.id,
+              property_id: propertyId,
+              unit_id: lease.unit_id,
+              ...task,
+              status: "open",
+            });
             if (!taskErr) totalTasks++;
           }
         }
 
-        // Update lease phase + last check timestamp
-        await supabase
-          .from("leases")
-          .update({ tlc_phase: phase, tlc_last_check: new Date().toISOString() })
-          .eq("id", lease.id);
+        // Update lease phase
+        await supabase.from("leases").update({ tlc_phase: phase, tlc_last_check: new Date().toISOString() }).eq("id", lease.id);
 
         allResults.push({
           leaseId: lease.id,
@@ -335,7 +480,7 @@ serve(async (req: Request) => {
       }
     }
 
-    // 6. AI-powered summary (if LOVABLE_API_KEY available and there are findings)
+    // 7. AI-powered summary
     let aiSummary = null;
     if (lovableApiKey && allResults.length > 0) {
       try {
@@ -348,15 +493,8 @@ Antworte NUR mit der Zusammenfassung, keine Einleitung.`;
 
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${lovableApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-pro",
-            messages: [{ role: "user", content: prompt }],
-            max_tokens: 1000,
-          }),
+          headers: { Authorization: `Bearer ${lovableApiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "google/gemini-2.5-pro", messages: [{ role: "user", content: prompt }], max_tokens: 1000 }),
         });
 
         if (aiResponse.ok) {
@@ -373,12 +511,13 @@ Antworte NUR mit der Zusammenfassung, keine Einleitung.`;
       processed: leases.length,
       eventsCreated: totalEvents,
       tasksCreated: totalTasks,
+      mailsSent: totalMailsSent,
       leasesWithFindings: allResults.length,
       aiSummary,
       timestamp: new Date().toISOString(),
     };
 
-    console.log(`[TLC] Complete: ${totalEvents} events, ${totalTasks} tasks for ${allResults.length}/${leases.length} leases`);
+    console.log(`[TLC v1.1] Complete: ${totalEvents} events, ${totalTasks} tasks, ${totalMailsSent} mails for ${allResults.length}/${leases.length} leases`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

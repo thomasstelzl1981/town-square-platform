@@ -87,6 +87,22 @@ export function useLeaseLifecycle(leaseId?: string) {
     fetchData();
   }, [fetchData]);
 
+  // Derived state
+  const unresolvedEvents = events.filter(e => !e.resolved_at);
+  const criticalEventsArr = unresolvedEvents.filter(e => e.severity === 'critical' || e.severity === 'action_required');
+
+  // Dispatch Armstrong proactive hints for critical TLC events
+  useEffect(() => {
+    if (criticalEventsArr.length === 0) return;
+    const latest = criticalEventsArr[0];
+    window.dispatchEvent(new CustomEvent('armstrong:proactive', {
+      detail: {
+        module: 'MOD-04',
+        hint: `⚠️ TLC-Alert: ${latest.title}. ${latest.description || ''} — Soll ich helfen?`,
+      },
+    }));
+  }, [criticalEventsArr.length]);
+
   // Subscribe to realtime updates
   useEffect(() => {
     if (!session?.user) return;
