@@ -108,7 +108,7 @@ const PlatformCostMonitor: React.FC = () => {
         const action = manifestLookup.get(r.action_code);
         const category = getCostCategoryForAction(r.action_code);
         const creditsEstimate = action?.credits_estimate ?? 0;
-        const revenuePerRun = creditsEstimate * 50; // cents
+        const revenuePerRun = creditsEstimate * 25; // cents (1 Credit = 0,25 EUR)
         const costPerRun = Number(r.avg_cost_cents);
         const marginPerRun = revenuePerRun - costPerRun;
         return { ...r, action, category, creditsEstimate, revenuePerRun, costPerRun, marginPerRun };
@@ -126,7 +126,7 @@ const PlatformCostMonitor: React.FC = () => {
         const fixCostShare = (fixCostsMonthly * 100) / Math.max(runsTotal, 1); // cents per run
         const totalCostPerRun = avgCost + fixCostShare;
         const recommendedPriceCents = totalCostPerRun / (1 - targetMargin / 100);
-        const recommendedCredits = recommendedPriceCents / 50;
+        const recommendedCredits = recommendedPriceCents / 25; // 1 Credit = 25 Cent
         return {
           action_code: r.action_code,
           title: r.action?.title_de ?? r.action_code,

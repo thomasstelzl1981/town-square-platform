@@ -10,13 +10,14 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { CreditCard, TrendingUp, Users, Zap, AlertTriangle, Settings, Loader2, ArrowLeft, BarChart3 } from 'lucide-react';
+import { CreditCard, TrendingUp, Users, Zap, AlertTriangle, Loader2, ArrowLeft, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Link } from 'react-router-dom';
+import { SystemPreisliste } from '@/components/shared/SystemPreisliste';
 
 interface BillingEvent {
   id: string;
@@ -128,10 +129,12 @@ export default function ArmstrongBilling() {
         </div>
         <div className="flex items-center gap-2">
           {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-          <Button variant="outline">
-            <Settings className="h-4 w-4 mr-2" />
-            Einstellungen
-          </Button>
+          <Link to="/admin/armstrong/costs">
+            <Button variant="outline" size="sm">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Kostenmonitor
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -194,12 +197,17 @@ export default function ArmstrongBilling() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue="preisliste" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="preisliste">Preisliste</TabsTrigger>
           <TabsTrigger value="overview">Übersicht</TabsTrigger>
           <TabsTrigger value="events">Billing Events</TabsTrigger>
           <TabsTrigger value="daily">Tagesansicht</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="preisliste">
+          <SystemPreisliste />
+        </TabsContent>
 
         <TabsContent value="overview">
           <Card>

@@ -144,7 +144,7 @@ export function IntakeTab() {
               Dokument hochladen
             </h3>
             <span className="text-[10px] text-muted-foreground ml-auto">
-              1 Credit / Dokument (0,25 €)
+              1 Credit / Dokument
             </span>
           </div>
           <IntakeEntityPicker

@@ -7,9 +7,9 @@ import { Coins, Calculator, Info } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 const PRICING_ITEMS = [
-  { label: 'Preis pro Dokument', value: '1 Credit', detail: '= 0,25 €' },
+  { label: 'Preis pro Dokument', value: '1 Credit', detail: 'pro KI-Analyse' },
   { label: 'Datenraum-Scan', value: 'Kostenlos', detail: 'Vorher sehen, was es kostet' },
-  { label: 'Beispiel: 20 Dokumente', value: '20 Credits', detail: '= 5,00 €' },
+  { label: 'Beispiel: 20 Dokumente', value: '20 Credits', detail: 'Kostenvoranschlag vorab' },
 ];
 
 export function IntakePricingInfo() {
@@ -26,7 +26,7 @@ export function IntakePricingInfo() {
           <div className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
             <Info className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
             <p className="text-xs text-foreground leading-relaxed">
-              Jede KI-Analyse eines Dokuments kostet <strong>1 Credit (0,25 €)</strong>. 
+              Jede KI-Analyse eines Dokuments kostet <strong>1 Credit</strong>. 
               Der Scan Ihres Datenraums ist kostenlos — Sie sehen den Kostenvoranschlag, 
               bevor Sie die Extraktion freigeben.
             </p>
