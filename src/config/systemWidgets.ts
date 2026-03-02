@@ -227,6 +227,20 @@ export const SYSTEM_WIDGETS: SystemWidgetDefinition[] = [
     privacy_note: 'Zeigt Mietverwaltungs-Daten aus Ihrem Konto',
     default_enabled: true,
   },
+  {
+    code: 'SYS.BILLING.CREDITS',
+    name_de: 'Credit-Guthaben',
+    description_de: 'Aktueller Credit-Saldo mit 7-Tage-Verbrauch und TopUp-Link. Warnung bei niedrigem Guthaben.',
+    icon: 'Coins',
+    gradient: 'from-emerald-500/10 to-emerald-600/5',
+    data_source: 'tenant_credit_balance + credit_ledger',
+    cache_interval_min: 5,
+    cost_model: 'free',
+    status: 'live',
+    has_autoplay: false,
+    privacy_note: 'Zeigt Ihren Credit-Saldo und Verbrauch',
+    default_enabled: true,
+  },
 ];
 
 // Helper to get widget by code

@@ -117,6 +117,47 @@ serve(async (req) => {
       });
     }
 
+    // ── Credit Preflight + Deduct (2 Credits) ──
+    {
+      const { data: preflight, error: preflightErr } = await supabase.rpc("rpc_credit_preflight", {
+        p_tenant_id: body.auto ? "system" : "",  // auto mode uses system context
+        p_amount: 2,
+      });
+      // For manual mode, try to get tenant from auth header
+      const authHeader = req.headers.get("authorization") || "";
+      if (!body.auto && authHeader) {
+        const userClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.replace(/.*/, Deno.env.get("SUPABASE_ANON_KEY") || SUPABASE_SERVICE_ROLE_KEY), {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const { data: { user } } = await userClient.auth.getUser();
+        if (user) {
+          const { data: membership } = await supabase
+            .from("organization_members")
+            .select("organization_id")
+            .eq("user_id", user.id)
+            .limit(1)
+            .maybeSingle();
+          const tenantId = membership?.organization_id;
+          if (tenantId) {
+            const { data: pf } = await supabase.rpc("rpc_credit_preflight", { p_tenant_id: tenantId, p_amount: 2 });
+            if (!pf?.allowed) {
+              if (topicId) await supabase.from("content_topics").update({ status: "failed" }).eq("id", topicId);
+              return new Response(JSON.stringify({ error: "Nicht genügend Credits." }), {
+                status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+            await supabase.rpc("rpc_credit_deduct", {
+              p_tenant_id: tenantId,
+              p_user_id: user.id,
+              p_amount: 2,
+              p_ref_type: "content_engine",
+              p_ref_id: slug,
+            });
+          }
+        }
+      }
+    }
+
     const today = new Date().toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" });
 
     const systemPrompt = `Du bist ein erfahrener Fachautor und SEO-Spezialist. Du schreibst Ratgeber-Artikel für die Marke "${brand}".
