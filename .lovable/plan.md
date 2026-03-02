@@ -1,121 +1,206 @@
 
 
-# TLC + ImmobilienScout24 Vermietung — Komplettanalyse
+# TLC Komplett-Umbau: Collapsible → Inline-Scroll mit CI-Design
 
-## 1. TLC-Struktur (TenancyTab.tsx — 920 Zeilen)
+## Ist-Zustand
 
-Die TenancyTab ist die zentrale Orchestrierung fuer Mietverwaltung in MOD-04. Sie rendert Mietvertraege als inline-editierbare Cards und darunter 4 TLC-Kategorien mit 17 Sektionen:
+Das gesamte TLC-System besteht aus **18 Sektions-Komponenten** + **4 Kategorie-Wrappern** in `TenancyTab.tsx`, die alle das gleiche `Collapsible`-Pattern nutzen. Alles ist hinter Klicks versteckt — der User sieht nur eine Liste von Ghost-Buttons.
 
 ```text
-TenancyTab
-├── Header: "Neuen Vertrag anlegen"
-├── Active Leases (inline-editable Cards)
-│   ├── Vertragsart, Mietmodell
-│   ├── Kaltmiete, NK, Heizkosten → Warmmiete (computed)
-│   ├── Laufzeit (Start/Ende)
-│   ├── Kaution + Zinsgutschrift (ENG-TLC)
-│   └── Actions: Aktivieren, Kuendigung, Mieterhoehung, Abmahnung
-├── Historische Vertraege (Collapsible)
-└── TLC Lifecycle-Management
-    ├── 📋 Kernfunktionen
-    │   ├── Events (TLCEventsSection)
-    │   ├── Tasks (TLCTasksSection)
-    │   ├── Deadlines (TLCDeadlinesSection)
-    │   └── Zaehlerstaende (TLCMeterSection)
-    ├── 📝 Vertrag & Uebergabe          ← IS24 HIER
-    │   ├── Vermietungsinserat (TLCRentalListingSection) ← NEU
-    │   ├── Mietvertrag (TLCContractSection)
-    │   ├── Uebergabe (TLCHandoverSection)
-    │   └── Bewerber (TLCApplicantSection)
-    ├── 💶 Finanzen
-    │   ├── Zahlungsplan (TLCPaymentPlanSection)
-    │   ├── Mietminderung (TLCRentReductionSection)
-    │   ├── NK-Vorauszahlung (TLCPrepaymentSection)
-    │   ├── 3-Jahres-Check (TLCThreeYearCheckSection)
-    │   └── Rechnungen (TLCInvoiceSection)
-    └── 🏢 Verwaltung
-        ├── Kommunikation (TLCCommunicationSection)
-        ├── Maengel (TLCDefectSection)
-        ├── Dienstleister (TLCServiceProviderSection)
-        └── Versicherung (TLCInsuranceSection)
+IST (alles zugeklappt):
+┌─────────────────────────────────┐
+│ ▶ 📋 Kernfunktionen            │
+│ ▶ 📝 Vertrag & Übergabe        │
+│ ▶ 💶 Finanzen                   │
+│ ▶ 🏢 Verwaltung                 │
+│   Portfolio-Report              │
+└─────────────────────────────────┘
 ```
 
-## 2. IS24-Integration Vermietung — Status
+## Soll-Zustand
 
-### Was gebaut ist (funktional)
+Alles inline sichtbar, durch Scrollen erreichbar. Jede Kategorie wird eine `SectionCard` mit CI-konformer Typografie. Jede Sub-Sektion wird direkt gerendert ohne eigenes Collapsible.
 
-| Komponente | Status | Detail |
-|------------|--------|--------|
-| `TLCRentalListingSection.tsx` | Gebaut | 422 Zeilen, Collapsible in Kategorie 2 |
-| `sot-is24-gateway` Edge Function | Deployed | 651 Zeilen, OAuth 1.0a, 4 Actions |
-| `rental_listings` Tabelle | Vorhanden | 18 Spalten inkl. cold_rent, warm_rent, pets_allowed |
-| `rental_publications` Tabelle | Vorhanden | 12 Spalten, Unique auf (rental_listing_id, channel) |
-| Secrets | Konfiguriert | IS24_CONSUMER_KEY, IS24_CONSUMER_SECRET, Sandbox User/PW |
-| `IS24PublicationStatus.tsx` (Verkauf) | Gebaut | 149 Zeilen, in ExposeDetail eingebunden |
+```text
+SOLL (scrollbar, alles sichtbar):
+┌─────────────────────────────────────────────────┐
+│ [📋] Kernfunktionen                             │  ← SectionCard
+│      Lifecycle-Events, Aufgaben & Fristen       │    TYPOGRAPHY.SECTION_TITLE
+│                                                 │
+│  ┌ Lifecycle-Events (24) ── [3 offen] ────┐     │  ← Inline, kein Collapsible
+│  │  ⚠ Mieterhöhung fällig  │ 01.03.26    │     │
+│  │  ℹ Vertrag verlängert   │ 28.02.26    │     │
+│  │  ...                                   │     │
+│  └────────────────────────────────────────┘     │
+│                                                 │
+│  ┌ Aufgaben (16 offen) ──────────────────┐      │
+│  │  🔴 Rohrbruch EG │ urgent │ 4h SLA    │      │
+│  │  ...                                  │      │
+│  └───────────────────────────────────────┘      │
+│                                                 │
+│  ┌ Fristen ──────────────────────────────┐      │
+│  │  ...                                  │      │
+│  └───────────────────────────────────────┘      │
+│                                                 │
+│  ┌ Zählerstände ─────────────────────────┐      │
+│  │  ...                                  │      │
+│  └───────────────────────────────────────┘      │
+└─────────────────────────────────────────────────┘
 
-### Kritische Bugs (Edge Function ↔ DB Mismatch)
+┌─────────────────────────────────────────────────┐
+│ [📝] Vertrag & Übergabe                         │  ← SectionCard
+│      Inserate, Verträge, Übergaben, Bewerber    │
+│                                                 │
+│  ┌ Vermietungsinserat ── [● Aktiv] ──────┐      │
+│  │  Kaltmiete: 850€  │  Warmmiete: 1150€ │      │
+│  │  [Auf IS24 buchen (2 Cr)]             │      │
+│  └───────────────────────────────────────┘      │
+│                                                 │
+│  ┌ Mietvertrag ─────────────────────────┐       │
+│  │  ...                                 │       │
+│  └──────────────────────────────────────┘       │
+│  ┌ Übergabeprotokoll ──────────────────┐        │
+│  │  ...                                │        │
+│  └─────────────────────────────────────┘        │
+│  ┌ Bewerber ───────────────────────────┐        │
+│  │  ...                                │        │
+│  └─────────────────────────────────────┘        │
+└─────────────────────────────────────────────────┘
 
-**BUG 1 — `metadata` Spalte fehlt in `rental_publications`:**
-Die Edge Function schreibt `metadata: { is24_status, is24_response, object_type }` in `rental_publications` (Z. 443-455). Diese Spalte existiert aber **nicht** in der Tabelle. Das `upsert` wird **silent fail** oder den ganzen Insert blockieren.
+┌─────────────────────────────────────────────────┐
+│ [💶] Finanzen                                    │  ← SectionCard
+│      Zahlungsplan, Mietminderung, NK, Prüfungen │
+│  ┌ Zahlungsplan ─────────────────────────┐      │
+│  │  ...                                  │      │
+│  └───────────────────────────────────────┘      │
+│  ┌ Mietminderung ────────────────────────┐      │
+│  │  ...                                  │      │
+│  └───────────────────────────────────────┘      │
+│  ┌ NK-Vorauszahlung ─────────────────────┐      │
+│  │  ...                                  │      │
+│  └───────────────────────────────────────┘      │
+│  ┌ 3-Jahres-Check ───────────────────────┐      │
+│  │  ...                                  │      │
+│  └───────────────────────────────────────┘      │
+│  ┌ Rechnungen ───────────────────────────┐      │
+│  │  ...                                  │      │
+│  └───────────────────────────────────────┘      │
+└─────────────────────────────────────────────────┘
 
-**BUG 2 — `removed_at` Spalte fehlt in `rental_publications`:**
-Bei `deactivate_listing` schreibt die Edge Function `removed_at: new Date().toISOString()` (Z. 596). Diese Spalte fehlt ebenfalls in `rental_publications` (existiert nur in `listing_publications`).
+┌─────────────────────────────────────────────────┐
+│ [🏢] Verwaltung                                  │  ← SectionCard
+│      Kommunikation, Mängel, Dienstleister, Vers.│
+│  ┌ Kommunikation ────────────────────────┐      │
+│  │  ...                                  │      │
+│  └───────────────────────────────────────┘      │
+│  ┌ Mängelmelder ─────────────────────────┐      │
+│  │  ...                                  │      │
+│  └───────────────────────────────────────┘      │
+│  ┌ Dienstleister ────────────────────────┐      │
+│  │  ...                                  │      │
+│  └───────────────────────────────────────┘      │
+│  ┌ Versicherung ─────────────────────────┐      │
+│  │  ...                                  │      │
+│  └───────────────────────────────────────┘      │
+└─────────────────────────────────────────────────┘
 
-**BUG 3 — `tenant_id` wird in `rental_publications` geschrieben, aber Tabelle hat das Feld:**
-Das ist korrekt — `tenant_id` existiert. Kein Bug.
-
-**BUG 4 — Channel-Typ Mismatch:**
-`listing_publications.channel` ist ein **ENUM** (`kaufy`, `scout24`, `kleinanzeigen`, `partner_network`). `rental_publications.channel` ist **plain TEXT**. Funktional OK, aber inkonsistent.
-
-### UI/UX-Analyse der TLCRentalListingSection
-
-**Staerken:**
-- Sauberes Collapsible-Pattern innerhalb Kategorie 2
-- Status-Icon im Trigger (gruen/gelb/rot/grau) — gutes visuelles Feedback
-- Mietdaten (Kaltmiete, Warmmiete) werden aus dem aktiven Lease vorbefuellt
-- IS24-Buchungsbutton mit Credit-Hinweis ("2 Credits")
-- Deaktivierungs-Option vorhanden
-
-**Schwaechen:**
-1. **Fehlende `postalCode`-Weitergabe:** TenancyTab Z. 797-806 setzt `propertyCity` aus `propertyAddress.split(',').pop()` — das ist fragil und verliert die PLZ. Das `postalCode`-Prop wird **nicht** uebergeben, obwohl die Komponente es akzeptiert.
-2. **Kein `yearBuilt`-Prop:** Wird nicht aus der Property geladen und nicht uebergeben. IS24 braucht `yearConstructed`.
-3. **Kein Error-Feedback bei Credit-Mangel:** Wenn 402 zurueckkommt, zeigt `toast.error` nur die Fehlermeldung — kein expliziter Hinweis auf fehlende Credits mit Link zur Aufladung.
-4. **Kein Confirmation-Dialog vor Buchung:** "Auf IS24 buchen (2 Credits)" fuehrt sofort die Mutation aus — bei einer kostenpflichtigen Aktion sollte ein Bestaetignungsdialog kommen.
-5. **Formular ist immer sichtbar:** Die Inserats-Felder sind immer editierbar, auch wenn bereits auf IS24 aktiv. Aenderungen am Formular aktualisieren aber NICHT automatisch die IS24-Anzeige.
-
-## 3. Bereinigungsplan
-
-### DB-Migration (2 fehlende Spalten)
-
-```sql
-ALTER TABLE rental_publications 
-  ADD COLUMN IF NOT EXISTS metadata jsonb,
-  ADD COLUMN IF NOT EXISTS removed_at timestamptz;
+┌─────────────────────────────────────────────────┐
+│ [📊] Portfolio-Report                            │  ← SectionCard
+└─────────────────────────────────────────────────┘
 ```
 
-### TenancyTab: Props-Korrektur
+## Technische Umsetzung
 
-Property-Daten vollstaendig laden (`year_built`, `postal_code`) und an `TLCRentalListingSection` weiterreichen:
-- `postalCode` aus `propData.postal_code`
-- `yearBuilt` aus Property-Daten (muss noch abgefragt werden — `properties.year_built` oder aehnlich)
+### Ebene 1: TenancyTab.tsx (Kategorie-Wrapper)
 
-### TLCRentalListingSection: UX-Verbesserungen
+Die 4 Kategorie-`Collapsible`-Wrapper (Zeilen 764-896) werden ersetzt durch 4 `SectionCard`-Komponenten mit passenden Icons und Descriptions:
 
-1. **Bestaetignungsdialog** vor kostenpflichtiger IS24-Buchung (AlertDialog mit "2 Credits werden abgezogen")
-2. **Credit-Mangel-Handling:** Bei 402-Response expliziten Hinweis "Nicht genuegend Credits" mit Verweis auf Abrechnungs-Tab
-3. **Formular-Lock:** Wenn IS24 aktiv, Formularfelder readonly setzen und "Aktualisieren auf IS24"-Button anzeigen (der `update_listing` aufruft)
-4. **PostalCode + YearBuilt** korrekt uebergeben
+| Kategorie | Icon | Titel | Description |
+|-----------|------|-------|-------------|
+| Kernfunktionen | `ClipboardList` | Kernfunktionen | Lifecycle-Events, Aufgaben & Fristen |
+| Vertrag & Uebergabe | `FileText` | Vertrag & Uebergabe | Inserate, Vertraege, Uebergaben, Bewerber |
+| Finanzen | `Euro` | Finanzen | Zahlungsplaene, Minderungen, NK-Pruefungen |
+| Verwaltung | `Building2` | Verwaltung | Kommunikation, Maengel, Dienstleister |
 
-### Edge Function: Minor Fix
+Historische Vertraege (Z. 724-753) bleiben als einziges `Collapsible` — das ist korrekt, da es optionaler Archiv-Content ist.
 
-Keine Aenderung noetig — die Edge Function selbst ist korrekt gebaut. Die `metadata`/`removed_at`-Fehler kommen vom fehlenden DB-Schema, nicht von der Funktionslogik.
+### Ebene 2: Alle 18 TLC-Sektions-Komponenten
 
-## 4. Umsetzungsschritte
+Jede der 18 Komponenten hat intern das gleiche Pattern:
 
-| # | Was | Dateien |
-|---|-----|---------|
-| 1 | DB-Migration: `metadata` + `removed_at` Spalten | SQL Migration |
-| 2 | TenancyTab: `postalCode` + `yearBuilt` Props ergaenzen | `TenancyTab.tsx` |
-| 3 | TLCRentalListingSection: Confirmation-Dialog + Credit-Error + Formular-Lock | `TLCRentalListingSection.tsx` |
-| 4 | Virtueller E2E-Test via Edge Function curl | Sandbox-Validierung |
+```tsx
+// ALT (alle 18 Dateien):
+<Collapsible open={open} onOpenChange={setOpen}>
+  <CollapsibleTrigger asChild>
+    <Button variant="ghost" className="w-full justify-between h-8 text-xs">
+      <span>...</span>
+      <ChevronDown />
+    </Button>
+  </CollapsibleTrigger>
+  <CollapsibleContent>
+    {/* Inhalt */}
+  </CollapsibleContent>
+</Collapsible>
+```
+
+Wird ersetzt durch:
+
+```tsx
+// NEU (alle 18 Dateien):
+<div className="space-y-2">
+  <div className="flex items-center justify-between">
+    <h4 className={DESIGN.TYPOGRAPHY.LABEL}>
+      <Icon className="h-3.5 w-3.5 inline mr-1.5" />
+      Sektions-Titel
+    </h4>
+    {/* Badge/Counter bleibt */}
+  </div>
+  {/* Inhalt direkt sichtbar */}
+</div>
+```
+
+Entfernt aus jeder Datei:
+- `Collapsible`, `CollapsibleContent`, `CollapsibleTrigger` Imports
+- `useState` fuer `open`/`setOpen` (wenn nur dafuer genutzt)
+- `ChevronDown` Icon Import (wenn nur dafuer genutzt)
+
+### Betroffene Dateien (20 Dateien)
+
+| # | Datei | Zeilen ca. | Aenderung |
+|---|-------|-----------|-----------|
+| 1 | `TenancyTab.tsx` | 928 | 4 Kategorie-Collapsibles → 4 SectionCards |
+| 2 | `TLCEventsSection.tsx` | 87 | Collapsible → inline |
+| 3 | `TLCTasksSection.tsx` | 106 | Collapsible → inline |
+| 4 | `TLCDeadlinesSection.tsx` | 119 | Collapsible → inline |
+| 5 | `TLCMeterSection.tsx` | ~100 | Collapsible → inline |
+| 6 | `TLCRentalListingSection.tsx` | 422 | Collapsible → inline (bereits geplant) |
+| 7 | `TLCContractSection.tsx` | ~150 | Collapsible → inline |
+| 8 | `TLCHandoverSection.tsx` | 129 | Collapsible → inline |
+| 9 | `TLCApplicantSection.tsx` | ~120 | Collapsible → inline |
+| 10 | `TLCPaymentPlanSection.tsx` | 140 | Collapsible → inline |
+| 11 | `TLCRentReductionSection.tsx` | ~120 | Collapsible → inline |
+| 12 | `TLCPrepaymentSection.tsx` | ~140 | Collapsible → inline |
+| 13 | `TLCThreeYearCheckSection.tsx` | 145 | Collapsible → inline |
+| 14 | `TLCInvoiceSection.tsx` | ~100 | Collapsible → inline |
+| 15 | `TLCCommunicationSection.tsx` | ~200 | Collapsible → inline |
+| 16 | `TLCDefectSection.tsx` | 195 | Collapsible → inline |
+| 17 | `TLCServiceProviderSection.tsx` | ~120 | Collapsible → inline |
+| 18 | `TLCInsuranceSection.tsx` | ~120 | Collapsible → inline |
+| 19 | `TLCReportSection.tsx` | ~100 | Collapsible → inline |
+
+### CI-Elemente die verwendet werden
+
+- `SectionCard` aus `src/components/shared/SectionCard.tsx` — fuer Kategorie-Wrapper
+- `DESIGN.TYPOGRAPHY.SECTION_TITLE` — fuer Kategorie-Ueberschriften
+- `DESIGN.TYPOGRAPHY.LABEL` — fuer Sub-Sektions-Titel
+- `DESIGN.TYPOGRAPHY.HINT` — fuer Beschreibungstexte
+- `DESIGN.SPACING.SECTION` — fuer Abstaende zwischen Kategorien
+- `DESIGN.CARD.SECTION` — via SectionCard automatisch
+
+### Was sich NICHT aendert
+
+- Alle Queries, Mutations, Business-Logik — 100% identisch
+- Props-Schnittstellen der Komponenten bleiben gleich
+- Historische Vertraege bleiben Collapsible (Archiv-Pattern)
+- IS24-Integration, AlertDialog, Form-Lock — alles bleibt
 
