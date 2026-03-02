@@ -69,9 +69,9 @@ describe('Zone 2: Portal Modules', () => {
     expect(zone2Portal.dashboard?.component).toBe('PortalDashboard');
   });
 
-  it('should have 23 modules (MOD-00 to MOD-22, excl. MOD-21 hidden but active)', () => {
+  it('should have 22 modules (MOD-00 to MOD-22, MOD-21 removed)', () => {
     const modules = Object.keys(zone2Portal.modules || {});
-    expect(modules.length).toBe(23);
+    expect(modules.length).toBe(22);
   });
 
   it('should have modules sorted by display_order ascending', () => {
@@ -140,8 +140,8 @@ describe('Zone 2: Portal Modules', () => {
 // ZONE 3: WEBSITES
 // =============================================================================
 describe('Zone 3: Websites', () => {
-  it('should have 8 website definitions', () => {
-    expect(Object.keys(zone3Websites).length).toBe(8);
+  it('should have 9 website definitions', () => {
+    expect(Object.keys(zone3Websites).length).toBe(9);
   });
 
   it('should have Kaufy website', () => {
@@ -237,8 +237,8 @@ describe('Route Counts', () => {
   it('should calculate total Zone 2 tile routes', () => {
     const modules = Object.values(zone2Portal.modules || {});
     const tileCount = modules.reduce((sum, m) => sum + m.tiles.length, 0);
-    // Sum of all tile counts from expectedTileCounts (updated: MOD-01=5, MOD-13=6)
-    expect(tileCount).toBe(111);
+    // Sum of all tile counts (MOD-21 removed: 111 - 5 = 106)
+    expect(tileCount).toBe(106);
   });
 
   it('should calculate total Zone 3 routes', () => {

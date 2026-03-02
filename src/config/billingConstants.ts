@@ -31,7 +31,7 @@ export const SYSTEM_PRICES: SystemPrice[] = [
   { code: 'content_engine', label: 'Content-Engine (Artikel)', credits: 2, eur_cents: 50, interval: 'per_use', category: 'ai' },
   { code: 'tlc_summary', label: 'KI-Zusammenfassung (TLC)', credits: 1, eur_cents: 25, interval: 'per_use', category: 'ai' },
   { code: 'finance_prepare', label: 'Finanzierungspaket-Aufbereitung', credits: 2, eur_cents: 50, interval: 'per_use', category: 'ai' },
-  { code: 'ki_browser', label: 'KI-Browser / Research', credits: 3, eur_cents: 75, interval: 'per_use', category: 'ai' },
+  // ki_browser removed (MOD-21 deactivated)
   { code: 'contact_enrichment', label: 'Kontakt-Anreicherung', credits: 1, eur_cents: 25, interval: 'per_use', category: 'ai' },
   { code: 'discovery_scheduler', label: 'Discovery Scheduler', credits: 1, eur_cents: 25, interval: 'per_use', category: 'ai' },
 
