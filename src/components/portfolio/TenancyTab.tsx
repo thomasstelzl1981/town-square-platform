@@ -45,6 +45,8 @@ import { TLCInvoiceSection } from './tlc/TLCInvoiceSection';
 import { TLCServiceProviderSection } from './tlc/TLCServiceProviderSection';
 import { TLCInsuranceSection } from './tlc/TLCInsuranceSection';
 import { TLCReportSection } from './tlc/TLCReportSection';
+import { TLCThreeYearCheckSection } from './tlc/TLCThreeYearCheckSection';
+import { calculateDepositInterest } from '@/engines/tenancyLifecycle/engine';
 
 interface Lease {
   id: string;
@@ -131,6 +133,10 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
   const [edits, setEdits] = useState<LeaseEdits>({});
   const [isCreating, setIsCreating] = useState(false);
   const [orgName, setOrgName] = useState<string>('');
+  const [propertyAddress, setPropertyAddress] = useState<string>('');
+  const [unitDescription, setUnitDescription] = useState<string>('');
+  const [unitAreaSqm, setUnitAreaSqm] = useState<number>(0);
+  const [unitRooms, setUnitRooms] = useState<number>(0);
 
   // TLC Hooks
   const { events, tasks, resolveEvent, updateTaskStatus } = useLeaseLifecycle();
@@ -186,6 +192,29 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
         .eq('id', tenantId)
         .single();
       if (orgData?.name) setOrgName(orgData.name);
+
+      // Fetch property address
+      const { data: propData } = await supabase
+        .from('properties')
+        .select('address, address_house_no, city, postal_code')
+        .eq('id', propertyId)
+        .single();
+      if (propData) {
+        const addr = [propData.address, propData.address_house_no].filter(Boolean).join(' ');
+        setPropertyAddress([addr, propData.postal_code, propData.city].filter(Boolean).join(', '));
+      }
+
+      // Fetch unit data
+      const { data: unitData } = await supabase
+        .from('units')
+        .select('unit_number, area_sqm, rooms')
+        .eq('id', unitId)
+        .single();
+      if (unitData) {
+        setUnitDescription(unitData.unit_number || '');
+        setUnitAreaSqm(unitData.area_sqm || 0);
+        setUnitRooms(unitData.rooms || 0);
+      }
     } catch (err: unknown) {
       setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden');
     }
@@ -506,6 +535,22 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
             </div>
           </div>
 
+          {/* Deposit interest info */}
+          {lease.deposit_amount_eur && lease.deposit_amount_eur > 0 && lease.deposit_status === 'PAID' && (
+            <div className="text-[11px] text-muted-foreground px-1">
+              {(() => {
+                const interest = calculateDepositInterest(
+                  lease.deposit_amount_eur!,
+                  lease.start_date,
+                  new Date().toISOString().slice(0, 10)
+                );
+                return interest.years > 0 ? (
+                  <span>💰 Zinsgutschrift: {interest.accruedInterest.toFixed(2)} € ({interest.years} J., {(interest.annualRate * 100).toFixed(1)}%)</span>
+                ) : null;
+              })()}
+            </div>
+          )}
+
           {/* Row 5: Nächste Anpassung */}
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Nächste Mietanpassung</Label>
@@ -706,68 +751,137 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 pb-1">
           Lifecycle-Management (TLC)
         </h4>
-        <TLCEventsSection events={events} onResolve={resolveEvent} />
-        <TLCTasksSection tasks={tasks} onUpdateStatus={updateTaskStatus} />
-        <TLCDeadlinesSection
-          deadlines={deadlines as any}
-          onComplete={(id) => completeDeadline.mutate(id)}
-          onDismiss={(id) => dismissDeadline.mutate(id)}
-        />
-        <TLCMeterSection readings={readings} loading={metersLoading} onFetch={fetchReadings} />
-        
-        {/* Phase 2: Workflows */}
-        {activeLeases.length > 0 && (
-          <>
-            <TLCHandoverSection
-              leaseId={activeLeases[0].id}
-              unitId={unitId}
-              tenantId={tenantId}
-              tenantName={activeLeases[0].tenant_contact ? `${activeLeases[0].tenant_contact.first_name} ${activeLeases[0].tenant_contact.last_name}` : undefined}
-            />
-            <TLCDefectSection tenantId={tenantId} leaseId={activeLeases[0].id} propertyId={propertyId} />
-            <TLCPaymentPlanSection leaseId={activeLeases[0].id} unitId={unitId} />
-            <TLCRentReductionSection leaseId={activeLeases[0].id} unitId={unitId} />
-            <TLCContractSection
-              leaseData={activeLeases[0].rent_cold_eur ? {
-                landlordName: orgName || 'Eigentümer',
-                landlordAddress: '',
-                tenantName: activeLeases[0].tenant_contact ? `${activeLeases[0].tenant_contact.first_name} ${activeLeases[0].tenant_contact.last_name}` : '',
-                propertyAddress: '',
-                unitDescription: '',
-                areaSqm: 0,
-                roomCount: 0,
-                rentColdEur: activeLeases[0].rent_cold_eur || 0,
-                nkAdvanceEur: activeLeases[0].nk_advance_eur || 0,
-                depositEur: activeLeases[0].deposit_amount_eur || 0,
-                startDate: activeLeases[0].start_date,
-                endDate: activeLeases[0].end_date || undefined,
-                noticePeriodMonths: 3,
-                rentModel: (activeLeases[0].rent_model as 'FIX' | 'INDEX' | 'STAFFEL') || 'FIX',
-              } : undefined}
-              contactId={activeLeases[0].tenant_contact?.id}
-            />
 
-            {/* Phase 3: Kommunikation & Finanzen */}
-            <TLCCommunicationSection
-              leaseId={activeLeases[0].id}
-              unitId={unitId}
-              propertyId={propertyId}
-              tenantEmail={activeLeases[0].tenant_contact?.email || undefined}
-              tenantName={activeLeases[0].tenant_contact ? `${activeLeases[0].tenant_contact.first_name} ${activeLeases[0].tenant_contact.last_name}` : undefined}
+
+        {/* ── Kategorie 1: Kernfunktionen ── */}
+        <Collapsible defaultOpen>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="w-full justify-between h-8 text-xs font-semibold">
+              <span>📋 Kernfunktionen</span>
+              <ChevronDown className="h-3.5 w-3.5" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-1 pl-2">
+            <TLCEventsSection events={events} onResolve={resolveEvent} />
+            <TLCTasksSection tasks={tasks} onUpdateStatus={updateTaskStatus} />
+            <TLCDeadlinesSection
+              deadlines={deadlines as any}
+              onComplete={(id) => completeDeadline.mutate(id)}
+              onDismiss={(id) => dismissDeadline.mutate(id)}
             />
-            <TLCPrepaymentSection
-              propertyId={propertyId}
-              leaseId={activeLeases[0].id}
-              currentNkAdvance={activeLeases[0].nk_advance_eur || 0}
-              tenantName={activeLeases[0].tenant_contact ? `${activeLeases[0].tenant_contact.first_name} ${activeLeases[0].tenant_contact.last_name}` : undefined}
-              unitId={unitId}
-            />
-            <TLCInvoiceSection propertyId={propertyId} />
-            <TLCServiceProviderSection propertyId={propertyId} />
-            <TLCInsuranceSection propertyId={propertyId} />
-          </>
+            <TLCMeterSection readings={readings} loading={metersLoading} onFetch={fetchReadings} />
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* ── Per-Lease Workflow Sections ── */}
+        {activeLeases.map((lease) => {
+          const tName = lease.tenant_contact ? `${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}` : 'Mieter';
+          return (
+            <div key={lease.id} className="space-y-1">
+              {activeLeases.length > 1 && (
+                <p className="text-[11px] font-semibold text-muted-foreground px-1 pt-2 border-t">
+                  Vertrag: {tName}
+                </p>
+              )}
+
+              {/* ── Kategorie 2: Vertrag & Übergabe ── */}
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between h-8 text-xs font-semibold">
+                    <span>📝 Vertrag & Übergabe</span>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-1 pl-2">
+                  <TLCContractSection
+                    leaseData={lease.rent_cold_eur ? {
+                      landlordName: orgName || 'Eigentümer',
+                      landlordAddress: propertyAddress,
+                      tenantName: tName,
+                      propertyAddress,
+                      unitDescription,
+                      areaSqm: unitAreaSqm,
+                      roomCount: unitRooms,
+                      rentColdEur: lease.rent_cold_eur || 0,
+                      nkAdvanceEur: lease.nk_advance_eur || 0,
+                      depositEur: lease.deposit_amount_eur || 0,
+                      startDate: lease.start_date,
+                      endDate: lease.end_date || undefined,
+                      noticePeriodMonths: 3,
+                      rentModel: (lease.rent_model as 'FIX' | 'INDEX' | 'STAFFEL') || 'FIX',
+                    } : undefined}
+                    contactId={lease.tenant_contact?.id}
+                  />
+                  <TLCHandoverSection
+                    leaseId={lease.id}
+                    unitId={unitId}
+                    tenantId={tenantId}
+                    tenantName={tName}
+                  />
+                  <TLCApplicantSection unitId={unitId} />
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* ── Kategorie 3: Finanzen ── */}
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between h-8 text-xs font-semibold">
+                    <span>💶 Finanzen</span>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-1 pl-2">
+                  <TLCPaymentPlanSection leaseId={lease.id} unitId={unitId} />
+                  <TLCRentReductionSection leaseId={lease.id} unitId={unitId} />
+                  <TLCPrepaymentSection
+                    propertyId={propertyId}
+                    leaseId={lease.id}
+                    currentNkAdvance={lease.nk_advance_eur || 0}
+                    tenantName={tName}
+                    unitId={unitId}
+                  />
+                  <TLCThreeYearCheckSection
+                    leaseId={lease.id}
+                    unitId={unitId}
+                    propertyId={propertyId}
+                    tenantId={tenantId}
+                    rentColdEur={lease.rent_cold_eur || 0}
+                    startDate={lease.start_date}
+                    endDate={lease.end_date}
+                  />
+                  <TLCInvoiceSection propertyId={propertyId} />
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* ── Kategorie 4: Verwaltung ── */}
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between h-8 text-xs font-semibold">
+                    <span>🏢 Verwaltung</span>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-1 pl-2">
+                  <TLCCommunicationSection
+                    leaseId={lease.id}
+                    unitId={unitId}
+                    propertyId={propertyId}
+                    tenantEmail={lease.tenant_contact?.email || undefined}
+                    tenantName={tName}
+                  />
+                  <TLCDefectSection tenantId={tenantId} leaseId={lease.id} propertyId={propertyId} />
+                  <TLCServiceProviderSection propertyId={propertyId} />
+                  <TLCInsuranceSection propertyId={propertyId} />
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          );
+        })}
+
+        {/* Sections without lease context */}
+        {activeLeases.length === 0 && (
+          <TLCApplicantSection unitId={unitId} />
         )}
-        <TLCApplicantSection unitId={unitId} />
         <TLCReportSection propertyId={propertyId} />
       </div>
 
