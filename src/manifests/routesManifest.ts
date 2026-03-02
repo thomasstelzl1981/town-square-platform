@@ -289,8 +289,6 @@ export const zone2Portal: ZoneDefinition = {
         { path: "neu", component: "CreatePropertyRedirect", title: "Neue Immobilie", dynamic: false },
         // Canonical dossier route (SSOT)
         { path: ":id", component: "PropertyDetail", title: "Immobilienakte", dynamic: true, goldenPath: { moduleCode: 'MOD-04', entityIdParam: 'id' } },
-        // Rental expose detail (moved from MOD-05)
-        { path: "vermietung/:id", component: "RentalExposeDetail", title: "Miet-Exposé", dynamic: true },
       ],
     },
     "MOD-05": {

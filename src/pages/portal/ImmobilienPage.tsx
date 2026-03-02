@@ -13,7 +13,7 @@ const PortfolioTab = lazy(() => import('./immobilien/PortfolioTab').then(m => ({
 const SanierungTab = lazy(() => import('./immobilien/SanierungTab').then(m => ({ default: m.SanierungTab })));
 const VerwaltungTab = lazy(() => import('./immobilien/VerwaltungTab'));
 const PropertyDetailPage = lazy(() => import('./immobilien/PropertyDetailPage'));
-const RentalExposeDetail = lazy(() => import('./immobilien/RentalExposeDetail'));
+
 const MietyPortalPage = lazy(() => import('./MietyPortalPage'));
 const MietyHomeDossier = lazy(() => import('./miety/MietyHomeDossier'));
 
@@ -48,8 +48,6 @@ const ImmobilienPage = () => {
         {/* VERWALTUNG */}
         <Route path="verwaltung" element={<VerwaltungTab />} />
         
-        {/* RENTAL: Expose detail */}
-        <Route path="vermietung/:id" element={<RentalExposeDetail />} />
         
         {/* CANONICAL: Property dossier */}
         <Route path=":id" element={

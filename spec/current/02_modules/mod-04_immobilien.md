@@ -13,7 +13,7 @@
 
 MOD-04 "Immobilien" ist das **Single Source of Truth (SSOT)** für alle Objekt-, Einheiten- und Mietvertragsdaten im System.
 
-**Downstream-Module (MOD-05 Website-Builder, MOD-06 Verkauf) DÜRFEN KEINE eigenen Objekt-/Einheitendaten führen.** Sie lesen ausschließlich aus MOD-04 und ergänzen lediglich modulspezifische Daten (Zahlungen, Listings, etc.).
+**Downstream-Module (MOD-06 Verkauf) DÜRFEN KEINE eigenen Objekt-/Einheitendaten führen.** Sie lesen ausschließlich aus MOD-04 und ergänzen lediglich modulspezifische Daten (Zahlungen, Listings, etc.).
 
 ---
 
@@ -27,7 +27,7 @@ MOD-04 "Immobilien" ist das **Single Source of Truth (SSOT)** für alle Objekt-,
 | **R4** | Portfolio-Liste: `/portal/immobilien/portfolio` — Eye-Action öffnet IMMER kanonisches Dossier |
 | **R5** | Navigation: Nur 3 primäre Pfade: `neu`, `portfolio`, `:propertyId` |
 | **R6** | DMS-Integration: Uploads via DMS (MOD-03), MOD-04 zeigt nur `document_links` |
-| **R7** | Flags steuern Downstream: `sale_enabled` → MOD-06, `rental_managed` → MOD-05 |
+| **R7** | Flags steuern Downstream: `sale_enabled` → MOD-06 |
 
 ---
 
@@ -219,22 +219,7 @@ pending → needs_review → accepted → current
 
 ## 8. Cross-Module Contracts
 
-### 8.1 MOD-05 MSV (Read Contract)
-
-**Liest aus MOD-04:**
-- `units` + `properties` (alle Einheiten, KEIN Filter auf rental_managed)
-- `leases` (für Mietverhältnisse)
-- `contacts` (für Mieter-Info)
-
-**Schreibt selbst:**
-- `msv_enrollments` (Premium-Status)
-- `msv_payment_reports` (Mietberichte)
-- Mahnungen, Reminder
-
-**Navigation von Dossier:**
-- CTA "In MSV öffnen" → `/portal/msv` (prefiltered by propertyId)
-
-### 8.2 MOD-06 Verkauf (Read Contract)
+### 8.1 MOD-06 Verkauf (Read Contract)
 
 **Liest aus MOD-04:**
 - `units` + `properties` (alle, KEIN Filter auf sale_enabled)
@@ -266,7 +251,6 @@ pending → needs_review → accepted → current
 
 | CTA | Bedingung | Ziel |
 |-----|-----------|------|
-| "In MSV öffnen" | rental_managed = true | `/portal/msv?property_id=:id` |
 | "In Verkauf öffnen" | sale_enabled = true | `/portal/verkauf/expose/:id` |
 | "Im DMS öffnen" | immer | `/portal/dms/storage?property_id=:id` |
 
@@ -284,7 +268,6 @@ pending → needs_review → accepted → current
 
 ### 10.2 SSOT Correctness
 
-- [ ] MOD-05 ObjekteTab liest aus `units` (kein eigener Datenbestand)
 - [ ] MOD-06 ObjekteTab liest aus `units` (kein eigener Datenbestand)
 - [ ] Document Uploads erstellen `document_links` mit korrektem object_type
 
@@ -295,7 +278,6 @@ pending → needs_review → accepted → current
 /portal/immobilien/portfolio
 /portal/immobilien/:propertyId (mit existierender ID)
 /portal/immobilien/kontexte
-/portal/msv (MOD-05 liest aus MOD-04)
 /portal/verkauf (MOD-06 liest aus MOD-04)
 /portfolio (Legacy Redirect)
 ```

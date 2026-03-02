@@ -73,13 +73,13 @@ All entities, endpoints, and integrations are PLANNED — implementation follows
 | **RLS/Ownership** | org_scope (tenant_id = owning client) |
 | **Camunda Hook** | Deferred (Sanierung workflow) |
 
-### MOD-05: MSV (Miet- und Sondereigentumsverwaltung)
+### MOD-05: Pets (Haustier-Verwaltung / Website Builder)
 | Aspect | Value |
 |--------|-------|
-| **Entities** | leases, rent_payments, rental_listings |
-| **IDs/Keys** | tenant_id, lease_id, property_id, unit_id |
-| **Core Actions** | Create lease, Book payment, Publish rental listing |
-| **Endpoints** | /api/msv/leases, /api/msv/payments, /api/msv/listings |
+| **Entities** | pet_profiles, pet_bookings, websites |
+| **IDs/Keys** | tenant_id, pet_id, booking_id |
+| **Core Actions** | Manage pets, Create bookings, Build websites |
+| **Endpoints** | /api/pets, /api/pets/bookings, /api/websites |
 | **Zone-1 Intake** | N/A |
 | **RLS/Ownership** | org_scope |
 | **Camunda Hook** | Deferred |
@@ -245,7 +245,7 @@ All entities, endpoints, and integrations are PLANNED — implementation follows
 | **IDs/Keys** | renter_org_id, lease_id, document_id |
 | **Core Actions** | View documents, Submit readings, Communicate |
 | **Endpoints** | /api/miety/profile, /api/miety/documents, /api/miety/readings |
-| **Zone-1 Intake** | Landlord invitation via MOD-05 MSV |
+| **Zone-1 Intake** | Landlord invitation via MOD-04 Immobilien (Verwaltung-Tab) |
 | **RLS/Ownership** | renter_org owned |
 | **Camunda Hook** | Deferred |
 

@@ -51,7 +51,7 @@
 | B-06 | MOD-04 Immobilien — Verwaltung | BWA anzeigen, NK-Abrechnung erstellen | ✅ DATA | 3 Leases |
 | B-07 | MOD-04 Immobilien — Sanierung | Sanierungsprojekt anlegen, LV erstellen | ⬜ UI | N/A |
 | B-08 | MOD-04 Immobilien — Zuhause | Zuhause anlegen, Verträge verwalten | ✅ DATA | 1 Miety-Home |
-| B-09 | MOD-05 MSV/Pets | Haustier anlegen, Pflege-Events erfassen | ✅ DATA | 5 Pets |
+| B-09 | MOD-05 Pets | Haustier anlegen, Pflege-Events erfassen | ✅ DATA | 5 Pets |
 | B-10 | MOD-06 Verkauf | Immobilie zum Verkauf einstellen | ✅ DATA | 1 Listing (BER-01, 349k, active) |
 | B-11 | MOD-07 Finanzierung | Finanzierungsanfrage erstellen, Kalkulation prüfen | ✅ DATA | 1 Finance-Request |
 | B-12 | MOD-08 Investments — Suchmandat | Suchmandat anlegen, Profil konfigurieren | ⚠️ WARN | 0 investment_profiles |
@@ -147,7 +147,7 @@
 | D-13 | GP-KONTEN | Kontoverwaltung | MOD-18 | 6/6 | Demo-Widget → Transaktionen → Matching | ✅ PASS (Header ✅, Haushalt-Grid 4 Personen mit DEMO-Badges ✅, Finanzbericht ✅) |
 | D-14 | GP-PV-ANLAGE | PV-Anlagenanlage | MOD-19 | 6/6 | Demo-Widget → Anlagendaten → Erträge | ✅ PASS (Header ✅, WidgetGrid ✅, Demo EFH Oberhaching 32.4 kWp mit Badge ✅) |
 | D-15 | GP-ZUHAUSE | Zuhause-Verwaltung | MOD-20 | 6/6 | Demo-Widget → Wohnung → Versorger | ✅ PASS (Header ✅, Demo Leopoldstr. 12 ✅, Google Maps ✅, Service-Cards ✅) |
-| D-16 | GP-PETS | Tierverwaltung | MOD-05 | — | — | ⬜ N/A — Mietsonderverwaltung in MOD-04 (Immobilienakte) integriert, kein eigenständiges Modul |
+| D-16 | GP-PETS | Tierverwaltung | MOD-05 | — | — | ⬜ N/A — MOD-05 ist jetzt Pets (Website Builder), Mietsonderverwaltung in MOD-04 integriert |
 | D-17 | GP-PET | Pet Manager Demo | MOD-22 | 3/6 | Demo → Kunden → Buchungen | ✅ PASS (Header ✅, Dashboard Lennox & Friends ✅, KPIs ✅, Tageskapazität 0/12 ✅) |
 
 ### Compliance-Checkliste pro Prozess
