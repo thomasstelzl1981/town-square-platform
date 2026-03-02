@@ -20560,6 +20560,71 @@ export type Database = {
         }
         Relationships: []
       }
+      tenancy_deadlines: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          deadline_type: string
+          description: string | null
+          due_date: string
+          id: string
+          lease_id: string | null
+          property_id: string | null
+          remind_days_before: number | null
+          reminded_at: string | null
+          status: string
+          tenant_id: string
+          title: string
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deadline_type: string
+          description?: string | null
+          due_date: string
+          id?: string
+          lease_id?: string | null
+          property_id?: string | null
+          remind_days_before?: number | null
+          reminded_at?: string | null
+          status?: string
+          tenant_id: string
+          title: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deadline_type?: string
+          description?: string | null
+          due_date?: string
+          id?: string
+          lease_id?: string | null
+          property_id?: string | null
+          remind_days_before?: number | null
+          reminded_at?: string | null
+          status?: string
+          tenant_id?: string
+          title?: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenancy_deadlines_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenancy_dunning_configs: {
         Row: {
           auto_send: boolean
@@ -20799,6 +20864,130 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tenancy_meter_readings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenancy_payment_plans: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          id: string
+          installments_count: number
+          installments_paid: number
+          lease_id: string
+          monthly_installment_eur: number
+          notes: string | null
+          start_date: string
+          status: string
+          tenant_id: string
+          total_arrears_eur: number
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          installments_count: number
+          installments_paid?: number
+          lease_id: string
+          monthly_installment_eur: number
+          notes?: string | null
+          start_date: string
+          status?: string
+          tenant_id: string
+          total_arrears_eur: number
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          installments_count?: number
+          installments_paid?: number
+          lease_id?: string
+          monthly_installment_eur?: number
+          notes?: string | null
+          start_date?: string
+          status?: string
+          tenant_id?: string
+          total_arrears_eur?: number
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenancy_payment_plans_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenancy_rent_reductions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          effective_until: string | null
+          id: string
+          lease_id: string
+          legal_basis: string | null
+          notes: string | null
+          reason: string
+          reduction_percent: number
+          status: string
+          task_id: string | null
+          tenant_id: string
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          effective_from: string
+          effective_until?: string | null
+          id?: string
+          lease_id: string
+          legal_basis?: string | null
+          notes?: string | null
+          reason: string
+          reduction_percent: number
+          status?: string
+          task_id?: string | null
+          tenant_id: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_until?: string | null
+          id?: string
+          lease_id?: string
+          legal_basis?: string | null
+          notes?: string | null
+          reason?: string
+          reduction_percent?: number
+          status?: string
+          task_id?: string | null
+          tenant_id?: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenancy_rent_reductions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"

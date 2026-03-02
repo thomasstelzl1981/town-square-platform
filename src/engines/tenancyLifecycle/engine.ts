@@ -18,11 +18,16 @@ import {
   type DefectSeverity,
   type MoveChecklist,
   type MoveChecklistItem,
+  type PaymentPlanInput,
+  type PaymentPlanSchedule,
+  type RentReductionInput,
+  type RentReductionResult,
   RENT_INCREASE_DEFAULTS,
   DEFECT_SLA_HOURS,
   DEFECT_TRIAGE_KEYWORDS,
   MOVE_IN_CHECKLIST_ITEMS,
   MOVE_OUT_CHECKLIST_ITEMS,
+  RENT_REDUCTION_GUIDELINES,
 } from './spec';
 
 // ─── Phase Determination ──────────────────────────────────────
@@ -816,4 +821,207 @@ export function checkMoveChecklistDeadlines(
   }
 
   return tasks;
+}
+
+// ─── Payment Plan (Ratenplan) ─────────────────────────────────
+
+/**
+ * Generate a payment plan schedule for rent arrears.
+ * Splits total arrears into equal monthly installments.
+ */
+export function generatePaymentPlanSchedule(input: PaymentPlanInput): PaymentPlanSchedule[] {
+  const schedule: PaymentPlanSchedule[] = [];
+  const { totalArrears, monthlyInstallment, installmentsCount, startDate } = input;
+  
+  let remaining = totalArrears;
+  
+  for (let i = 1; i <= installmentsCount; i++) {
+    const dueDate = new Date(startDate);
+    dueDate.setMonth(dueDate.getMonth() + (i - 1));
+    
+    const amount = i === installmentsCount 
+      ? Math.round(remaining * 100) / 100 // Last installment = remainder
+      : Math.min(monthlyInstallment, remaining);
+    
+    const cumulativePaid = totalArrears - remaining + amount;
+    remaining = Math.max(0, remaining - amount);
+    
+    schedule.push({
+      installmentNumber: i,
+      dueDate: dueDate.toISOString().split('T')[0],
+      amount: Math.round(amount * 100) / 100,
+      cumulativePaid: Math.round(cumulativePaid * 100) / 100,
+      remainingBalance: Math.round(remaining * 100) / 100,
+    });
+  }
+  
+  return schedule;
+}
+
+/**
+ * Check payment plan compliance: how many installments are overdue.
+ */
+export function checkPaymentPlanCompliance(
+  schedule: PaymentPlanSchedule[],
+  paidCount: number,
+  today: string
+): { overdueCount: number; nextDueDate: string | null; isDefaulted: boolean } {
+  const todayDate = new Date(today);
+  const dueByNow = schedule.filter(s => new Date(s.dueDate) <= todayDate);
+  const overdueCount = Math.max(0, dueByNow.length - paidCount);
+  const nextInstallment = schedule.find(s => new Date(s.dueDate) > todayDate);
+  
+  return {
+    overdueCount,
+    nextDueDate: nextInstallment?.dueDate ?? null,
+    isDefaulted: overdueCount >= 2, // 2+ missed = default
+  };
+}
+
+// ─── Rent Reduction (Mietminderung) ──────────────────────────
+
+/**
+ * Calculate the financial impact of a rent reduction.
+ */
+export function calculateRentReduction(input: RentReductionInput): RentReductionResult {
+  const { baseRentCold, reductionPercent, effectiveFrom, effectiveUntil, reason } = input;
+  
+  const monthlyReduction = baseRentCold * (reductionPercent / 100);
+  const reducedRent = baseRentCold - monthlyReduction;
+  
+  // Estimate total reduction over period
+  let months = 1;
+  if (effectiveUntil) {
+    const from = new Date(effectiveFrom);
+    const until = new Date(effectiveUntil);
+    months = Math.max(1, Math.ceil((until.getTime() - from.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+  }
+  
+  // Determine legal basis from guidelines
+  let legalBasis = '§536 BGB — Mietminderung wegen Mangel';
+  const lowerReason = reason.toLowerCase();
+  for (const [key, guideline] of Object.entries(RENT_REDUCTION_GUIDELINES)) {
+    const keywords = key.split('_');
+    if (keywords.some(kw => lowerReason.includes(kw))) {
+      legalBasis = `§536 BGB — ${guideline.description} (Richtwert: ${guideline.minPercent}-${guideline.maxPercent}%)`;
+      break;
+    }
+  }
+  
+  return {
+    baseRent: baseRentCold,
+    reductionPercent,
+    reducedRent: Math.round(reducedRent * 100) / 100,
+    monthlyReduction: Math.round(monthlyReduction * 100) / 100,
+    effectiveFrom,
+    effectiveUntil,
+    totalReductionEstimate: Math.round(monthlyReduction * months * 100) / 100,
+    legalBasis,
+  };
+}
+
+/**
+ * Suggest a rent reduction percentage based on defect category.
+ */
+export function suggestRentReduction(defectCategory: string): {
+  suggestedMin: number;
+  suggestedMax: number;
+  description: string;
+} | null {
+  const guideline = RENT_REDUCTION_GUIDELINES[defectCategory];
+  if (!guideline) return null;
+  
+  return {
+    suggestedMin: guideline.minPercent,
+    suggestedMax: guideline.maxPercent,
+    description: guideline.description,
+  };
+}
+
+// ─── Deadline Checker ─────────────────────────────────────────
+
+export interface DeadlineCheck {
+  id: string;
+  title: string;
+  dueDate: string;
+  daysRemaining: number;
+  status: 'ok' | 'approaching' | 'overdue';
+  urgency: 'low' | 'medium' | 'high' | 'critical';
+}
+
+export function checkDeadlines(
+  deadlines: Array<{ id: string; title: string; due_date: string; status: string; remind_days_before: number }>,
+  today: string
+): DeadlineCheck[] {
+  const todayDate = new Date(today);
+  
+  return deadlines
+    .filter(d => d.status === 'pending' || d.status === 'reminded')
+    .map(d => {
+      const dueDate = new Date(d.due_date);
+      const daysRemaining = Math.floor((dueDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      let status: DeadlineCheck['status'] = 'ok';
+      let urgency: DeadlineCheck['urgency'] = 'low';
+      
+      if (daysRemaining < 0) {
+        status = 'overdue';
+        urgency = 'critical';
+      } else if (daysRemaining <= d.remind_days_before) {
+        status = 'approaching';
+        urgency = daysRemaining <= 3 ? 'high' : daysRemaining <= 7 ? 'medium' : 'low';
+      }
+      
+      return {
+        id: d.id,
+        title: d.title,
+        dueDate: d.due_date,
+        daysRemaining,
+        status,
+        urgency,
+      };
+    })
+    .sort((a, b) => a.daysRemaining - b.daysRemaining);
+}
+
+// ─── Tenancy Report Data Aggregation ─────────────────────────
+
+export interface TenancyReportSummary {
+  totalLeases: number;
+  activeLeases: number;
+  vacantUnits: number;
+  totalMonthlyRent: number;
+  totalArrears: number;
+  occupancyRate: number;
+  avgRentPerSqm: number | null;
+  openTasks: number;
+  criticalEvents: number;
+}
+
+export function aggregateReportData(
+  leases: Array<{ status: string; rentColdEur: number | null; areaSqm: number | null }>,
+  totalUnits: number,
+  arrears: number,
+  openTaskCount: number,
+  criticalEventCount: number
+): TenancyReportSummary {
+  const activeLeases = leases.filter(l => l.status === 'active' || l.status === 'signed');
+  const totalMonthlyRent = activeLeases.reduce((sum, l) => sum + (l.rentColdEur || 0), 0);
+  
+  const leasesWithArea = activeLeases.filter(l => l.areaSqm && l.rentColdEur);
+  const avgRentPerSqm = leasesWithArea.length > 0
+    ? leasesWithArea.reduce((sum, l) => sum + ((l.rentColdEur || 0) / (l.areaSqm || 1)), 0) / leasesWithArea.length
+    : null;
+  
+  return {
+    totalLeases: leases.length,
+    activeLeases: activeLeases.length,
+    vacantUnits: Math.max(0, totalUnits - activeLeases.length),
+    totalMonthlyRent: Math.round(totalMonthlyRent * 100) / 100,
+    totalArrears: Math.round(arrears * 100) / 100,
+    occupancyRate: totalUnits > 0 ? Math.round((activeLeases.length / totalUnits) * 1000) / 10 : 0,
+    avgRentPerSqm: avgRentPerSqm ? Math.round(avgRentPerSqm * 100) / 100 : null,
+    openTasks: openTaskCount,
+    criticalEvents: criticalEventCount,
+  };
 }
