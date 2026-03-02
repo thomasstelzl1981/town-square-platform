@@ -42,6 +42,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { DESIGN } from '@/config/designManifest';
+import { AdminBillingTab } from '@/components/armstrong/AdminBillingTab';
 
 type Organization = Tables<'organizations'>;
 type Membership = Tables<'memberships'>;
@@ -532,32 +533,7 @@ export default function OrganizationDetail() {
 
         {/* TAB 4: Credits & Billing */}
         <TabsContent value="credits" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Credits & Billing</CardTitle>
-              <CardDescription>Verbrauch und Abrechnung für diesen Tenant</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <CreditCard className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                <h3 className="text-lg font-semibold text-muted-foreground">Noch nicht verfügbar</h3>
-                <p className="text-sm text-muted-foreground max-w-md mt-2">
-                  Das Credit- und Billing-System wird in einer späteren Phase implementiert. 
-                  Hier werden dann Saldo, Transaktions-Historie und monatliche Abrechnungen angezeigt.
-                </p>
-                <div className="grid grid-cols-2 gap-4 mt-6 w-full max-w-sm">
-                  <div className="p-4 rounded-lg border bg-muted/30 text-center">
-                    <p className="text-2xl font-bold text-muted-foreground">—</p>
-                    <p className="text-xs text-muted-foreground">Aktueller Saldo</p>
-                  </div>
-                  <div className="p-4 rounded-lg border bg-muted/30 text-center">
-                    <p className="text-2xl font-bold text-muted-foreground">—</p>
-                    <p className="text-xs text-muted-foreground">Verbrauch (Monat)</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <AdminBillingTab tenantId={id!} />
         </TabsContent>
       </Tabs>
 

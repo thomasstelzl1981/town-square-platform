@@ -32,7 +32,13 @@ interface SpeechRecognitionConstructor {
   new (): SpeechRecognitionType;
 }
 
-// Use the declarations from useArmstrongVoice.ts (avoid duplicate global Window declarations)
+// Augment Window for Speech Recognition API
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
+}
 
 interface BrowserVoiceState {
   isListening: boolean;
