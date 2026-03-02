@@ -29,6 +29,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createPropertyFromUnit } from '@/lib/createPropertyFromUnit';
+import { findOrCreateCase } from '@/hooks/useSLCEventRecorder';
 
 interface SalesApprovalSectionProps {
   projectId?: string;
@@ -174,15 +175,16 @@ export function SalesApprovalSection({
   }
 
   // ─── Create listings for all project units ───
-  async function createListingsForProject(commissionRate: number) {
-    if (!projectId || !tenantId || !user) return;
+  async function createListingsForProject(commissionRate: number): Promise<string[]> {
+    const createdListingIds: string[] = [];
+    if (!projectId || !tenantId || !user) return createdListingIds;
 
     const { data: units, error: unitsError } = await supabase
       .from('dev_project_units')
       .select('*')
       .eq('project_id', projectId);
     
-    if (unitsError || !units?.length) return;
+    if (unitsError || !units?.length) return createdListingIds;
 
     const { data: project } = await supabase
       .from('dev_projects')
@@ -247,6 +249,8 @@ export function SalesApprovalSection({
 
       if (listingError || !listing) continue;
 
+      createdListingIds.push(listing.id);
+
       const publicId = `${citySlug}-${listing.id.substring(0, 8)}`;
       await supabase
         .from('listings')
@@ -263,6 +267,7 @@ export function SalesApprovalSection({
           published_at: new Date().toISOString(),
         });
     }
+    return createdListingIds;
   }
 
   // ─── Withdraw all listings for project ───
@@ -357,7 +362,36 @@ export function SalesApprovalSection({
       }
 
       // 3. Create listings for all units
-      await createListingsForProject(agreementState.commissionRate[0]);
+      const listingIds = await createListingsForProject(agreementState.commissionRate[0]);
+
+      // 4. SLC: Create cases + mandate.activated events for each listing
+      if (listingIds?.length) {
+        for (const listingId of listingIds) {
+          try {
+            const slcCase = await findOrCreateCase({
+              listingId,
+              projectId,
+              assetType: 'project_unit',
+              assetId: listingId,
+              tenantId,
+              userId: user.id,
+            });
+            // Record mandate.activated event
+            await supabase.from('sales_lifecycle_events').insert({
+              case_id: slcCase.id,
+              event_type: 'mandate.activated',
+              severity: 'info',
+              phase_before: null as any,
+              phase_after: 'mandate_active' as any,
+              actor_id: user.id,
+              payload: { project_id: projectId, commission_rate: agreementState.commissionRate[0] } as any,
+              tenant_id: tenantId,
+            });
+          } catch (e) {
+            console.warn('[SLC] Case creation failed for listing:', listingId, e);
+          }
+        }
+      }
 
       toast.success('Vertriebsauftrag aktiviert', {
         description: 'Projekt ist jetzt im Partnernetzwerk sichtbar.',
@@ -366,6 +400,7 @@ export function SalesApprovalSection({
       resetAgreementState();
       queryClient.invalidateQueries({ queryKey: ['sales-desk-request', projectId] });
       queryClient.invalidateQueries({ queryKey: ['dev-project-kaufy', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['sales-desk-cases'] });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Fehler bei der Aktivierung';
       toast.error(message);

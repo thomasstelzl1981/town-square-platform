@@ -1,6 +1,7 @@
  /**
   * useSalesDeskListings - Hook for Zone 1 Sales Desk to fetch and manage listings
   * Records SLC events on distribution changes.
+  * Computes listing hashes for channel drift detection.
   */
  import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
  import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +10,7 @@
  import type { SLCEventType, SLCPhase } from '@/engines/slc/spec';
  import { SLC_EVENT_PHASE_MAP } from '@/engines/slc/spec';
  import { isValidTransition } from '@/engines/slc/engine';
+ import { computeListingHash } from '@/lib/listingHash';
  
  export interface SalesDeskListing {
    id: string;
@@ -96,6 +98,14 @@
        enabled: boolean;
      }) => {
       if (enabled) {
+          // Compute listing hash for drift detection
+          const { data: listingData } = await supabase
+            .from('listings')
+            .select('title, asking_price, commission_rate, status')
+            .eq('id', listingId)
+            .single();
+          const expectedHash = listingData ? computeListingHash(listingData) : null;
+
           const { error } = await supabase
             .from('listing_publications')
             .upsert({
@@ -104,6 +114,9 @@
               channel,
               status: 'active',
               published_at: new Date().toISOString(),
+              expected_hash: expectedHash,
+              last_synced_hash: expectedHash, // Initially in sync
+              last_synced_at: new Date().toISOString(),
             }, { onConflict: 'listing_id,channel' });
           if (error) throw error;
 
