@@ -97,26 +97,23 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
     const advisor = useArmstrongAdvisor();
     const voice = useArmstrongVoice();
 
-    // Auto-send transcript when user stops speaking
-    React.useEffect(() => {
-      if (prevListeningRef.current && !voice.isListening && voice.transcript.trim()) {
-        setVoiceMode(true);
-        advisor.sendMessage(voice.transcript.trim());
-      }
-      prevListeningRef.current = voice.isListening;
-    }, [voice.isListening, voice.transcript]);
+    // Voice transcript display (no auto-send — handled in handleVoicePressEnd)
 
     React.useEffect(() => {
       prevMessagesLenRef.current = advisor.messages.length;
     }, [advisor.messages]);
 
-    const handleVoiceToggle = React.useCallback(() => {
-      if (voice.isListening) {
-        voice.stopListening();
-      } else {
-        voice.startListening();
-      }
+    const handleVoicePressStart = React.useCallback(() => {
+      voice.startListening();
     }, [voice]);
+
+    const handleVoicePressEnd = React.useCallback(() => {
+      const transcript = voice.stopListening();
+      if (transcript?.trim()) {
+        setVoiceMode(true);
+        advisor.sendMessage(transcript.trim());
+      }
+    }, [voice, advisor]);
 
     const handleDocumentForAnalysis = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -252,7 +249,7 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
         </div>
 
         {/* Voice transcript — compact */}
-        {voice.isListening && (
+        {voice.isRecording && (
           <div className="px-3 py-1.5 border-b border-primary/20 bg-primary/5">
             <p className="text-[11px] text-primary animate-pulse">
               {voice.transcript || 'Höre zu...'}
@@ -341,12 +338,12 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
         <div className="p-2 border-t border-border/30">
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/40">
             <VoiceButton
-              isListening={voice.isListening}
-              isProcessing={voice.isProcessing}
+              isRecording={voice.isRecording}
+              isConnecting={voice.isConnecting}
               isSpeaking={voice.isSpeaking}
-              isConnected={voice.isConnected}
               error={voice.error}
-              onToggle={handleVoiceToggle}
+              onPressStart={handleVoicePressStart}
+              onPressEnd={handleVoicePressEnd}
               size="md"
             />
 

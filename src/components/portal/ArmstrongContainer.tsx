@@ -104,13 +104,7 @@ export function ArmstrongContainer() {
     };
   }, [advisor.isLoading]);
 
-  // Orb mode: auto-send transcript when user stops speaking (collapsed only)
-  useEffect(() => {
-    if (!armstrongExpanded && prevListeningRef.current && !voice.isListening && voice.transcript.trim()) {
-      advisor.sendMessage(voice.transcript.trim());
-    }
-    prevListeningRef.current = voice.isListening;
-  }, [voice.isListening, voice.transcript, armstrongExpanded]);
+  // Orb mode: auto-send when push-to-talk ends (handled in orbMicPointerUp)
 
   // Track message count (auto-speak removed — user must click to hear)
   useEffect(() => {
@@ -137,7 +131,7 @@ export function ArmstrongContainer() {
     boundaryPadding: 20,
     bottomOffset: 20,
     dragThreshold: 5,
-    disabled: isMobile || voice.isListening || armstrongExpanded,
+    disabled: isMobile || voice.isRecording || armstrongExpanded,
   });
 
   useEffect(() => {
@@ -242,23 +236,27 @@ export function ArmstrongContainer() {
     toggleArmstrongExpanded();
   }, [dragState, isDragging, toggleArmstrongExpanded]);
 
-  const handleMicClick = useCallback((e: React.MouseEvent) => {
+  const handleMicPointerDown = useCallback((e: React.PointerEvent) => {
     e.stopPropagation();
-    if (!voice.isProcessing && !voice.isSpeaking) {
-      voice.toggleVoice();
-    }
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    voice.startListening();
   }, [voice]);
 
-  const handleMicMouseDown = useCallback((e: React.MouseEvent) => {
+  const handleMicPointerUp = useCallback((e: React.PointerEvent) => {
     e.stopPropagation();
-  }, []);
-
-  const handleVoiceToggle = useCallback(() => {
-    if (voice.isListening) {
-      voice.stopListening();
-    } else {
-      voice.startListening();
+    (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    const transcript = voice.stopListening();
+    if (transcript?.trim() && !armstrongExpanded) {
+      advisor.sendMessage(transcript.trim());
     }
+  }, [voice, armstrongExpanded, advisor]);
+
+  const handleVoicePressStart = useCallback(() => {
+    voice.startListening();
+  }, [voice]);
+
+  const handleVoicePressEnd = useCallback(() => {
+    voice.stopListening();
   }, [voice]);
 
   const handleFilesSelected = useCallback(async (files: File[]) => {
@@ -546,12 +544,12 @@ export function ArmstrongContainer() {
                   
                   {/* Voice button */}
                   <VoiceButton
-                    isListening={voice.isListening}
-                    isProcessing={voice.isProcessing}
+                    isRecording={voice.isRecording}
+                    isConnecting={voice.isConnecting}
                     isSpeaking={voice.isSpeaking}
-                    isConnected={voice.isConnected}
                     error={voice.error}
-                    onToggle={handleVoiceToggle}
+                    onPressStart={handleVoicePressStart}
+                    onPressEnd={handleVoicePressEnd}
                     size="md"
                   />
                 </div>
@@ -658,35 +656,36 @@ export function ArmstrongContainer() {
         
         {/* Central Microphone Button */}
         <button 
-          onClick={handleMicClick}
-          onMouseDown={handleMicMouseDown}
-          disabled={voice.isProcessing || voice.isSpeaking}
+          onPointerDown={handleMicPointerDown}
+          onPointerUp={handleMicPointerUp}
+          onPointerCancel={handleMicPointerUp}
+          disabled={voice.isSpeaking}
           className={cn(
             'h-14 w-14 rounded-full flex items-center justify-center relative z-10',
-            'transition-all duration-300',
-            voice.isListening 
+            'transition-all duration-300 touch-none',
+            voice.isRecording 
               ? 'armstrong-mic-active' 
               : 'armstrong-btn-glass hover:bg-white/25',
-            (voice.isProcessing || voice.isSpeaking) && 'opacity-60 cursor-not-allowed'
+            voice.isSpeaking && 'opacity-60 cursor-not-allowed'
           )}
-          title={voice.isListening ? 'Mikrofon beenden' : 'Spracheingabe starten'}
-          aria-label={voice.isListening ? 'Mikrofon beenden' : 'Spracheingabe starten'}
+          title={voice.isRecording ? 'Loslassen zum Senden' : 'Gedrückt halten zum Sprechen'}
+          aria-label={voice.isRecording ? 'Loslassen zum Senden' : 'Gedrückt halten zum Sprechen'}
         >
-          {voice.isListening && !voice.isProcessing && (
+          {voice.isRecording && !voice.isConnecting && (
             <>
               <span className="absolute inset-0 rounded-full bg-white/30 animate-ping" style={{ animationDuration: '1.5s' }} />
               <span className="absolute inset-[-6px] rounded-full bg-white/15 animate-pulse" style={{ animationDuration: '2s' }} />
             </>
           )}
           
-          {voice.isProcessing && (
+          {voice.isConnecting && (
             <span className="absolute inset-0 rounded-full bg-white/20 animate-pulse" style={{ animationDuration: '0.8s' }} />
           )}
           
           <span className="relative z-10 flex items-center justify-center">
             {voice.isSpeaking ? (
               <Volume2 className="h-6 w-6 text-primary-foreground animate-pulse" />
-            ) : voice.isListening ? (
+            ) : voice.isRecording ? (
               <Mic className="h-6 w-6 text-primary-foreground" />
             ) : (
               <Mic className={cn('h-6 w-6', voice.error ? 'text-destructive' : 'text-primary-foreground/90')} />

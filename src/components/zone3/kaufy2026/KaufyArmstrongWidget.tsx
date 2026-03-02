@@ -109,29 +109,7 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
   }, [mode]);
 
   // ========================================================================
-  // VOICE: Auto-send when transcript changes and listening stops
-  // ========================================================================
-  useEffect(() => {
-    if (voice.transcript && voice.transcript !== lastTranscriptRef.current) {
-      setInput(voice.transcript);
-    }
-  }, [voice.transcript]);
-
-  useEffect(() => {
-    if (!voice.isListening && lastTranscriptRef.current !== voice.transcript && voice.transcript.trim()) {
-      lastTranscriptRef.current = voice.transcript;
-      const msg = voice.transcript.trim();
-      setInput('');
-      setVoiceActive(true);
-      streamChat(msg);
-    }
-  }, [voice.isListening, voice.transcript]);
-
-  useEffect(() => {
-    if (mode === 'expanded' && voice.assistantTranscript) {
-      setInput(voice.transcript + (voice.transcript ? ' ' : '') + voice.assistantTranscript);
-    }
-  }, [voice.assistantTranscript, mode]);
+  // VOICE: Handled via push-to-talk pointerUp handlers (no auto-send effects needed)
 
   // ========================================================================
   // STREAMING CHAT
@@ -248,19 +226,33 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
     }
   };
 
-  const handleVoiceToggle = () => {
-    if (voice.isSpeaking) {
-      voice.stopSpeaking();
-      return;
-    }
-    voice.toggleVoice();
-  };
+  const handleVoicePressStart = useCallback(() => {
+    voice.startListening();
+  }, [voice]);
 
-  const handleOrbMicClick = useCallback((e: React.MouseEvent) => {
+  const handleVoicePressEnd = useCallback(() => {
+    const transcript = voice.stopListening();
+    if (transcript?.trim()) {
+      setVoiceActive(true);
+      streamChat(transcript.trim());
+    }
+  }, [voice, streamChat]);
+
+  const handleOrbMicPointerDown = useCallback((e: React.PointerEvent) => {
     e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     setVoiceActive(true);
     voice.startListening();
   }, [voice]);
+
+  const handleOrbMicPointerUp = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation();
+    (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    const transcript = voice.stopListening();
+    if (transcript?.trim()) {
+      streamChat(transcript.trim());
+    }
+  }, [voice, streamChat]);
 
   if (!enabled) return null;
 
@@ -278,7 +270,7 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
     return (
       <div className="fixed z-50 bottom-8 right-8">
         {/* Voice status tooltip */}
-        {(voice.isListening || voice.isProcessing || voice.isSpeaking || voice.error) && (
+        {(voice.isRecording || voice.isConnecting || voice.isSpeaking || voice.error) && (
           <div className={cn(
             'absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg animate-in fade-in slide-in-from-bottom-2',
             voice.error 
@@ -289,14 +281,14 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
               ? voice.error 
               : voice.isSpeaking 
                 ? '🔊 Armstrong spricht...' 
-                : voice.isListening 
+                : voice.isRecording 
                   ? '🎙️ Sprich jetzt...' 
-                  : '⏳ Denke nach...'}
+                  : '⏳ Verbinde...'}
           </div>
         )}
 
         {/* Transcript floating above orb */}
-        {voice.isListening && (voice.transcript || voice.assistantTranscript) && (
+        {voice.isRecording && (voice.transcript || voice.assistantTranscript) && (
           <div className="absolute -top-16 right-0 max-w-[200px] bg-[hsl(220,20%,10%)] text-white text-xs px-3 py-2 rounded-xl shadow-lg animate-in fade-in">
             {voice.transcript}{voice.assistantTranscript && <span className="opacity-60"> {voice.assistantTranscript}</span>}
           </div>
@@ -370,19 +362,21 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
           
           {/* Central Microphone Button */}
           <button 
-            onClick={handleOrbMicClick}
-            disabled={voice.isProcessing || voice.isSpeaking}
+            onPointerDown={handleOrbMicPointerDown}
+            onPointerUp={handleOrbMicPointerUp}
+            onPointerCancel={handleOrbMicPointerUp}
+            disabled={voice.isSpeaking}
             className={cn(
               'h-12 w-12 rounded-full flex items-center justify-center relative z-10',
-              'transition-all duration-300',
-              voice.isListening 
+              'transition-all duration-300 touch-none',
+              voice.isRecording 
                 ? 'armstrong-mic-active' 
                 : 'armstrong-btn-glass hover:bg-white/25',
-              (voice.isProcessing || voice.isSpeaking) && 'opacity-60 cursor-not-allowed'
+              voice.isSpeaking && 'opacity-60 cursor-not-allowed'
             )}
-            title={voice.isListening ? 'Mikrofon beenden' : 'Spracheingabe starten'}
+            title={voice.isRecording ? 'Loslassen zum Senden' : 'Gedrückt halten zum Sprechen'}
           >
-            {voice.isListening && !voice.isProcessing && (
+            {voice.isRecording && !voice.isConnecting && (
               <>
                 <span className="absolute inset-0 rounded-full bg-white/30 animate-ping" style={{ animationDuration: '1.5s' }} />
                 <span className="absolute inset-[-4px] rounded-full bg-white/15 animate-ping" style={{ animationDuration: '2s' }} />
@@ -391,7 +385,7 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
             {voice.isSpeaking ? (
               <Volume2 className="h-5 w-5 text-white animate-pulse" />
             ) : (
-              <Mic className={cn('h-5 w-5', voice.isListening ? 'text-[hsl(220,20%,10%)]' : 'text-white')} />
+              <Mic className={cn('h-5 w-5', voice.isRecording ? 'text-[hsl(220,20%,10%)]' : 'text-white')} />
             )}
           </button>
         </div>
@@ -438,7 +432,7 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
           <div>
             <h3 className="text-sm font-bold text-white tracking-tight">Armstrong</h3>
             <p className="text-xs text-white/60">
-              {voice.isSpeaking ? 'Spricht...' : voice.isListening ? 'Hört zu...' : 'KI-Immobilienberater'}
+              {voice.isSpeaking ? 'Spricht...' : voice.isRecording ? 'Hört zu...' : 'KI-Immobilienberater'}
             </p>
           </div>
         </div>
@@ -568,25 +562,25 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={voice.isListening ? 'Sprich jetzt...' : 'Frag mich was...'}
+            placeholder={voice.isRecording ? 'Sprich jetzt...' : 'Frag mich was...'}
             className="flex-1 bg-transparent text-sm text-[hsl(220,20%,15%)] placeholder:text-[hsl(215,16%,55%)] outline-none py-2"
-            disabled={isLoading || voice.isListening}
+            disabled={isLoading || voice.isRecording}
           />
           <VoiceButton
-            isListening={voice.isListening}
-            isProcessing={voice.isProcessing}
+            isRecording={voice.isRecording}
+            isConnecting={voice.isConnecting}
             isSpeaking={voice.isSpeaking}
-            isConnected={voice.isConnected}
             error={voice.error}
             useBrowserFallback={voice.useBrowserFallback}
-            onToggle={handleVoiceToggle}
+            onPressStart={handleVoicePressStart}
+            onPressEnd={handleVoicePressEnd}
             size="sm"
             variant="default"
           />
           <Button
             size="sm"
             onClick={handleSend}
-            disabled={!input.trim() || isLoading || voice.isListening}
+            disabled={!input.trim() || isLoading || voice.isRecording}
             className={cn(
               'h-8 w-8 p-0 rounded-full transition-all shrink-0',
               input.trim() && !isLoading

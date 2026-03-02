@@ -65,16 +65,7 @@ export function MobileBottomBar({ onChatActivated }: MobileBottomBarProps) {
 
   const isDashboard = location.pathname === '/portal' || location.pathname === '/portal/';
 
-  // Auto-send transcript when user stops speaking
-  React.useEffect(() => {
-    if (prevListeningRef.current && !voice.isListening && voice.transcript.trim()) {
-      setVoiceMode(true);
-      if (!isDashboard) navigate('/portal');
-      onChatActivated?.();
-      advisor.sendMessage(voice.transcript.trim());
-    }
-    prevListeningRef.current = voice.isListening;
-  }, [voice.isListening, voice.transcript]);
+  // Voice transcript display (no auto-send — handled in handleVoicePressEnd)
 
   const handleSend = () => {
     if (input.trim() && !advisor.isLoading) {
@@ -94,10 +85,19 @@ export function MobileBottomBar({ onChatActivated }: MobileBottomBarProps) {
     }
   };
 
-  const handleVoiceToggle = React.useCallback(() => {
-    if (voice.isListening) voice.stopListening();
-    else voice.startListening();
+  const handleVoicePressStart = React.useCallback(() => {
+    voice.startListening();
   }, [voice]);
+
+  const handleVoicePressEnd = React.useCallback(() => {
+    const transcript = voice.stopListening();
+    if (transcript?.trim()) {
+      setVoiceMode(true);
+      if (!isDashboard) navigate('/portal');
+      onChatActivated?.();
+      advisor.sendMessage(transcript.trim());
+    }
+  }, [voice, advisor, isDashboard, navigate, onChatActivated]);
 
   const handleFilesSelected = (files: File[]) => {
     setAttachedFiles(prev => [...prev, ...files]);
@@ -119,12 +119,12 @@ export function MobileBottomBar({ onChatActivated }: MobileBottomBarProps) {
       <div className="px-3 pb-2 pt-0.5">
         <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border/20">
           <VoiceButton
-            isListening={voice.isListening}
-            isProcessing={voice.isProcessing}
+            isRecording={voice.isRecording}
+            isConnecting={voice.isConnecting}
             isSpeaking={voice.isSpeaking}
-            isConnected={voice.isConnected}
             error={voice.error}
-            onToggle={handleVoiceToggle}
+            onPressStart={handleVoicePressStart}
+            onPressEnd={handleVoicePressEnd}
             size="md"
           />
 
