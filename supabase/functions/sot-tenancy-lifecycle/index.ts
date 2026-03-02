@@ -81,7 +81,7 @@ function analyzePaymentStatus(expectedMonthly: number, payments: Array<{month: s
   const currentMonth = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}`;
   const results: any[] = [];
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 6; i++) {
     const d = new Date(todayDate);
     d.setMonth(d.getMonth() - i);
     const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;

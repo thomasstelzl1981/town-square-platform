@@ -191,6 +191,7 @@ export default function SLCMonitorTab() {
               <TableBody>
                 {cases.map(c => {
                   const stuck = isStuck(c.current_phase, c.updated_at, now);
+                  const stuckDays = stuck ? Math.round((now.getTime() - new Date(c.updated_at).getTime()) / (1000 * 60 * 60 * 24)) : 0;
                   const actions = PHASE_ACTIONS[c.current_phase] || [];
                   return (
                     <TableRow key={c.id} className={stuck ? 'bg-destructive/5' : ''}>
@@ -218,7 +219,7 @@ export default function SLCMonitorTab() {
                       <TableCell className="text-center">
                         {stuck ? (
                           <Badge variant="destructive" className="gap-1 text-xs">
-                            <AlertTriangle className="h-3 w-3" /> Stuck
+                            <AlertTriangle className="h-3 w-3" /> STUCK {stuckDays}d
                           </Badge>
                         ) : (
                           <Badge variant="secondary" className="text-xs">OK</Badge>

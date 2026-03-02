@@ -51,7 +51,11 @@ export function isValidTransition(from: SLCPhase, to: SLCPhase): boolean {
   if (to === 'closed_lost' && from !== 'closed_won' && from !== 'closed_lost') {
     return true;
   }
-  // No transitions from terminal phases
+  // Allow reopening: closed_lost → mandate_active (Admin/Z1 only)
+  if (from === 'closed_lost' && to === 'mandate_active') {
+    return true;
+  }
+  // No other transitions from terminal phases
   if (from === 'closed_won' || from === 'closed_lost') {
     return false;
   }
