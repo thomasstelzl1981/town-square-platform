@@ -30,16 +30,17 @@ export function useVVSteuerData(taxYear: number) {
       if (!activeTenantId) return null;
 
       // Parallel fetch all data sources
-      const [ctxRes, propsRes, accountingRes, annualRes] = await Promise.all([
+      const [ctxRes, propsRes, accountingRes, annualRes, expensesRes] = await Promise.all([
         supabase.from('landlord_contexts').select('id, name, context_type, tax_number').eq('tenant_id', activeTenantId),
         supabase.from('properties').select('id, code, address, address_house_no, city, postal_code, property_type, year_built, purchase_price, acquisition_costs, landlord_context_id, rental_managed, is_demo, tax_reference_number, ownership_share_percent').eq('tenant_id', activeTenantId).eq('rental_managed', true),
         (supabase as any).from('property_accounting').select('property_id, building_share_percent, land_share_percent, afa_rate_percent, afa_start_date, afa_method, modernization_costs_eur, modernization_year, afa_model, ak_ground, ak_building, ak_ancillary, book_value_eur, book_value_date, cumulative_afa, sonder_afa_annual, denkmal_afa_annual').eq('tenant_id', activeTenantId),
         (supabase as any).from('vv_annual_data').select('*').eq('tenant_id', activeTenantId).eq('tax_year', taxYear),
+        (supabase as any).from('property_expenses').select('property_id, category, amount, tax_deductible').eq('tenant_id', activeTenantId).gte('expense_date', `${taxYear}-01-01`).lte('expense_date', `${taxYear}-12-31`),
       ]);
 
       // Get property IDs for sub-queries
       const propertyIds = (propsRes.data || []).map((p: any) => p.id);
-      if (propertyIds.length === 0) return { contexts: ctxRes.data || [], properties: [], accounting: [], annual: [], units: [], leases: [], financing: [], nkPeriods: [], nkItems: [] };
+      if (propertyIds.length === 0) return { contexts: ctxRes.data || [], properties: [], accounting: [], annual: [], units: [], leases: [], financing: [], nkPeriods: [], nkItems: [], expenses: [] };
 
       // FIX Bug 1: Load units first, then leases via unit_id
       // FIX Bug 2: nk_periods filtered by period_start/period_end instead of year
@@ -91,6 +92,7 @@ export function useVVSteuerData(taxYear: number) {
         nkPeriods: nkPeriodsRes.data || [],
         nkItems,
         nkSettlements,
+        expenses: expensesRes.data || [],
       };
     },
     enabled: !!activeTenantId,
@@ -213,7 +215,22 @@ export function useVVSteuerData(taxYear: number) {
       taxYear,
     };
 
-    return {
+    // Expense aggregation from property_expenses → auto-fill suggestions for manual fields
+    const propExpenses = (data?.expenses || []).filter((e: any) => e.property_id === propertyId && e.tax_deductible);
+    const categoryMap: Record<string, string> = {
+      instandhaltung: 'costMaintenance', handwerker: 'costMaintenance',
+      versicherung: 'costInsuranceNonRecoverable', verwalterkosten: 'costManagementFee',
+      rechtsberatung: 'costLegalAdvisory', fahrtkosten: 'costTravel',
+      bankgebuehren: 'costBankFees', weg_hausgeld: 'costOther',
+      grundsteuer: 'costOther', sonstige: 'costOther',
+    };
+    const expenseAggregation: Record<string, number> = {};
+    for (const exp of propExpenses) {
+      const field = categoryMap[exp.category] || 'costOther';
+      expenseAggregation[field] = (expenseAggregation[field] || 0) + (exp.amount || 0);
+    }
+
+    const taxData: VVPropertyTaxData = {
       propertyId,
       propertyName: prop.code || prop.address,
       propertyType: prop.property_type || 'ETW',
@@ -232,6 +249,9 @@ export function useVVSteuerData(taxYear: number) {
       nkAggregated,
       manualData,
     };
+
+    // Attach expense aggregation as extended data (not in engine spec, used by UI only)
+    return Object.assign(taxData, { expenseAggregation });
   }
 
   // Save mutation
