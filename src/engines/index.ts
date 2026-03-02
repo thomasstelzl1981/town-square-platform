@@ -52,3 +52,7 @@ export * from './marketDirectory';
 // Engine 13: Trip Engine (ENG-TRIP) — Fahrtenbuch Trip Detection
 export * from './tripEngine/engine';
 export * from './tripEngine/spec';
+
+// Engine 14: Tenancy Lifecycle Controller (ENG-TLC)
+export * from './tenancyLifecycle/engine';
+export * from './tenancyLifecycle/spec';
