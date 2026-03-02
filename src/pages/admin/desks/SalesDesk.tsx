@@ -13,6 +13,7 @@ const VeroeffentlichungenTab = lazy(() => import('../sales-desk/Veroeffentlichun
 const SalesDeskKontakte = lazy(() => import('../sales-desk/SalesDeskKontakte'));
 const SLCMonitorTab = lazy(() => import('../sales-desk/SLCMonitorTab'));
 const SettlementsTab = lazy(() => import('../sales-desk/SettlementsTab'));
+const ProcessHealthTab = lazy(() => import('../sales-desk/ProcessHealthTab'));
 
 const TABS = [
   { value: 'dashboard', label: 'Dashboard', path: '' },
@@ -23,6 +24,7 @@ const TABS = [
   { value: 'inbox', label: 'Inbox', path: 'inbox' },
   { value: 'partner', label: 'Partner', path: 'partner' },
   { value: 'audit', label: 'Audit', path: 'audit' },
+  { value: 'health', label: 'Process Health', path: 'health' },
 ];
 
 function Loading() {
@@ -69,6 +71,7 @@ export default function SalesDesk() {
           <Route path="inbox" element={<InboxPage />} />
           <Route path="partner" element={<PartnerPage />} />
           <Route path="audit" element={<AuditPage />} />
+          <Route path="health" element={<ProcessHealthTab />} />
           <Route path="*" element={<Navigate to="/admin/sales-desk" replace />} />
         </Routes>
       </Suspense>

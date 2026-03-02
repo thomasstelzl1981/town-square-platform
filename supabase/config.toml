@@ -289,3 +289,6 @@ verify_jwt = false
 
 [functions.sot-is24-gateway]
 verify_jwt = false
+
+[functions.sot-slc-lifecycle]
+verify_jwt = false
