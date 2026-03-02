@@ -11450,9 +11450,12 @@ export type Database = {
           channel: Database["public"]["Enums"]["publication_channel"]
           created_at: string
           error_message: string | null
+          expected_hash: string | null
           external_id: string | null
           external_url: string | null
           id: string
+          last_synced_at: string | null
+          last_synced_hash: string | null
           listing_id: string
           published_at: string | null
           removed_at: string | null
@@ -11464,9 +11467,12 @@ export type Database = {
           channel: Database["public"]["Enums"]["publication_channel"]
           created_at?: string
           error_message?: string | null
+          expected_hash?: string | null
           external_id?: string | null
           external_url?: string | null
           id?: string
+          last_synced_at?: string | null
+          last_synced_hash?: string | null
           listing_id: string
           published_at?: string | null
           removed_at?: string | null
@@ -11478,9 +11484,12 @@ export type Database = {
           channel?: Database["public"]["Enums"]["publication_channel"]
           created_at?: string
           error_message?: string | null
+          expected_hash?: string | null
           external_id?: string | null
           external_url?: string | null
           id?: string
+          last_synced_at?: string | null
+          last_synced_hash?: string | null
           listing_id?: string
           published_at?: string | null
           removed_at?: string | null
@@ -18110,6 +18119,93 @@ export type Database = {
           },
         ]
       }
+      sales_cases: {
+        Row: {
+          asset_id: string
+          asset_type: string
+          close_reason: string | null
+          closed_at: string | null
+          created_at: string
+          current_phase: Database["public"]["Enums"]["slc_phase"]
+          deal_contact_id: string | null
+          id: string
+          listing_id: string | null
+          opened_at: string
+          project_id: string | null
+          property_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          asset_id: string
+          asset_type: string
+          close_reason?: string | null
+          closed_at?: string | null
+          created_at?: string
+          current_phase?: Database["public"]["Enums"]["slc_phase"]
+          deal_contact_id?: string | null
+          id?: string
+          listing_id?: string | null
+          opened_at?: string
+          project_id?: string | null
+          property_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          asset_id?: string
+          asset_type?: string
+          close_reason?: string | null
+          closed_at?: string | null
+          created_at?: string
+          current_phase?: Database["public"]["Enums"]["slc_phase"]
+          deal_contact_id?: string | null
+          id?: string
+          listing_id?: string | null
+          opened_at?: string
+          project_id?: string | null
+          property_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_cases_deal_contact_id_fkey"
+            columns: ["deal_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_cases_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_cases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "dev_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_cases_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_cases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_desk_requests: {
         Row: {
           commission_agreement: Json | null
@@ -18163,6 +18259,60 @@ export type Database = {
           },
           {
             foreignKeyName: "sales_desk_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_lifecycle_events: {
+        Row: {
+          actor_id: string | null
+          case_id: string
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json | null
+          phase_after: Database["public"]["Enums"]["slc_phase"] | null
+          phase_before: Database["public"]["Enums"]["slc_phase"] | null
+          severity: string
+          tenant_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          case_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json | null
+          phase_after?: Database["public"]["Enums"]["slc_phase"] | null
+          phase_before?: Database["public"]["Enums"]["slc_phase"] | null
+          severity?: string
+          tenant_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          case_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          phase_after?: Database["public"]["Enums"]["slc_phase"] | null
+          phase_before?: Database["public"]["Enums"]["slc_phase"] | null
+          severity?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_lifecycle_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "sales_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lifecycle_events_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -23582,6 +23732,18 @@ export type Database = {
         | "completed"
         | "cancelled"
       scan_status: "pending" | "running" | "completed" | "failed"
+      slc_phase:
+        | "mandate_active"
+        | "published"
+        | "inquiry"
+        | "reserved"
+        | "contract_draft"
+        | "notary_scheduled"
+        | "notary_completed"
+        | "handover"
+        | "settlement"
+        | "closed_won"
+        | "closed_lost"
       subscription_category:
         | "streaming_video"
         | "streaming_music"
@@ -24083,6 +24245,19 @@ export const Constants = {
         "cancelled",
       ],
       scan_status: ["pending", "running", "completed", "failed"],
+      slc_phase: [
+        "mandate_active",
+        "published",
+        "inquiry",
+        "reserved",
+        "contract_draft",
+        "notary_scheduled",
+        "notary_completed",
+        "handover",
+        "settlement",
+        "closed_won",
+        "closed_lost",
+      ],
       subscription_category: [
         "streaming_video",
         "streaming_music",

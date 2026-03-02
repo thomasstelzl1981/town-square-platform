@@ -51,12 +51,14 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 | ENG-MKTDIR | Market Directory Engine | Zone 1 | ✅ Live | `src/engines/marketDirectory/spec.ts`, `engine.ts` |
 | ENG-TRIP | Trip Engine (Fahrtenbuch) | MOD-17 | ⚡ Teilweise | `src/engines/tripEngine/spec.ts`, `engine.ts` |
 | ENG-TLC | Tenancy Lifecycle Controller | MOD-04, MOD-00 | ✅ Live | `src/engines/tenancyLifecycle/spec.ts`, `engine.ts` |
+| ENG-SLC | Sales Lifecycle Controller | MOD-04, MOD-06, MOD-13 | ⚡ Teilweise | `src/engines/slc/spec.ts`, `engine.ts` |
 
 ### Orchestrierung (1 Engine)
 
 | Code | Name | Status | Billing | Ausfuehrung |
 |------|------|--------|---------|-------------|
 | ENG-TLC | Tenancy Lifecycle Controller | ✅ Live | Free + KI (1 Credit/Run) | Edge Function (`sot-tenancy-lifecycle`, Weekly CRON Sun 03:00 UTC) + Client Engine |
+| ENG-SLC | Sales Lifecycle Controller | ⚡ Teilweise | Free | Client Engine (Phase-Tracking, Drift-Detection, Stuck-Detection) |
 
 > **ENG-TLC** ist der uebergeordnete Orchestrator fuer alle Mietverhaeltnisse. Er prueft woechentlich: Zahlungsstatus, Mahnstufen, Mieterhoehungs-Berechtigung (§558 BGB), Kautionsstatus, Fristen und generiert KI-gestuetzte Next-Best-Actions via `google/gemini-2.5-pro`.
 
@@ -126,3 +128,4 @@ Jede Engine hat eine `engineVersion` die in `armstrong_action_runs.engine_versio
 | 2026-02-18 | v1.0 — Initiale Konsolidierung aller 15 Engines aus UI-Registry und Code-Specs |
 | 2026-02-28 | v1.2 — ENG-TRIP (Trip Engine) fuer MOD-17 Fahrtenbuch hinzugefuegt. Pure TS Functions fuer Fahrterkennung aus GPS/Telematics (Standard A + B). |
 | 2026-03-02 | v1.3 — ENG-TLC (Tenancy Lifecycle Controller) hinzugefuegt. Orchestrator fuer Miet-Sonderverwaltung: Weekly CRON, State Machine (7 Phasen), Mahnwesen, Mieterhoehungs-Checks, KI-Summary. DB: tenancy_lifecycle_events, tenancy_dunning_configs, tenancy_tasks. |
+| 2026-03-02 | v1.4 — ENG-SLC (Sales Lifecycle Controller) hinzugefuegt. Cross-Module Event-Layer fuer Verkaufsabwicklung: 11-Phasen State Machine, Drift-Detection, Stuck-Detection. DB: sales_cases, sales_lifecycle_events. |
