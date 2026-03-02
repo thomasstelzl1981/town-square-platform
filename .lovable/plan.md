@@ -1,104 +1,149 @@
 
 
-## Analyse: Name- & E-Mail-Chaos bei Robyn Gebhard (und systemisch)
+## Zielbild: Pet Service Lifecycle Controller (ENG-PLC) — Gesamtkonzept
 
-### Was ist passiert — die Fehlerkette
+### Problem: Der aktuelle Flow ist falsch
 
-Das Problem ist **systemisch**, nicht hardcoded. Es betrifft jeden Manager-Account, der über `sot-manager-activate` angelegt wird. Hier die Kette:
+Der jetzige Flow geht über eine Z1-Zuweisung (Lead-Qualifizierung → Zuweisung an Provider), analog zum Immobilien-/Finanzierungsprozess. Das ist falsch. Der Pet Service ist ein **Marktplatz-Modell**: der Kunde sucht selbst, wählt selbst, bucht selbst und zahlt eine Plattformgebühr direkt.
 
-#### Schritt 1: Manager-Aktivierung setzt kein `first_name`/`last_name` in auth.users metadata
+### Korrekter Flow (Zielbild)
 
-`sot-manager-activate` (Zeile 118-127) erstellt den User so:
+```text
+PHASE 1: SUCHE & AUSWAHL                     PHASE 2: BUCHUNG & ANZAHLUNG
+═══════════════════════                       ═══════════════════════════
+Kunde (Z3 oder Z2/MOD-05)                    Kunde
+  │                                              │
+  ├─ Suche nach PLZ/Ort/Service                  ├─ Wählt Service + Zeitraum
+  ├─ Sieht Provider-Profil + Bewertungen         ├─ Zahlt 7,5% Anzahlung (Plattformgebühr)
+  └─ Wählt Provider                              │   └─ Nicht erstattbar, auch bei Storno
+                                                 ├─ Buchung wird erstellt → Status: "deposit_paid"
+                                                 └─ Provider wird benachrichtigt
+
+PHASE 3: PROVIDER-BESTÄTIGUNG                PHASE 4: DURCHFÜHRUNG & ABSCHLUSS
+═══════════════════════════════               ══════════════════════════════════
+Provider (Z2/MOD-22)                          Provider (Z2/MOD-22)
+  │                                              │
+  ├─ Sieht neue Buchungsanfrage                  ├─ Check-In (Tier angenommen)
+  ├─ Bestätigt oder lehnt ab                     ├─ Check-Out (Tier zurückgegeben)
+  │   ├─ Bestätigt → Status: "confirmed"         ├─ Restbetrag wird fällig
+  │   └─ Ablehnt → Plattformgebühr BLEIBT        └─ Bewertung durch Kunden
+  └─ Direkter Kontakt mit Kunde
+
+PHASE 5: ABRECHNUNG                           ZONE 1: GOVERNANCE (read-only)
+═══════════════                               ═══════════════════════════════
+Automatisch                                   Pet Desk
+  │                                              │
+  ├─ Plattformgebühr (7,5%) bereits kassiert     ├─ Monitoring aller Buchungen
+  ├─ Restbetrag direkt zwischen                  ├─ Provider-Verifizierung
+  │   Kunde ↔ Provider                           ├─ Stuck-Detection (SLA-Überschreitung)
+  └─ Provision-Settlement via Z1                 └─ Dispute-Management
 ```
-user_metadata: {
-  display_name: "Robyn Gebhard",   // ✅ Voller Name
-  source: 'manager_application',
-  source_brand: 'lennox',
-}
-// ❌ KEIN first_name, KEIN last_name
+
+### Kernunterschiede zu FLC/SLC
+
+| Aspekt | FLC (Finanzierung) | SLC (Verkauf) | PLC (Pet Service) |
+|--------|-------------------|---------------|-------------------|
+| Vermittlung | Z1 weist Manager zu | Z1 orchestriert Listing | Kunde wählt selbst (Marktplatz) |
+| Plattformgebühr | 25% Success Fee | 25% Success Fee | **7,5% Anzahlung (upfront, non-refundable)** |
+| Zahlungszeitpunkt | Nach Auszahlung | Nach Notartermin | **Vor Buchungsbestätigung** |
+| Z1-Rolle | Aktiver Orchestrator | Aktiver Orchestrator | **Passiver Monitor** |
+| Kundenkontakt | Über Manager | Über Makler | **Direkt mit Provider** |
+
+### Technischer Plan
+
+#### 1. ENG-PLC Engine (neu: `src/engines/plc/`)
+
+**`spec.ts`** — 10 Phasen:
+
+```
+search_initiated → provider_selected → deposit_requested → deposit_paid →
+provider_confirmed → checked_in → checked_out → settlement →
+closed_completed | closed_cancelled
 ```
 
-#### Schritt 2: `handle_new_user` Trigger fällt auf E-Mail-Fallback zurück
+**`engine.ts`** — Pure Functions:
+- `computePLCPhase()` — Phase aus Events berechnen
+- `calculateDeposit(priceCents)` — 7,5% Anzahlung berechnen
+- `isValidTransition()` — Phase-Validierung
+- `getStuckThresholds()` — SLA-Schwellenwerte (z.B. 48h für Provider-Bestätigung)
 
-Der Trigger macht:
-```sql
-v_first_name := COALESCE(meta->>'first_name', split_part(email, '@', 1));
--- → 'robyn' (aus robyn@lennoxandfriends.app)
-v_last_name := COALESCE(meta->>'last_name', '');
--- → '' (leer!)
-```
+#### 2. DB-Tabellen (Migration)
 
-**Ergebnis im Profil:**
-- first_name = `'robyn'` (Kleinbuchstabe, aus E-Mail)
-- last_name = `''` (leer)
-- display_name = `'robyn'` (aus E-Mail, nicht "Robyn Gebhard")
+**`pet_service_cases`** — Zentraler Case-Tracker (analog zu `sales_cases` / `finance_mandates`):
+- id, customer_user_id, provider_id, service_id, booking_id
+- phase (PLC enum), phase_entered_at
+- deposit_cents, deposit_paid_at, total_price_cents
+- stripe_payment_intent_id (für Anzahlung)
 
-#### Schritt 3: sot_email korrekt, aber Armstrong-Email doppelt
+**`pet_lifecycle_events`** — Event-Ledger (analog zu `sales_lifecycle_events`):
+- case_id, event_type, actor_id, actor_type, old_phase, new_phase, payload
 
-- sot_email = `robyn@systemofatown.com` ← korrekt (kein Nachname → nur Vorname)
-- armstrong_email = `robyn.robyn@neilarmstrong.space` ← **BUG** — zeigt dass irgendwann sowohl first als auch last als 'robyn' interpretiert wurden (wahrscheinlich bei einem späteren Profile-Update, der den Trigger erneut auslöste)
+#### 3. Anzahlungs-Flow (7,5% Plattformgebühr)
 
-#### Schritt 4: Outbound-Identity auto-provisioniert mit falschen Daten
+- Kunde wählt Service → System berechnet 7,5% vom Servicepreis
+- Stripe Checkout Session (oder Payment Intent) wird erstellt
+- Nach erfolgreicher Zahlung → Buchung wird mit Status `deposit_paid` erstellt
+- Webhook bestätigt Zahlung → Event `deposit.confirmed` ins Ledger
+- **Nicht erstattbar** — bei Storno durch Kunden ODER Ablehnung durch Provider
+- Die Zone-3-Booking-UI (LennoxPartnerProfil) und Zone-2-Caring-UI (PetsCaring/CaringProviderDetail) zeigen den Betrag klar an: "7,5% Plattformgebühr — nicht erstattungsfähig"
 
-Die `OutboundIdentityWidget` Auto-Provision nutzt Profildaten:
-- from_email = `generateFromEmail('SOT', 'robyn', 'Robyn')` → `robyn.robyn@systemofatown.com`
-- display_name = `'robyn Robyn'`
+#### 4. Flow-Reparatur: Was sich ändert
 
-Das zeigt: Irgendwann wurde `last_name` auf 'Robyn' (= display_name) gesetzt, aber first_name blieb 'robyn' (lowercase).
+**Zone 3 (Lennox Website) — `LennoxPartnerProfil.tsx`:**
+- BookingBlock: Statt `pet_z1_booking_requests` → `pet_service_cases` mit Stripe-Anzahlung
+- Klarer Hinweis: "7,5% Plattformgebühr (nicht erstattbar)"
+- Nach Zahlung: Case erstellt, Provider benachrichtigt
 
-### DB-Ist-Zustand Robyn Gebhard
+**Zone 2 MOD-05 (Caring) — `PetsCaring.tsx` + `CaringProviderDetail.tsx`:**
+- Gleicher Buchungs-Flow wie Z3, aber für eingeloggte Portal-User
+- Anzahlung über denselben Stripe-Flow
 
-| Feld | Wert | Soll |
-|------|------|------|
-| auth.users.email | robyn@lennoxandfriends.app | ✅ |
-| auth.users.meta.display_name | Robyn Gebhard | ✅ |
-| auth.users.meta.first_name | NULL | ❌ fehlt |
-| auth.users.meta.last_name | NULL | ❌ fehlt |
-| profiles.first_name | Robyn | ✅ (manuell korrigiert) |
-| profiles.last_name | Gebhard | ✅ (manuell korrigiert) |
-| profiles.display_name | Robyn | ❌ sollte "Robyn Gebhard" sein |
-| profiles.sot_email | robyn@systemofatown.com | ⚠️ akzeptabel, aber sollte robyn.gebhard@ sein |
-| profiles.armstrong_email | robyn.robyn@neilarmstrong.space | ❌ falsch, sollte robyn.gebhard@ sein |
-| outbound.from_email | robyn.robyn@systemofatown.com | ❌ falsch |
-| outbound.display_name | robyn Robyn | ❌ falsch |
-| pet_providers.email | info@lennoxandfriends.app | ✅ Firmen-E-Mail korrekt |
+**Zone 2 MOD-22 (Pet Manager) — `PMBuchungen.tsx`:**
+- Zeigt eingehende Buchungen (nur `deposit_paid` → also bereits bezahlt)
+- Provider kann bestätigen/ablehnen (Ablehnung gibt Gebühr NICHT zurück)
+- Check-In / Check-Out wie bisher
 
-### 3 systemische Bugs (betrifft JEDEN Manager-Account)
+**Zone 1 Pet Desk — `PetDeskVorgaenge.tsx`:**
+- Wird zum **Monitor-Dashboard**: alle Cases, alle Phasen, Stuck-Detection
+- Kein aktives "Zuweisen" mehr — das macht der Kunde selbst
+- Lead-Qualifizierung bleibt für organische Leads die nicht über Buchung kommen
 
-**BUG 1 — `sot-manager-activate` setzt kein `first_name`/`last_name` in user_metadata**
-- Fix: `applicantName` splitten und als `first_name` + `last_name` in metadata übergeben
-- Auch `display_name` korrekt zusammensetzen
+#### 5. Was wird entfernt/umgebaut
 
-**BUG 2 — `handle_new_user` Trigger ignoriert `display_name` aus metadata**
-- Wenn kein `first_name`/`last_name` vorhanden → sollte `display_name` gesplittet werden als Fallback VOR dem E-Mail-Fallback
-- Fix: `COALESCE(meta->>'first_name', split_part(meta->>'display_name', ' ', 1), split_part(email, '@', 1))`
+- `pet_z1_booking_requests` bleibt für Legacy-Daten, aber neue Buchungen laufen über `pet_service_cases`
+- Z1-Zuweisungs-Flow in `PetDeskVorgaenge.tsx` wird auf "Monitor" umgebaut
+- Die "5€ Anzahlung" im aktuellen BookingBlock wird zu "7,5% Plattformgebühr"
 
-**BUG 3 — Armstrong-Email-Trigger hat kein Re-Generierungs-Schutz bei Namensänderung**
-- Der Trigger feuert nur wenn `armstrong_email IS NULL`
-- Aber: Wenn der Name nachträglich korrigiert wird, bleibt die falsche Armstrong-Email bestehen
-- Vorschlag: Entweder expliziter "Regenerate"-Mechanismus oder Trigger auch bei Namensänderung
+#### 6. Demo-Daten Cleanup
 
-### Repair-Plan (minimal-invasiv)
-
-**1. `sot-manager-activate` fixen** (Edge Function)
-- `applicantName` in first/last splitten
-- In `user_metadata` als `first_name` + `last_name` übergeben
-
-**2. `handle_new_user` DB-Trigger härten**
-- `display_name` als Fallback vor E-Mail-Local-Part einbauen
-
-**3. Robyn-Account DB-Repair** (einmalige SQL-Korrektur)
-- `profiles.display_name` → 'Robyn Gebhard'
-- `profiles.sot_email` → regenerieren als 'robyn.gebhard@systemofatown.com'
-- `profiles.armstrong_email` → regenerieren als 'robyn.gebhard@neilarmstrong.space'
-- `user_outbound_identities` → from_email + display_name korrigieren
-
-**4. Alle bestehenden Manager-Accounts prüfen und ggf. batch-reparieren**
-- SQL-Query: Alle Profile wo `sot_email` oder `armstrong_email` ein `vorname.vorname@` Pattern haben
+- Die 3 bestehenden Demo-Kunden (Sabine Berger, Thomas Richter, Claudia Stein) werden per SQL DELETE entfernt
+- Neue Demo-Cases werden bei Bedarf über die Demo Seed Engine mit korrektem PLC-Flow angelegt
 
 ### Betroffene Dateien
-- `supabase/functions/sot-manager-activate/index.ts` — first_name/last_name in metadata
-- DB-Trigger `handle_new_user` — display_name Fallback
-- DB-Trigger `set_armstrong_email` — ggf. Regenerierung bei Namensänderung
-- Einmalige SQL-Migration für Robyn-Datenkorrektur
+
+**Neu erstellen:**
+- `src/engines/plc/spec.ts` — PLC Phasen, Types, Constants
+- `src/engines/plc/engine.ts` — Pure Functions
+- DB-Migration: `pet_service_cases` + `pet_lifecycle_events` Tabellen
+
+**Umbauen:**
+- `src/pages/zone3/lennox/LennoxPartnerProfil.tsx` — BookingBlock → Stripe-Anzahlung + pet_service_cases
+- `src/pages/portal/petmanager/PMBuchungen.tsx` — Cases statt booking_requests
+- `src/pages/admin/petmanager/PetDeskVorgaenge.tsx` — Monitor statt Zuweiser
+- `src/hooks/usePetBookings.ts` — PLC-Case-Hooks hinzufügen
+- `src/engines/index.ts` — PLC exportieren
+- `spec/current/06_engines/ENGINE_REGISTRY.md` — ENG-PLC registrieren
+
+**Stripe-Integration:**
+- Stripe muss enabled sein für den Anzahlungs-Flow
+- Edge Function `sot-pet-deposit-checkout` für Stripe Checkout Session
+- Webhook-Handler für `checkout.session.completed`
+
+### Voraussetzung
+
+Stripe muss auf dem Projekt aktiviert werden, bevor der Anzahlungs-Flow implementiert werden kann. Der Gesamtplan kann in Wellen umgesetzt werden:
+
+- **Welle 1:** ENG-PLC Engine + DB-Tabellen + Demo-Cleanup
+- **Welle 2:** Stripe-Anzahlungs-Flow + UI-Umbau
+- **Welle 3:** Z1-Monitor + Stuck-Detection CRON
 
