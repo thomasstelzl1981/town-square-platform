@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 serve(async (req) => {
@@ -14,6 +15,53 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "action and text required" }), {
         status: 400, headers: { ...cors, "Content-Type": "application/json" },
       });
+    }
+
+    // ── Credit Preflight + Deduct (1 Credit) ──
+    const authHeader = req.headers.get("authorization") || "";
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Get user's tenant from JWT
+    const supabaseUser = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") || SUPABASE_SERVICE_ROLE_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user } } = await supabaseUser.auth.getUser();
+    
+    if (user) {
+      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      
+      // Get tenant_id from user's org membership
+      const { data: membership } = await supabaseAdmin
+        .from("organization_members")
+        .select("organization_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      
+      const tenantId = membership?.organization_id;
+      if (tenantId) {
+        // Preflight check
+        const { data: preflight, error: preflightErr } = await supabaseAdmin.rpc("rpc_credit_preflight", {
+          p_tenant_id: tenantId,
+          p_amount: 1,
+        });
+        
+        if (preflightErr || !preflight?.allowed) {
+          return new Response(JSON.stringify({ error: "Nicht genügend Credits. Bitte laden Sie Credits auf." }), {
+            status: 402, headers: { ...cors, "Content-Type": "application/json" },
+          });
+        }
+
+        // Deduct after successful preflight
+        await supabaseAdmin.rpc("rpc_credit_deduct", {
+          p_tenant_id: tenantId,
+          p_user_id: user.id,
+          p_amount: 1,
+          p_ref_type: "mail_ai_assist",
+          p_ref_id: action,
+        });
+      }
     }
 
     const lang = language || "de";

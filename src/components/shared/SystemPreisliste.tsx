@@ -58,7 +58,7 @@ export function SystemPreisliste() {
 
   const infraByCategory = useMemo(() => {
     const map: Record<BillingCategory, typeof SYSTEM_PRICES> = {
-      documents: [], communication: [], banking: [], storage: [],
+      documents: [], ai: [], communication: [], banking: [], storage: [],
     };
     for (const p of SYSTEM_PRICES) {
       map[p.category].push(p);

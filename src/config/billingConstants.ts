@@ -6,7 +6,7 @@
 
 export const CREDIT_VALUE_EUR = 0.25;
 
-export type BillingCategory = 'documents' | 'communication' | 'banking' | 'storage';
+export type BillingCategory = 'documents' | 'communication' | 'banking' | 'storage' | 'ai';
 
 export interface SystemPrice {
   code: string;
@@ -22,7 +22,18 @@ export const SYSTEM_PRICES: SystemPrice[] = [
   { code: 'pdf_extraction', label: 'PDF-Extraktion (Posteingang)', credits: 1, eur_cents: 25, interval: 'per_use', category: 'documents' },
   { code: 'storage_extraction', label: 'Storage-Extraktion', credits: 1, eur_cents: 25, interval: 'per_use', category: 'documents' },
   { code: 'nk_beleg_parse', label: 'NK-Beleg-Parsing', credits: 1, eur_cents: 25, interval: 'per_use', category: 'documents' },
+  { code: 'invoice_parse', label: 'Rechnungs-Parsing', credits: 1, eur_cents: 25, interval: 'per_use', category: 'documents' },
   { code: 'auto_matching', label: 'Auto-Matching (Banktransaktionen)', credits: 2, eur_cents: 50, interval: 'per_use', category: 'documents' },
+  { code: 'weg_abrechnung_parse', label: 'WEG-Abrechnung-Parsing', credits: 2, eur_cents: 50, interval: 'per_use', category: 'documents' },
+
+  // KI-Services
+  { code: 'mail_ai_assist', label: 'KI-Mail-Assistent', credits: 1, eur_cents: 25, interval: 'per_use', category: 'ai' },
+  { code: 'content_engine', label: 'Content-Engine (Artikel)', credits: 2, eur_cents: 50, interval: 'per_use', category: 'ai' },
+  { code: 'tlc_summary', label: 'KI-Zusammenfassung (TLC)', credits: 1, eur_cents: 25, interval: 'per_use', category: 'ai' },
+  { code: 'finance_prepare', label: 'Finanzierungspaket-Aufbereitung', credits: 2, eur_cents: 50, interval: 'per_use', category: 'ai' },
+  { code: 'ki_browser', label: 'KI-Browser / Research', credits: 3, eur_cents: 75, interval: 'per_use', category: 'ai' },
+  { code: 'contact_enrichment', label: 'Kontakt-Anreicherung', credits: 1, eur_cents: 25, interval: 'per_use', category: 'ai' },
+  { code: 'discovery_scheduler', label: 'Discovery Scheduler', credits: 1, eur_cents: 25, interval: 'per_use', category: 'ai' },
 
   // Kommunikation
   { code: 'fax_send', label: 'Fax-Versand', credits: 4, eur_cents: 100, interval: 'per_use', category: 'communication' },
@@ -41,6 +52,7 @@ export const SYSTEM_PRICES: SystemPrice[] = [
 
 export const BILLING_CATEGORIES: Record<BillingCategory, { label: string; icon: string }> = {
   documents: { label: 'Dokumenten-Verarbeitung', icon: '📄' },
+  ai: { label: 'KI-Services', icon: '🤖' },
   communication: { label: 'Kommunikation', icon: '📬' },
   banking: { label: 'Konto-Services', icon: '🏦' },
   storage: { label: 'Speicher', icon: '💾' },
@@ -53,6 +65,16 @@ export function creditsToEur(credits: number): number {
 export function formatEurCents(cents: number | null): string {
   if (cents === null || cents === 0) return 'Kostenlos';
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(cents / 100);
+}
+
+/** Lookup a service price by its code. Returns undefined if not found. */
+export function getServicePrice(code: string): SystemPrice | undefined {
+  return SYSTEM_PRICES.find(p => p.code === code);
+}
+
+/** Get human-readable label for a ref_type/action_code. Falls back to the code itself. */
+export function getServiceLabel(code: string): string {
+  return getServicePrice(code)?.label ?? code;
 }
 
 /* ─── Credit Top-Up Packages ─── */
@@ -69,3 +91,6 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
   { code: 'standard', label: 'Standard', credits: 100, price_eur_cents: 2500, popular: true },
   { code: 'power',    label: 'Power',    credits: 500, price_eur_cents: 12500 },
 ];
+
+/* ─── Low Balance Threshold ─── */
+export const LOW_BALANCE_THRESHOLD = 10;

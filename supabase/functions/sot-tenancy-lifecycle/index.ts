@@ -644,10 +644,30 @@ serve(async (req: Request) => {
       }
     }
 
-    // AI summary
+    // AI summary (with credit deduction — 1 Credit per tenant with findings)
     let aiSummary = null;
     if (lovableApiKey && allResults.length > 0) {
       try {
+        // Deduct 1 credit from each tenant that has findings
+        const tenantsWithFindings = [...new Set(allResults.map(r => {
+          const lease = leases.find((l: any) => l.id === r.leaseId);
+          return lease?.tenant_id;
+        }).filter(Boolean))];
+
+        for (const tid of tenantsWithFindings) {
+          try {
+            await supabase.rpc("rpc_credit_deduct", {
+              p_tenant_id: tid,
+              p_user_id: null,
+              p_amount: 1,
+              p_ref_type: "tlc_summary",
+              p_ref_id: today,
+            });
+          } catch (creditErr) {
+            console.warn(`[TLC] Credit deduct failed for tenant ${tid}:`, creditErr);
+          }
+        }
+
         const prompt = `Du bist ein KI-Assistent für Mietverwaltung. Analysiere die TLC v1.5 Ergebnisse und erstelle eine kurze Zusammenfassung (max 200 Wörter) der wichtigsten Handlungsempfehlungen auf Deutsch.\n\nErgebnisse (${allResults.length} Mietverhältnisse):\n${JSON.stringify(allResults.slice(0, 20), null, 2)}\n\nAntworte NUR mit der Zusammenfassung.`;
 
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
