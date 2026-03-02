@@ -4,6 +4,7 @@
  * then full-width LV table and scope description below.
  */
 import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -84,13 +85,16 @@ export function ScopeDefinitionPanel({ serviceCase }: ScopeDefinitionPanelProps)
     
     setIsGeneratingFromDescription(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Not authenticated');
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-renovation-scope-ai`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
           body: JSON.stringify({
             service_case_id: serviceCase.id,
@@ -154,13 +158,16 @@ export function ScopeDefinitionPanel({ serviceCase }: ScopeDefinitionPanelProps)
     
     setIsAnalyzing(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Not authenticated');
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-renovation-scope-ai`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
           body: JSON.stringify({
             service_case_id: serviceCase.id,
@@ -210,13 +217,16 @@ export function ScopeDefinitionPanel({ serviceCase }: ScopeDefinitionPanelProps)
     
     setIsEstimating(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Not authenticated');
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-renovation-scope-ai`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
           body: JSON.stringify({
             service_case_id: serviceCase.id,

@@ -521,15 +521,19 @@ grep -rn "\/\* .*TODO\|\/\/ TODO\|\/\/ FIXME\|\/\/ HACK\|\/\/ XXX" src/ --includ
 
 ## Summary Table
 
-| # | Category | Finding Count | Severity |
-|---|----------|--------------|----------|
-| 1 | Dead Code | 9 unused exports, 3 unused components | LOW |
-| 2 | Security | 9 anon-key-as-Bearer, 13 dangerouslySetInnerHTML, 1 hardcoded credential | HIGH |
-| 3 | Type Safety | 1,481 `any` casts, 3 duplicate const definitions | MEDIUM |
-| 4 | Error Handling | ~16 unhandled fetch calls, ~20 silent catch blocks | MEDIUM |
-| 5 | Performance | 10 files >800 lines, 1,749 potential missing keys, 6 suppressed deps, 4 timer leaks | MEDIUM |
-| 6 | Dependencies | `xlsx` CVE, `react-helmet` unmaintained, 2 misplaced devDeps | HIGH |
-| 7 | Test Coverage | 119/121 edge functions untested, <2% frontend coverage | HIGH |
-| 8 | Architecture | 5 SRP violations, 3 cross-zone imports, no repository layer | MEDIUM |
-| 9 | Documentation | 0 engine JSDoc, 0 edge function READMEs, no `.env.example` | LOW |
-| 10 | Technical Debt | ~310 console.* calls, 15+ eslint-disable, 3 TODO stubs | LOW |
+| # | Category | Finding Count | Severity | Status |
+|---|----------|--------------|----------|--------|
+| 1 | Dead Code | 9 unused exports, 3 unused components | LOW | Open |
+| 2 | Security — Bearer token | 9 anon-key-as-Bearer in 6 files | HIGH | **FIXED** (2026-03-02) |
+| 2 | Security — XSS | 7 dangerouslySetInnerHTML with external content | HIGH | **FIXED** (2026-03-02) |
+| 2 | Security — credentials | 1 hardcoded demo password in source | MEDIUM | Open (intentional, see demoAccountConfig) |
+| 3 | Type Safety — any casts | 1,481 `any` casts | MEDIUM | Open |
+| 3 | Type Safety — duplicate consts | 3 duplicate const definitions | MEDIUM | **FIXED** (2026-03-02) |
+| 4 | Error Handling | ~16 unhandled fetch calls, ~20 silent catch blocks | MEDIUM | Open |
+| 5 | Performance | 10 files >800 lines, 1,749 potential missing keys, 6 suppressed deps, 4 timer leaks | MEDIUM | Open |
+| 6 | Dependencies — misplaced devDeps | `@playwright/test`, `@types/react-helmet` in dependencies | HIGH | **FIXED** (2026-03-02) |
+| 6 | Dependencies — CVE | `xlsx ^0.18.5` CVE-2023-30533, `react-helmet` unmaintained | HIGH | Open |
+| 7 | Test Coverage | 119/121 edge functions untested, <2% frontend coverage | HIGH | Open |
+| 8 | Architecture | 5 SRP violations, 3 cross-zone imports, no repository layer | MEDIUM | Open |
+| 9 | Documentation | 0 engine JSDoc, 0 edge function READMEs, no `.env.example` | LOW | Open |
+| 10 | Technical Debt | ~310 console.* calls, 15+ eslint-disable, 3 TODO stubs | LOW | Open |

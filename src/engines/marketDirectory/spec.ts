@@ -581,7 +581,7 @@ export interface DiscoveryRunLogEntry {
 export const REGION_COOLDOWN_DAYS = 3;
 
 /** Credit cost per contact value (1 Credit = 0.25 EUR) */
-export const CREDIT_VALUE_EUR = 0.25;
+export { CREDIT_VALUE_EUR } from '@/config/billingConstants';
 
 // ═══════════════════════════════════════════════════════════════
 // 12. CATEGORY SOURCE STRATEGY (Recherche-Strategie pro Kategorie)

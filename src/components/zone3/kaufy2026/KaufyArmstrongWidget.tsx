@@ -13,6 +13,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Send, Sparkles, ArrowRight, Volume2, VolumeX, Mic, Minus } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { KaufyInputBar } from '@/components/zone3/kaufy/KaufyInputBar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -128,11 +129,13 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
     const assistantId = crypto.randomUUID();
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
           action: 'chat',

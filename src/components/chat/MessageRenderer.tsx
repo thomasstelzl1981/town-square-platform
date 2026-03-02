@@ -7,6 +7,7 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import ReactMarkdown from 'react-markdown';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -274,7 +275,7 @@ const EmailDraftBox: React.FC<{ draft: DraftContent; onSend?: (draft: DraftConte
         {draft.email_body_html ? (
           <div 
             className="prose prose-sm dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: draft.email_body_html }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(draft.email_body_html) }}
           />
         ) : (
           <div className="prose prose-sm dark:prose-invert max-w-none">

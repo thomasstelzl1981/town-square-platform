@@ -110,5 +110,5 @@ export function getDemoPropertyAccounting(propertyId: string): DemoPropertyAccou
   return DEMO_PROPERTY_ACCOUNTING.find(p => p.propertyId === propertyId);
 }
 
-/** Alle Demo-Property-IDs */
-export const DEMO_PROPERTY_IDS = [PROP_BER_01, PROP_MUC_01, PROP_HH_01] as const;
+/** Alle Demo-Property-IDs — re-exported from SSOT in tenantConstants */
+export { DEMO_PROPERTY_IDS } from '@/config/tenantConstants';
