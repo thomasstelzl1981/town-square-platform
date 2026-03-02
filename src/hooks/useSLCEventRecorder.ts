@@ -108,9 +108,9 @@ export async function findOrCreateCase(opts: {
       property_id: opts.propertyId || null,
       project_id: opts.projectId || null,
       listing_id: opts.listingId,
-      current_phase: 'mandate_active' as SLCPhase,
+      current_phase: 'mandate_active',
       tenant_id: opts.tenantId,
-    })
+    } as never)
     .select('id, current_phase')
     .single();
 

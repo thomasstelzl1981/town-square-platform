@@ -320,7 +320,11 @@ export function calculateRentIncreaseProposals(
   capPercent: number,
   vergleichsmiete: number | null = null
 ): RentIncreaseProposal[] {
-  const baseRent = rentThreeYearsAgo ?? currentRent;
+  // E1 Guard: If rent 3 years ago is unknown, we cannot calculate the cap correctly
+  if (rentThreeYearsAgo === null || rentThreeYearsAgo === undefined) {
+    return [];
+  }
+  const baseRent = rentThreeYearsAgo;
   const capLimit = baseRent * (capPercent / 100);
   const maxIncrease = capLimit; // maximum allowed in cap period
   

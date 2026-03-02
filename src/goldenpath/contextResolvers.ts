@@ -645,11 +645,12 @@ const gpVerkaufResolver: ContextResolver = async ({ tenantId, entityId: caseId }
     if (salesCase) {
       flags.case_exists = true;
       const phase = salesCase.phase;
-      // Progressive flag activation based on SLC phase
+      // Progressive flag activation — synced with SLC_PHASE_ORDER from src/engines/slc/spec.ts v1.1
       const PHASE_ORDER = [
         'captured', 'readiness_check', 'mandate_active', 'published',
         'inquiry', 'reserved', 'finance_submitted', 'contract_draft',
-        'notary', 'handover', 'settlement', 'closed_won', 'closed_lost',
+        'notary_scheduled', 'notary_completed', 'handover', 'settlement',
+        'closed_won', 'closed_lost',
       ];
       const phaseIndex = PHASE_ORDER.indexOf(phase);
 
@@ -659,9 +660,9 @@ const gpVerkaufResolver: ContextResolver = async ({ tenantId, entityId: caseId }
       flags.reserved = phaseIndex >= 5;
       flags.contract_drafted = phaseIndex >= 7;
       flags.notary_scheduled = phaseIndex >= 8;
-      flags.notary_completed = phaseIndex >= 8 && phase !== 'notary';
-      flags.handover_done = phaseIndex >= 9;
-      flags.settlement_approved = phaseIndex >= 10;
+      flags.notary_completed = phaseIndex >= 9;
+      flags.handover_done = phaseIndex >= 10;
+      flags.settlement_approved = phaseIndex >= 11;
       flags.case_closed = phase === 'closed_won' || phase === 'closed_lost';
     }
   } else {

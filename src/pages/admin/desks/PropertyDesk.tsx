@@ -268,7 +268,7 @@ function LeasesTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leases' as never)
-        .select('*' as never)
+        .select('*, contact:contacts!leases_contact_id_fkey(first_name, last_name)' as never)
         .order('created_at' as never, { ascending: false })
         .limit(100) as unknown as { data: any[]; error: any };
       if (error) throw error;
@@ -301,7 +301,9 @@ function LeasesTab() {
             <TableBody>
               {leases.map((l: any) => (
                 <TableRow key={l.id}>
-                  <TableCell className="font-medium">{l.tenant_name || l.renter_name || '–'}</TableCell>
+                  <TableCell className="font-medium">
+                    {l.contact ? `${l.contact.first_name || ''} ${l.contact.last_name || ''}`.trim() || '–' : '–'}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={l.status === 'active' ? 'default' : 'secondary'} className="text-xs">
                       {l.status || 'draft'}

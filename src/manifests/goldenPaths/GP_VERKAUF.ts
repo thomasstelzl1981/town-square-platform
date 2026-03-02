@@ -142,6 +142,13 @@ export const GP_VERKAUF_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'reserved', source: 'sales_cases', check: 'equals', value: 'reserved', description: 'Objekt ist für einen Käufer reserviert' },
       ],
+      on_timeout: {
+        ledger_event: 'slc.reserved.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        escalate_to: 'Z1',
+        description: 'Reservierung nicht innerhalb 30 Tagen abgeschlossen — Käufer-Follow-Up',
+      },
     },
 
     // PHASE 5: KAUFVERTRAGSENTWURF
@@ -158,6 +165,13 @@ export const GP_VERKAUF_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'contract_drafted', source: 'sales_cases', check: 'exists', description: 'Kaufvertragsentwurf liegt vor' },
       ],
+      on_timeout: {
+        ledger_event: 'slc.contract.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        escalate_to: 'Z1',
+        description: 'Kaufvertragsentwurf nicht innerhalb 14 Tagen erstellt — Notar/Anwalt kontaktieren',
+      },
     },
 
     // PHASE 6: NOTARTERMIN VEREINBART
@@ -174,6 +188,13 @@ export const GP_VERKAUF_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'notary_scheduled', source: 'sales_cases', check: 'exists', description: 'Notartermin ist vereinbart' },
       ],
+      on_timeout: {
+        ledger_event: 'slc.notary_schedule.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        escalate_to: 'Z1',
+        description: 'Notartermin nicht innerhalb 30 Tagen vereinbart — Eskalation an Notar',
+      },
     },
 
     // PHASE 7: BEURKUNDET
@@ -190,6 +211,12 @@ export const GP_VERKAUF_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'notary_completed', source: 'sales_cases', check: 'exists', description: 'Notarielle Beurkundung abgeschlossen' },
       ],
+      on_error: {
+        ledger_event: 'slc.notary.error',
+        status_update: 'error',
+        recovery_strategy: 'manual_review',
+        description: 'Beurkundung fehlgeschlagen oder verschoben',
+      },
     },
 
     // PHASE 8: ÜBERGABE
@@ -206,6 +233,13 @@ export const GP_VERKAUF_GOLDEN_PATH: GoldenPathDefinition = {
       completion: [
         { key: 'handover_done', source: 'sales_cases', check: 'exists', description: 'Schlüsselübergabe protokolliert' },
       ],
+      on_timeout: {
+        ledger_event: 'slc.handover.timeout',
+        status_update: 'timeout',
+        recovery_strategy: 'manual_review',
+        escalate_to: 'Z1',
+        description: 'Übergabe nicht innerhalb 60 Tagen nach Beurkundung abgeschlossen',
+      },
     },
 
     // PHASE 9: ABRECHNUNG / SETTLEMENT

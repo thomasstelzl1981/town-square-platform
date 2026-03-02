@@ -22,20 +22,28 @@ const corsHeaders = {
 // ─── Inline SLC constants (mirroring src/engines/slc/spec.ts) ───
 
 const SLC_STUCK_THRESHOLDS: Record<string, number> = {
+  captured: 7,
+  readiness_check: 14,
   mandate_active: 14,
   published: 60,
   inquiry: 21,
   reserved: 30,
+  finance_submitted: 21,
   contract_draft: 14,
   notary_scheduled: 30,
+  notary_completed: 60,
+  handover: 14,
   settlement: 30,
 };
 
 const SLC_PHASE_LABELS: Record<string, string> = {
+  captured: 'Objekt erfasst',
+  readiness_check: 'Verkaufsbereitschaft',
   mandate_active: 'Verkaufsauftrag aktiv',
   published: 'Veröffentlicht',
   inquiry: 'Anfrage eingegangen',
   reserved: 'Reserviert',
+  finance_submitted: 'Finanzierung eingereicht',
   contract_draft: 'Kaufvertragsentwurf',
   notary_scheduled: 'Notartermin vereinbart',
   notary_completed: 'Beurkundet',
@@ -110,10 +118,23 @@ serve(async (req: Request) => {
           totalIssues++;
           findings.push(`Stuck in "${SLC_PHASE_LABELS[phase] || phase}" seit ${Math.round(days)} Tagen (Schwellwert: ${threshold}d)`);
 
+          // Idempotency: check if stuck event already exists for this phase today
+          const { data: existingStuck } = await supabase
+            .from("sales_lifecycle_events")
+            .select("id")
+            .eq("case_id", slcCase.id)
+            .eq("event_type", "case.stuck_detected")
+            .gte("created_at", `${today}T00:00:00`)
+            .limit(1);
+
+          if (existingStuck && existingStuck.length > 0) {
+            // Already reported today — skip
+            findings.push(`Stuck in "${SLC_PHASE_LABELS[phase] || phase}" seit ${Math.round(days)} Tagen (bereits gemeldet)`);
+          } else {
           // Write stuck event
           const { error: evtErr } = await supabase.from("sales_lifecycle_events").insert({
             case_id: slcCase.id,
-            event_type: "case.reopened", // using as a monitoring event type
+            event_type: "case.stuck_detected",
             severity: days > threshold * 2 ? "error" : "warning",
             phase_before: phase,
             phase_after: phase,
@@ -128,6 +149,7 @@ serve(async (req: Request) => {
           });
 
           if (!evtErr) totalEvents++;
+          }
         }
       }
 
@@ -220,7 +242,7 @@ serve(async (req: Request) => {
 
             const { error: evtErr } = await supabase.from("sales_lifecycle_events").insert({
               case_id: slcCase.id,
-              event_type: "deal.commission_calculated",
+              event_type: "deal.settlement_pending",
               severity: "warning",
               phase_before: phase,
               phase_after: phase,

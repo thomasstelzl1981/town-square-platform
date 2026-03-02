@@ -24249,10 +24249,13 @@ export type Database = {
         | "cancelled"
       scan_status: "pending" | "running" | "completed" | "failed"
       slc_phase:
+        | "captured"
+        | "readiness_check"
         | "mandate_active"
         | "published"
         | "inquiry"
         | "reserved"
+        | "finance_submitted"
         | "contract_draft"
         | "notary_scheduled"
         | "notary_completed"
@@ -24762,10 +24765,13 @@ export const Constants = {
       ],
       scan_status: ["pending", "running", "completed", "failed"],
       slc_phase: [
+        "captured",
+        "readiness_check",
         "mandate_active",
         "published",
         "inquiry",
         "reserved",
+        "finance_submitted",
         "contract_draft",
         "notary_scheduled",
         "notary_completed",
