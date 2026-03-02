@@ -5,6 +5,8 @@
  * - Zeigt/erstellt rental_listings Eintrag
  * - Zeigt Status aus rental_publications
  * - Ermöglicht IS24-Buchung via sot-is24-gateway (2 Credits)
+ * - Confirmation-Dialog vor kostenpflichtiger Buchung
+ * - Form-Lock wenn IS24 aktiv
  */
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -21,6 +23,16 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { 
   ExternalLink, 
   Globe, 
@@ -31,7 +43,8 @@ import {
   Coins,
   CheckCircle2,
   AlertCircle,
-  XCircle
+  XCircle,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -85,7 +98,7 @@ export function TLCRentalListingSection({
 }: TLCRentalListingSectionProps) {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [formData, setFormData] = useState({
     cold_rent: '',
     warm_rent: '',
@@ -138,6 +151,7 @@ export function TLCRentalListingSection({
   const is24Pub = publications.find(p => p.channel === 'scout24');
   const is24Active = is24Pub?.status === 'active';
   const is24Error = is24Pub?.status === 'error';
+  const formLocked = is24Active;
 
   // Create/update rental listing
   const saveMutation = useMutation({
@@ -170,39 +184,40 @@ export function TLCRentalListingSection({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rental-listing', unitId] });
-      setIsEditing(false);
       toast.success('Vermietungsinserat gespeichert');
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
+  // Build IS24 payload
+  const buildIs24Payload = () => {
+    if (!rentalListing) throw new Error('Kein Inserat vorhanden');
+    return {
+      action: 'create_listing',
+      rental_listing_id: rentalListing.id,
+      object_type: 'ApartmentRent',
+      data: {
+        title: `Mietwohnung ${propertyAddress}, ${propertyCity}`.trim(),
+        cold_rent: parseFloat(formData.cold_rent) || rentalListing.cold_rent || 0,
+        warm_rent: parseFloat(formData.warm_rent) || rentalListing.warm_rent || 0,
+        deposit: `${rentalListing.deposit_months || 3} Monatsmieten`,
+        description: rentalListing.description || '',
+        pets_allowed: rentalListing.pets_allowed,
+        street: propertyAddress,
+        postal_code: postalCode,
+        city: propertyCity,
+        area_sqm: areaSqm,
+        rooms,
+        year_built: yearBuilt,
+      },
+    };
+  };
+
   // Book IS24 publication (2 Credits)
   const publishMutation = useMutation({
     mutationFn: async () => {
-      if (!rentalListing) throw new Error('Kein Inserat vorhanden');
-
-      const { data, error } = await supabase.functions.invoke('sot-is24-gateway', {
-        body: {
-          action: 'create_listing',
-          rental_listing_id: rentalListing.id,
-          object_type: 'ApartmentRent',
-          data: {
-            title: `Mietwohnung ${propertyAddress}, ${propertyCity}`.trim(),
-            cold_rent: parseFloat(formData.cold_rent) || rentalListing.cold_rent || 0,
-            warm_rent: parseFloat(formData.warm_rent) || rentalListing.warm_rent || 0,
-            deposit: `${rentalListing.deposit_months || 3} Monatsmieten`,
-            description: rentalListing.description || '',
-            pets_allowed: rentalListing.pets_allowed,
-            street: propertyAddress,
-            postal_code: postalCode,
-            city: propertyCity,
-            area_sqm: areaSqm,
-            rooms,
-            year_built: yearBuilt,
-          },
-        },
-      });
-
+      const body = buildIs24Payload();
+      const { data, error } = await supabase.functions.invoke('sot-is24-gateway', { body });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       return data;
@@ -211,7 +226,51 @@ export function TLCRentalListingSection({
       queryClient.invalidateQueries({ queryKey: ['rental-publications', rentalListing?.id] });
       toast.success(`Auf ImmobilienScout24 veröffentlicht (IS24-ID: ${data?.is24_id || '–'})`);
     },
-    onError: (err: Error) => toast.error(`IS24-Fehler: ${err.message}`),
+    onError: (err: Error & { status?: number }) => {
+      if (err.message?.includes('402') || err.message?.includes('Insufficient') || err.message?.includes('Credits')) {
+        toast.error('Nicht genügend Credits. Bitte laden Sie Ihr Guthaben im Abrechnungs-Tab auf.', {
+          duration: 6000,
+        });
+      } else {
+        toast.error(`IS24-Fehler: ${err.message}`);
+      }
+    },
+  });
+
+  // Update IS24 listing
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!is24Pub?.external_id || !rentalListing) throw new Error('Keine IS24-ID vorhanden');
+      const body = {
+        action: 'update_listing',
+        is24_id: is24Pub.external_id,
+        rental_listing_id: rentalListing.id,
+        object_type: 'ApartmentRent',
+        data: {
+          title: `Mietwohnung ${propertyAddress}, ${propertyCity}`.trim(),
+          cold_rent: parseFloat(formData.cold_rent) || rentalListing.cold_rent || 0,
+          warm_rent: parseFloat(formData.warm_rent) || rentalListing.warm_rent || 0,
+          deposit: `${rentalListing.deposit_months || 3} Monatsmieten`,
+          description: rentalListing.description || '',
+          pets_allowed: rentalListing.pets_allowed,
+          street: propertyAddress,
+          postal_code: postalCode,
+          city: propertyCity,
+          area_sqm: areaSqm,
+          rooms,
+          year_built: yearBuilt,
+        },
+      };
+      const { data, error } = await supabase.functions.invoke('sot-is24-gateway', { body });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rental-publications', rentalListing?.id] });
+      toast.success('IS24-Anzeige aktualisiert');
+    },
+    onError: (err: Error) => toast.error(`Update-Fehler: ${err.message}`),
   });
 
   // Deactivate IS24
@@ -253,171 +312,226 @@ export function TLCRentalListingSection({
   };
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger asChild>
-        <Button variant="ghost" className="w-full justify-between h-8 text-xs">
-          <span className="flex items-center gap-2">
-            {getStatusIcon()}
-            Vermietungsinserat
-          </span>
-          <div className="flex items-center gap-2">
-            {is24Active && <Badge variant="default" className="text-[10px] h-4 px-1.5">IS24</Badge>}
-            {rentalListing && !is24Active && <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{getStatusText()}</Badge>}
-            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-          </div>
-        </Button>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-3 px-2 pb-3">
-        {isLoading ? (
-          <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin" /></div>
-        ) : (
-          <>
-            {/* Form */}
-            <Card className="bg-muted/30">
-              <CardContent className="p-3 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Kaltmiete (€)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.cold_rent || coldRent || ''}
-                      onChange={(e) => setFormData(p => ({ ...p, cold_rent: e.target.value }))}
-                      className="h-7 text-xs"
-                      placeholder={coldRent ? coldRent.toString() : ''}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Warmmiete (€)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.warm_rent || warmRent || ''}
-                      onChange={(e) => setFormData(p => ({ ...p, warm_rent: e.target.value }))}
-                      className="h-7 text-xs"
-                      placeholder={warmRent ? warmRent.toString() : ''}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Kaution (Monate)</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      max="6"
-                      value={formData.deposit_months}
-                      onChange={(e) => setFormData(p => ({ ...p, deposit_months: e.target.value }))}
-                      className="h-7 text-xs"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Verfügbar ab</Label>
-                    <Input
-                      type="date"
-                      value={formData.available_from}
-                      onChange={(e) => setFormData(p => ({ ...p, available_from: e.target.value }))}
-                      className="h-7 text-xs"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <Label className="text-[11px] text-muted-foreground">Haustiere erlaubt</Label>
-                  <Switch
-                    checked={formData.pets_allowed}
-                    onCheckedChange={(v) => setFormData(p => ({ ...p, pets_allowed: v }))}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">Beschreibung</Label>
-                  <Textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))}
-                    className="text-xs min-h-[60px]"
-                    placeholder="Beschreibung der Mietwohnung..."
-                  />
-                </div>
-
-                <Button
-                  size="sm"
-                  className="h-7 text-xs w-full"
-                  onClick={() => saveMutation.mutate()}
-                  disabled={saveMutation.isPending}
-                >
-                  {saveMutation.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Save className="mr-1 h-3 w-3" />}
-                  {rentalListing ? 'Inserat aktualisieren' : 'Inserat erstellen'}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* IS24 Publication */}
-            {rentalListing && (
-              <Card className={`border ${is24Active ? 'border-green-500/30 bg-green-50/30 dark:bg-green-950/10' : 'border-muted'}`}>
+    <>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="w-full justify-between h-8 text-xs">
+            <span className="flex items-center gap-2">
+              {getStatusIcon()}
+              Vermietungsinserat
+            </span>
+            <div className="flex items-center gap-2">
+              {is24Active && <Badge variant="default" className="text-[10px] h-4 px-1.5">IS24</Badge>}
+              {rentalListing && !is24Active && <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{getStatusText()}</Badge>}
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-3 px-2 pb-3">
+          {isLoading ? (
+            <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin" /></div>
+          ) : (
+            <>
+              {/* Form */}
+              <Card className="bg-muted/30">
                 <CardContent className="p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Globe className="h-4 w-4" />
-                      <span className="text-xs font-medium">ImmobilienScout24</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Kaltmiete (€)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.cold_rent || coldRent || ''}
+                        onChange={(e) => setFormData(p => ({ ...p, cold_rent: e.target.value }))}
+                        className="h-7 text-xs"
+                        placeholder={coldRent ? coldRent.toString() : ''}
+                        disabled={formLocked}
+                      />
                     </div>
-                    {is24Active ? (
-                      <Badge variant="default" className="text-[10px]">
-                        <CheckCircle2 className="mr-1 h-3 w-3" />
-                        Aktiv
-                      </Badge>
-                    ) : is24Error ? (
-                      <Badge variant="destructive" className="text-[10px]">Fehler</Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-[10px]">Nicht gebucht</Badge>
-                    )}
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Warmmiete (€)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.warm_rent || warmRent || ''}
+                        onChange={(e) => setFormData(p => ({ ...p, warm_rent: e.target.value }))}
+                        className="h-7 text-xs"
+                        placeholder={warmRent ? warmRent.toString() : ''}
+                        disabled={formLocked}
+                      />
+                    </div>
                   </div>
 
-                  {is24Active && is24Pub?.external_id && (
-                    <p className="text-[11px] text-muted-foreground">
-                      IS24-ID: {is24Pub.external_id} • Veröffentlicht: {is24Pub.published_at ? new Date(is24Pub.published_at).toLocaleDateString('de-DE') : '–'}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Kaution (Monate)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="6"
+                        value={formData.deposit_months}
+                        onChange={(e) => setFormData(p => ({ ...p, deposit_months: e.target.value }))}
+                        className="h-7 text-xs"
+                        disabled={formLocked}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Verfügbar ab</Label>
+                      <Input
+                        type="date"
+                        value={formData.available_from}
+                        onChange={(e) => setFormData(p => ({ ...p, available_from: e.target.value }))}
+                        className="h-7 text-xs"
+                        disabled={formLocked}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[11px] text-muted-foreground">Haustiere erlaubt</Label>
+                    <Switch
+                      checked={formData.pets_allowed}
+                      onCheckedChange={(v) => setFormData(p => ({ ...p, pets_allowed: v }))}
+                      disabled={formLocked}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">Beschreibung</Label>
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))}
+                      className="text-xs min-h-[60px]"
+                      placeholder="Beschreibung der Mietwohnung..."
+                      disabled={formLocked}
+                    />
+                  </div>
+
+                  {formLocked ? (
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      Formular gesperrt — Inserat ist auf IS24 aktiv. Deaktivieren Sie die Anzeige, um Änderungen vorzunehmen.
                     </p>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs w-full"
+                      onClick={() => saveMutation.mutate()}
+                      disabled={saveMutation.isPending}
+                    >
+                      {saveMutation.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Save className="mr-1 h-3 w-3" />}
+                      {rentalListing ? 'Inserat aktualisieren' : 'Inserat erstellen'}
+                    </Button>
                   )}
-
-                  <div className="flex gap-2">
-                    {!is24Active ? (
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs flex-1"
-                        onClick={() => publishMutation.mutate()}
-                        disabled={publishMutation.isPending}
-                      >
-                        {publishMutation.isPending ? (
-                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                        ) : (
-                          <Coins className="mr-1 h-3 w-3" />
-                        )}
-                        Auf IS24 buchen (2 Credits)
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs flex-1"
-                        onClick={() => deactivateMutation.mutate()}
-                        disabled={deactivateMutation.isPending}
-                      >
-                        {deactivateMutation.isPending ? (
-                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                        ) : (
-                          <XCircle className="mr-1 h-3 w-3" />
-                        )}
-                        IS24 deaktivieren
-                      </Button>
-                    )}
-                  </div>
                 </CardContent>
               </Card>
-            )}
-          </>
-        )}
-      </CollapsibleContent>
-    </Collapsible>
+
+              {/* IS24 Publication */}
+              {rentalListing && (
+                <Card className={`border ${is24Active ? 'border-green-500/30 bg-green-50/30 dark:bg-green-950/10' : 'border-muted'}`}>
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
+                        <span className="text-xs font-medium">ImmobilienScout24</span>
+                      </div>
+                      {is24Active ? (
+                        <Badge variant="default" className="text-[10px]">
+                          <CheckCircle2 className="mr-1 h-3 w-3" />
+                          Aktiv
+                        </Badge>
+                      ) : is24Error ? (
+                        <Badge variant="destructive" className="text-[10px]">Fehler</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-[10px]">Nicht gebucht</Badge>
+                      )}
+                    </div>
+
+                    {is24Active && is24Pub?.external_id && (
+                      <p className="text-[11px] text-muted-foreground">
+                        IS24-ID: {is24Pub.external_id} • Veröffentlicht: {is24Pub.published_at ? new Date(is24Pub.published_at).toLocaleDateString('de-DE') : '–'}
+                      </p>
+                    )}
+
+                    <div className="flex gap-2">
+                      {!is24Active ? (
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs flex-1"
+                          onClick={() => setShowConfirmDialog(true)}
+                          disabled={publishMutation.isPending}
+                        >
+                          {publishMutation.isPending ? (
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          ) : (
+                            <Coins className="mr-1 h-3 w-3" />
+                          )}
+                          Auf IS24 buchen (2 Credits)
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs flex-1"
+                            onClick={() => updateMutation.mutate()}
+                            disabled={updateMutation.isPending}
+                          >
+                            {updateMutation.isPending ? (
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="mr-1 h-3 w-3" />
+                            )}
+                            Auf IS24 aktualisieren
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => deactivateMutation.mutate()}
+                            disabled={deactivateMutation.isPending}
+                          >
+                            {deactivateMutation.isPending ? (
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            ) : (
+                              <XCircle className="mr-1 h-3 w-3" />
+                            )}
+                            Deaktivieren
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Confirmation Dialog for IS24 Booking */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>IS24-Anzeige buchen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Für die Veröffentlichung auf ImmobilienScout24 werden <strong>2 Credits</strong> (0,50 €) abgezogen.
+              Die Anzeige wird sofort auf IS24 freigeschaltet.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowConfirmDialog(false);
+                publishMutation.mutate();
+              }}
+            >
+              <Coins className="mr-2 h-4 w-4" />
+              Jetzt buchen (2 Credits)
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

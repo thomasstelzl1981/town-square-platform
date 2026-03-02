@@ -138,6 +138,9 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
   const [unitDescription, setUnitDescription] = useState<string>('');
   const [unitAreaSqm, setUnitAreaSqm] = useState<number>(0);
   const [unitRooms, setUnitRooms] = useState<number>(0);
+  const [propertyPostalCode, setPropertyPostalCode] = useState<string>('');
+  const [propertyCity, setPropertyCity] = useState<string>('');
+  const [propertyYearBuilt, setPropertyYearBuilt] = useState<number | undefined>();
 
   // TLC Hooks
   const { events, tasks, resolveEvent, updateTaskStatus } = useLeaseLifecycle();
@@ -197,12 +200,15 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
       // Fetch property address
       const { data: propData } = await supabase
         .from('properties')
-        .select('address, address_house_no, city, postal_code')
+        .select('address, address_house_no, city, postal_code, year_built')
         .eq('id', propertyId)
         .single();
       if (propData) {
         const addr = [propData.address, propData.address_house_no].filter(Boolean).join(' ');
         setPropertyAddress([addr, propData.postal_code, propData.city].filter(Boolean).join(', '));
+        setPropertyPostalCode(propData.postal_code || '');
+        setPropertyCity(propData.city || '');
+        if (propData.year_built) setPropertyYearBuilt(propData.year_built);
       }
 
       // Fetch unit data
@@ -801,9 +807,11 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
                     coldRent={lease.rent_cold_eur || 0}
                     warmRent={lease.monthly_rent || 0}
                     propertyAddress={propertyAddress}
-                    propertyCity={propertyAddress.split(',').pop()?.trim() || ''}
+                    propertyCity={propertyCity}
+                    postalCode={propertyPostalCode}
                     areaSqm={unitAreaSqm}
                     rooms={unitRooms}
+                    yearBuilt={propertyYearBuilt}
                   />
                   <TLCContractSection
                     leaseData={lease.rent_cold_eur ? {
