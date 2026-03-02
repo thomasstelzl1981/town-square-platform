@@ -88,6 +88,7 @@ export async function findOrCreateCase(opts: {
   assetId: string;
   tenantId: string;
   userId: string;
+  initialPhase?: SLCPhase;
 }): Promise<{ id: string; current_phase: SLCPhase }> {
   // Try to find existing open case
   const { data: existing } = await supabase
@@ -108,7 +109,7 @@ export async function findOrCreateCase(opts: {
       property_id: opts.propertyId || null,
       project_id: opts.projectId || null,
       listing_id: opts.listingId,
-      current_phase: 'mandate_active',
+      current_phase: opts.initialPhase || 'mandate_active',
       tenant_id: opts.tenantId,
     } as never)
     .select('id, current_phase')

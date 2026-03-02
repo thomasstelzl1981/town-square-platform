@@ -51,10 +51,13 @@ const reservationStatusConfig: Record<string, { label: string; variant: 'default
 };
 
 const SLC_PHASE_BADGE_COLORS: Partial<Record<SLCPhase, string>> = {
+  captured: 'bg-slate-500/15 text-slate-600',
+  readiness_check: 'bg-yellow-500/15 text-yellow-600',
   mandate_active: 'bg-muted text-muted-foreground',
   published: 'bg-primary/15 text-primary',
   inquiry: 'bg-accent text-accent-foreground',
   reserved: 'bg-orange-500/15 text-orange-600',
+  finance_submitted: 'bg-cyan-500/15 text-cyan-600',
   contract_draft: 'bg-blue-500/15 text-blue-600',
   notary_scheduled: 'bg-violet-500/15 text-violet-600',
   notary_completed: 'bg-emerald-500/15 text-emerald-600',

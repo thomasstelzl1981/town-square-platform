@@ -202,23 +202,36 @@ serve(async (req: Request) => {
             totalIssues++;
             findings.push(`Channel-Drift: ${pub.channel} (Hash-Mismatch)`);
 
-            const { error: evtErr } = await supabase.from("sales_lifecycle_events").insert({
-              case_id: slcCase.id,
-              event_type: "channel.sync_failed",
-              severity: "warning",
-              phase_before: phase,
-              phase_after: phase,
-              actor_id: null,
-              payload: {
-                triggered_by: "cron",
-                check_type: "channel_drift",
-                channel: pub.channel,
-                publication_id: pub.id,
-              },
-              tenant_id: slcCase.tenant_id,
-            });
+            // Idempotency: check if drift event already exists for this publication today
+            const { data: existingDrift } = await supabase
+              .from("sales_lifecycle_events")
+              .select("id")
+              .eq("case_id", slcCase.id)
+              .eq("event_type", "channel.sync_failed")
+              .gte("created_at", `${today}T00:00:00`)
+              .limit(1);
 
-            if (!evtErr) totalEvents++;
+            if (existingDrift && existingDrift.length > 0) {
+              findings.push(`Channel-Drift: ${pub.channel} (bereits gemeldet)`);
+            } else {
+              const { error: evtErr } = await supabase.from("sales_lifecycle_events").insert({
+                case_id: slcCase.id,
+                event_type: "channel.sync_failed",
+                severity: "warning",
+                phase_before: phase,
+                phase_after: phase,
+                actor_id: null,
+                payload: {
+                  triggered_by: "cron",
+                  check_type: "channel_drift",
+                  channel: pub.channel,
+                  publication_id: pub.id,
+                },
+                tenant_id: slcCase.tenant_id,
+              });
+
+              if (!evtErr) totalEvents++;
+            }
           }
         }
       }
@@ -240,22 +253,35 @@ serve(async (req: Request) => {
             totalIssues++;
             findings.push(`Settlement ausstehend seit ${Math.round(days)} Tagen nach Beurkundung/Übergabe`);
 
-            const { error: evtErr } = await supabase.from("sales_lifecycle_events").insert({
-              case_id: slcCase.id,
-              event_type: "deal.settlement_pending",
-              severity: "warning",
-              phase_before: phase,
-              phase_after: phase,
-              actor_id: null,
-              payload: {
-                triggered_by: "cron",
-                check_type: "settlement_pending",
-                days_since_notary: Math.round(days),
-              },
-              tenant_id: slcCase.tenant_id,
-            });
+            // Idempotency: check if settlement_pending event already exists today
+            const { data: existingSettlement } = await supabase
+              .from("sales_lifecycle_events")
+              .select("id")
+              .eq("case_id", slcCase.id)
+              .eq("event_type", "deal.settlement_pending")
+              .gte("created_at", `${today}T00:00:00`)
+              .limit(1);
 
-            if (!evtErr) totalEvents++;
+            if (existingSettlement && existingSettlement.length > 0) {
+              findings.push(`Settlement-Pending bereits gemeldet`);
+            } else {
+              const { error: evtErr } = await supabase.from("sales_lifecycle_events").insert({
+                case_id: slcCase.id,
+                event_type: "deal.settlement_pending",
+                severity: "warning",
+                phase_before: phase,
+                phase_after: phase,
+                actor_id: null,
+                payload: {
+                  triggered_by: "cron",
+                  check_type: "settlement_pending",
+                  days_since_notary: Math.round(days),
+                },
+                tenant_id: slcCase.tenant_id,
+              });
+
+              if (!evtErr) totalEvents++;
+            }
           }
         }
       }
