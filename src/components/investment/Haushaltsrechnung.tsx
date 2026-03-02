@@ -20,6 +20,8 @@ export function Haushaltsrechnung({
   const { summary, projection } = result;
   const year1 = projection[0];
   const isMobile = useIsMobile();
+  const isCommercial = result.inputs?.isCommercial === true;
+  const managementCostYearly = year1?.managementCost || (result.inputs?.managementCostMonthly ? result.inputs.managementCostMonthly * 12 : 300);
   
   const formatCurrency = (value: number, showSign = false) => {
     const formatted = new Intl.NumberFormat('de-DE', { 
@@ -67,19 +69,21 @@ export function Haushaltsrechnung({
                       {formatCurrency(year1?.rent || summary.yearlyRent)}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">+ Steuerersparnis</span>
-                    <span className="text-sm font-medium text-green-600">
-                      {formatCurrency(summary.yearlyTaxSavings)}
-                    </span>
-                  </div>
+                  {!isCommercial && (
+                    <div className="flex justify-between">
+                      <span className="text-sm">+ Steuerersparnis</span>
+                      <span className="text-sm font-medium text-green-600">
+                        {formatCurrency(summary.yearlyTaxSavings)}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 {/* Footer - immer am unteren Rand */}
                 <div className="border-t border-green-300 dark:border-green-700 pt-2 mt-auto">
                   <div className="flex justify-between font-semibold">
                     <span className="text-sm">Σ Einnahmen</span>
                     <span className="text-sm text-green-600">
-                      {formatCurrency((year1?.rent || summary.yearlyRent) + summary.yearlyTaxSavings)}
+                      {formatCurrency((year1?.rent || summary.yearlyRent) + (isCommercial ? 0 : summary.yearlyTaxSavings))}
                     </span>
                   </div>
                 </div>
@@ -109,7 +113,7 @@ export function Haushaltsrechnung({
                   <div className="flex justify-between">
                     <span className="text-sm">− Verwaltung</span>
                     <span className="text-sm font-medium text-red-600">
-                      {formatCurrency(300)}
+                      {formatCurrency(managementCostYearly)}
                     </span>
                   </div>
                 </div>
@@ -118,7 +122,7 @@ export function Haushaltsrechnung({
                   <div className="flex justify-between font-semibold">
                     <span className="text-sm">Σ Ausgaben</span>
                     <span className="text-sm text-red-600">
-                      {formatCurrency(summary.yearlyInterest + summary.yearlyRepayment + 300)}
+                      {formatCurrency(summary.yearlyInterest + summary.yearlyRepayment + managementCostYearly)}
                     </span>
                   </div>
                 </div>
@@ -146,9 +150,9 @@ export function Haushaltsrechnung({
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              {isPositive 
+            {isPositive 
                 ? '✓ Sie verdienen jeden Monat mit dieser Immobilie.' 
-                : 'Monatlicher Eigenanteil nach Steuervorteil'}
+                : isCommercial ? 'Monatlicher Eigenanteil' : 'Monatlicher Eigenanteil nach Steuervorteil'}
             </p>
           </div>
         </CardContent>
@@ -225,26 +229,30 @@ export function Haushaltsrechnung({
                 -{formatCurrency(summary.yearlyInterest + summary.yearlyRepayment)}/Jahr
               </span>
             </div>
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-sm">Steuerersparnis</span>
-              <span className="text-sm font-medium text-green-600">
-                +{formatCurrency(summary.yearlyTaxSavings)}/Jahr
-              </span>
-            </div>
+            {!isCommercial && (
+              <div className="flex justify-between py-2 border-b">
+                <span className="text-sm">Steuerersparnis</span>
+                <span className="text-sm font-medium text-green-600">
+                  +{formatCurrency(summary.yearlyTaxSavings)}/Jahr
+                </span>
+              </div>
+            )}
           </div>
 
           {/* ROI */}
-          <div className="grid grid-cols-2 gap-4 pt-2 text-center">
+          <div className={cn("grid gap-4 pt-2 text-center", isCommercial ? "grid-cols-1" : "grid-cols-2")}>
             <div className="p-3 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground">ROI vor Steuern</p>
               <p className="font-semibold">{summary.roiBeforeTax.toFixed(2)}%</p>
             </div>
-            <div className="p-3 rounded-lg bg-muted/50">
-              <p className="text-xs text-muted-foreground">ROI nach Steuern</p>
-              <p className={cn("font-semibold", summary.roiAfterTax >= 0 ? 'text-green-600' : 'text-red-600')}>
-                {summary.roiAfterTax.toFixed(2)}%
-              </p>
-            </div>
+            {!isCommercial && (
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground">ROI nach Steuern</p>
+                <p className={cn("font-semibold", summary.roiAfterTax >= 0 ? 'text-green-600' : 'text-red-600')}>
+                  {summary.roiAfterTax.toFixed(2)}%
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -298,28 +306,30 @@ export function Haushaltsrechnung({
           <div className="flex justify-between py-1.5 border-b">
             <span className="text-sm">Verwaltung / Hausgeld</span>
             <span className="text-sm font-medium text-red-600">
-              -{formatCurrency(300)}
+              -{formatCurrency(managementCostYearly)}
             </span>
           </div>
         </div>
 
-        {/* Steuereffekt */}
-        <div>
-          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-            Steuereffekt
-          </h4>
-          <div className="flex justify-between py-1.5 border-b text-muted-foreground">
-            <span className="text-xs">AfA (Abschreibung)</span>
-            <span className="text-xs">{formatCurrency(summary.yearlyAfa)} (Abzug)</span>
+        {/* Steuereffekt — nur für Privatpersonen */}
+        {!isCommercial && (
+          <div>
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              Steuereffekt
+            </h4>
+            <div className="flex justify-between py-1.5 border-b text-muted-foreground">
+              <span className="text-xs">AfA (Abschreibung)</span>
+              <span className="text-xs">{formatCurrency(summary.yearlyAfa)} (Abzug)</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b">
+              <span className="text-sm">Steuerersparnis</span>
+              <span className="text-sm font-medium text-green-600">
+                +{formatCurrency(summary.yearlyTaxSavings)}
+                {shouldShowMonthlyDetail && <span className="text-xs text-muted-foreground ml-1">({formatCurrency(summary.yearlyTaxSavings / 12)}/Mo)</span>}
+              </span>
+            </div>
           </div>
-          <div className="flex justify-between py-1.5 border-b">
-            <span className="text-sm">Steuerersparnis</span>
-            <span className="text-sm font-medium text-green-600">
-              +{formatCurrency(summary.yearlyTaxSavings)}
-              {shouldShowMonthlyDetail && <span className="text-xs text-muted-foreground ml-1">({formatCurrency(summary.yearlyTaxSavings / 12)}/Mo)</span>}
-            </span>
-          </div>
-        </div>
+        )}
 
         {/* Ergebnis */}
         <div className={cn(
@@ -343,7 +353,7 @@ export function Haushaltsrechnung({
           <p className="text-xs text-muted-foreground mt-2">
             {isPositive 
               ? '✓ Sie verdienen jeden Monat mit dieser Immobilie.' 
-              : 'Monatlicher Eigenanteil nach Steuervorteil'}
+              : isCommercial ? 'Monatlicher Eigenanteil' : 'Monatlicher Eigenanteil nach Steuervorteil'}
           </p>
         </div>
 
@@ -353,12 +363,14 @@ export function Haushaltsrechnung({
             <p className="text-xs text-muted-foreground">ROI vor Steuern</p>
             <p className="font-semibold">{summary.roiBeforeTax.toFixed(2)}%</p>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">ROI nach Steuern</p>
-            <p className={cn("font-semibold", summary.roiAfterTax >= 0 ? 'text-green-600' : 'text-red-600')}>
-              {summary.roiAfterTax.toFixed(2)}%
-            </p>
-          </div>
+          {!isCommercial && (
+            <div>
+              <p className="text-xs text-muted-foreground">ROI nach Steuern</p>
+              <p className={cn("font-semibold", summary.roiAfterTax >= 0 ? 'text-green-600' : 'text-red-600')}>
+                {summary.roiAfterTax.toFixed(2)}%
+              </p>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

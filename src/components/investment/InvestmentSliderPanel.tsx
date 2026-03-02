@@ -154,84 +154,105 @@ export function InvestmentSliderPanel({
           />
         </div>
 
-        {/* 5. zvE (zu versteuerndes Einkommen) */}
+        {/* NK-Slider — immer sichtbar */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <Label className={isMobile ? 'text-xs' : ''}>
-              {isMobile ? 'zvE' : 'zvE (zu versteuerndes Einkommen)'}
-            </Label>
-            <span className="font-medium">{formatCurrency(value.taxableIncome)}</span>
+            <Label>Nicht umlagefähige NK</Label>
+            <span className="font-medium">{formatCurrency(value.managementCostMonthly)}/Mo</span>
           </div>
           <Slider
-            value={[value.taxableIncome]}
-            onValueChange={([v]) => update('taxableIncome', v)}
-            min={20000}
-            max={250000}
-            step={5000}
+            value={[value.managementCostMonthly]}
+            onValueChange={([v]) => update('managementCostMonthly', v)}
+            min={0}
+            max={500}
+            step={5}
           />
         </div>
 
-        {/* 6. Kirchensteuer */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label>Kirchensteuer</Label>
-            <Switch
-              checked={value.hasChurchTax}
-              onCheckedChange={(v) => update('hasChurchTax', v)}
+        {/* 5. zvE (zu versteuerndes Einkommen) — nur für Privat */}
+        {!value.isCommercial && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <Label className={isMobile ? 'text-xs' : ''}>
+                {isMobile ? 'zvE' : 'zvE (zu versteuerndes Einkommen)'}
+              </Label>
+              <span className="font-medium">{formatCurrency(value.taxableIncome)}</span>
+            </div>
+            <Slider
+              value={[value.taxableIncome]}
+              onValueChange={([v]) => update('taxableIncome', v)}
+              min={20000}
+              max={250000}
+              step={5000}
             />
           </div>
-          {value.hasChurchTax && (
-            <Select
-              value={value.churchTaxState || 'BY'}
-              onValueChange={(v) => update('churchTaxState', v)}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Bundesland" />
-              </SelectTrigger>
-              <SelectContent>
-                {BUNDESLAENDER.map((bl) => (
-                  <SelectItem key={bl.code} value={bl.code} className="text-xs">
-                    {bl.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
+        )}
 
-        {/* 7. Splitting / Familienstand */}
-        <div className="space-y-2">
-          <Label>Veranlagung</Label>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => update('maritalStatus', 'single')}
-              className={cn(
-                "flex-1 px-3 py-1.5 text-xs rounded-md border transition-colors",
-                value.maritalStatus === 'single'
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background border-border hover:bg-muted'
-              )}
-            >
-              Einzeln
-            </button>
-            <button
-              type="button"
-              onClick={() => update('maritalStatus', 'married')}
-              className={cn(
-                "flex-1 px-3 py-1.5 text-xs rounded-md border transition-colors",
-                value.maritalStatus === 'married'
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background border-border hover:bg-muted'
-              )}
-            >
-              Splitting
-            </button>
+        {/* 6. Kirchensteuer — nur für Privat */}
+        {!value.isCommercial && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Kirchensteuer</Label>
+              <Switch
+                checked={value.hasChurchTax}
+                onCheckedChange={(v) => update('hasChurchTax', v)}
+              />
+            </div>
+            {value.hasChurchTax && (
+              <Select
+                value={value.churchTaxState || 'BY'}
+                onValueChange={(v) => update('churchTaxState', v)}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Bundesland" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUNDESLAENDER.map((bl) => (
+                    <SelectItem key={bl.code} value={bl.code} className="text-xs">
+                      {bl.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
-        </div>
+        )}
+
+        {/* 7. Splitting / Familienstand — nur für Privat */}
+        {!value.isCommercial && (
+          <div className="space-y-2">
+            <Label>Veranlagung</Label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => update('maritalStatus', 'single')}
+                className={cn(
+                  "flex-1 px-3 py-1.5 text-xs rounded-md border transition-colors",
+                  value.maritalStatus === 'single'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background border-border hover:bg-muted'
+                )}
+              >
+                Einzeln
+              </button>
+              <button
+                type="button"
+                onClick={() => update('maritalStatus', 'married')}
+                className={cn(
+                  "flex-1 px-3 py-1.5 text-xs rounded-md border transition-colors",
+                  value.maritalStatus === 'married'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background border-border hover:bg-muted'
+                )}
+              >
+                Splitting
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Advanced Options - Collapsible on Mobile */}
-        {showAdvanced && !isCompact && (
+        {showAdvanced && !isCompact && !value.isCommercial && (
           isMobile ? (
             <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen} className="pt-2 border-t">
               <CollapsibleTrigger className="flex items-center justify-between w-full py-2">
