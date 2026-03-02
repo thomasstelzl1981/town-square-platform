@@ -33,11 +33,11 @@ export function PhoneBillingCard({ usage, isLoading, hasNumber }: Props) {
         <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground space-y-1">
           <div className="flex items-center gap-2">
             <Phone className="h-3.5 w-3.5 text-primary shrink-0" />
-            <span><strong>Grundgebühr:</strong> 15 Credits/Monat (3,75 €)</span>
+            <span><strong>Grundgebühr:</strong> 15 Credits/Monat</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
-            <span><strong>Gespräche:</strong> 2 Credits/Minute (0,50 €)</span>
+            <span><strong>Gespräche:</strong> 2 Credits/Minute</span>
           </div>
         </div>
 

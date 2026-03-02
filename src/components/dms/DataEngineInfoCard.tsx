@@ -78,7 +78,7 @@ export function DataEngineInfoCard() {
             <div className="p-3 rounded-xl border border-primary/10 bg-primary/5 mt-4">
               <p className="text-sm font-medium text-foreground mb-2">Kostenmodell Phase 1</p>
               <div className="space-y-1 text-xs text-muted-foreground">
-                <p>• Posteingang PDF-Extraktion: <span className="font-mono font-medium text-foreground">1 Credit (0,25 €)</span> pro PDF</p>
+                <p>• Posteingang PDF-Extraktion: <span className="font-mono font-medium text-foreground">1 Credit</span> pro PDF</p>
                 <p>• Armstrong-Dokumentenzugriff: <span className="font-mono font-medium text-foreground">Inkl. in Action-Credits</span></p>
                 <p>• Volltextsuche: <span className="font-mono font-medium text-foreground">Kostenlos</span></p>
               </div>

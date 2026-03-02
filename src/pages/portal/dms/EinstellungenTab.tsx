@@ -196,7 +196,7 @@ export function EinstellungenTab() {
                 <div className="flex items-start gap-2.5 p-3 rounded-lg bg-primary/5 border border-primary/10">
                   <Info className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-foreground leading-relaxed">
-                    Jede KI-Analyse eines Dokuments kostet <strong>1 Credit (0,25 €)</strong>.
+                    Jede KI-Analyse eines Dokuments kostet <strong>1 Credit</strong>.
                     Der Scan Ihres Datenraums ist kostenlos — Sie sehen den Kostenvoranschlag,
                     bevor Sie die Extraktion freigeben.
                   </p>
