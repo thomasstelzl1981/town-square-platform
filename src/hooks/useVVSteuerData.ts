@@ -2,12 +2,51 @@
  * useVVSteuerData — Data hook for V+V Anlage V
  * Loads landlord_contexts, properties, leases (via units), property_accounting, nk data, vv_annual_data
  * Provides save/confirm mutations
+ * 
+ * Supports Override-Pattern (Selbstauskunft):
+ * Auto-calculated values can be overridden via override_* columns in vv_annual_data.
+ * Override = NULL → use auto-calculated value. Override != NULL → use override.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { VVAnnualManualData, VVPropertyTaxData, VVAfaStammdaten, VVIncomeAggregated, VVFinancingAggregated, VVNKAggregated } from '@/engines/vvSteuer/spec';
 import { toast } from 'sonner';
+
+/** Override values for auto-calculated fields */
+export interface VVOverrides {
+  overrideLoanInterest: number | null;
+  overrideColdRent: number | null;
+  overrideNkAdvance: number | null;
+  overrideNkNachzahlung: number | null;
+  overrideGrundsteuer: number | null;
+  overrideNonRecoverable: number | null;
+}
+
+/** Expense aggregation from property_expenses */
+export interface VVExpenseAggregation {
+  costMaintenance: number;
+  costInsuranceNonRecoverable: number;
+  costManagementFee: number;
+  costLegalAdvisory: number;
+  costTravel: number;
+  costBankFees: number;
+  costOther: number;
+}
+
+/** Extended tax data with overrides and expense suggestions */
+export interface VVPropertyTaxDataExtended extends VVPropertyTaxData {
+  overrides: VVOverrides;
+  expenseAggregation: VVExpenseAggregation;
+  autoValues: {
+    loanInterest: number;
+    coldRent: number;
+    nkAdvance: number;
+    nkNachzahlung: number;
+    grundsteuer: number;
+    nonRecoverable: number;
+  };
+}
 
 const DEFAULT_MANUAL_DATA: Omit<VVAnnualManualData, 'propertyId' | 'taxYear'> = {
   incomeOther: 0, incomeInsurancePayout: 0,
@@ -17,6 +56,15 @@ const DEFAULT_MANUAL_DATA: Omit<VVAnnualManualData, 'propertyId' | 'taxYear'> = 
   vacancyDays: 0, vacancyIntentConfirmed: true, relativeRental: false,
   heritageAfaAmount: 0, specialAfaAmount: 0,
   confirmed: false, status: 'draft', notes: '',
+};
+
+const DEFAULT_OVERRIDES: VVOverrides = {
+  overrideLoanInterest: null,
+  overrideColdRent: null,
+  overrideNkAdvance: null,
+  overrideNkNachzahlung: null,
+  overrideGrundsteuer: null,
+  overrideNonRecoverable: null,
 };
 
 export function useVVSteuerData(taxYear: number) {
@@ -42,8 +90,6 @@ export function useVVSteuerData(taxYear: number) {
       const propertyIds = (propsRes.data || []).map((p: any) => p.id);
       if (propertyIds.length === 0) return { contexts: ctxRes.data || [], properties: [], accounting: [], annual: [], units: [], leases: [], financing: [], nkPeriods: [], nkItems: [], expenses: [] };
 
-      // FIX Bug 1: Load units first, then leases via unit_id
-      // FIX Bug 2: nk_periods filtered by period_start/period_end instead of year
       const [unitsRes, financingRes, nkPeriodsRes] = await Promise.all([
         supabase.from('units').select('id, property_id, area_sqm').eq('tenant_id', activeTenantId).in('property_id', propertyIds),
         (supabase as any).from('property_financing').select('property_id, annual_interest, current_balance, interest_rate, is_active').eq('tenant_id', activeTenantId).in('property_id', propertyIds),
@@ -57,7 +103,6 @@ export function useVVSteuerData(taxYear: number) {
       const units = unitsRes.data || [];
       const unitIds = units.map((u: any) => u.id);
 
-      // Load leases for these units
       let leases: any[] = [];
       if (unitIds.length > 0) {
         const { data: leaseData } = await supabase.from('leases')
@@ -68,7 +113,6 @@ export function useVVSteuerData(taxYear: number) {
         leases = leaseData || [];
       }
 
-      // Get NK cost items and settlements for relevant periods
       const periodIds = (nkPeriodsRes.data || []).map((p: any) => p.id);
       let nkItems: any[] = [];
       let nkSettlements: any[] = [];
@@ -116,8 +160,8 @@ export function useVVSteuerData(taxYear: number) {
     };
   }).filter((ctx: any) => ctx.propertyCount > 0);
 
-  // Build full property tax data for a given property
-  function buildPropertyTaxData(propertyId: string): VVPropertyTaxData | null {
+  // Build full property tax data for a given property (with overrides)
+  function buildPropertyTaxData(propertyId: string): VVPropertyTaxDataExtended | null {
     const prop = (data?.properties || []).find((p: any) => p.id === propertyId);
     if (!prop) return null;
 
@@ -143,12 +187,12 @@ export function useVVSteuerData(taxYear: number) {
       cumulativeAfa: (accounting as any)?.cumulative_afa ?? 0,
     };
 
-    // FIX Bug 1: Income aggregation — join leases via units
+    // Income aggregation — join leases via units
     const propUnits = (data?.units || []).filter((u: any) => u.property_id === propertyId);
     const propUnitIds = propUnits.map((u: any) => u.id);
     const propLeases = (data?.leases || []).filter((l: any) => propUnitIds.includes(l.unit_id));
     
-    // NK-Nachzahlung aus nk_tenant_settlements (falls vorhanden)
+    // NK-Nachzahlung aus nk_tenant_settlements
     const propPeriodIds = (data?.nkPeriods || [])
       .filter((p: any) => p.property_id === propertyId)
       .map((p: any) => p.id);
@@ -156,33 +200,53 @@ export function useVVSteuerData(taxYear: number) {
       .filter((s: any) => propPeriodIds.includes(s.nk_period_id));
     const nkNachzahlungTotal = nkSettlements.reduce((s: number, st: any) => {
       const saldo = (st.saldo_eur || 0);
-      return saldo > 0 ? s + saldo : s; // Nur Nachzahlungen (positiver Saldo = Mieter schuldet)
+      return saldo > 0 ? s + saldo : s;
     }, 0);
 
-    const incomeAggregated: VVIncomeAggregated = {
-      coldRentAnnual: propLeases.reduce((s: number, l: any) => s + (l.rent_cold_eur || 0) * 12, 0),
-      nkAdvanceAnnual: propLeases.reduce((s: number, l: any) => s + (l.nk_advance_eur || 0) * 12, 0),
-      nkNachzahlung: nkNachzahlungTotal,
-    };
+    // Auto-calculated values (before overrides)
+    const autoColdRent = propLeases.reduce((s: number, l: any) => s + (l.rent_cold_eur || 0) * 12, 0);
+    const autoNkAdvance = propLeases.reduce((s: number, l: any) => s + (l.nk_advance_eur || 0) * 12, 0);
+    const autoNkNachzahlung = nkNachzahlungTotal;
 
-    // FIX Bug 3: Financing — fallback calculation if annual_interest is null
+    // Financing auto-calculation
     const propFinancing = (data?.financing || []).filter((f: any) => f.property_id === propertyId && f.is_active !== false);
-    const financingAggregated: VVFinancingAggregated = {
-      loanInterestAnnual: propFinancing.reduce((s: number, f: any) => {
-        if (f.annual_interest && f.annual_interest > 0) return s + f.annual_interest;
-        // Fallback: calculate from current_balance * interest_rate / 100
-        if (f.current_balance && f.interest_rate) return s + (f.current_balance * f.interest_rate / 100);
-        return s;
-      }, 0),
-    };
+    const autoLoanInterest = propFinancing.reduce((s: number, f: any) => {
+      if (f.annual_interest && f.annual_interest > 0) return s + f.annual_interest;
+      if (f.current_balance && f.interest_rate) return s + (f.current_balance * f.interest_rate / 100);
+      return s;
+    }, 0);
 
-    // NK aggregation (Bug 2 already fixed in query above)
+    // NK aggregation
     const propPeriods = (data?.nkPeriods || []).filter((p: any) => p.property_id === propertyId);
     const periodIds = propPeriods.map((p: any) => p.id);
     const propNKItems = (data?.nkItems || []).filter((i: any) => periodIds.includes(i.nk_period_id));
+    const autoGrundsteuer = propNKItems.filter((i: any) => i.category_code === 'grundsteuer').reduce((s: number, i: any) => s + (i.amount_total_house || 0), 0);
+    const autoNonRecoverable = propNKItems.filter((i: any) => i.is_apportionable === false).reduce((s: number, i: any) => s + (i.amount_total_house || 0), 0);
+
+    // Load overrides from vv_annual_data
+    const overrides: VVOverrides = {
+      overrideLoanInterest: annualEntry?.override_loan_interest ?? null,
+      overrideColdRent: annualEntry?.override_cold_rent ?? null,
+      overrideNkAdvance: annualEntry?.override_nk_advance ?? null,
+      overrideNkNachzahlung: annualEntry?.override_nk_nachzahlung ?? null,
+      overrideGrundsteuer: annualEntry?.override_grundsteuer ?? null,
+      overrideNonRecoverable: annualEntry?.override_non_recoverable ?? null,
+    };
+
+    // Resolved values: override wins over auto
+    const incomeAggregated: VVIncomeAggregated = {
+      coldRentAnnual: overrides.overrideColdRent ?? autoColdRent,
+      nkAdvanceAnnual: overrides.overrideNkAdvance ?? autoNkAdvance,
+      nkNachzahlung: overrides.overrideNkNachzahlung ?? autoNkNachzahlung,
+    };
+
+    const financingAggregated: VVFinancingAggregated = {
+      loanInterestAnnual: overrides.overrideLoanInterest ?? autoLoanInterest,
+    };
+
     const nkAggregated: VVNKAggregated = {
-      grundsteuer: propNKItems.filter((i: any) => i.category_code === 'grundsteuer').reduce((s: number, i: any) => s + (i.amount_total_house || 0), 0),
-      nonRecoverableCosts: propNKItems.filter((i: any) => i.is_apportionable === false).reduce((s: number, i: any) => s + (i.amount_total_house || 0), 0),
+      grundsteuer: overrides.overrideGrundsteuer ?? autoGrundsteuer,
+      nonRecoverableCosts: overrides.overrideNonRecoverable ?? autoNonRecoverable,
     };
 
     // Manual data
@@ -215,22 +279,25 @@ export function useVVSteuerData(taxYear: number) {
       taxYear,
     };
 
-    // Expense aggregation from property_expenses → auto-fill suggestions for manual fields
+    // Expense aggregation from property_expenses
     const propExpenses = (data?.expenses || []).filter((e: any) => e.property_id === propertyId && e.tax_deductible);
-    const categoryMap: Record<string, string> = {
+    const categoryMap: Record<string, keyof VVExpenseAggregation> = {
       instandhaltung: 'costMaintenance', handwerker: 'costMaintenance',
       versicherung: 'costInsuranceNonRecoverable', verwalterkosten: 'costManagementFee',
       rechtsberatung: 'costLegalAdvisory', fahrtkosten: 'costTravel',
       bankgebuehren: 'costBankFees', weg_hausgeld: 'costOther',
       grundsteuer: 'costOther', sonstige: 'costOther',
     };
-    const expenseAggregation: Record<string, number> = {};
+    const expenseAggregation: VVExpenseAggregation = {
+      costMaintenance: 0, costInsuranceNonRecoverable: 0, costManagementFee: 0,
+      costLegalAdvisory: 0, costTravel: 0, costBankFees: 0, costOther: 0,
+    };
     for (const exp of propExpenses) {
       const field = categoryMap[exp.category] || 'costOther';
       expenseAggregation[field] = (expenseAggregation[field] || 0) + (exp.amount || 0);
     }
 
-    const taxData: VVPropertyTaxData = {
+    return {
       propertyId,
       propertyName: prop.code || prop.address,
       propertyType: prop.property_type || 'ETW',
@@ -248,15 +315,28 @@ export function useVVSteuerData(taxYear: number) {
       financingAggregated,
       nkAggregated,
       manualData,
+      overrides,
+      expenseAggregation,
+      autoValues: {
+        loanInterest: autoLoanInterest,
+        coldRent: autoColdRent,
+        nkAdvance: autoNkAdvance,
+        nkNachzahlung: autoNkNachzahlung,
+        grundsteuer: autoGrundsteuer,
+        nonRecoverable: autoNonRecoverable,
+      },
     };
-
-    // Attach expense aggregation as extended data (not in engine spec, used by UI only)
-    return Object.assign(taxData, { expenseAggregation });
   }
 
-  // Save mutation
+  // Save mutation — now includes override columns
   const saveMutation = useMutation({
-    mutationFn: async (params: { propertyId: string; data: Partial<VVAnnualManualData>; taxRefNumber?: string; ownershipPercent?: number }) => {
+    mutationFn: async (params: { 
+      propertyId: string; 
+      data: Partial<VVAnnualManualData>; 
+      overrides?: Partial<VVOverrides>;
+      taxRefNumber?: string; 
+      ownershipPercent?: number;
+    }) => {
       if (!activeTenantId) throw new Error('No tenant');
 
       const existing = (data?.annual || []).find((a: any) => a.property_id === params.propertyId);
@@ -285,6 +365,16 @@ export function useVVSteuerData(taxYear: number) {
         status: params.data.confirmed ? 'confirmed' : 'draft',
         notes: params.data.notes ?? '',
       };
+
+      // Add override columns
+      if (params.overrides) {
+        dbData.override_loan_interest = params.overrides.overrideLoanInterest ?? null;
+        dbData.override_cold_rent = params.overrides.overrideColdRent ?? null;
+        dbData.override_nk_advance = params.overrides.overrideNkAdvance ?? null;
+        dbData.override_nk_nachzahlung = params.overrides.overrideNkNachzahlung ?? null;
+        dbData.override_grundsteuer = params.overrides.overrideGrundsteuer ?? null;
+        dbData.override_non_recoverable = params.overrides.overrideNonRecoverable ?? null;
+      }
 
       if (existing) {
         const { error } = await (supabase as any).from('vv_annual_data').update(dbData).eq('id', existing.id);

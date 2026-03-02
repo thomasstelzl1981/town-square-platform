@@ -236,7 +236,27 @@ export const PARSER_PROFILES: Record<ParserMode, ParserProfile> = {
     ],
   },
 
-  // ── 10. Allgemein (Auto-Erkennung) ─────────────────────────────────────
+  // ── 10. Zinsbestätigung (Bank) ────────────────────────────────────────
+  zinsbestaetigung: {
+    parseMode: 'zinsbestaetigung',
+    entityType: null,
+    label: 'Zinsbestätigung',
+    targetTable: 'vv_annual_data',
+    moduleCode: 'MOD_04',
+    targetDmsFolder: '05_Steuer',
+    exampleDocuments: ['Zinsbestätigung', 'Zinsbescheinigung', 'Jahreskontoauszug Darlehen', 'Darlehensübersicht Jahresende'],
+    preprocessPdfTables: true,
+    fields: [
+      { key: 'tax_year', label: 'Steuerjahr', type: 'number', dbColumn: 'tax_year', required: true, aiHint: 'Das Jahr, für das die Zinsen bescheinigt werden' },
+      { key: 'bank_name', label: 'Bank/Kreditinstitut', type: 'string', dbColumn: 'bank_name', required: true },
+      { key: 'loan_number', label: 'Darlehensnummer', type: 'string', dbColumn: 'loan_number', required: false },
+      { key: 'total_interest_paid', label: 'Gezahlte Zinsen gesamt (€)', type: 'currency', dbColumn: 'override_loan_interest', required: true, aiHint: 'Gesamtbetrag der im Jahr gezahlten Sollzinsen in Euro' },
+      { key: 'total_repayment', label: 'Tilgung gesamt (€)', type: 'currency', dbColumn: 'total_repayment', required: false, aiHint: 'Gesamtbetrag der im Jahr geleisteten Tilgung' },
+      { key: 'outstanding_balance', label: 'Restschuld zum Jahresende (€)', type: 'currency', dbColumn: 'outstanding_balance', required: false },
+    ],
+  },
+
+  // ── 11. Allgemein (Auto-Erkennung) ─────────────────────────────────────
   allgemein: {
     parseMode: 'allgemein',
     entityType: null,
