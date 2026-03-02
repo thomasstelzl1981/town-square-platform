@@ -1,71 +1,121 @@
 
 
-# IS24 Integration — Architekturplan
+# TLC + ImmobilienScout24 Vermietung — Komplettanalyse
 
-## Kernprinzip: Reseller-Modell via Zone 1 Backbone
+## 1. TLC-Struktur (TenancyTab.tsx — 920 Zeilen)
 
-Der interne Verkaufs-/Vermietungsprozess (Z2) ist **strikt getrennt** von der IS24-Publikation. Der User "bucht" die Anzeige, Zone 1 fuehrt sie aus und rechnet per Credits ab.
+Die TenancyTab ist die zentrale Orchestrierung fuer Mietverwaltung in MOD-04. Sie rendert Mietvertraege als inline-editierbare Cards und darunter 4 TLC-Kategorien mit 17 Sektionen:
 
 ```text
-Z2 (User)                    Zone 1 (Backbone)              IS24 Sandbox
-    │                              │                              │
-    │  "IS24 buchen" (2 Cr)       │                              │
-    │  ────────────────────►      │                              │
-    │  (listing_id + channel)     │                              │
-    │                              │  OAuth 1.0a signed POST     │
-    │                              │  ─────────────────────────► │
-    │                              │  ApartmentBuy/Rent etc.     │
-    │                              │                              │
-    │                              │  ◄── 201 Created (is24_id)  │
-    │                              │                              │
-    │  ◄── status: published       │                              │
-    │  (listing_publications)     │                              │
+TenancyTab
+├── Header: "Neuen Vertrag anlegen"
+├── Active Leases (inline-editable Cards)
+│   ├── Vertragsart, Mietmodell
+│   ├── Kaltmiete, NK, Heizkosten → Warmmiete (computed)
+│   ├── Laufzeit (Start/Ende)
+│   ├── Kaution + Zinsgutschrift (ENG-TLC)
+│   └── Actions: Aktivieren, Kuendigung, Mieterhoehung, Abmahnung
+├── Historische Vertraege (Collapsible)
+└── TLC Lifecycle-Management
+    ├── 📋 Kernfunktionen
+    │   ├── Events (TLCEventsSection)
+    │   ├── Tasks (TLCTasksSection)
+    │   ├── Deadlines (TLCDeadlinesSection)
+    │   └── Zaehlerstaende (TLCMeterSection)
+    ├── 📝 Vertrag & Uebergabe          ← IS24 HIER
+    │   ├── Vermietungsinserat (TLCRentalListingSection) ← NEU
+    │   ├── Mietvertrag (TLCContractSection)
+    │   ├── Uebergabe (TLCHandoverSection)
+    │   └── Bewerber (TLCApplicantSection)
+    ├── 💶 Finanzen
+    │   ├── Zahlungsplan (TLCPaymentPlanSection)
+    │   ├── Mietminderung (TLCRentReductionSection)
+    │   ├── NK-Vorauszahlung (TLCPrepaymentSection)
+    │   ├── 3-Jahres-Check (TLCThreeYearCheckSection)
+    │   └── Rechnungen (TLCInvoiceSection)
+    └── 🏢 Verwaltung
+        ├── Kommunikation (TLCCommunicationSection)
+        ├── Maengel (TLCDefectSection)
+        ├── Dienstleister (TLCServiceProviderSection)
+        └── Versicherung (TLCInsuranceSection)
 ```
 
-## Phase 1: Edge Function `sot-is24-gateway`
+## 2. IS24-Integration Vermietung — Status
 
-Neue Edge Function mit:
-- **OAuth 1.0a HMAC-SHA1** Signing (2-legged fuer Sandbox)
-- Secrets: `IS24_CONSUMER_KEY`, `IS24_CONSUMER_SECRET` (Sandbox-Werte aus deiner Nachricht)
-- Sandbox-URL: `https://rest.sandbox-immobilienscout24.de/restapi/api`
-- Actions: `create_listing`, `update_listing`, `deactivate_listing`, `get_listing`
-- **Credit-Preflight**: 2 Credits pro Publish-Aktion
-- Objekttyp-Mapping: `listings` → ApartmentBuy/HouseBuy, `rental_listings` → ApartmentRent/HouseRent
-- Ergebnis: `is24_id` wird in `listing_publications` / `rental_publications` gespeichert
+### Was gebaut ist (funktional)
 
-## Phase 2: Verkauf (MOD-06 / VerkaufsauftragTab)
+| Komponente | Status | Detail |
+|------------|--------|--------|
+| `TLCRentalListingSection.tsx` | Gebaut | 422 Zeilen, Collapsible in Kategorie 2 |
+| `sot-is24-gateway` Edge Function | Deployed | 651 Zeilen, OAuth 1.0a, 4 Actions |
+| `rental_listings` Tabelle | Vorhanden | 18 Spalten inkl. cold_rent, warm_rent, pets_allowed |
+| `rental_publications` Tabelle | Vorhanden | 12 Spalten, Unique auf (rental_listing_id, channel) |
+| Secrets | Konfiguriert | IS24_CONSUMER_KEY, IS24_CONSUMER_SECRET, Sandbox User/PW |
+| `IS24PublicationStatus.tsx` (Verkauf) | Gebaut | 149 Zeilen, in ExposeDetail eingebunden |
 
-In `VerkaufsauftragTab.tsx`:
-- `immoscout24.comingSoon: true` → **entfernen**
-- Neuer Flow beim Aktivieren: Credit-Check → `sot-is24-gateway` invoke → `listing_publications` mit channel `scout24` + `is24_id`
-- `ExposeDetail.tsx`: "Demnachst"-Badge ersetzen durch Live-Status aus `listing_publications`
+### Kritische Bugs (Edge Function ↔ DB Mismatch)
 
-## Phase 3: Vermietung (MOD-04 / TenancyTab)
+**BUG 1 — `metadata` Spalte fehlt in `rental_publications`:**
+Die Edge Function schreibt `metadata: { is24_status, is24_response, object_type }` in `rental_publications` (Z. 443-455). Diese Spalte existiert aber **nicht** in der Tabelle. Das `upsert` wird **silent fail** oder den ganzen Insert blockieren.
 
-Neue TLC-Sektion **"Vermietungsinserat"** in Kategorie 2 (Vertrag/Vermietung):
-- UI-Kachel zeigt: Kaltmiete, Warmmiete, Verfuegbar ab, Haustiere, Beschreibung (aus `rental_listings`)
-- Button "Inserat erstellen" → schreibt in `rental_listings`
-- Button "Auf IS24 buchen (2 Credits)" → ruft `sot-is24-gateway` mit `action: create_listing`, Typ `ApartmentRent`
-- Status-Anzeige aus `rental_publications` (draft/active/deactivated)
-- Neue TLC-Komponente: `src/components/portfolio/tlc/TLCRentalListingSection.tsx`
+**BUG 2 — `removed_at` Spalte fehlt in `rental_publications`:**
+Bei `deactivate_listing` schreibt die Edge Function `removed_at: new Date().toISOString()` (Z. 596). Diese Spalte fehlt ebenfalls in `rental_publications` (existiert nur in `listing_publications`).
 
-## Phase 4: Secrets anlegen
+**BUG 3 — `tenant_id` wird in `rental_publications` geschrieben, aber Tabelle hat das Feld:**
+Das ist korrekt — `tenant_id` existiert. Kein Bug.
 
-Die Sandbox-Credentials aus deiner Nachricht als Secrets speichern:
-- `IS24_CONSUMER_KEY` = `SystemofatownKey`
-- `IS24_CONSUMER_SECRET` = `kwYQNcbcK8Vszbyk` (Sandbox Secret)
-- `IS24_SANDBOX_USER` = `is24_tuv_156013787_38653@is24test.com`
-- `IS24_SANDBOX_PASSWORD` = `00ada297-3aa4-4de4-aa99-f4a7324ef4abPp`
+**BUG 4 — Channel-Typ Mismatch:**
+`listing_publications.channel` ist ein **ENUM** (`kaufy`, `scout24`, `kleinanzeigen`, `partner_network`). `rental_publications.channel` ist **plain TEXT**. Funktional OK, aber inkonsistent.
 
-## Umsetzungsreihenfolge
+### UI/UX-Analyse der TLCRentalListingSection
 
-| Schritt | Was | Dateien |
-|---------|-----|---------|
-| 1 | Secrets anlegen | 4 Secrets via Tool |
-| 2 | `sot-is24-gateway` Edge Function | `supabase/functions/sot-is24-gateway/index.ts` |
-| 3 | VerkaufsauftragTab: comingSoon entfernen, IS24-Flow | `src/components/portfolio/VerkaufsauftragTab.tsx` |
-| 4 | ExposeDetail: Live-Status statt Placeholder | `src/pages/portal/verkauf/ExposeDetail.tsx` |
-| 5 | TLCRentalListingSection: Neue TLC-Kachel | `src/components/portfolio/tlc/TLCRentalListingSection.tsx` |
-| 6 | TenancyTab: Sektion einbinden | `src/components/portfolio/TenancyTab.tsx` |
-| 7 | Sandbox E2E-Test | Edge Function testen via curl |
+**Staerken:**
+- Sauberes Collapsible-Pattern innerhalb Kategorie 2
+- Status-Icon im Trigger (gruen/gelb/rot/grau) — gutes visuelles Feedback
+- Mietdaten (Kaltmiete, Warmmiete) werden aus dem aktiven Lease vorbefuellt
+- IS24-Buchungsbutton mit Credit-Hinweis ("2 Credits")
+- Deaktivierungs-Option vorhanden
+
+**Schwaechen:**
+1. **Fehlende `postalCode`-Weitergabe:** TenancyTab Z. 797-806 setzt `propertyCity` aus `propertyAddress.split(',').pop()` — das ist fragil und verliert die PLZ. Das `postalCode`-Prop wird **nicht** uebergeben, obwohl die Komponente es akzeptiert.
+2. **Kein `yearBuilt`-Prop:** Wird nicht aus der Property geladen und nicht uebergeben. IS24 braucht `yearConstructed`.
+3. **Kein Error-Feedback bei Credit-Mangel:** Wenn 402 zurueckkommt, zeigt `toast.error` nur die Fehlermeldung — kein expliziter Hinweis auf fehlende Credits mit Link zur Aufladung.
+4. **Kein Confirmation-Dialog vor Buchung:** "Auf IS24 buchen (2 Credits)" fuehrt sofort die Mutation aus — bei einer kostenpflichtigen Aktion sollte ein Bestaetignungsdialog kommen.
+5. **Formular ist immer sichtbar:** Die Inserats-Felder sind immer editierbar, auch wenn bereits auf IS24 aktiv. Aenderungen am Formular aktualisieren aber NICHT automatisch die IS24-Anzeige.
+
+## 3. Bereinigungsplan
+
+### DB-Migration (2 fehlende Spalten)
+
+```sql
+ALTER TABLE rental_publications 
+  ADD COLUMN IF NOT EXISTS metadata jsonb,
+  ADD COLUMN IF NOT EXISTS removed_at timestamptz;
+```
+
+### TenancyTab: Props-Korrektur
+
+Property-Daten vollstaendig laden (`year_built`, `postal_code`) und an `TLCRentalListingSection` weiterreichen:
+- `postalCode` aus `propData.postal_code`
+- `yearBuilt` aus Property-Daten (muss noch abgefragt werden — `properties.year_built` oder aehnlich)
+
+### TLCRentalListingSection: UX-Verbesserungen
+
+1. **Bestaetignungsdialog** vor kostenpflichtiger IS24-Buchung (AlertDialog mit "2 Credits werden abgezogen")
+2. **Credit-Mangel-Handling:** Bei 402-Response expliziten Hinweis "Nicht genuegend Credits" mit Verweis auf Abrechnungs-Tab
+3. **Formular-Lock:** Wenn IS24 aktiv, Formularfelder readonly setzen und "Aktualisieren auf IS24"-Button anzeigen (der `update_listing` aufruft)
+4. **PostalCode + YearBuilt** korrekt uebergeben
+
+### Edge Function: Minor Fix
+
+Keine Aenderung noetig — die Edge Function selbst ist korrekt gebaut. Die `metadata`/`removed_at`-Fehler kommen vom fehlenden DB-Schema, nicht von der Funktionslogik.
+
+## 4. Umsetzungsschritte
+
+| # | Was | Dateien |
+|---|-----|---------|
+| 1 | DB-Migration: `metadata` + `removed_at` Spalten | SQL Migration |
+| 2 | TenancyTab: `postalCode` + `yearBuilt` Props ergaenzen | `TenancyTab.tsx` |
+| 3 | TLCRentalListingSection: Confirmation-Dialog + Credit-Error + Formular-Lock | `TLCRentalListingSection.tsx` |
+| 4 | Virtueller E2E-Test via Edge Function curl | Sandbox-Validierung |
 
