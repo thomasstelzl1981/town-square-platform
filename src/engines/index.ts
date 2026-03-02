@@ -69,5 +69,9 @@ export * from './flc/spec';
 export * from './fdc/engine';
 export * from './fdc/spec';
 
+// Engine 18: Pet Service Lifecycle Controller (ENG-PLC)
+export * from './plc/engine';
+export * from './plc/spec';
+
 // Shared Controller Conventions
 export * from './shared/controllerConventions';
