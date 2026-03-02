@@ -8,6 +8,8 @@ import { Inbox, Users2, FileText, Clock } from 'lucide-react';
 import { EmptyState } from '@/components/shared';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useRecentSLCEvents } from '@/hooks/useSalesCases';
+import { SLC_PHASE_LABELS } from '@/engines/slc/spec';
 
 // ─── Inbox Tab ───────────────────────────────────────────────────────────────
 export function InboxTab() {
@@ -117,20 +119,20 @@ export function PartnerTab() {
 
 // ─── Audit Tab ───────────────────────────────────────────────────────────────
 export function AuditTab() {
-  const { data: logs, isLoading } = useQuery({
-    queryKey: ['sales-desk-audit'],
-    queryFn: async () => {
-      // Future: fetch from an audit_log or activity_log table
-      return [] as any[];
-    },
-  });
+  const { data: events, isLoading } = useRecentSLCEvents();
+
+  const severityBadge = (s: string) => {
+    if (s === 'error') return <Badge variant="destructive" className="text-xs">{s}</Badge>;
+    if (s === 'warning') return <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-700">{s}</Badge>;
+    return <Badge variant="outline" className="text-xs">{s}</Badge>;
+  };
 
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold uppercase">Audit Log</h2>
       {isLoading ? (
         <Card><CardContent className="py-8 text-center text-muted-foreground">Laden...</CardContent></Card>
-      ) : !logs?.length ? (
+      ) : !events?.length ? (
         <EmptyState
           icon={FileText}
           title="Keine Audit-Einträge"
@@ -138,26 +140,36 @@ export function AuditTab() {
         />
       ) : (
         <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Aktion</TableHead>
-                <TableHead>Benutzer</TableHead>
-                <TableHead>Objekt</TableHead>
-                <TableHead>Datum</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {logs.map((l: any) => (
-                <TableRow key={l.id}>
-                  <TableCell>{l.action}</TableCell>
-                  <TableCell>{l.user}</TableCell>
-                  <TableCell>{l.target}</TableCell>
-                  <TableCell className="text-muted-foreground">{l.date}</TableCell>
+          <CardHeader>
+            <CardTitle className="text-base">Sales Lifecycle Events</CardTitle>
+            <CardDescription>{events.length} letzte Einträge</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Event</TableHead>
+                  <TableHead>Phase-Übergang</TableHead>
+                  <TableHead>Severity</TableHead>
+                  <TableHead>Datum</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {events.map((e: any) => (
+                  <TableRow key={e.id}>
+                    <TableCell className="font-medium font-mono text-xs">{e.event_type}</TableCell>
+                    <TableCell className="text-sm">
+                      {e.phase_before && e.phase_after
+                        ? `${SLC_PHASE_LABELS[e.phase_before as keyof typeof SLC_PHASE_LABELS] || e.phase_before} → ${SLC_PHASE_LABELS[e.phase_after as keyof typeof SLC_PHASE_LABELS] || e.phase_after}`
+                        : '–'}
+                    </TableCell>
+                    <TableCell>{severityBadge(e.severity)}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{new Date(e.created_at).toLocaleString('de-DE')}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
         </Card>
       )}
     </div>
