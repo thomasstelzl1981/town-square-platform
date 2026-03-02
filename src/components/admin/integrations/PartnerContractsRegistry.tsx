@@ -155,7 +155,7 @@ const PARTNER_CONTRACTS: PartnerContract[] = [
     id: 'fressnapf',
     name: 'Fressnapf',
     type: 'affiliate',
-    module: 'MOD-21 Pets',
+    module: 'MOD-05 Pets',
     purpose: 'Tierbedarf-Shop (Futter, Zubehör, Gesundheit)',
     commissionModel: 'AWIN-Affiliate: 3–5 % auf Bestellwert',
     network: 'AWIN',
