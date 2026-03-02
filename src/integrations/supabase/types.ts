@@ -16479,6 +16479,111 @@ export type Database = {
           },
         ]
       }
+      property_expenses: {
+        Row: {
+          amount: number
+          bank_transaction_id: string | null
+          category: string
+          created_at: string
+          description: string | null
+          expense_date: string
+          id: string
+          is_apportionable: boolean
+          label: string
+          lease_id: string | null
+          period_from: string | null
+          period_to: string | null
+          property_id: string
+          receipt_storage_path: string | null
+          source: string
+          tax_deductible: boolean
+          tenant_id: string
+          unit_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          bank_transaction_id?: string | null
+          category: string
+          created_at?: string
+          description?: string | null
+          expense_date: string
+          id?: string
+          is_apportionable?: boolean
+          label: string
+          lease_id?: string | null
+          period_from?: string | null
+          period_to?: string | null
+          property_id: string
+          receipt_storage_path?: string | null
+          source?: string
+          tax_deductible?: boolean
+          tenant_id: string
+          unit_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          bank_transaction_id?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          expense_date?: string
+          id?: string
+          is_apportionable?: boolean
+          label?: string
+          lease_id?: string | null
+          period_from?: string | null
+          period_to?: string | null
+          property_id?: string
+          receipt_storage_path?: string | null
+          source?: string
+          tax_deductible?: boolean
+          tenant_id?: string
+          unit_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_expenses_bank_transaction_id_fkey"
+            columns: ["bank_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "bank_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_expenses_lease_id_fkey"
+            columns: ["lease_id"]
+            isOneToOne: false
+            referencedRelation: "leases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_expenses_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_expenses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_expenses_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_features: {
         Row: {
           activated_at: string

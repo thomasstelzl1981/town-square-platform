@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { DEMO_KONTO } from '@/constants/demoKontoData';
+import { usePropertyExpenses, EXPENSE_CATEGORY_LABELS, type ExpenseCategory, type CreateExpenseInput } from '@/hooks/usePropertyExpenses';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, Banknote, Plus, Info, CreditCard, RefreshCw, ChevronDown, ArrowRightLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, Banknote, Plus, Info, CreditCard, RefreshCw, ChevronDown, ArrowRightLeft, CheckCircle2, AlertCircle, Receipt, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -129,6 +130,22 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
   const [matchResult, setMatchResult] = useState<{ matched: number; arrears: number } | null>(null);
   const [unmatchedOpen, setUnmatchedOpen] = useState(false);
 
+  // ─── Expense capture state ───
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [expenseCategory, setExpenseCategory] = useState<ExpenseCategory>('instandhaltung');
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseDate, setExpenseDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [expenseLabel, setExpenseLabel] = useState('');
+  const [expenseDescription, setExpenseDescription] = useState('');
+  const [expensesOpen, setExpensesOpen] = useState(false);
+
+  // ─── Expense assignment for negative bank transactions ───
+  const [assignExpenseTxId, setAssignExpenseTxId] = useState<string | null>(null);
+  const [assignExpenseCategory, setAssignExpenseCategory] = useState<ExpenseCategory>('instandhaltung');
+
+  // ─── Property Expenses Hook ───
+  const { expenses, createExpense: createExpenseMutation, deleteExpense: deleteExpenseMutation } = usePropertyExpenses(propertyId);
+
   // ─── Zone A: Consolidated match handler ───
   const handleKontenabgleich = useCallback(async () => {
     setMatchRunning(true);
@@ -209,6 +226,26 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
       return (data || []) as RentPayment[];
     },
     enabled: leases.length > 0,
+  });
+
+  // ─── Fetch NK settlements (for NK-Saldo display in Zone B) ───
+  const { data: nkSettlements = [] } = useQuery({
+    queryKey: ['nk-settlements-zahlungsverkehr', propertyId, activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId || !propertyId) return [];
+      const { data: periods } = await (supabase as any)
+        .from('nk_periods').select('id, period_start, period_end')
+        .eq('tenant_id', activeTenantId).eq('property_id', propertyId);
+      if (!periods || periods.length === 0) return [];
+      const { data: settlements } = await (supabase as any)
+        .from('nk_tenant_settlements').select('nk_period_id, lease_id, saldo_eur, status')
+        .in('nk_period_id', periods.map((p: any) => p.id));
+      return (settlements || []).map((s: any) => {
+        const period = periods.find((p: any) => p.id === s.nk_period_id);
+        return { ...s, period_end: period?.period_end };
+      });
+    },
+    enabled: !!activeTenantId && !!propertyId,
   });
 
   // ─── Fetch bank accounts ───
@@ -446,6 +483,21 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
                 <Plus className="h-4 w-4" />
                 Zahlung manuell erfassen
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowExpenseForm(true);
+                  setExpenseAmount('');
+                  setExpenseLabel('');
+                  setExpenseDescription('');
+                  setExpenseDate(format(new Date(), 'yyyy-MM-dd'));
+                  setExpenseCategory('instandhaltung');
+                }}
+                className="gap-2"
+              >
+                <Receipt className="h-4 w-4" />
+                Ausgabe erfassen
+              </Button>
             </div>
             {matchResult && !matchRunning && (
               <div className="flex items-center gap-3 text-sm">
@@ -470,6 +522,79 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
               <p className="text-xs text-muted-foreground animate-pulse">
                 {MATCH_STEPS[matchStep]}
               </p>
+            </div>
+          )}
+
+          {/* Expense capture form */}
+          {showExpenseForm && (
+            <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border/50 space-y-3">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-primary" />
+                Ausgabe erfassen
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Kategorie</label>
+                  <Select value={expenseCategory} onValueChange={v => setExpenseCategory(v as ExpenseCategory)}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(EXPENSE_CATEGORY_LABELS).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Betrag (€)</label>
+                  <Input type="number" step="0.01" value={expenseAmount} onChange={e => setExpenseAmount(e.target.value)} placeholder="0,00" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Datum</label>
+                  <Input type="date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Bezeichnung</label>
+                  <Input value={expenseLabel} onChange={e => setExpenseLabel(e.target.value)} placeholder="z.B. Heizungswartung" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Beschreibung (optional)</label>
+                <Input value={expenseDescription} onChange={e => setExpenseDescription(e.target.value)} placeholder="Details zur Ausgabe…" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const amt = parseFloat(expenseAmount);
+                    if (!amt || !expenseLabel.trim()) {
+                      toast.error('Betrag und Bezeichnung sind Pflichtfelder');
+                      return;
+                    }
+                    createExpenseMutation.mutate({
+                      property_id: propertyId,
+                      unit_id: unitId || undefined,
+                      category: expenseCategory,
+                      amount: amt,
+                      label: expenseLabel.trim(),
+                      description: expenseDescription.trim() || undefined,
+                      expense_date: expenseDate,
+                      source: 'manual',
+                    } as CreateExpenseInput, {
+                      onSuccess: () => {
+                        toast.success('Ausgabe erfasst');
+                        setShowExpenseForm(false);
+                      },
+                      onError: () => toast.error('Fehler beim Erfassen'),
+                    });
+                  }}
+                  disabled={createExpenseMutation.isPending}
+                >
+                  {createExpenseMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Speichern'}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowExpenseForm(false)}>Abbrechen</Button>
+              </div>
             </div>
           )}
         </CardContent>
@@ -589,6 +714,20 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
                         </tr>
                       );
                     })}
+                    {/* NK-Saldo rows */}
+                    {nkSettlements
+                      .filter((s: any) => s.lease_id === lease.id && s.saldo_eur !== 0)
+                      .map((s: any, idx: number) => (
+                        <tr key={`nk-${idx}`} className="border-t border-primary/20 bg-primary/5">
+                          <td className="px-3 py-2 font-medium text-xs">NK-Abrechnung {s.period_end ? new Date(s.period_end).getFullYear() : ''}</td>
+                          <td className="px-3 py-2 text-right font-mono text-xs">{fmtEur(Math.abs(s.saldo_eur))}</td>
+                          <td className="px-3 py-2 text-right font-mono text-xs">{s.status === 'paid' ? fmtEur(Math.abs(s.saldo_eur)) : '–'}</td>
+                          <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground">{s.status === 'paid' ? '0,00 €' : fmtEur(s.saldo_eur)}</td>
+                          <td className="px-3 py-2 text-center"><Badge variant="outline" className="text-xs">{s.saldo_eur > 0 ? 'Nachzahlung' : 'Guthaben'}</Badge></td>
+                          <td className="px-3 py-2 text-center"><Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">NK</Badge></td>
+                          <td className="px-3 py-2 text-xs text-muted-foreground">–</td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
@@ -695,51 +834,177 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
                         </tr>
                       </thead>
                       <tbody>
-                        {unmatchedTx.map(tx => (
-                          <tr key={tx.id} className="border-t border-border/30 hover:bg-muted/20">
-                            <td className="px-3 py-2 text-xs">
-                              {new Date(tx.booking_date).toLocaleDateString('de-DE')}
-                            </td>
-                            <td className={`px-3 py-2 text-right font-mono text-xs ${tx.amount_eur >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                              {fmtEur(tx.amount_eur)}
-                            </td>
-                            <td className="px-3 py-2 text-xs truncate max-w-[160px]">
-                              {tx.counterparty || '–'}
-                            </td>
-                            <td className="px-3 py-2 text-xs truncate max-w-[200px] text-muted-foreground">
-                              {tx.purpose_text || '–'}
-                            </td>
-                            <td className="px-3 py-2 text-right">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs gap-1"
-                                onClick={() => {
-                                  const firstLease = leases[0];
-                                  if (firstLease) {
-                                    assignTxMutation.mutate({
-                                      tx,
-                                      leaseId: firstLease.id,
-                                      warmmiete: getWarmmiete(firstLease),
-                                    });
-                                  }
-                                }}
-                                disabled={assignTxMutation.isPending}
-                              >
-                                {assignTxMutation.isPending ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
+                        {unmatchedTx.map(tx => {
+                          const isExpense = tx.amount_eur < 0;
+                          const isAssigningExpense = assignExpenseTxId === tx.id;
+                          
+                          return (
+                            <tr key={tx.id} className="border-t border-border/30 hover:bg-muted/20">
+                              <td className="px-3 py-2 text-xs">
+                                {new Date(tx.booking_date).toLocaleDateString('de-DE')}
+                              </td>
+                              <td className={`px-3 py-2 text-right font-mono text-xs ${tx.amount_eur >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                {fmtEur(tx.amount_eur)}
+                              </td>
+                              <td className="px-3 py-2 text-xs truncate max-w-[160px]">
+                                {tx.counterparty || '–'}
+                              </td>
+                              <td className="px-3 py-2 text-xs truncate max-w-[200px] text-muted-foreground">
+                                {tx.purpose_text || '–'}
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                {isExpense ? (
+                                  // Negative transaction → assign as expense
+                                  isAssigningExpense ? (
+                                    <div className="flex items-center gap-1.5">
+                                      <Select value={assignExpenseCategory} onValueChange={v => setAssignExpenseCategory(v as ExpenseCategory)}>
+                                        <SelectTrigger className="h-7 text-xs w-[140px]">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {Object.entries(EXPENSE_CATEGORY_LABELS).map(([k, v]) => (
+                                            <SelectItem key={k} value={k}>{v}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <Button
+                                        size="sm" variant="default" className="h-7 text-xs"
+                                        onClick={() => {
+                                          createExpenseMutation.mutate({
+                                            property_id: propertyId,
+                                            unit_id: unitId || undefined,
+                                            category: assignExpenseCategory,
+                                            amount: Math.abs(tx.amount_eur),
+                                            label: tx.counterparty || tx.purpose_text || 'Bankbuchung',
+                                            description: tx.purpose_text || undefined,
+                                            expense_date: tx.booking_date,
+                                            bank_transaction_id: tx.id,
+                                            source: 'bank_matched',
+                                          } as CreateExpenseInput, {
+                                            onSuccess: () => {
+                                              // Mark tx as matched
+                                              supabase.from('bank_transactions').update({ match_status: 'EXPENSE_MATCHED' }).eq('id', tx.id).then(() => {
+                                                queryClient.invalidateQueries({ queryKey: ['unmatched-transactions'] });
+                                              });
+                                              toast.success('Ausgabe zugeordnet');
+                                              setAssignExpenseTxId(null);
+                                            },
+                                            onError: () => toast.error('Zuordnung fehlgeschlagen'),
+                                          });
+                                        }}
+                                        disabled={createExpenseMutation.isPending}
+                                      >
+                                        {createExpenseMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : '✓'}
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-7 text-xs px-1" onClick={() => setAssignExpenseTxId(null)}>✕</Button>
+                                    </div>
+                                  ) : (
+                                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAssignExpenseTxId(tx.id)}>
+                                      <Receipt className="h-3 w-3" />
+                                      Als Ausgabe
+                                    </Button>
+                                  )
                                 ) : (
-                                  <ArrowRightLeft className="h-3 w-3" />
+                                  // Positive transaction → assign as rent payment
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs gap-1"
+                                    onClick={() => {
+                                      const firstLease = leases[0];
+                                      if (firstLease) {
+                                        assignTxMutation.mutate({
+                                          tx,
+                                          leaseId: firstLease.id,
+                                          warmmiete: getWarmmiete(firstLease),
+                                        });
+                                      }
+                                    }}
+                                    disabled={assignTxMutation.isPending}
+                                  >
+                                    {assignTxMutation.isPending ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <ArrowRightLeft className="h-3 w-3" />
+                                    )}
+                                    Zuordnen
+                                  </Button>
                                 )}
-                                Zuordnen
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 )}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
+
+      {/* ═══ ZONE D: Erfasste Ausgaben ═══ */}
+      {expenses.length > 0 && (
+        <Collapsible open={expensesOpen} onOpenChange={setExpensesOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/20 transition-colors">
+                <CardTitle className="text-base flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Receipt className="h-4 w-4 text-primary" />
+                    Erfasste Ausgaben
+                    <Badge variant="secondary" className="text-xs">{expenses.length}</Badge>
+                    <Badge variant="outline" className="text-xs font-mono">
+                      {fmtEur(expenses.reduce((s, e) => s + e.amount, 0))}
+                    </Badge>
+                  </span>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expensesOpen ? 'rotate-180' : ''}`} />
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0">
+                <div className="rounded-lg border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/50">
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Datum</th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Kategorie</th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Bezeichnung</th>
+                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">Betrag</th>
+                        <th className="text-center px-3 py-2 font-medium text-muted-foreground">Quelle</th>
+                        <th className="text-right px-3 py-2 font-medium text-muted-foreground"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {expenses.map(exp => (
+                        <tr key={exp.id} className="border-t border-border/30 hover:bg-muted/20">
+                          <td className="px-3 py-2 text-xs">{new Date(exp.expense_date).toLocaleDateString('de-DE')}</td>
+                          <td className="px-3 py-2 text-xs">{EXPENSE_CATEGORY_LABELS[exp.category] || exp.category}</td>
+                          <td className="px-3 py-2 text-xs">{exp.label}</td>
+                          <td className="px-3 py-2 text-right font-mono text-xs text-red-500">-{fmtEur(exp.amount)}</td>
+                          <td className="px-3 py-2 text-center">
+                            <Badge variant="outline" className="text-xs">
+                              {exp.source === 'bank_matched' ? 'Bank' : 'Manuell'}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <Button
+                              size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => deleteExpenseMutation.mutate(exp.id, {
+                                onSuccess: () => toast.success('Ausgabe gelöscht'),
+                                onError: () => toast.error('Fehler beim Löschen'),
+                              })}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
             </CollapsibleContent>
           </Card>

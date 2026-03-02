@@ -94,6 +94,14 @@ export function BWATab({ propertyIds, veName, tenantId }: BWATabProps) {
       const { data: ba } = await (supabase as any).from('bank_accounts').select('id, current_balance').eq('tenant_id', tid);
       bankAccounts = ba || [];
 
+      // Property expenses for BWA enrichment
+      const { data: expData } = await (supabase as any).from('property_expenses')
+        .select('property_id, category, amount, tax_deductible')
+        .eq('tenant_id', tid)
+        .in('property_id', propertyIds)
+        .gte('expense_date', von)
+        .lte('expense_date', bis);
+
       return {
         units, leases,
         financing: financingRes.data || [],
@@ -102,6 +110,7 @@ export function BWATab({ propertyIds, veName, tenantId }: BWATabProps) {
         nkItems,
         properties: props || [],
         bankAccounts,
+        propertyExpenses: expData || [],
       };
     },
     enabled: !!tid && propertyIds.length > 0,
@@ -129,6 +138,20 @@ export function BWATab({ propertyIds, veName, tenantId }: BWATabProps) {
       disagio: acc.disagio + (a.cost_disagio || 0),
       finFees: acc.finFees + (a.cost_financing_fees || 0),
     }), { incomeOther: 0, insurancePayout: 0, maintenance: 0, management: 0, bankFees: 0, legal: 0, other: 0, disagio: 0, finFees: 0 });
+
+    // Enrich with property_expenses (add to vv_annual_data aggregation)
+    const expCatMap: Record<string, keyof typeof ann> = {
+      instandhaltung: 'maintenance', handwerker: 'maintenance',
+      versicherung: 'other', verwalterkosten: 'management',
+      rechtsberatung: 'legal', fahrtkosten: 'other',
+      bankgebuehren: 'bankFees', weg_hausgeld: 'other',
+      grundsteuer: 'other', sonstige: 'other',
+    };
+    for (const exp of (data.propertyExpenses || [])) {
+      if (!exp.tax_deductible) continue;
+      const field = expCatMap[exp.category] || 'other';
+      (ann as any)[field] = ((ann as any)[field] || 0) + (exp.amount || 0);
+    }
 
     // Darlehen einzeln
     const activeFinancing = data.financing.filter((f: any) => f.is_active !== false);
