@@ -124,7 +124,7 @@ export function useTenancyCommunication(leaseId?: string) {
           lease_id: input.leaseId,
           unit_id: input.unitId || null,
           property_id: input.propertyId || null,
-          event_type: 'dunning_mail_sent', // generic communication event
+          event_type: input.messageType === 'dunning' ? 'dunning_mail_sent' : input.messageType === 'rent_increase' ? 'rent_increase_sent' : input.messageType === 'nk_settlement' ? 'nk_settlement_created' : 'document_added',
           severity: 'info',
           title: `${input.channel === 'email' ? 'E-Mail' : 'Brief'}: ${input.subject}`,
           description: `Nachricht vom Typ "${input.messageType}" versendet an ${input.recipientEmail || 'Mieter'}.`,
