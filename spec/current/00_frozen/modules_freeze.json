@@ -25,7 +25,7 @@
     "MOD-18": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for TLC Phase 1-4 completion" },
     "MOD-19": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for TLC Phase 1-4 completion" },
     "MOD-20": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for TLC Phase 1-4 completion" },
-    "MOD-21": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for TLC Phase 1-4 completion" },
+    "MOD-21": { "frozen": true, "frozen_at": "2026-03-02T11:00:00.000Z", "reason": "REMOVED — Module deactivated and all artifacts deleted. See spec/current/02_modules/mod-21_ki-browser.md" },
     "MOD-22": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for TLC Phase 1-4 completion" }
   }
 }
