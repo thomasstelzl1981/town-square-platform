@@ -27,6 +27,7 @@ export const GP_VERKAUF_GOLDEN_PATH: GoldenPathDefinition = {
     { event_type: 'slc.published', trigger: 'on_complete' },
     { event_type: 'slc.inquiry.received', trigger: 'on_complete' },
     { event_type: 'slc.reserved', trigger: 'on_complete' },
+    { event_type: 'slc.finance.submitted', trigger: 'on_complete' },
     { event_type: 'slc.contract.drafted', trigger: 'on_complete' },
     { event_type: 'slc.notary.scheduled', trigger: 'on_complete' },
     { event_type: 'slc.notary.completed', trigger: 'on_complete' },

@@ -179,4 +179,4 @@ export const SLC_EVENT_PHASE_MAP: Partial<Record<SLCEventType, SLCPhase>> = {
   // NOTE: 'case.stuck_detected' and 'deal.settlement_pending' intentionally have NO phase mapping
 };
 
-export const SLC_ENGINE_VERSION = '1.1.0';
+export const SLC_ENGINE_VERSION = '1.2.0';

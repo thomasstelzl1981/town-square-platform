@@ -4,13 +4,12 @@
  * Pure functions implementing SLC logic. NO side effects, NO DB calls, NO UI imports.
  * 
  * @engine ENG-SLC
- * @version 1.0.0
+ * @version 1.2.0
  */
 
 import type {
   SLCPhase,
   SLCEvent,
-  SLCCase,
   SLCEventType,
   ChannelProjection,
 } from './spec';
@@ -74,10 +73,8 @@ export function isValidTransition(from: SLCPhase, to: SLCPhase): boolean {
 // ─── Drift Detection ──────────────────────────────────────────
 
 /**
- * @internal @recovery
  * Computes drift status for channel publications.
- * Not used in production (Cron + useChannelDrift compute inline).
- * Retained for batch-audit and recovery tooling.
+ * Used by useChannelDrift hook for real-time drift detection in SLC Monitor.
  */
 export function computeChannelDrift(
   publications: Pick<ChannelProjection, 'expected_hash' | 'last_synced_hash' | 'channel' | 'listing_id'>[]
@@ -92,8 +89,8 @@ export function computeChannelDrift(
 }
 
 /**
- * @internal @recovery
  * Returns the count of drifted channels.
+ * Used by useChannelDrift hook for KPI display.
  */
 export function countDriftedChannels(projections: ChannelProjection[]): number {
   return projections.filter((p) => p.is_drifted).length;
