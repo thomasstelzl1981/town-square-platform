@@ -124,7 +124,7 @@ export function TLCRentReductionSection({ leaseId, unitId }: Props) {
                   <div className="text-[10px] text-muted-foreground bg-muted/50 rounded p-2 space-y-0.5">
                     <p className="font-medium">§536 BGB Richtwerte:</p>
                     {Object.entries(guidelines).slice(0, 5).map(([key, val]: [string, any]) => (
-                      <p key={key}>{val.label}: {val.minPercent}–{val.maxPercent}%</p>
+                      <p key={key}>{val.description}: {val.minPercent}–{val.maxPercent}%</p>
                     ))}
                   </div>
                 )}
