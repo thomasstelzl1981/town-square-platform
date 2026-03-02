@@ -88,6 +88,7 @@ Jeder Portal-Prozess wird gegen 6 Kriterien geprueft:
 | **GP-CLIENT-ASSIGNMENT** | **Kunden-Zuweisung** | **7** | **Z2 → Z1 → Z2** | **✅** | **✅** |
 | **GP-BROWSER-SESSION** | **KI-Browser Research** | **7** | **Z2** | **🔲** | **✅** |
 | **GP-TLC** | **Tenancy Lifecycle Controller** | **7** | **Z2** | **✅** | **✅** |
+| **GP-VERKAUF** | **Verkaufszyklus (SLC)** | **11** | **Z2 → Z1 → Z3 → Z2** | **✅** | **✅** |
 
 ### Workflow-Architektur
 
@@ -149,7 +150,7 @@ Jeder Engine-Workflow besteht aus:
 
 ### Engine-Workflows
 - Registry: `src/manifests/goldenPaths/index.ts`
-- Definitionen: `src/manifests/goldenPaths/MOD_04.ts`, `MOD_07_11.ts`, `MOD_08_12.ts`, `MOD_13.ts`, `GP_VERMIETUNG.ts`, `GP_LEAD.ts`, `GP_FINANCE_Z3.ts`, `GP_PET.ts`, **`GP_MANAGER_LIFECYCLE.ts`**, **`GP_CLIENT_ASSIGNMENT.ts`**
+- Definitionen: `src/manifests/goldenPaths/MOD_04.ts`, `MOD_07_11.ts`, `MOD_08_12.ts`, `MOD_13.ts`, `GP_VERMIETUNG.ts`, `GP_LEAD.ts`, `GP_FINANCE_Z3.ts`, `GP_PET.ts`, **`GP_MANAGER_LIFECYCLE.ts`**, **`GP_CLIENT_ASSIGNMENT.ts`**, **`GP_VERKAUF.ts`**
 - Engine: `src/goldenpath/engine.ts`
 - Hook: `src/goldenpath/useGoldenPath.ts`
 - Guard: `src/goldenpath/GoldenPathGuard.tsx`
@@ -175,3 +176,4 @@ Jeder Engine-Workflow besteht aus:
 | 1.1 | 2026-02-21 | Manager-Lifecycle: GP-MANAGER-LIFECYCLE + GP-CLIENT-ASSIGNMENT, 2 neue Rollen (project_manager, pet_manager), manager_applications Tabelle, has_delegation_scope() Funktion, ~15 neue Ledger-Events |
 | 1.2 | 2026-02-25 | MOD-13 Golden Path V1.1: InvestEngine-Step (Phase 3), 7 Phasen statt 5, invest_engine_analyzed DB-Feld, 2 neue Ledger-Events, erweiterter Context Resolver (5 neue Flags). MOD-13 ist systemweite Golden-Tenant-Vorlage fuer alle Partner-Tenants mit project_manager-Rolle. |
 | 1.3 | 2026-03-02 | GP-TLC: Tenancy Lifecycle Controller als Engine-Workflow registriert. 7 Phasen (BEWERBUNG → VERTRAG → EINZUG → LAUFEND → KUENDIGUNG → AUSZUG → WIEDERVERMIETUNG), Weekly CRON, KI-Summary, Mahnstufen-Integration. |
+| 1.4 | 2026-03-02 | GP-VERKAUF: Sales Lifecycle Controller (SLC) als 11-Step Engine-Workflow registriert. Phasen: Mandat → Veröffentlicht → Anfrage → Reserviert → Vertragsentwurf → Notar → Beurkundet → Übergabe → Settlement → Closed (Won/Lost). Context Resolver mit progressiver Flag-Aktivierung. 17 neue Ledger-Events. |

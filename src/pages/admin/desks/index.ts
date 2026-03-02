@@ -8,3 +8,4 @@ export { default as PetDesk } from './PetmanagerDesk';
 export { default as NcoreDesk } from './NcoreDesk';
 export { default as OttoDesk } from './OttoDesk';
 export { default as CommProDesk } from './CommProDesk';
+export { default as PropertyDesk } from './PropertyDesk';

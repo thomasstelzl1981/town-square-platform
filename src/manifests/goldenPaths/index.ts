@@ -40,6 +40,7 @@ export { GP_PET_GOLDEN_PATH } from './GP_PET';
 export { GP_COMMISSION_GOLDEN_PATH } from './GP_COMMISSION';
 export { GP_MANAGER_LIFECYCLE_GOLDEN_PATH } from './GP_MANAGER_LIFECYCLE';
 export { GP_CLIENT_ASSIGNMENT_GOLDEN_PATH } from './GP_CLIENT_ASSIGNMENT';
+export { GP_VERKAUF_GOLDEN_PATH } from './GP_VERKAUF';
 
 // ═══════════════════════════════════════════════════════════════
 // Ledger Event Whitelist (mirrors data_event_ledger RPC)
@@ -235,6 +236,25 @@ export const LEDGER_EVENT_WHITELIST: ReadonlySet<string> = new Set([
   'client.assignment.accept.timeout',
   'client.assignment.rejected',
   'manager.assignment.accepted',
+
+  // ─── GP-VERKAUF: Sales Lifecycle Events ────────────────────
+  'slc.mandate.activated',
+  'slc.published',
+  'slc.publish.timeout',
+  'slc.publish.error',
+  'slc.inquiry.received',
+  'slc.inquiry.timeout',
+  'slc.reserved',
+  'slc.contract.drafted',
+  'slc.notary.scheduled',
+  'slc.notary.completed',
+  'slc.handover.done',
+  'slc.settlement.approved',
+  'slc.settlement.timeout',
+  'slc.closed.won',
+  'slc.closed.lost',
+  'slc.mandate.revoked',
+  'slc.close.error',
 ]);
 
 // ═══════════════════════════════════════════════════════════════
@@ -253,6 +273,7 @@ import { GP_PET_GOLDEN_PATH as _GP_PET } from './GP_PET';
 import { GP_COMMISSION_GOLDEN_PATH as _GP_COMMISSION } from './GP_COMMISSION';
 import { GP_MANAGER_LIFECYCLE_GOLDEN_PATH as _GP_MANAGER_LIFECYCLE } from './GP_MANAGER_LIFECYCLE';
 import { GP_CLIENT_ASSIGNMENT_GOLDEN_PATH as _GP_CLIENT_ASSIGNMENT } from './GP_CLIENT_ASSIGNMENT';
+import { GP_VERKAUF_GOLDEN_PATH as _GP_VERKAUF } from './GP_VERKAUF';
 
 // Registrierung aller Golden Paths
 registerGoldenPath('MOD-04', _MOD_04);
@@ -268,3 +289,4 @@ registerGoldenPath('GP-PET', _GP_PET);
 registerGoldenPath('GP-COMMISSION', _GP_COMMISSION);
 registerGoldenPath('GP-MANAGER-LIFECYCLE', _GP_MANAGER_LIFECYCLE);
 registerGoldenPath('GP-CLIENT-ASSIGNMENT', _GP_CLIENT_ASSIGNMENT);
+registerGoldenPath('GP-VERKAUF', _GP_VERKAUF);

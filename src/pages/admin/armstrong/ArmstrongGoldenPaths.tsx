@@ -70,6 +70,7 @@ const ENGINE_WORKFLOWS: EngineWorkflow[] = [
   { key: 'GP-LEAD', name: 'Lead-Generierung', steps: 4, zones: 'Z3 → Z1 → Z2', zoneList: ['Z3', 'Z1', 'Z2'], failStates: true, camundaReady: true },
   { key: 'GP-FINANCE-Z3', name: 'Zone-3-Finanzierung', steps: 7, zones: 'Z3 → Z1 → Z2', zoneList: ['Z3', 'Z1', 'Z2'], failStates: true, camundaReady: true },
   { key: 'GP-PET', name: 'Pet Manager Lifecycle', steps: 7, zones: 'Z3 → Z1 → Z2', zoneList: ['Z3', 'Z1', 'Z2'], failStates: true, camundaReady: true },
+  { key: 'GP-VERKAUF', name: 'Verkaufszyklus (SLC)', steps: 11, zones: 'Z2 → Z1 → Z3 → Z2', zoneList: ['Z2', 'Z1', 'Z3'], failStates: true, camundaReady: true },
 ];
 
 // ── Component ──
