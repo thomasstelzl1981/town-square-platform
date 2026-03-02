@@ -1,10 +1,14 @@
 /**
- * VoiceButton — Microphone toggle with pulse animation
+ * VoiceButton — Push-to-talk microphone button with pulse animation
+ * 
+ * Modes:
+ * - Push-to-talk (default): Hold to record, release to stop
+ * - Toggle: Click to start/stop (legacy, via onToggle)
  * 
  * States:
  * - Idle: Static mic icon
- * - Listening: Pulsing rings animation
- * - Processing: Subtle pulse
+ * - Connecting: Subtle pulse
+ * - Recording: Pulsing rings animation
  * - Speaking: Wave animation
  */
 
@@ -19,30 +23,50 @@ import {
 } from '@/components/ui/tooltip';
 
 interface VoiceButtonProps {
-  isListening: boolean;
-  isProcessing: boolean;
-  isSpeaking: boolean;
-  isConnected: boolean;
-  error: string | null;
+  /** Push-to-talk: currently recording */
+  isRecording?: boolean;
+  /** Push-to-talk: connecting to service */
+  isConnecting?: boolean;
+  /** Legacy: isListening (alias for isRecording) */
+  isListening?: boolean;
+  /** Legacy: isProcessing (alias for isConnecting) */
+  isProcessing?: boolean;
+  isSpeaking?: boolean;
+  isConnected?: boolean;
+  error?: string | null;
   useBrowserFallback?: boolean;
-  onToggle: () => void;
+  /** Push-to-talk handlers */
+  onPressStart?: () => void;
+  onPressEnd?: () => void;
+  /** Legacy toggle handler */
+  onToggle?: () => void;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   variant?: 'default' | 'glass';
 }
 
 export function VoiceButton({
+  isRecording: isRecordingProp,
+  isConnecting: isConnectingProp,
   isListening,
   isProcessing,
-  isSpeaking,
+  isSpeaking = false,
   isConnected,
-  error,
+  error = null,
   useBrowserFallback = false,
+  onPressStart,
+  onPressEnd,
   onToggle,
   className,
   size = 'md',
   variant = 'default',
 }: VoiceButtonProps) {
+  // Support both new (isRecording) and legacy (isListening) props
+  const recording = isRecordingProp ?? isListening ?? false;
+  const connecting = isConnectingProp ?? isProcessing ?? false;
+
+  const isPushToTalk = !!(onPressStart && onPressEnd);
+
   const sizeClasses = {
     sm: 'h-7 w-7',
     md: 'h-8 w-8',
@@ -58,19 +82,40 @@ export function VoiceButton({
   const getTooltipText = () => {
     if (error) return `Fehler: ${error}`;
     if (isSpeaking) return 'Armstrong spricht...';
-    if (isProcessing) return 'Verarbeite...';
-    if (isListening) return `Mikrofon aktiv${useBrowserFallback ? ' (Browser)' : ''} — Klicken zum Beenden`;
-    return `Spracheingabe starten${useBrowserFallback ? ' (Browser-Modus)' : ''}`;
+    if (connecting) return 'Verbinde...';
+    if (recording) return isPushToTalk ? 'Loslassen zum Senden' : 'Mikrofon aktiv — Klicken zum Beenden';
+    return isPushToTalk ? 'Gedrückt halten zum Sprechen' : 'Spracheingabe starten';
   };
 
   const getIcon = () => {
     if (isSpeaking) {
       return <Volume2 className={cn(iconSizes[size], 'text-primary animate-pulse')} />;
     }
-    if (isListening) {
+    if (recording) {
       return <Mic className={cn(iconSizes[size], 'text-white')} />;
     }
     return <Mic className={cn(iconSizes[size], error ? 'text-destructive' : 'text-muted-foreground')} />;
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (isSpeaking || connecting) return;
+    e.preventDefault();
+    // Capture pointer so pointerup fires even if cursor leaves button
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    onPressStart?.();
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!recording && !connecting) return;
+    e.preventDefault();
+    (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    onPressEnd?.();
+  };
+
+  const handleClick = () => {
+    if (!isPushToTalk && onToggle) {
+      onToggle();
+    }
   };
 
   return (
@@ -81,19 +126,22 @@ export function VoiceButton({
             variant={variant === 'glass' ? 'ghost' : 'ghost'}
             size="sm"
             className={cn(
-              'relative rounded-full p-0 transition-all duration-300',
+              'relative rounded-full p-0 transition-all duration-300 touch-none',
               sizeClasses[size],
               variant === 'glass' && 'hover:bg-white/10',
-              isListening && 'bg-primary hover:bg-primary/90',
+              (recording || connecting) && 'bg-primary hover:bg-primary/90',
               error && 'border border-destructive/50',
               className
             )}
-            onClick={onToggle}
-            disabled={isProcessing || isSpeaking}
+            onClick={handleClick}
+            onPointerDown={isPushToTalk ? handlePointerDown : undefined}
+            onPointerUp={isPushToTalk ? handlePointerUp : undefined}
+            onPointerCancel={isPushToTalk ? handlePointerUp : undefined}
+            disabled={isSpeaking}
             title={getTooltipText()}
           >
-            {/* Pulse rings when listening */}
-            {isListening && !isProcessing && (
+            {/* Pulse rings when recording */}
+            {recording && !connecting && (
               <>
                 <span
                   className="absolute inset-0 rounded-full bg-primary/30 animate-ping"
@@ -106,8 +154,8 @@ export function VoiceButton({
               </>
             )}
 
-            {/* Processing indicator */}
-            {isProcessing && (
+            {/* Connecting indicator */}
+            {connecting && (
               <span
                 className="absolute inset-0 rounded-full bg-primary/20 animate-pulse"
                 style={{ animationDuration: '0.8s' }}
@@ -120,7 +168,7 @@ export function VoiceButton({
             </span>
             
             {/* Browser fallback indicator */}
-            {useBrowserFallback && isListening && (
+            {useBrowserFallback && recording && (
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full" title="Browser-Modus" />
             )}
           </Button>
