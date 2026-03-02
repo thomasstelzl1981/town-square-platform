@@ -15,6 +15,7 @@
     "ENG-VVSTEUER": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/vvSteuer/*", "reason": "Production freeze" },
     "ENG-KONTOMATCH": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/kontoMatch/*", "reason": "Production freeze" },
     "ENG-MKTDIR": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/marketDirectory/*", "reason": "Production freeze" },
-    "ENG-SLC": { "frozen": false, "frozen_at": null, "path": "src/engines/slc/*", "reason": "New engine — Phase 1 SLC Backbone" }
+    "ENG-SLC": { "frozen": false, "frozen_at": null, "path": "src/engines/slc/*", "reason": "New engine — Phase 1 SLC Backbone" },
+    "ENG-FDC": { "frozen": false, "frozen_at": null, "path": "src/engines/fdc/*", "reason": "New engine — Wave 1 FDC Backbone" }
   }
 }

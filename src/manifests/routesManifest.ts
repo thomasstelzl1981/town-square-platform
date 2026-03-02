@@ -545,6 +545,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "darlehen", component: "FinanzenDarlehen", title: "Darlehen" },
         { path: "abonnements", component: "FinanzenAbonnements", title: "Abonnements" },
         { path: "vorsorgedokumente", component: "FinanzenVorsorgedokumente", title: "Testament & Vollmacht" },
+        { path: "kontrolle", component: "FinanzenKontrolle", title: "Kontrolle" },
       ],
     },
     "MOD-19": {
