@@ -133,7 +133,10 @@ export function TLCWidget() {
                 {cat === 'payment' ? 'Zahlung' : 
                  cat === 'rent_increase' ? 'Erhöhung' : 
                  cat === 'maintenance' ? 'Wartung' :
-                 cat === 'deposit' ? 'Kaution' : cat} ({count})
+                 cat === 'deposit' ? 'Kaution' :
+                 cat === 'move_in' ? 'Einzug' :
+                 cat === 'move_out' ? 'Auszug' :
+                 cat === 'meter_reading' ? 'Zähler' : cat} ({count})
               </span>
             ))}
           </div>
