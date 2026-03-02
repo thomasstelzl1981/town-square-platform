@@ -23810,6 +23810,10 @@ export type Database = {
         }[]
       }
       get_active_tenant_mode: { Args: never; Returns: string }
+      get_finance_request_tenant_id: {
+        Args: { p_request_id: string }
+        Returns: string
+      }
       get_tiles_for_role:
         | {
             Args: { _role: Database["public"]["Enums"]["membership_role"] }

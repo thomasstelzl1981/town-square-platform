@@ -39,6 +39,7 @@ async function writeFLCEvent(
     finance_request_id: string;
     finance_mandate_id?: string | null;
     event_type: string;
+    phase?: string | null;
     event_source: string;
     idempotency_key: string;
     correlation_key?: string | null;
@@ -52,6 +53,7 @@ async function writeFLCEvent(
         finance_request_id: params.finance_request_id,
         finance_mandate_id: params.finance_mandate_id || null,
         event_type: params.event_type,
+        phase: params.phase || null,
         actor_type: 'system',
         event_source: params.event_source,
         idempotency_key: params.idempotency_key,
@@ -151,6 +153,7 @@ serve(async (req) => {
         finance_request_id: financeRequestId,
         finance_mandate_id: mandateId,
         event_type: 'manager.accepted',
+        phase: 'accepted_by_manager',
         event_source: 'edge_fn:sot-finance-manager-notify',
         idempotency_key: `manager_accepted:${mandateId}:${managerId}`,
         correlation_key: publicId,
@@ -167,6 +170,7 @@ serve(async (req) => {
         finance_request_id: financeRequestId,
         finance_mandate_id: mandateId,
         event_type: 'email.customer_intro_sent',
+        phase: 'intro_emails_sent',
         event_source: 'edge_fn:sot-finance-manager-notify',
         idempotency_key: `email_customer_intro:${financeRequestId}`,
         correlation_key: publicId,
@@ -265,6 +269,7 @@ serve(async (req) => {
         finance_request_id: financeRequestId,
         finance_mandate_id: mandateId,
         event_type: 'email.manager_confirm_sent',
+        phase: 'intro_emails_sent',
         event_source: 'edge_fn:sot-finance-manager-notify',
         idempotency_key: `email_manager_confirm:${mandateId}`,
         correlation_key: publicId,
@@ -326,6 +331,7 @@ serve(async (req) => {
         finance_request_id: financeRequestId,
         finance_mandate_id: mandateId,
         event_type: 'commission.terms_accepted',
+        phase: 'commission_terms_ready',
         event_source: 'edge_fn:sot-finance-manager-notify',
         idempotency_key: `commission_terms:${mandateId}`,
         correlation_key: publicId,
