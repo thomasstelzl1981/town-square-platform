@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { ArrowLeft, Home, Euro, FileText, Users, Save, Clock, CheckCircle, XCircle, MapPin, Maximize2, Calendar, Building2, Loader2, ImageIcon, Map } from 'lucide-react';
 import { LoadingState } from '@/components/shared/LoadingState';
+import { DictationButton } from '@/components/shared/DictationButton';
 import { UnitStatusBadge } from '@/components/projekte';
 import { cn } from '@/lib/utils';
 import type { DevProjectUnit, DevProjectReservation } from '@/types/projekte';
@@ -471,7 +472,10 @@ function RealUnitDetailPage() {
               <Separator />
 
               <div>
-                <Label>Notizen</Label>
+                <div className="flex items-center gap-1">
+                  <Label>Notizen</Label>
+                  <DictationButton onTranscript={(text) => updateUnit.mutate({ notes: (unit.notes ?? '') + ' ' + text })} />
+                </div>
                 <Textarea 
                   value={unit.notes ?? ''} 
                   onChange={(e) => updateUnit.mutate({ notes: e.target.value || null })}
