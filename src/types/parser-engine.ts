@@ -20,6 +20,7 @@ export type ParserMode =
   | 'person'
   | 'haustier'
   | 'kontakt'
+  | 'zinsbestaetigung'
   | 'allgemein';
 
 /** Legacy mode aliases for backwards compatibility */

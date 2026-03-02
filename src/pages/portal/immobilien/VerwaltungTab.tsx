@@ -373,7 +373,7 @@ export function VerwaltungTab() {
                             <VVAnlageVForm
                               taxData={taxData}
                               contextTaxNumber={selectedContext.tax_number || ''}
-                              onSave={(data, taxRef, ownershipPct) => save({ propertyId: taxData.propertyId, data, taxRefNumber: taxRef, ownershipPercent: ownershipPct })}
+                              onSave={(data, overrides, taxRef, ownershipPct) => save({ propertyId: taxData.propertyId, data, overrides, taxRefNumber: taxRef, ownershipPercent: ownershipPct })}
                               isSaving={isSaving}
                             />
                           </div>

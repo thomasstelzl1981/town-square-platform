@@ -21728,6 +21728,12 @@ export type Database = {
           income_other: number | null
           locked_at: string | null
           notes: string | null
+          override_cold_rent: number | null
+          override_grundsteuer: number | null
+          override_loan_interest: number | null
+          override_nk_advance: number | null
+          override_nk_nachzahlung: number | null
+          override_non_recoverable: number | null
           property_id: string
           relative_rental: boolean | null
           special_afa_amount: number | null
@@ -21756,6 +21762,12 @@ export type Database = {
           income_other?: number | null
           locked_at?: string | null
           notes?: string | null
+          override_cold_rent?: number | null
+          override_grundsteuer?: number | null
+          override_loan_interest?: number | null
+          override_nk_advance?: number | null
+          override_nk_nachzahlung?: number | null
+          override_non_recoverable?: number | null
           property_id: string
           relative_rental?: boolean | null
           special_afa_amount?: number | null
@@ -21784,6 +21796,12 @@ export type Database = {
           income_other?: number | null
           locked_at?: string | null
           notes?: string | null
+          override_cold_rent?: number | null
+          override_grundsteuer?: number | null
+          override_loan_interest?: number | null
+          override_nk_advance?: number | null
+          override_nk_nachzahlung?: number | null
+          override_non_recoverable?: number | null
           property_id?: string
           relative_rental?: boolean | null
           special_afa_amount?: number | null

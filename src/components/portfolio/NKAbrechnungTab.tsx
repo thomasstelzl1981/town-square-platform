@@ -9,6 +9,7 @@
  */
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,9 +23,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Loader2, CheckCircle2, AlertTriangle, FileDown, FolderOpen,
-  Calculator, Send, Save, FileText, Home, User, Calendar, Info, Banknote, Lock
+  Calculator, Send, Save, FileText, Home, User, Calendar, Info, Banknote, Lock, Lightbulb, X
 } from 'lucide-react';
 import { useNKAbrechnung } from '@/hooks/useNKAbrechnung';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { WorkflowStepProgress, type WorkflowStep } from '@/components/shared/WorkflowStepProgress';
 
