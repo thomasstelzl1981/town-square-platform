@@ -1,48 +1,46 @@
 
 
-# Analyse: Verkehrswert-Mismatch zwischen Zuhause (MOD-20) und Finanzanalyse (MOD-18)
+# Spracheingabe: Sinnvolle Felder — Bestandsaufnahme und Empfehlung
 
-## Befund
+## Aktueller Stand
 
-Die Datenpipeline ist grundsaetzlich korrekt verdrahtet:
+Bereits mit DictationButton ausgestattet (9 Stellen):
+- Armstrong Chat, ChatPanel, ComposeEmailDialog (E-Mail Body)
+- CampaignWizard (Kampagnen-Nachricht)
+- ClaimCreateDialog (Schadensbeschreibung)
+- ServiceCaseCreateInline (Sanierungsbeschreibung)
+- ScopeDefinitionPanel (Sanierungsumfang + Ausschreibungstext)
+- DeliveryTab (Praesentationsnotizen)
+- KontakteTab (Kontakt-Notizen)
+- MietyPortalPage (WhatsApp/E-Mail/Uebersetzer)
+- TenderDraftPanel (Zusaetzliche Hinweise)
 
-```text
-miety_homes.market_value (DB)
-  → useFinanzberichtData (SELECT id, name, market_value, ...)
-    → calcAssets() → homeValue (Summe aller market_value)
-    → buildPropertyList() → marketValue pro Zeile
-      → FinanzberichtSection (Tabelle "Immobilienaufstellung")
-```
+## Fehlende Felder — hoher Mehrwert
 
-**Das Problem liegt nicht in der Pipeline, sondern in fehlenden Daten:**
+Diese Felder haben grosse Textareeas ohne Spracheingabe, wo User viel tippen muessen:
 
-Die DB zeigt, dass mehrere Eigenheim-Eintraege `market_value = NULL` haben. In der Finanzanalyse wird `h.market_value || 0` gerechnet, d.h. diese Immobilien erscheinen zwar in der Liste (weil `ownership_type = 'eigentum'`), aber mit **0 EUR Verkehrswert**.
+| Nr | Modul | Datei | Feld | Begruendung |
+|----|-------|-------|------|-------------|
+| 1 | **Verkauf (MOD-06)** | `ExposeDetail.tsx` | Objektbeschreibung fuer Expose | Sehr langer Freitext, oft mehrere Absaetze |
+| 2 | **Akquise (MOD-12)** | `AkquiseMandate.tsx` | Mandats-Freitext (Suchprofil) | Komplexe Anforderungen muendlich viel einfacher |
+| 3 | **Akquise (MOD-12)** | `AkquiseMandate.tsx` | E-Mail-Body an Anbieter | Laengere E-Mail-Texte |
+| 4 | **Akquise (MOD-12)** | `ActivityLogPanel.tsx` | Aktivitaetsbeschreibung | "Was wurde besprochen?" — typischer Diktier-Fall |
+| 5 | **Akquise (MOD-12)** | `InteresseDialog.tsx` | Nachricht an Anbieter | Persoenliche Nachrichten |
+| 6 | **Projekte (MOD-13)** | `LandingPageTab.tsx` | Projektbeschreibung | Marketingtext, mehrere Saetze |
+| 7 | **Projekte (MOD-13)** | `UnitDetailPage.tsx` | Einheit-Notizen | Freitext-Notizen |
+| 8 | **Immobilienakte (MOD-04)** | `EditableAddressBlock.tsx` | Lagebeschreibung | Strukturierte Beschreibung zu Lage und Objekt |
+| 9 | **Briefgenerator (MOD-02)** | `BriefTab.tsx` | Brief-Body | Der laengste Freitext im System |
 
-### Ursachen fuer fehlende market_value
+## Zusammenfassung
 
-1. **Auto-Create-Pfad**: `UebersichtTile.tsx` (Z. 92-102) erstellt Homes automatisch mit nur `name, address, city, ownership_type, property_type` — **ohne market_value**.
+Ihre genannten Bereiche (Armstrong, Brief, E-Mail, Sanierung) sind bereits abgedeckt. Die groessten Luecken sehe ich bei:
 
-2. **Kein Inline-Edit im Dossier**: `BuildingDetailsSection` zeigt den Verkehrswert nur **read-only** an. Um ihn zu aendern, muss der User den "Bearbeiten"-Button finden, der das gesamte `MietyCreateHomeForm` oeffnet — nicht offensichtlich.
+1. **Expose-Objektbeschreibung** (Verkauf) — oft 200+ Woerter
+2. **Akquise-Mandate** — komplexe Suchprofile muendlich viel natuerlicher
+3. **Briefgenerator-Body** — der laengste Freitext, hat noch keinen DictationButton
+4. **Lagebeschreibung** (Immobilienakte) — strukturierter Text ueber Mikrolage
 
-3. **Kein Hinweis auf fehlende Daten**: Wenn market_value null ist, zeigt die Finanzanalyse still `0 EUR` an, ohne Warnung dass der Wert fehlt.
+Insgesamt 9 neue DictationButton-Integrationen. Alle folgen dem gleichen Muster: `<DictationButton onTranscript={(text) => setState(prev => prev + ' ' + text)} />` neben dem Label. Dazu Update des `voiceIntegrationManifest.ts`.
 
-## Vorgeschlagene Fixes
-
-### Fix 1: BuildingDetailsSection editierbar machen
-Den Verkehrswert im Dossier direkt editierbar machen (Inline-Input statt nur Anzeige). Beim Verlassen des Feldes wird `miety_homes.market_value` per `.update()` gespeichert.
-
-### Fix 2: Finanzanalyse — fehlende Werte kennzeichnen
-In der Immobilienaufstellungs-Tabelle: wenn `marketValue === 0` und die Immobilie eigengenutzt ist, statt "0 EUR" einen Hinweis zeigen wie "— (nicht hinterlegt)" mit Link zum Dossier.
-
-### Fix 3: Fallback-Schaetzung (optional)
-Wenn `market_value` null ist, koennte man als Fallback `purchase_price` verwenden (falls vorhanden). Allerdings haben Zuhause-Eintraege keinen `purchase_price` — nur Portfolio-Properties. Daher ist der beste Ansatz: den User zur Eingabe auffordern.
-
-## Aenderungen
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/pages/portal/miety/components/BuildingDetailsSection.tsx` | Verkehrswert-Feld editierbar machen (Inline-Save) |
-| `src/components/finanzanalyse/FinanzberichtSection.tsx` | "nicht hinterlegt" Hinweis bei fehlenden Werten |
-
-Kein Engine-Change noetig — die Berechnung ist korrekt, nur die Daten fehlen.
+Soll ich alle 9 Felder in einem Rutsch implementieren?
 
