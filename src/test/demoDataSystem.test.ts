@@ -19,7 +19,7 @@ import { isDemoId } from '@/engines/demoData/engine';
 
 describe('Golden Path Registry', () => {
   it('should contain exactly 17 processes', () => {
-    expect(GOLDEN_PATH_PROCESSES).toHaveLength(18);
+    expect(GOLDEN_PATH_PROCESSES).toHaveLength(17);
   });
 
   it('every process should have a unique ID', () => {
@@ -74,7 +74,7 @@ describe('Demo Toggle Logic', () => {
     const defaults: Record<string, boolean> = {};
     GOLDEN_PATH_PROCESSES.forEach(p => { defaults[p.id] = true; });
     expect(Object.values(defaults).every(Boolean)).toBe(true);
-    expect(Object.keys(defaults)).toHaveLength(18);
+    expect(Object.keys(defaults)).toHaveLength(17);
   });
 
   it('toggle OFF state: all demos should be OFF', () => {
@@ -168,8 +168,8 @@ describe('Demo ID Registry — DB ID Matching', () => {
 
   it('ALL_DEMO_IDS should contain vehicle IDs matching DB', () => {
     const dbVehicleIds = [
-      '00000000-0000-4000-a000-000000000301',
-      '00000000-0000-4000-a000-000000000302',
+      'd0000000-0000-4000-a000-000000000301',
+      'd0000000-0000-4000-a000-000000000302',
     ];
     dbVehicleIds.forEach(id => {
       expect(isDemoId(id)).toBe(true);
