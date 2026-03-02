@@ -56,3 +56,7 @@ export * from './tripEngine/spec';
 // Engine 14: Tenancy Lifecycle Controller (ENG-TLC)
 export * from './tenancyLifecycle/engine';
 export * from './tenancyLifecycle/spec';
+
+// Engine 15: Sales Lifecycle Controller (ENG-SLC)
+export * from './slc/engine';
+export * from './slc/spec';

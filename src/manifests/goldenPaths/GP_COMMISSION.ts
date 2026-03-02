@@ -1,8 +1,8 @@
 /**
- * GP-COMMISSION: Cross-Module Golden Path für erfolgsabhängige Systemgebühr
+ * GP-COMMISSION: Cross-Module Golden Path für erfolgsabhängige Provisionsabgabe
  * 
  * Einheitlicher Lifecycle für MOD-09 (Immo), MOD-11 (Finance), MOD-12 (Akquise).
- * SoT erhebt eine nutzungsbasierte Plattformgebühr (25%) — KEINE Provision.
+ * Manager führen 25% ihrer Provisionen als Plattformanteil an SoT ab.
  */
 
 import type { GoldenPathDefinition } from './types';
@@ -12,9 +12,9 @@ export const GP_COMMISSION_GOLDEN_PATH: GoldenPathDefinition = {
   module: 'CROSS-MODULE',
   moduleCode: 'GP-COMMISSION',
   version: '1.0.0',
-  label: 'Systemgebühr — Erfolgsabhängige Plattformgebühr',
+  label: 'Provisionsabgabe — Plattformanteil (25%)',
   description:
-    'Cross-Module Golden Path für die erfolgsabhängige Systemgebühr. Manager erhalten Provisionen aus Mandaten; SoT erhebt 25% als Plattformgebühr für Lead-Zulieferung und Tools.',
+    'Cross-Module Golden Path für die Provisionsabgabe. Manager führen 25% ihrer Provisionen als Plattformanteil an SoT ab.',
 
   required_entities: [
     {
@@ -26,9 +26,9 @@ export const GP_COMMISSION_GOLDEN_PATH: GoldenPathDefinition = {
 
   required_contracts: [
     {
-      key: 'system_fee_agreement',
+      key: 'platform_share_agreement',
       source: 'user_consents',
-      description: 'Systemgebühr-Vereinbarung (25%) durch Manager akzeptiert',
+      description: 'Provisionsvereinbarung (25% Plattformanteil) durch Manager akzeptiert',
     },
   ],
 
@@ -41,12 +41,12 @@ export const GP_COMMISSION_GOLDEN_PATH: GoldenPathDefinition = {
 
   success_state: {
     required_flags: [
-      'system_fee_agreement_accepted',
+      'platform_share_agreement_accepted',
       'deal_closed',
       'commission_record_created',
-      'system_fee_paid',
+      'platform_share_paid',
     ],
-    description: 'Mandat erfolgreich abgeschlossen, Systemgebühr berechnet und bezahlt.',
+    description: 'Mandat erfolgreich abgeschlossen, Plattformanteil berechnet und bezahlt.',
   },
 
   failure_redirect: '/portal',
@@ -110,7 +110,7 @@ export const GP_COMMISSION_GOLDEN_PATH: GoldenPathDefinition = {
     {
       id: 'terms_accepted',
       phase: 3,
-      label: 'Systemgebühr-Vereinbarung akzeptieren',
+      label: 'Provisionsvereinbarung akzeptieren',
       type: 'action',
       task_kind: 'user_task',
       camunda_key: 'GP_COMMISSION_03_TERMS_ACCEPTED',
@@ -119,17 +119,17 @@ export const GP_COMMISSION_GOLDEN_PATH: GoldenPathDefinition = {
       ],
       completion: [
         {
-          key: 'system_fee_agreement_accepted',
+          key: 'platform_share_agreement_accepted',
           source: 'user_consents',
           check: 'exists',
-          description: 'Systemgebühr-Vereinbarung wurde akzeptiert',
+          description: 'Provisionsvereinbarung wurde akzeptiert',
         },
       ],
       on_rejected: {
         ledger_event: 'commission.agreement.rejected',
         status_update: 'rejected',
         recovery_strategy: 'abort',
-        description: 'Manager lehnt Systemgebühr-Vereinbarung ab — kein Mandat möglich',
+        description: 'Manager lehnt Provisionsvereinbarung ab — kein Mandat möglich',
       },
     },
 
@@ -143,7 +143,7 @@ export const GP_COMMISSION_GOLDEN_PATH: GoldenPathDefinition = {
       camunda_key: 'GP_COMMISSION_04_DEAL_CLOSED',
       preconditions: [
         {
-          key: 'system_fee_agreement_accepted',
+          key: 'platform_share_agreement_accepted',
           source: 'user_consents',
           description: 'Vereinbarung muss akzeptiert sein',
         },
@@ -162,7 +162,7 @@ export const GP_COMMISSION_GOLDEN_PATH: GoldenPathDefinition = {
     {
       id: 'system_fee_invoiced',
       phase: 5,
-      label: 'Systemgebühr berechnet und fakturiert',
+      label: 'Plattformanteil berechnet und fakturiert',
       type: 'system',
       task_kind: 'service_task',
       camunda_key: 'GP_COMMISSION_05_INVOICED',
@@ -184,7 +184,7 @@ export const GP_COMMISSION_GOLDEN_PATH: GoldenPathDefinition = {
     {
       id: 'system_fee_paid',
       phase: 6,
-      label: 'Systemgebühr bezahlt',
+      label: 'Plattformanteil bezahlt',
       type: 'system',
       task_kind: 'wait_message',
       camunda_key: 'GP_COMMISSION_06_PAID',
@@ -197,7 +197,7 @@ export const GP_COMMISSION_GOLDEN_PATH: GoldenPathDefinition = {
       ],
       completion: [
         {
-          key: 'system_fee_paid',
+          key: 'platform_share_paid',
           source: 'commissions',
           check: 'equals',
           value: 'paid',
@@ -209,7 +209,7 @@ export const GP_COMMISSION_GOLDEN_PATH: GoldenPathDefinition = {
         status_update: 'overdue',
         recovery_strategy: 'manual_review',
         escalate_to: 'Z1',
-        description: 'Systemgebühr-Zahlung nicht innerhalb Zahlungsfrist eingegangen',
+        description: 'Plattformanteil-Zahlung nicht innerhalb Zahlungsfrist eingegangen',
       },
     },
   ],
