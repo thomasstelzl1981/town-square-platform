@@ -24,6 +24,7 @@ async function writeFLCEvent(
     finance_request_id: string;
     finance_mandate_id?: string | null;
     event_type: string;
+    phase?: string | null;
     event_source: string;
     idempotency_key: string;
     correlation_key?: string | null;
@@ -37,6 +38,7 @@ async function writeFLCEvent(
         finance_request_id: params.finance_request_id,
         finance_mandate_id: params.finance_mandate_id || null,
         event_type: params.event_type,
+        phase: params.phase || null,
         actor_type: 'system',
         event_source: params.event_source,
         idempotency_key: params.idempotency_key,
@@ -49,6 +51,39 @@ async function writeFLCEvent(
   } catch (e) {
     console.error(`[FLC] Event write exception (${params.event_type}):`, e);
   }
+}
+
+// ─── Fix #4: Safe tenant resolution ─────────────────────────
+// Uses ENV variable or safe slug-based upsert (no select-then-insert race)
+async function resolveZ3TenantId(supabase: any): Promise<string> {
+  // Prefer explicit ENV for deterministic tenant mapping
+  const envTenantId = Deno.env.get('ZONE1_PUBLIC_TENANT_ID');
+  if (envTenantId) {
+    return envTenantId;
+  }
+
+  // Fallback: safe upsert on unique slug (no race condition)
+  const slug = 'futureroom-website';
+  const { data, error } = await supabase
+    .from('organizations')
+    .upsert(
+      { name: 'FutureRoom Website', org_type: 'internal', slug },
+      { onConflict: 'slug', ignoreDuplicates: true }
+    )
+    .select('id')
+    .single();
+
+  if (error) {
+    // If upsert fails (e.g. conflict), select existing
+    const { data: existing } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug', slug)
+      .single();
+    if (existing) return existing.id;
+    throw new Error(`Cannot resolve Z3 tenant: ${error.message}`);
+  }
+  return data.id;
 }
 
 function buildConfirmationEmailHtml(params: {
@@ -141,28 +176,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Determine source
     const requestSource = source || 'zone3_quick';
 
-    // We need a tenant_id. Use the platform default tenant for website submissions.
-    let tenantId: string;
-    const { data: existingOrg } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('name', 'FutureRoom Website')
-      .maybeSingle();
-
-    if (existingOrg) {
-      tenantId = existingOrg.id;
-    } else {
-      const { data: newOrg, error: orgError } = await supabase
-        .from('organizations')
-        .insert({ name: 'FutureRoom Website', org_type: 'internal', slug: 'futureroom-website' })
-        .select('id')
-        .single();
-      if (orgError) throw orgError;
-      tenantId = newOrg.id;
-    }
+    // Fix #4: Safe tenant resolution (no race condition, ENV-first)
+    const tenantId = await resolveZ3TenantId(supabase);
 
     // Generate public_id
     const publicId = `SOT-F-${Date.now().toString(36).toUpperCase()}`;
@@ -207,10 +224,11 @@ Deno.serve(async (req) => {
 
     if (frError) throw frError;
 
-    // ── FLC Event: CASE_CREATED ──────────────────────────────────
+    // ── FLC Event: CASE_CREATED (with phase field for stuck-clock) ──
     await writeFLCEvent(supabase, {
       finance_request_id: fr.id,
       event_type: 'case.created',
+      phase: 'intake_received',
       event_source: 'edge_fn:sot-futureroom-public-submit',
       idempotency_key: `case_created:${fr.id}`,
       correlation_key: publicId,
@@ -275,11 +293,12 @@ Deno.serve(async (req) => {
         console.error('Data room creation error:', uploadError);
       } else {
         console.log(`Data room created at ${dataRoomPath}`);
-        // FLC Event: DATAROOM_LINKED
+        // FLC Event: DATAROOM_LINKED (with phase field)
         await writeFLCEvent(supabase, {
           finance_request_id: fr.id,
           finance_mandate_id: mandate?.id || null,
           event_type: 'dataroom.linked',
+          phase: 'dataroom_linked',
           event_source: 'edge_fn:sot-futureroom-public-submit',
           idempotency_key: `dataroom_linked:${fr.id}`,
           correlation_key: publicId,

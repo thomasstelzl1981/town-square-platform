@@ -5,9 +5,13 @@
  * Edge functions use their own direct inserts for service_role access.
  * 
  * Only persistence + idempotency. NO business logic.
+ * 
+ * v1.1.0: Added `phase` field support for stuck-clock (Fix #2)
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import type { FLCEventType, FLCPhase } from '@/engines/flc/spec';
+import { FLC_EVENT_PHASE_MAP } from '@/engines/flc/spec';
 
 export interface WriteFinanceEventParams {
   finance_request_id: string;
@@ -34,9 +38,17 @@ export interface WriteFinanceEventResult {
 /**
  * Writes a single finance lifecycle event with idempotency support.
  * If idempotency_key is provided and already exists, the insert is silently skipped.
+ * 
+ * Fix #2: Automatically derives `phase` from event_type via FLC_EVENT_PHASE_MAP
+ *         if not explicitly provided. This enables stuck-clock queries.
  */
 export async function writeFinanceEvent(params: WriteFinanceEventParams): Promise<WriteFinanceEventResult> {
   try {
+    // Auto-derive phase from event type if not explicitly set
+    const derivedPhase = params.phase ??
+      FLC_EVENT_PHASE_MAP[params.event_type as FLCEventType] ??
+      null;
+
     const { data, error } = await supabase
       .from('finance_lifecycle_events' as any)
       .insert({
@@ -44,7 +56,7 @@ export async function writeFinanceEvent(params: WriteFinanceEventParams): Promis
         finance_mandate_id: params.finance_mandate_id || null,
         future_room_case_id: params.future_room_case_id || null,
         event_type: params.event_type,
-        phase: params.phase || null,
+        phase: derivedPhase,
         actor_id: params.actor_id || null,
         actor_type: params.actor_type || 'user',
         event_source: params.event_source || null,

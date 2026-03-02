@@ -4,7 +4,11 @@
  * Pure functions implementing FLC logic. NO side effects, NO DB calls, NO UI imports.
  * 
  * @engine ENG-FLC
- * @version 1.0.0
+ * @version 1.1.0
+ * 
+ * Fix #1: bank.decision_received removed from phase map
+ * Fix #2: Stuck-clock uses phase_entered_at (last phase-change), NOT last_event_at
+ * Fix #3: DATAROOM_GATE = completion_score; SUBMISSION_GATE = package_status
  */
 
 import type {
@@ -22,6 +26,7 @@ import {
   FLC_EVENT_PHASE_MAP,
   FLC_STUCK_THRESHOLDS,
   FLC_PLATFORM_SHARE_PCT,
+  FLC_PHASE_CHANGE_EVENTS,
 } from './spec';
 
 // ─── Phase Determination ──────────────────────────────────────
@@ -29,6 +34,7 @@ import {
 /**
  * Determines the current FLC phase from a hydrated case snapshot.
  * Uses actual DB state (not events) for robust phase computation.
+ * Fix #1: approved/declined derived from bank_response, NOT from bank.decision_received event.
  */
 export function determineFLCPhase(snapshot: FLCCaseSnapshot): FLCPhase {
   // Terminal
@@ -40,7 +46,7 @@ export function determineFLCPhase(snapshot: FLCCaseSnapshot): FLCPhase {
   if (snapshot.commission_status === 'invoiced') return 'platform_fee_invoiced';
   if (snapshot.commission_status === 'approved') return 'commission_confirmed';
 
-  // Deal track
+  // Deal track — Fix #1: derived from snapshot, not event
   if (snapshot.bank_response === 'paid_out') return 'paid_out';
   if (snapshot.bank_response === 'signed') return 'signed';
   if (snapshot.bank_response === 'declined') return 'declined';
@@ -52,7 +58,7 @@ export function determineFLCPhase(snapshot: FLCCaseSnapshot): FLCPhase {
   if (snapshot.submission_channel === 'email' && snapshot.submission_status === 'submitted') return 'submitted_bank_email';
   if (snapshot.submission_status === 'ready' || snapshot.package_status === 'ready_for_handoff' || snapshot.package_status === 'complete') return 'bank_submission_ready';
 
-  // Processing track (MOD-11)
+  // Processing track (MOD-11) — Fix #3: docs_complete uses case_status, NOT completion_score
   if (snapshot.case_status === 'docs_complete' || snapshot.case_status === 'ready_to_submit') return 'docs_complete';
   if (snapshot.case_id && snapshot.first_action_at) return 'in_progress';
   if (snapshot.case_id) return 'handoff_to_mod11';
@@ -70,6 +76,7 @@ export function determineFLCPhase(snapshot: FLCCaseSnapshot): FLCPhase {
 
 /**
  * Recovery: Determine phase from event history (for audit/recomputation).
+ * Fix #1: bank.decision_received no longer maps to a phase.
  */
 export function determineFLCPhaseFromEvents(events: { event_type: string; created_at: string }[]): FLCPhase {
   const sorted = [...events].sort(
@@ -82,6 +89,44 @@ export function determineFLCPhaseFromEvents(events: { event_type: string; create
     if (nextPhase) phase = nextPhase;
   }
   return phase;
+}
+
+/**
+ * Fix #2: Find the timestamp when the current phase was entered.
+ * Scans events in reverse chronological order to find the last phase-change event.
+ * Returns its created_at, NOT the last event's timestamp.
+ */
+export function findPhaseEnteredAt(
+  events: { event_type: string; created_at: string; phase?: string | null }[],
+  currentPhase: FLCPhase,
+  fallbackDate: string | null
+): string {
+  // Strategy 1: Find last event whose mapped phase === currentPhase
+  const sorted = [...events].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  for (const evt of sorted) {
+    // Check via explicit phase field on the event
+    if (evt.phase === currentPhase) {
+      return evt.created_at;
+    }
+    // Check via event→phase mapping
+    const mappedPhase = FLC_EVENT_PHASE_MAP[evt.event_type as FLCEventType];
+    if (mappedPhase === currentPhase) {
+      return evt.created_at;
+    }
+  }
+
+  // Strategy 2: Find last phase-changing event (any phase change)
+  for (const evt of sorted) {
+    if (FLC_PHASE_CHANGE_EVENTS.has(evt.event_type as FLCEventType)) {
+      return evt.created_at;
+    }
+  }
+
+  // Fallback: submitted_at or now
+  return fallbackDate || new Date().toISOString();
 }
 
 // ─── Gate Evaluation ──────────────────────────────────────────
@@ -103,12 +148,14 @@ function evaluateGates(snapshot: FLCCaseSnapshot): FLCGateResult[] {
     message: (snapshot.schufa_consent && snapshot.data_correct_confirmed) ? 'Einwilligungen erteilt' : 'SCHUFA-Einwilligung oder Datenbestätigung fehlt',
   });
 
-  // Dataroom Gate
+  // Fix #3: DATAROOM_GATE = Selbstauskunft completion (NOT document completeness)
   const completionOk = (snapshot.completion_score ?? 0) >= 80;
   gates.push({
     code: 'DATAROOM_GATE' as FLCGateCode,
     passed: completionOk,
-    message: completionOk ? `Selbstauskunft ${snapshot.completion_score}% vollständig` : `Selbstauskunft nur ${snapshot.completion_score ?? 0}% (mind. 80%)`,
+    message: completionOk
+      ? `Selbstauskunft ${snapshot.completion_score}% vollständig`
+      : `Selbstauskunft nur ${snapshot.completion_score ?? 0}% (mind. 80%)`,
   });
 
   // Assignment Gate
@@ -126,12 +173,12 @@ function evaluateGates(snapshot: FLCCaseSnapshot): FLCGateResult[] {
     message: commissionOk ? `Plattformanteil ${FLC_PLATFORM_SHARE_PCT}% korrekt` : `Plattformanteil ${snapshot.platform_share_pct ?? 'n/a'}% (soll: ${FLC_PLATFORM_SHARE_PCT}%)`,
   });
 
-  // Submission Gate
+  // Fix #3: SUBMISSION_GATE = finance_packages.status (document completeness for bank)
   const submissionReady = snapshot.package_status === 'complete' || snapshot.package_status === 'ready_for_handoff';
   gates.push({
     code: 'SUBMISSION_GATE' as FLCGateCode,
     passed: submissionReady,
-    message: submissionReady ? 'Bankpaket vollständig' : 'Bankpaket unvollständig',
+    message: submissionReady ? 'Bankpaket vollständig' : 'Bankpaket unvollständig oder fehlt',
   });
 
   // Settlement Gate
@@ -149,11 +196,11 @@ function evaluateGates(snapshot: FLCCaseSnapshot): FLCGateResult[] {
 
 function computeNextActions(phase: FLCPhase, snapshot: FLCCaseSnapshot, gates: FLCGateResult[]): FLCNextAction[] {
   const actions: FLCNextAction[] = [];
-
   const blocked = gates.filter(g => !g.passed);
 
   // Phase-specific actions
   if (phase === 'intake_received' || phase === 'validation_ok') {
+    // Fix #3: DATAROOM_GATE → RA_REQUEST_MISSING_FIELDS (Selbstauskunft Pflichtfelder)
     if (blocked.some(g => g.code === 'DATAROOM_GATE')) {
       actions.push({ code: 'RA_REQUEST_MISSING_FIELDS', label: 'Fehlende Pflichtfelder anfordern', owner: 'system', priority: 'high' });
     }
@@ -177,8 +224,13 @@ function computeNextActions(phase: FLCPhase, snapshot: FLCCaseSnapshot, gates: F
   }
 
   if (phase === 'in_progress' || phase === 'handoff_to_mod11') {
-    if (blocked.some(g => g.code === 'DATAROOM_GATE')) {
+    // Fix #3: SUBMISSION_GATE → RA_REQUEST_MISSING_DOCUMENTS (Bankpaket/Dokumente)
+    if (blocked.some(g => g.code === 'SUBMISSION_GATE')) {
       actions.push({ code: 'RA_REQUEST_MISSING_DOCUMENTS', label: 'Fehlende Dokumente anfordern', owner: 'manager', priority: 'medium' });
+    }
+    // DATAROOM_GATE still triggers field requests during processing
+    if (blocked.some(g => g.code === 'DATAROOM_GATE')) {
+      actions.push({ code: 'RA_REQUEST_MISSING_FIELDS', label: 'Selbstauskunft vervollständigen', owner: 'customer', priority: 'medium' });
     }
   }
 
@@ -201,6 +253,10 @@ function computeNextActions(phase: FLCPhase, snapshot: FLCCaseSnapshot, gates: F
 
 // ─── Stuck Detection ──────────────────────────────────────────
 
+/**
+ * Fix #2: Stuck detection uses phase_entered_at (timestamp of last PHASE CHANGE),
+ * NOT last_event_at. Non-phase-change events (like doc.uploaded) must NOT reset the stuck clock.
+ */
 export function isFLCStuck(
   currentPhase: FLCPhase,
   phaseEnteredAt: string | Date,
@@ -238,6 +294,9 @@ export function getFLCPhaseProgress(phase: FLCPhase): number {
 /**
  * Computes the full FLC state from a hydrated case snapshot.
  * Pure function — no side effects, fully deterministic.
+ * 
+ * Fix #2: Uses snapshot.phase_entered_at for stuck detection,
+ *         which must be the timestamp of the last PHASE CHANGE, not last event.
  */
 export function computeFLCState(
   snapshot: FLCCaseSnapshot,
@@ -248,7 +307,8 @@ export function computeFLCState(
   const blockingGates = gates.filter(g => !g.passed);
   const nextActions = computeNextActions(phase, snapshot, gates);
 
-  const phaseEnteredAt = snapshot.last_event_at || snapshot.submitted_at || now.toISOString();
+  // Fix #2: phase_entered_at is the stuck-clock reference, NOT last_event_at
+  const phaseEnteredAt = snapshot.phase_entered_at || snapshot.submitted_at || now.toISOString();
   const stuck = isFLCStuck(phase, phaseEnteredAt, now);
 
   return {

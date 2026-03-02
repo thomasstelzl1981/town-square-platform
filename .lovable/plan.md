@@ -1,5 +1,5 @@
 
-## FLC Wave 1 — Financing Lifecycle Controller (Implementierungsstand)
+## FLC Wave 1.5 — Financing Lifecycle Controller (Implementierungsstand)
 
 ### ✅ ERLEDIGT
 
@@ -30,22 +30,40 @@
    - FLC Events: `manager.accepted`, `email.customer_intro_sent`, `email.manager_confirm_sent`, `commission.terms_accepted`
    - Vollständige Idempotenz: Duplicate-Calls senden keine doppelten E-Mails
 
-### ⬜ NÄCHSTE RUNDE (W1 Fortsetzung)
+7. **Fix #1: Phase-Mapping** — `bank.decision_received` aus `FLC_EVENT_PHASE_MAP` entfernt
+   - approved/declined wird aus Snapshot abgeleitet (future_room_cases.bank_response)
 
-7. **Cron Patrol: `sot-flc-lifecycle`** — Edge Function analog `sot-slc-lifecycle`
-   - Täglich 03:00 UTC, Stuck-Detection, SLA-Breach Events
-   - KI-Summary via Gemini 2.5 Pro
-   - `process_health_log` Eintrag
+8. **Fix #2: Stuck-Clock** — `phase_entered_at` statt `last_event_at`
+   - `FLC_PHASE_CHANGE_EVENTS` Set + `findPhaseEnteredAt()` Funktion
+   - Snapshot erweitert um `phase_entered_at` Feld
 
-8. **UI: Finance Desk FLC Integration**
-   - `useFLCMonitorCases()` Hook
-   - Finance Desk "Fälle" Tab: Timeline aus `finance_lifecycle_events`
-   - Finance Desk "Monitor" Tab: Stuck/SLA-Breach Alerts
-   - Optional: MOD-07 StatusTab computed state
+9. **Fix #3: DATAROOM_GATE vs Docs** — Sauber getrennt
+   - DATAROOM_GATE = completion_score ≥ 80% (Selbstauskunft)
+   - SUBMISSION_GATE = finance_packages.status (Dokumente/Bankpaket)
+   - RA_REQUEST_MISSING_FIELDS → DATAROOM_GATE, RA_REQUEST_MISSING_DOCUMENTS → SUBMISSION_GATE
 
-9. **ENGINE_REGISTRY.md** — ENG-FLC Eintrag hinzufügen
+10. **Fix #4: Tenant-Handling** — `sot-futureroom-public-submit`
+    - ENV-first (ZONE1_PUBLIC_TENANT_ID), Fallback: slug-basiertes upsert (race-safe)
 
-10. **engines_freeze.json** — ENG-FLC Eintrag (frozen: false)
+11. **Fix #5: Conventions SSOT** — `src/engines/flc/conventions.ts`
+    - Event sources, Idempotency-Key-Schema, Actor types als typisierte Konstanten
+
+12. **Cron Patrol: `sot-flc-lifecycle`** — Edge Function
+    - Targeted scan offener Fälle, Stuck/SLA-Breach mit Tages-Idempotenz
+    - phase_entered_at aus letztem Phase-Change-Event (Fix #2 konform)
+
+13. **UI: Finance Desk FLC Integration**
+    - `useFLCMonitorCases()` Hook mit computeFLCState client-side
+    - FinanceDeskFaellePage: Expandable rows mit Timeline + Gates + NextActions
+    - FinanceDeskMonitorPage: KPI-Cards + Stuck/SLA-Breach-Listen + Pipeline-Funnel
+
+### ⬜ NÄCHSTE RUNDE
+
+14. **ENGINE_REGISTRY.md** — ENG-FLC Eintrag hinzufügen
+
+15. **engines_freeze.json** — ENG-FLC Eintrag (frozen: false)
+
+16. **Cron Schedule** — pg_cron Job für sot-flc-lifecycle (täglich 03:00 UTC)
 
 ### ⬜ WELLE 2 (nach W1 Stabilisierung)
 - Repair Action Queue + UI
