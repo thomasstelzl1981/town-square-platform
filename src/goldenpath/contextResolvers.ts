@@ -612,3 +612,69 @@ const gpClientAssignmentResolver: ContextResolver = async ({ tenantId, entityId:
 
 registerContextResolver('GP-CLIENT-ASSIGNMENT', gpClientAssignmentResolver);
 
+// ═══════════════════════════════════════════════════════════════
+// GP-VERKAUF Resolver (Sales Lifecycle Controller)
+// ═══════════════════════════════════════════════════════════════
+
+const gpVerkaufResolver: ContextResolver = async ({ tenantId, entityId: caseId }) => {
+  const flags: Record<string, boolean> = {
+    user_authenticated: true,
+    tenant_exists: !!tenantId,
+    case_exists: false,
+    mandate_active: false,
+    published: false,
+    inquiry_received: false,
+    reserved: false,
+    contract_drafted: false,
+    notary_scheduled: false,
+    notary_completed: false,
+    handover_done: false,
+    settlement_approved: false,
+    case_closed: false,
+  };
+  if (!tenantId) return flags;
+
+  if (caseId) {
+    const { data: salesCase } = await supabase
+      .from('sales_cases' as never)
+      .select('id, phase, status' as never)
+      .eq('id' as never, caseId)
+      .eq('tenant_id' as never, tenantId)
+      .maybeSingle() as unknown as { data: { id: string; phase: string; status: string } | null };
+
+    if (salesCase) {
+      flags.case_exists = true;
+      const phase = salesCase.phase;
+      // Progressive flag activation based on SLC phase
+      const PHASE_ORDER = [
+        'captured', 'readiness_check', 'mandate_active', 'published',
+        'inquiry', 'reserved', 'finance_submitted', 'contract_draft',
+        'notary', 'handover', 'settlement', 'closed_won', 'closed_lost',
+      ];
+      const phaseIndex = PHASE_ORDER.indexOf(phase);
+
+      flags.mandate_active = phaseIndex >= 2;
+      flags.published = phaseIndex >= 3;
+      flags.inquiry_received = phaseIndex >= 4;
+      flags.reserved = phaseIndex >= 5;
+      flags.contract_drafted = phaseIndex >= 7;
+      flags.notary_scheduled = phaseIndex >= 8;
+      flags.notary_completed = phaseIndex >= 8 && phase !== 'notary';
+      flags.handover_done = phaseIndex >= 9;
+      flags.settlement_approved = phaseIndex >= 10;
+      flags.case_closed = phase === 'closed_won' || phase === 'closed_lost';
+    }
+  } else {
+    // Check if any sales cases exist for tenant
+    const { count } = await supabase
+      .from('sales_cases' as never)
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id' as never, tenantId) as unknown as { count: number | null };
+    flags.case_exists = (count ?? 0) > 0;
+  }
+
+  return flags;
+};
+
+registerContextResolver('GP-VERKAUF', gpVerkaufResolver);
+

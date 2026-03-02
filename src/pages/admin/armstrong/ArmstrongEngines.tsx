@@ -22,7 +22,7 @@ import {
 import { Link } from 'react-router-dom';
 
 type EngineStatus = 'live' | 'partial' | 'planned';
-type EngineCategory = 'calculation' | 'data' | 'ai' | 'infrastructure';
+type EngineCategory = 'calculation' | 'data' | 'ai' | 'infrastructure' | 'orchestration';
 
 interface EngineEntry {
   code: string;
@@ -160,6 +160,46 @@ const ENGINE_REGISTRY: EngineEntry[] = [
     files: ['src/engines/demoData/'],
   },
 
+  // ── Orchestration Engines ──
+  {
+    code: 'ENG-TLC',
+    name: 'Tenancy Lifecycle Controller',
+    category: 'orchestration',
+    module: 'MOD-04/MOD-00',
+    description: 'Orchestrator für Mietverhältnisse: Weekly CRON, State Machine (7 Phasen), Mahnwesen, KI-Summary',
+    status: 'live',
+    capabilities: [
+      'Phase-Tracking (7 Phasen)',
+      'Mahnwesen-Automatisierung',
+      'CRON Weekly (Sun 03:00 UTC)',
+      'KI-Summary (Gemini 2.5 Pro)',
+      'Mietererhöhungs-Check (§558 BGB)',
+      'Kautionsstatus-Prüfung',
+    ],
+    billing: 'Free + KI (1 Credit/Run)',
+    icon: Home,
+    files: ['src/engines/tenancyLifecycle/spec.ts', 'src/engines/tenancyLifecycle/engine.ts', 'supabase/functions/sot-tenancy-lifecycle/'],
+  },
+  {
+    code: 'ENG-SLC',
+    name: 'Sales Lifecycle Controller',
+    category: 'orchestration',
+    module: 'MOD-04/MOD-06/MOD-13',
+    description: 'Cross-Module Event-Layer für Verkaufsabwicklung: 11-Phasen State Machine, Drift- und Stuck-Detection',
+    status: 'partial',
+    capabilities: [
+      '11-Phasen State Machine',
+      'Drift-Detection',
+      'Stuck-Detection',
+      'CRON Daily',
+      'Cross-Zone Event-Layer',
+      'Audit Trail (sales_lifecycle_events)',
+    ],
+    billing: 'Free + KI (1 Credit/Run)',
+    icon: TrendingUp,
+    files: ['src/engines/slc/spec.ts', 'src/engines/slc/engine.ts'],
+  },
+
   // ── Data Engines ──
   {
     code: 'ENG-DOCINT',
@@ -262,6 +302,7 @@ const STATUS_CONFIG: Record<EngineStatus, { label: string; cls: string; icon: ty
 
 const CATEGORY_CONFIG: Record<EngineCategory, { label: string; cls: string }> = {
   calculation: { label: 'Kalkulation', cls: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
+  orchestration: { label: 'Orchestrierung', cls: 'bg-orange-500/10 text-orange-600 border-orange-500/20' },
   data: { label: 'Daten', cls: 'bg-violet-500/10 text-violet-600 border-violet-500/20' },
   ai: { label: 'KI', cls: 'bg-primary/10 text-primary border-primary/20' },
   infrastructure: { label: 'Infrastruktur', cls: 'bg-muted text-muted-foreground border-border' },
@@ -272,7 +313,7 @@ const ArmstrongEngines: React.FC = () => {
   const partialCount = ENGINE_REGISTRY.filter(e => e.status === 'partial').length;
   const plannedCount = ENGINE_REGISTRY.filter(e => e.status === 'planned').length;
 
-  const categories: EngineCategory[] = ['calculation', 'data', 'ai', 'infrastructure'];
+  const categories: EngineCategory[] = ['calculation', 'orchestration', 'data', 'ai', 'infrastructure'];
 
   return (
     <div className="space-y-6">
@@ -423,8 +464,8 @@ const ArmstrongEngines: React.FC = () => {
                 </TableBody>
               </Table>
 
-              {/* Capabilities detail for data/ai engines */}
-              {(cat === 'data' || cat === 'ai') && (
+              {/* Capabilities detail for data/ai/orchestration engines */}
+              {(cat === 'data' || cat === 'ai' || cat === 'orchestration') && (
                 <div className="mt-4 space-y-3">
                   {engines.map((eng) => (
                     <div key={eng.code + '-caps'} className="p-4 rounded-xl border border-border/50 bg-muted/20">

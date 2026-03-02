@@ -144,6 +144,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
 };
 
 const CommProDesk = React.lazy(() => import('@/pages/admin/desks/CommProDesk'));
+const PropertyDeskComponent = React.lazy(() => import('@/pages/admin/desks/PropertyDesk'));
 
 const adminDeskMap: Record<string, React.ComponentType> = {
   'sales-desk': SalesDesk,
@@ -156,9 +157,10 @@ const adminDeskMap: Record<string, React.ComponentType> = {
   'ncore-desk': NcoreDesk as unknown as React.ComponentType,
   'otto-desk': OttoDesk as unknown as React.ComponentType,
   'commpro-desk': CommProDesk as unknown as React.ComponentType,
+  'property-desk': PropertyDeskComponent as unknown as React.ComponentType,
 };
 
-const DESK_PREFIXES = ['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk', 'pet-desk', 'lead-desk', 'service-desk', 'ncore-desk', 'otto-desk', 'commpro-desk'];
+const DESK_PREFIXES = ['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk', 'pet-desk', 'lead-desk', 'service-desk', 'ncore-desk', 'otto-desk', 'commpro-desk', 'property-desk'];
 
 // =============================================================================
 // ZONE 1 ROUTER

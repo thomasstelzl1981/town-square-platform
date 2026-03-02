@@ -205,6 +205,23 @@ export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
       'Anrufprotokoll',
     ],
   },
+  {
+    deskId: 'property-desk',
+    displayName: 'Property Desk',
+    managerModuleCode: 'MOD-04',
+    managerModuleName: 'Immobilien',
+    clientModuleCode: 'MOD-20',
+    clientModuleName: 'Miety',
+    websiteProfileId: '',
+    route: 'property-desk',
+    icon: 'Home',
+    responsibilities: [
+      'Mietverhältnis-Monitoring (TLC)',
+      'Lifecycle-Events & Aufgaben',
+      'Mahnwesen-Governance',
+      'Process Health (CRON)',
+    ],
+  },
 ];
 
 // =============================================================================
