@@ -68,8 +68,23 @@ export function useFLCMonitorCases() {
         return;
       }
 
-      // Fetch events for all request IDs
+      // Fetch finance_packages for SUBMISSION_GATE (A4 fix)
       const requestIds = (requests as any[]).map((r: any) => r.id);
+      
+      let packagesMap: Record<string, string> = {};
+      const { data: packages } = await supabase
+        .from('finance_packages' as any)
+        .select('finance_request_id, status')
+        .in('finance_request_id', requestIds);
+      
+      if (packages) {
+        for (const p of packages as any[]) {
+          packagesMap[p.finance_request_id] = p.status;
+        }
+      }
+
+      // Fetch events for all request IDs
+      // Events already have requestIds from above
       const { data: allEvents } = await supabase
         .from('finance_lifecycle_events' as any)
         .select('id, finance_request_id, event_type, phase, actor_type, event_source, metadata, created_at')
@@ -165,7 +180,7 @@ export function useFLCMonitorCases() {
           completion_score: applicant?.completion_score ?? null,
           schufa_consent: applicant?.schufa_consent ?? null,
           data_correct_confirmed: applicant?.data_correct_confirmed ?? null,
-          package_status: null, // Would need finance_packages join
+          package_status: packagesMap[r.id] || null,
           commission_status: comm?.status || null,
           platform_share_pct: comm?.platform_share_pct ?? null,
           // Fix #2: Compute phase_entered_at from events
