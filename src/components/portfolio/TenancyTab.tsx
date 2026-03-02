@@ -39,6 +39,12 @@ import { TLCApplicantSection } from './tlc/TLCApplicantSection';
 import { TLCContractSection } from './tlc/TLCContractSection';
 import { TLCPaymentPlanSection } from './tlc/TLCPaymentPlanSection';
 import { TLCRentReductionSection } from './tlc/TLCRentReductionSection';
+import { TLCCommunicationSection } from './tlc/TLCCommunicationSection';
+import { TLCPrepaymentSection } from './tlc/TLCPrepaymentSection';
+import { TLCInvoiceSection } from './tlc/TLCInvoiceSection';
+import { TLCServiceProviderSection } from './tlc/TLCServiceProviderSection';
+import { TLCInsuranceSection } from './tlc/TLCInsuranceSection';
+import { TLCReportSection } from './tlc/TLCReportSection';
 
 interface Lease {
   id: string;
@@ -714,7 +720,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
             <TLCRentReductionSection leaseId={activeLeases[0].id} unitId={unitId} />
             <TLCContractSection
               leaseData={activeLeases[0].rent_cold_eur ? {
-                landlordName: '', // filled by user
+                landlordName: '',
                 landlordAddress: '',
                 tenantName: activeLeases[0].tenant_contact ? `${activeLeases[0].tenant_contact.first_name} ${activeLeases[0].tenant_contact.last_name}` : '',
                 propertyAddress: '',
@@ -731,9 +737,29 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
               } : undefined}
               contactId={activeLeases[0].tenant_contact?.id}
             />
+
+            {/* Phase 3: Kommunikation & Finanzen */}
+            <TLCCommunicationSection
+              leaseId={activeLeases[0].id}
+              unitId={unitId}
+              propertyId={propertyId}
+              tenantEmail={activeLeases[0].tenant_contact?.email || undefined}
+              tenantName={activeLeases[0].tenant_contact ? `${activeLeases[0].tenant_contact.first_name} ${activeLeases[0].tenant_contact.last_name}` : undefined}
+            />
+            <TLCPrepaymentSection
+              propertyId={propertyId}
+              leaseId={activeLeases[0].id}
+              currentNkAdvance={activeLeases[0].nk_advance_eur || 0}
+              tenantName={activeLeases[0].tenant_contact ? `${activeLeases[0].tenant_contact.first_name} ${activeLeases[0].tenant_contact.last_name}` : undefined}
+              unitId={unitId}
+            />
+            <TLCInvoiceSection propertyId={propertyId} />
+            <TLCServiceProviderSection propertyId={propertyId} />
+            <TLCInsuranceSection propertyId={propertyId} />
           </>
         )}
         <TLCApplicantSection unitId={unitId} />
+        <TLCReportSection propertyId={propertyId} />
       </div>
 
 

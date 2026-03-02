@@ -32,12 +32,12 @@
 
 | ID | Aufgabe | Status | Prio |
 |----|---------|--------|------|
-| B-020 | Kommunikations-Panel (Template-Versand) via useTenancyCommunication | ⬜ TODO | P1 |
-| B-021 | NK-Vorauszahlungsanpassung UI (§560 BGB) via usePrepaymentAdjustment | ⬜ TODO | P2 |
-| B-022 | Rechnungsprüfung UI (SKR04 + Budget-Check) via useInvoiceVerification | ⬜ TODO | P2 |
-| B-023 | Dienstleister-Verwaltung (Ranking + SLA) via useServiceProviders | ⬜ TODO | P2 |
-| B-024 | Versicherungskoordination (Policen + Claims) via useInsuranceCoordination | ⬜ TODO | P2 |
-| B-025 | Portfolio-Report + CSV-Export via useTenancyReport | ⬜ TODO | P2 |
+| B-020 | Kommunikations-Panel (Template-Versand) via useTenancyCommunication | ✅ DONE | P1 |
+| B-021 | NK-Vorauszahlungsanpassung UI (§560 BGB) via usePrepaymentAdjustment | ✅ DONE | P2 |
+| B-022 | Rechnungsprüfung UI (SKR04 + Budget-Check) via useInvoiceVerification | ✅ DONE | P2 |
+| B-023 | Dienstleister-Verwaltung (Ranking + SLA) via useServiceProviders | ✅ DONE | P2 |
+| B-024 | Versicherungskoordination (Policen + Claims) via useInsuranceCoordination | ✅ DONE | P2 |
+| B-025 | Portfolio-Report + CSV-Export via useTenancyReport | ✅ DONE | P2 |
 
 ## Phase 4 — Edge Function & Engine-Sync + Tests
 
