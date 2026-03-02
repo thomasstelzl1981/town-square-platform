@@ -2,12 +2,17 @@
  * Hook for unified Sales Reservations
  * Replaces both `reservations` (MOD-04) and `dev_project_reservations` (MOD-13)
  * with the unified `sales_reservations` table.
+ * 
+ * Automatically records SLC events on status changes.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import type { SLCEventType, SLCPhase } from '@/engines/slc/spec';
+import { SLC_EVENT_PHASE_MAP } from '@/engines/slc/spec';
+import { isValidTransition } from '@/engines/slc/engine';
 
 export const SALES_RESERVATIONS_KEY = 'sales-reservations';
 
@@ -120,6 +125,43 @@ export function useSalesReservations(options?: {
       .reduce((sum, r) => sum + (r.commission_amount || 0), 0),
   };
 
+  /** Record an SLC event if case_id is available */
+  const recordSLCEvent = async (caseId: string | null | undefined, eventType: SLCEventType, extraPayload?: Record<string, unknown>) => {
+    if (!caseId || !tenantId) return;
+    try {
+      // Get current phase
+      const { data: caseData } = await supabase
+        .from('sales_cases')
+        .select('current_phase')
+        .eq('id', caseId)
+        .single();
+      if (!caseData) return;
+
+      const currentPhase = caseData.current_phase as SLCPhase;
+      const targetPhase = SLC_EVENT_PHASE_MAP[eventType];
+      const phaseAfter = targetPhase && isValidTransition(currentPhase, targetPhase) ? targetPhase : null;
+
+      await supabase.from('sales_lifecycle_events').insert({
+        case_id: caseId,
+        event_type: eventType as string,
+        severity: 'info',
+        phase_before: currentPhase as any,
+        phase_after: (phaseAfter || currentPhase) as any,
+        actor_id: user?.id || null,
+        payload: (extraPayload || {}) as any,
+        tenant_id: tenantId,
+      });
+
+      if (phaseAfter) {
+        await supabase.from('sales_cases')
+          .update({ current_phase: phaseAfter as any, updated_at: new Date().toISOString() })
+          .eq('id', caseId);
+      }
+    } catch (e) {
+      console.warn('[SLC] Event recording failed:', e);
+    }
+  };
+
   const createReservation = useMutation({
     mutationFn: async (input: CreateSalesReservationInput) => {
       if (!tenantId) throw new Error('No tenant selected');
@@ -134,10 +176,15 @@ export function useSalesReservations(options?: {
         .select()
         .single();
       if (error) throw error;
+
+      // Record SLC event
+      await recordSLCEvent(input.case_id, 'deal.reserved', { reservation_id: data.id });
+
       return data as unknown as SalesReservation;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_RESERVATIONS_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['sales-desk-cases'] });
       toast.success('Reservierung erstellt');
     },
     onError: (error: Error) => {
@@ -168,10 +215,24 @@ export function useSalesReservations(options?: {
         .select()
         .single();
       if (error) throw error;
-      return data as unknown as SalesReservation;
+
+      // Record SLC events based on status
+      const reservation = data as unknown as SalesReservation;
+      const slcEventMap: Partial<Record<SalesReservationStatus, SLCEventType>> = {
+        notary_scheduled: 'deal.notary_scheduled',
+        completed: 'deal.notary_completed',
+        cancelled: 'deal.reservation_cancelled',
+      };
+      const slcEvent = slcEventMap[status];
+      if (slcEvent) {
+        await recordSLCEvent(reservation.case_id, slcEvent, { reservation_id: id, status });
+      }
+
+      return reservation;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_RESERVATIONS_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['sales-desk-cases'] });
       toast.success('Status aktualisiert');
     },
     onError: (error: Error) => {
