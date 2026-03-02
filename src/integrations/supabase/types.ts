@@ -21317,10 +21317,14 @@ export type Database = {
       }
       tenancy_lifecycle_events: {
         Row: {
+          actor_type: string | null
+          correlation_key: string | null
           created_at: string
           description: string | null
+          event_source: string | null
           event_type: string
           id: string
+          idempotency_key: string | null
           lease_id: string
           payload: Json | null
           phase: string
@@ -21332,10 +21336,14 @@ export type Database = {
           triggered_by: string
         }
         Insert: {
+          actor_type?: string | null
+          correlation_key?: string | null
           created_at?: string
           description?: string | null
+          event_source?: string | null
           event_type: string
           id?: string
+          idempotency_key?: string | null
           lease_id: string
           payload?: Json | null
           phase?: string
@@ -21347,10 +21355,14 @@ export type Database = {
           triggered_by?: string
         }
         Update: {
+          actor_type?: string | null
+          correlation_key?: string | null
           created_at?: string
           description?: string | null
+          event_source?: string | null
           event_type?: string
           id?: string
+          idempotency_key?: string | null
           lease_id?: string
           payload?: Json | null
           phase?: string

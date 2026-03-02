@@ -118,6 +118,17 @@ export function useLeaseLifecycle(leaseId?: string) {
   const openTasks = tasks.filter(t => t.status === 'open' || t.status === 'in_progress');
   const urgentTasks = openTasks.filter(t => t.priority === 'urgent' || t.priority === 'high');
 
+  /**
+   * resolveEvent — marks an event as resolved via UPDATE on resolved_at.
+   * 
+   * NOTE (TLC Audit B3/F4): This UPDATE pattern is an intentional exception
+   * to the append-only principle. A full append-only migration (writing a
+   * separate "event.resolved" event) was evaluated and deferred because:
+   * 1. The resolved_at/resolved_by columns already exist and are widely used.
+   * 2. Tasks (tenancy_tasks) already serve as the primary resolution tracking.
+   * 3. The event row itself is never deleted — only resolved_at is set once.
+   * This is acceptable because the mutation is write-once (null → timestamp).
+   */
   const resolveEvent = useCallback(async (eventId: string) => {
     await supabase
       .from('tenancy_lifecycle_events')

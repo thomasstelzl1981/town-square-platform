@@ -537,36 +537,72 @@ serve(async (req: Request) => {
         }
       }
 
-      // ── Store events + tasks (dedup) ──
+      // ── Store events + tasks (idempotency-key based dedup — F2/F5) ──
+      const correlationKey = `tlc-cron-${today}`;
       if (events.length > 0 || tasks.length > 0) {
-        const oneWeekAgo = new Date(new Date(today).getTime() - 7 * 24 * 60 * 60 * 1000);
-        const { data: recentEvents } = await supabase
-          .from("tenancy_lifecycle_events")
-          .select("event_type")
-          .eq("lease_id", lease.id)
-          .gte("created_at", oneWeekAgo.toISOString());
-
-        const recentTypes = new Set((recentEvents || []).map((e: any) => e.event_type));
 
         for (const event of events) {
-          if (!recentTypes.has(event.event_type)) {
-            const { error: insertErr } = await supabase
-              .from("tenancy_lifecycle_events")
-              .insert({
-                tenant_id: lease.tenant_id,
-                lease_id: lease.id,
-                event_type: event.event_type,
-                phase,
-                severity: event.severity,
-                title: event.title,
-                description: event.description,
-                payload: event.payload,
-                triggered_by: "cron",
-              });
-            if (!insertErr) totalEvents++;
+          // Build idempotency key based on event type
+          let idempotencyKey: string | null = null;
+          const et = event.event_type;
+          if (et.startsWith('dunning_level_') || et === 'dunning_final' || et === 'dunning_reminder') {
+            const level = event.payload?.dunningLevel ?? 0;
+            idempotencyKey = `dunning:${lease.id}:${level}:${today}`;
+          } else if (et === 'payment_missed') {
+            idempotencyKey = `payment_missed:${lease.id}:${today}`;
+          } else if (et === 'payment_partial') {
+            idempotencyKey = `payment_partial:${lease.id}:${today}`;
+          } else if (et === 'rent_increase_eligible') {
+            idempotencyKey = `rent_increase_eligible:${lease.id}:${today}`;
+          } else if (et === 'staffel_step_due') {
+            idempotencyKey = `staffel_step:${lease.id}:${today}`;
+          } else if (et === 'deposit_partial') {
+            idempotencyKey = `deposit_partial:${lease.id}:${today}`;
+          } else if (et === 'deposit_interest_calculated') {
+            idempotencyKey = `deposit_interest:${lease.id}:${today}`;
+          } else if (et === 'deposit_settlement_started') {
+            idempotencyKey = `deposit_settlement:${lease.id}`;
+          } else if (et === 'deadline_missed') {
+            idempotencyKey = `deadline_missed:${lease.id}:${event.payload?.deadlineId || 'unknown'}:${today}`;
+          } else if (et === 'deadline_approaching') {
+            idempotencyKey = `deadline_approaching:${lease.id}:${event.payload?.deadlineId || 'unknown'}:${today}`;
+          } else if (et === 'defect_dispatched') {
+            idempotencyKey = `defect_sla:${lease.id}:${event.payload?.defectId || 'unknown'}:${today}`;
+          } else {
+            // Fallback: generic daily key
+            idempotencyKey = `${et}:${lease.id}:${today}`;
+          }
+
+          const { error: insertErr } = await supabase
+            .from("tenancy_lifecycle_events")
+            .insert({
+              tenant_id: lease.tenant_id,
+              lease_id: lease.id,
+              event_type: event.event_type,
+              phase,
+              severity: event.severity,
+              title: event.title,
+              description: event.description,
+              payload: event.payload,
+              triggered_by: "cron",
+              event_source: "cron:sot-tenancy-lifecycle",
+              actor_type: "cron",
+              idempotency_key: idempotencyKey,
+              correlation_key: correlationKey,
+            });
+
+          if (insertErr) {
+            // 23505 = unique_violation → idempotent skip
+            if (insertErr.code === '23505') {
+              console.log(`[TLC] Idempotent skip: ${idempotencyKey}`);
+            } else {
+              console.error(`[TLC] Event insert error for ${lease.id}:`, insertErr);
+            }
+          } else {
+            totalEvents++;
 
             // AUTO-MAIL for level 0 dunning
-            if (event.event_type === "dunning_reminder" && !insertErr && lovableApiKey) {
+            if (event.event_type === "dunning_reminder" && lovableApiKey) {
               const dc = dunningConfig.find((c: any) => c.level === 0);
               if (dc?.auto_send && dc?.send_channel !== "letter" && lease.contact_id) {
                 try {
@@ -588,6 +624,7 @@ serve(async (req: Request) => {
                     });
 
                     if (aiResp.ok) {
+                      const mailIdempotencyKey = `dunning_mail_sent:${lease.id}:${today}`;
                       await supabase.from("tenancy_lifecycle_events").insert({
                         tenant_id: lease.tenant_id,
                         lease_id: lease.id,
@@ -598,6 +635,10 @@ serve(async (req: Request) => {
                         description: `Auto-Mail für ${event.payload.missedMonths?.join(', ') || 'Rückstand'}`,
                         payload: { to: contact.email, aiGenerated: true },
                         triggered_by: "cron",
+                        event_source: "cron:sot-tenancy-lifecycle",
+                        actor_type: "cron",
+                        idempotency_key: mailIdempotencyKey,
+                        correlation_key: correlationKey,
                       });
                       totalMailsSent++;
                     }
@@ -610,18 +651,33 @@ serve(async (req: Request) => {
           }
         }
 
-        // Dedup tasks
-        const { data: openTasks } = await supabase
-          .from("tenancy_tasks")
-          .select("title, task_type")
-          .eq("lease_id", lease.id)
-          .not("status", "in", '("closed","cancelled","resolved")');
-
-        const openTaskKeys = new Set((openTasks || []).map((t: any) => `${t.task_type}:${t.title}`));
-
+        // Dedup tasks via idempotency_key pattern (F5)
         for (const task of tasks) {
-          const key = `${task.task_type}:${task.title}`;
-          if (!openTaskKeys.has(key)) {
+          // Build task idempotency key
+          let taskKey: string;
+          if (task.category === 'payment') {
+            const level = task.title.match(/Stufe (\d+)/)?.[1] || '0';
+            taskKey = `task:dunning:${lease.id}:${level}:${today}`;
+          } else if (task.category === 'rent_increase') {
+            taskKey = `task:staffel:${lease.id}:${today}`;
+          } else if (task.category === 'deposit') {
+            taskKey = `task:deposit:${lease.id}:settlement`;
+          } else if (task.task_type === 'inspection') {
+            taskKey = `task:handover:${lease.id}`;
+          } else {
+            taskKey = `task:${task.task_type}:${task.category || 'general'}:${lease.id}:${today}`;
+          }
+
+          // Check if open task with same key already exists
+          const { data: existingTask } = await supabase
+            .from("tenancy_tasks")
+            .select("id")
+            .eq("lease_id", lease.id)
+            .eq("idempotency_key", taskKey)
+            .not("status", "in", '("closed","cancelled","resolved")')
+            .maybeSingle();
+
+          if (!existingTask) {
             const { error: taskErr } = await supabase.from("tenancy_tasks").insert({
               tenant_id: lease.tenant_id,
               lease_id: lease.id,
@@ -629,6 +685,7 @@ serve(async (req: Request) => {
               unit_id: lease.unit_id,
               ...task,
               status: "open",
+              idempotency_key: taskKey,
             });
             if (!taskErr) totalTasks++;
           }
