@@ -1,133 +1,71 @@
 
 
-# Zone 2 Search Engines — Tiefenanalyse & Eignungsbewertung
+# IS24 Integration — Architekturplan
 
-## Uebersicht: 5 Search-Implementierungen in Zone 2
+## Kernprinzip: Reseller-Modell via Zone 1 Backbone
 
-### 1. MOD-04 Immobilien — Sanierung: Handwerker-Suche
-
-| Eigenschaft | Detail |
-|-------------|--------|
-| **Datei** | `src/components/portal/immobilien/sanierung/tender/ProviderSearchPanel.tsx` |
-| **Hook** | `useResearchEngine` (shared) |
-| **Intent** | `find_contractors` |
-| **Provider** | Google Places → Firecrawl (E-Mail) |
-| **Suchzweck** | Sanitaer, Elektriker, Dachdecker etc. nach Kategorie + Standort finden |
-| **Bewertung** | **GEEIGNET** — Nutzt den shared Hook korrekt, Auto-Suche bei Standort, manuelle E-Mail-Eingabe als Fallback, Progress-Indicator vorhanden |
-
-**Staerken:** Saubere Architektur, Kategorie-Mapping (sanitaer→"Sanitaer Installateur"), automatische Suche bei Standort-Aenderung, Checkbox-Selektion mit manueller E-Mail-Ergaenzung.
-
-**Schwaechen:** Keine.
-
----
-
-### 2. MOD-11 Finanzierungsmanager — Bankensuche
-
-| Eigenschaft | Detail |
-|-------------|--------|
-| **Datei** | `src/pages/portal/finanzierungsmanager/FMEinreichung.tsx` |
-| **Hook** | `useResearchEngine` (shared) |
-| **Intent** | `find_companies` |
-| **Provider** | Google Places |
-| **Suchzweck** | Regionalbanken nach PLZ/Ort finden fuer Finanzierungseinreichung |
-| **Bewertung** | **GEEIGNET** — Nutzt den shared Hook korrekt, Auto-Suche aus Falldaten (PLZ/Stadt), Ergebnisse direkt als Bank-Auswahl nutzbar |
-
-**Staerken:** Auto-Suchbegriff aus Antragsdaten, Reset bei Fall-Wechsel.
-
-**Schwaechen:** Keine.
-
----
-
-### 3. MOD-12 Akquise — Tools: Portal-Recherche
-
-| Eigenschaft | Detail |
-|-------------|--------|
-| **Datei** | `src/pages/portal/akquise-manager/components/PortalSearchTool.tsx` |
-| **Hook** | `usePortalSearch` aus `useAcqTools.ts` |
-| **Intent** | `search_portals` |
-| **Provider** | Apify (Portal-Scraping) |
-| **Suchzweck** | ImmoScout24, Immowelt, eBay durchsuchen nach Listings oder Maklern |
-| **Bewertung** | **GEEIGNET** — Eigener Hook mit Mutation-Pattern, Portal-spezifische Config (Preisfilter, Objekttypen), sauber ueber `sot-research-engine` geroutet |
-
-**Staerken:** Portal-Auswahl, Preis-Range, Objekttyp-Filter, Broker/Listing-Toggle.
-
-**Schwaechen:** Keine.
-
----
-
-### 4. MOD-12 Akquise — Mandate/Sourcing: Kontaktrecherche
-
-| Eigenschaft | Detail |
-|-------------|--------|
-| **Datei** | `AkquiseMandate.tsx` (Z. 342-383, 438-470) + `SourcingTab.tsx` (Z. 106-169) |
-| **Hook** | **KEINER** — Direkte `supabase.functions.invoke` Aufrufe |
-| **Intent** | `find_brokers` + `search_portals` |
-| **Provider** | Google Places + Firecrawl + Apify |
-| **Suchzweck** | Makler/Broker finden und in `contact_staging` importieren |
-| **Bewertung** | **PROBLEMATISCH — Code-Duplikation + kein shared Hook** |
-
-**Probleme:**
-1. **AkquiseMandate.tsx hat 3 identische `sot-research-engine` Aufrufe** (Z. 346, 369, 442) — derselbe Code der in SourcingTab auch steht
-2. **SourcingTab.tsx hat 2 weitere identische Aufrufe** (Z. 109, 151) — exakt gleiche Logik
-3. **Weder `useResearchEngine` noch ein anderer shared Hook** wird verwendet — stattdessen manuelles State-Management mit `searchLoading`, `apifyLoading`
-4. **AkquiseMandate.tsx ist 1132 Zeilen** und enthaelt sowohl die Mandate-Logik ALS AUCH den kompletten Sourcing-Code, obwohl `SourcingTab` als Extraktion existiert
-
-**Empfehlung:** 
-- AkquiseMandate.tsx: Sourcing-Code komplett entfernen, nur noch `<SourcingTab>` rendern
-- SourcingTab.tsx: Auf `useResearchEngine` Hook umstellen statt direkte `invoke` Calls
-- Das wuerde ~150 Zeilen Duplikat-Code eliminieren
-
----
-
-### 5. MOD-22 Pets — Caring: Anbieter-Suche
-
-| Eigenschaft | Detail |
-|-------------|--------|
-| **Datei** | `src/pages/portal/pets/PetsCaring.tsx` + `CaringProviderDetail.tsx` |
-| **Hook** | `usePetProviderSearch` (eigener Hook) |
-| **Intent** | Keiner — **direkte Datenbank-Abfrage**, NICHT ueber `sot-research-engine` |
-| **Provider** | Supabase DB (`pet_providers` + `pet_services` Tabellen) |
-| **Suchzweck** | Pet-Service-Anbieter (Gassi, Betreuung, Pflege) nach PLZ/Ort + Kategorie finden |
-| **Bewertung** | **GEEIGNET fuer den Zweck** — Das ist eine Marktplatz-Suche in eigenen Daten, keine externe Recherche |
-
-**Klarstellung:** Dieser Hook durchsucht die eigene `pet_providers`-Tabelle (registrierte Anbieter auf der Plattform), nicht das Internet. Das ist korrekt so — `sot-research-engine` waere hier falsch, weil keine externen Kontakte gesucht werden.
-
-**Schwaechen:** Client-seitige PLZ-Filterung (Kommentar sagt "Engine wird ersetzen") — bei wenigen Anbietern akzeptabel, bei Skalierung muesste das serverseitig passieren.
-
----
-
-### 6. MOD-22 Pets — Shop: Produkt-Suche
-
-| Eigenschaft | Detail |
-|-------------|--------|
-| **Datei** | `src/pages/portal/pets/PetsShop.tsx` |
-| **Hook** | Keiner — inline `filter()` auf geladene Produkte |
-| **Provider** | Client-seitiger String-Match |
-| **Suchzweck** | Produkte im Shop nach Name filtern |
-| **Bewertung** | **GEEIGNET** — Simple In-Memory-Filterung, voellig ausreichend fuer Produktkataloge |
-
----
-
-## Zusammenfassung
+Der interne Verkaufs-/Vermietungsprozess (Z2) ist **strikt getrennt** von der IS24-Publikation. Der User "bucht" die Anzeige, Zone 1 fuehrt sie aus und rechnet per Credits ab.
 
 ```text
-Zone 2 Search Engines — Status
-
-✅ MOD-04 Sanierung     → useResearchEngine (shared)     → SAUBER
-✅ MOD-11 FM            → useResearchEngine (shared)     → SAUBER
-✅ MOD-12 Tools         → usePortalSearch (useAcqTools)   → SAUBER
-⚠️  MOD-12 Mandate      → Direkte invoke (DUPLIKAT)      → BEREINIGUNG NOETIG
-✅ MOD-22 Pets Caring   → usePetProviderSearch (DB)       → KORREKT (eigene Daten)
-✅ MOD-22 Pets Shop     → Inline filter                   → KORREKT (trivial)
+Z2 (User)                    Zone 1 (Backbone)              IS24 Sandbox
+    │                              │                              │
+    │  "IS24 buchen" (2 Cr)       │                              │
+    │  ────────────────────►      │                              │
+    │  (listing_id + channel)     │                              │
+    │                              │  OAuth 1.0a signed POST     │
+    │                              │  ─────────────────────────► │
+    │                              │  ApartmentBuy/Rent etc.     │
+    │                              │                              │
+    │                              │  ◄── 201 Created (is24_id)  │
+    │                              │                              │
+    │  ◄── status: published       │                              │
+    │  (listing_publications)     │                              │
 ```
 
-## Bereinigungsplan
+## Phase 1: Edge Function `sot-is24-gateway`
 
-### Einziger Handlungsbedarf: MOD-12 Akquise Mandate/Sourcing
+Neue Edge Function mit:
+- **OAuth 1.0a HMAC-SHA1** Signing (2-legged fuer Sandbox)
+- Secrets: `IS24_CONSUMER_KEY`, `IS24_CONSUMER_SECRET` (Sandbox-Werte aus deiner Nachricht)
+- Sandbox-URL: `https://rest.sandbox-immobilienscout24.de/restapi/api`
+- Actions: `create_listing`, `update_listing`, `deactivate_listing`, `get_listing`
+- **Credit-Preflight**: 2 Credits pro Publish-Aktion
+- Objekttyp-Mapping: `listings` → ApartmentBuy/HouseBuy, `rental_listings` → ApartmentRent/HouseRent
+- Ergebnis: `is24_id` wird in `listing_publications` / `rental_publications` gespeichert
 
-**Schritt 1:** `AkquiseMandate.tsx` — Alle Sourcing-Funktionen entfernen (`handleEngineSearch`, `handleApifySearch`, Search-Dialoge, zugehoerige States). Stattdessen nur `<SourcingTab>` rendern.
+## Phase 2: Verkauf (MOD-06 / VerkaufsauftragTab)
 
-**Schritt 2:** `SourcingTab.tsx` — Die beiden direkten `supabase.functions.invoke('sot-research-engine')` Aufrufe durch `useResearchEngine` Hook ersetzen.
+In `VerkaufsauftragTab.tsx`:
+- `immoscout24.comingSoon: true` → **entfernen**
+- Neuer Flow beim Aktivieren: Credit-Check → `sot-is24-gateway` invoke → `listing_publications` mit channel `scout24` + `is24_id`
+- `ExposeDetail.tsx`: "Demnachst"-Badge ersetzen durch Live-Status aus `listing_publications`
 
-**Ergebnis:** ~150 Zeilen Dead-Code weg, einheitliches Pattern in allen Zone-2-Modulen.
+## Phase 3: Vermietung (MOD-04 / TenancyTab)
+
+Neue TLC-Sektion **"Vermietungsinserat"** in Kategorie 2 (Vertrag/Vermietung):
+- UI-Kachel zeigt: Kaltmiete, Warmmiete, Verfuegbar ab, Haustiere, Beschreibung (aus `rental_listings`)
+- Button "Inserat erstellen" → schreibt in `rental_listings`
+- Button "Auf IS24 buchen (2 Credits)" → ruft `sot-is24-gateway` mit `action: create_listing`, Typ `ApartmentRent`
+- Status-Anzeige aus `rental_publications` (draft/active/deactivated)
+- Neue TLC-Komponente: `src/components/portfolio/tlc/TLCRentalListingSection.tsx`
+
+## Phase 4: Secrets anlegen
+
+Die Sandbox-Credentials aus deiner Nachricht als Secrets speichern:
+- `IS24_CONSUMER_KEY` = `SystemofatownKey`
+- `IS24_CONSUMER_SECRET` = `kwYQNcbcK8Vszbyk` (Sandbox Secret)
+- `IS24_SANDBOX_USER` = `is24_tuv_156013787_38653@is24test.com`
+- `IS24_SANDBOX_PASSWORD` = `00ada297-3aa4-4de4-aa99-f4a7324ef4abPp`
+
+## Umsetzungsreihenfolge
+
+| Schritt | Was | Dateien |
+|---------|-----|---------|
+| 1 | Secrets anlegen | 4 Secrets via Tool |
+| 2 | `sot-is24-gateway` Edge Function | `supabase/functions/sot-is24-gateway/index.ts` |
+| 3 | VerkaufsauftragTab: comingSoon entfernen, IS24-Flow | `src/components/portfolio/VerkaufsauftragTab.tsx` |
+| 4 | ExposeDetail: Live-Status statt Placeholder | `src/pages/portal/verkauf/ExposeDetail.tsx` |
+| 5 | TLCRentalListingSection: Neue TLC-Kachel | `src/components/portfolio/tlc/TLCRentalListingSection.tsx` |
+| 6 | TenancyTab: Sektion einbinden | `src/components/portfolio/TenancyTab.tsx` |
+| 7 | Sandbox E2E-Test | Edge Function testen via curl |
 
