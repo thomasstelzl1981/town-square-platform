@@ -22,7 +22,7 @@ import type { FDCRepairAction, FDCCategoryScore } from '@/engines/fdc/spec';
 
 // ─── Coverage Ring ────────────────────────────────────────────
 function CoverageRing({ score }: { score: number }) {
-  const color = score >= 80 ? 'text-green-500' : score >= 50 ? 'text-yellow-500' : 'text-red-500';
+  const colorClass = score >= 80 ? 'text-primary' : score >= 50 ? 'text-accent-foreground' : 'text-destructive';
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="relative w-28 h-28">
@@ -30,11 +30,11 @@ function CoverageRing({ score }: { score: number }) {
           <circle cx="60" cy="60" r="50" fill="none" stroke="currentColor"
             className="text-muted/20" strokeWidth="10" />
           <circle cx="60" cy="60" r="50" fill="none" stroke="currentColor"
-            className={color} strokeWidth="10" strokeLinecap="round"
+            className={colorClass} strokeWidth="10" strokeLinecap="round"
             strokeDasharray={`${score * 3.14} ${314 - score * 3.14}`} />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`text-2xl font-bold ${color}`}>{score}%</span>
+          <span className={`text-2xl font-bold ${colorClass}`}>{score}%</span>
         </div>
       </div>
       <span className="text-sm text-muted-foreground font-medium">Coverage Score</span>
@@ -63,8 +63,8 @@ function CategoryBar({ cat }: { cat: FDCCategoryScore }) {
 function SeverityIcon({ severity }: { severity: string }) {
   switch (severity) {
     case 'block': return <XCircle className="h-4 w-4 text-destructive" />;
-    case 'warn': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-    default: return <Info className="h-4 w-4 text-blue-500" />;
+    case 'warn': return <AlertTriangle className="h-4 w-4 text-accent-foreground" />;
+    default: return <Info className="h-4 w-4 text-primary" />;
   }
 }
 
@@ -209,7 +209,7 @@ export default function KontrolleTab() {
         <CardContent>
           {totalOpen === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
+              <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-primary" />
               <p className="text-sm">Alle Finanzdaten sind vollständig und korrekt zugeordnet.</p>
             </div>
           ) : (
@@ -227,7 +227,7 @@ export default function KontrolleTab() {
                 )}
                 {groupedActions.warn.length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-sm font-semibold text-yellow-600 flex items-center gap-1">
+                    <h4 className="text-sm font-semibold text-accent-foreground flex items-center gap-1">
                       <AlertTriangle className="h-4 w-4" /> Warnungen ({groupedActions.warn.length})
                     </h4>
                     {groupedActions.warn.map(a => (
@@ -237,7 +237,7 @@ export default function KontrolleTab() {
                 )}
                 {groupedActions.info.length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-sm font-semibold text-blue-600 flex items-center gap-1">
+                    <h4 className="text-sm font-semibold text-primary flex items-center gap-1">
                       <Info className="h-4 w-4" /> Hinweise ({groupedActions.info.length})
                     </h4>
                     {groupedActions.info.map(a => (
