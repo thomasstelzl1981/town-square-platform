@@ -1,166 +1,99 @@
-# Digitale Miet-Sonderverwaltung — Masterplan (TLC)
 
-> **Version:** 2.0.0 | **Stand:** 2026-03-02
-> **Orchestrator:** Tenancy Lifecycle Controller (ENG-TLC)
-> **CRON:** Wöchentlich (Sonntag 03:00 UTC)
-> **KI-Power:** google/gemini-2.5-pro (Maximum Power)
-> **Backlog:** `.lovable/backlog.md`
 
----
+# TLC Komplett-Check: 30 Aufgabenfelder — UI/UX Analyse
 
-## Status-Übersicht
+## Zusammenfassung
 
-| Schicht | IST | SOLL | Gap |
-|---------|-----|------|-----|
-| Engine (spec.ts + engine.ts) | 90% | 100% | Tests fehlen |
-| DB-Tabellen (8 tenancy_*) | 85% | 100% | RLS für 3 Tabellen reparieren |
-| Hooks (15 Stück) | 80% | 100% | Code vorhanden, typisiert |
-| UI-Integration | 5% | 100% | 14/15 Hooks nicht eingebunden |
-| Edge Function (CRON) | 70% | 100% | v1.1 → v1.5 Upgrade nötig |
-| Tests | 0% | 100% | 0 Tests vorhanden |
-| Gesamtreifegrad | **~35%** | **100%** | Phase 1-4 nötig |
+Die Implementierung ist strukturell solide. 16 Collapsible-Sections in der TenancyTab, alle 15 Hooks eingebunden, Engine v1.5 mit 44 Tests, Edge Function synchron. Es gibt **1 Bug** und **mehrere UX-Schwachstellen**, aber keine kritischen Architekturprobleme.
 
 ---
 
-## Architektur
+## 30-Punkte-Check
 
-```
-┌─────────────────────────────────────────────────────────┐
-│              TENANCY LIFECYCLE CONTROLLER                │
-│              1 Lease = 1 Mietverhältnis                 │
-│                                                         │
-│  State Machine:                                         │
-│  BEWERBUNG → VERTRAG → EINZUG → LAUFEND →              │
-│       → KÜNDIGUNG → AUSZUG → WIEDERVERMIETUNG           │
-│                                                         │
-│  DB Tables (8):                                         │
-│    tenancy_lifecycle_events, tenancy_dunning_configs,    │
-│    tenancy_tasks, tenancy_handover_protocols,            │
-│    tenancy_meter_readings, tenancy_payment_plans,        │
-│    tenancy_rent_reductions, tenancy_deadlines            │
-│                                                         │
-│  Edge: sot-tenancy-lifecycle (Weekly CRON + KI)         │
-│                                                         │
-│  Hooks (15):                                            │
-│    useLeaseLifecycle, useHandoverProtocol,               │
-│    useDefectReport, useMeterReadings,                    │
-│    usePaymentPlan, useRentReduction,                     │
-│    useTenancyDeadlines, useTenancyReport,                │
-│    useTenancyCommunication, useTenancyApplicants,        │
-│    useLeaseContractGenerator, usePrepaymentAdjustment,   │
-│    useInvoiceVerification, useServiceProviders,          │
-│    useInsuranceCoordination                              │
-│                                                         │
-│  Engine: src/engines/tenancyLifecycle/ (v1.5.0)         │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-## Phasenplan
-
-### Phase 0 — Governance ✅ DONE
-
-- [x] UNFREEZE MOD-00 bis MOD-22
-- [x] UNFREEZE INFRA-edge_functions
-- [x] UNFREEZE INFRA-manifests
-- [x] Backlog-Datei angelegt (.lovable/backlog.md)
-- [x] Plan überarbeitet (.lovable/plan.md v2.0)
-
-### Phase 1 — RLS-Reparatur & TenancyTab TLC-Integration
-
-**Ziel:** TenancyTab wird zur zentralen Mietakte mit allen TLC-Daten.
-
-| # | Aufgabe | Backlog-ID |
-|---|---------|------------|
-| 1 | RLS-Policies für 3 Tabellen reparieren (tenant_id CRUD) | B-001 |
-| 2 | TenancyTab: Lifecycle-Events Section | B-002 |
-| 3 | TenancyTab: Tasks/Tickets Section | B-003 |
-| 4 | TenancyTab: Mahnhistorie Section | B-004 |
-| 5 | TenancyTab: Deadlines Section | B-005 |
-| 6 | TenancyTab: Zählerstände Section | B-006 |
-| 7 | TLCWidget: Echte Aggregationen | B-007 |
-
-### Phase 2 — Detailseiten & Workflows
-
-**Ziel:** UI-Dialoge für komplexe TLC-Prozesse.
-
-| # | Aufgabe | Backlog-ID |
-|---|---------|------------|
-| 1 | Übergabeprotokoll-Dialog | B-010 |
-| 2 | Mängelmelder + Ticketing | B-011 |
-| 3 | Bewerbermanagement (8-Stufen-Pipeline) | B-012 |
-| 4 | Vertragsgenerator Preview | B-013 |
-| 5 | Ratenplan-Dialog | B-014 |
-| 6 | Mietminderungs-Dialog | B-015 |
-
-### Phase 3 — Kommunikation, Finanzen & Dienstleister
-
-**Ziel:** Alle verbleibenden Hooks in die UI integrieren.
-
-| # | Aufgabe | Backlog-ID |
-|---|---------|------------|
-| 1 | Kommunikations-Panel | B-020 |
-| 2 | NK-Vorauszahlungsanpassung | B-021 |
-| 3 | Rechnungsprüfung | B-022 |
-| 4 | Dienstleister-Verwaltung | B-023 |
-| 5 | Versicherungskoordination | B-024 |
-| 6 | Portfolio-Report + CSV-Export | B-025 |
-
-### Phase 4 — Edge Function & Engine-Sync + Tests
-
-**Ziel:** Backend-Automatisierung produktionsreif.
-
-| # | Aufgabe | Backlog-ID |
-|---|---------|------------|
-| 1 | Edge Function auf v1.5 upgraden | B-030 |
-| 2 | CRON-Test | B-031 |
-| 3 | Engine Unit-Tests (Set 1) | B-032 |
-| 4 | Engine Unit-Tests (Set 2) | B-033 |
-| 5 | Engine Unit-Tests (Set 3) | B-034 |
+| # | Aufgabenfeld | Hook | UI | Status | Befund |
+|---|---|---|---|---|---|
+| 01 | Mietakte (SSOT) | useLeaseLifecycle | TenancyTab | OK | Lease-CRUD + Inline-Edit + Briefgenerator |
+| 02 | DMS/Versionen | — | — | N/A | Nicht Teil von TLC, DMS-Modul existiert separat |
+| 03 | Rollen & Rechte | — | — | N/A | RLS tenant_id-basiert, kein eigenes UI noetig |
+| 04 | Kommunikationshub | useTenancyCommunication | TLCCommunicationSection | OK | Template-Picker, Verlauf, Protokollierung |
+| 05 | Ticketing/Service Desk | useDefectReport | TLCDefectSection | OK | Auto-Triage mit Keywords, SLA-Anzeige |
+| 06 | Bewerbermanagement | useTenancyApplicants | TLCApplicantSection | OK | 8-Stufen-Pipeline, Status-Farben |
+| 07 | Besichtigungsplanung | useTenancyApplicants | TLCApplicantSection | OK | Stufe "viewing_scheduled/done" enthalten |
+| 08 | Vertragsgenerator | useLeaseContractGenerator | TLCContractSection | WARNUNG | Generiert nur wenn landlordName gesetzt — aktuell wird leerer String uebergeben, d.h. "Vertragsdaten unvollstaendig" wird immer angezeigt |
+| 09 | Uebergabeprotokoll | useHandoverProtocol | TLCHandoverSection | OK | Einzug/Auszug, Protokollfuehrer, Status |
+| 10 | Kuendigung/Auszug | useLeaseLifecycle | TenancyTab | OK | Kuendigungs-Brief via Briefgenerator |
+| 11 | Zahlungsmanagement | — | — | PARTIAL | Kein dediziertes Zahlungs-UI, nur Ratenplan + Mahnwesen |
+| 12 | Mahnwesen | useLeaseLifecycle | TLCEventsSection | OK | Events vom Typ dunning_* werden angezeigt |
+| 13 | Ratenplan | usePaymentPlans | TLCPaymentPlanSection | OK | CRUD, Raten-Tracking, Status |
+| 14 | Kaution | — | TenancyTab | PARTIAL | Kaution-Feld + Status in Lease-Card, aber Zinsgutschrift-Berechnung (calculateDepositInterest) hat kein UI |
+| 15 | Nebenkosten | useMeterReadings | TLCMeterSection | OK | Zaehlerstaende pro Einheit |
+| 16 | Vorauszahlungsanpassung | usePrepaymentAdjustment | TLCPrepaymentSection | OK | §560 Rechner + Anschreiben-Generator |
+| 17 | Maengelmanagement | useDefectReport | TLCDefectSection | OK | Identisch mit #05 |
+| 18 | Dienstleistersteuerung | useServiceProviders | TLCServiceProviderSection | OK | Ranking, SLA, Notfall-Kontakte |
+| 19 | Rechnungspruefung | useInvoiceVerification | TLCInvoiceSection | OK | SKR04-Zuordnung, Budget-Check |
+| 20 | Schadenmanagement | useDefectReport | TLCDefectSection | OK | Schaeden ueber Defect-Report abgedeckt |
+| 21 | Versicherungskoordination | useInsuranceCoordination | TLCInsuranceSection | OK | Policen, Renewals, Claims |
+| 22 | Mieterhoehungen | Engine | TenancyTab | OK | Briefgenerator-Link fuer Mieterhoehung |
+| 23 | 3-Jahres-Check | Engine | — | FEHLT | `performThreeYearCheck()` existiert in Engine, aber kein UI zeigt das Ergebnis an |
+| 24 | Mietminderung | useRentReductions | TLCRentReductionSection | BUG | `val.label` wird verwendet, aber das Objekt hat `description` — Richtwerte werden als "undefined" angezeigt |
+| 25 | Owner-Cockpit | TLCWidget | Dashboard | OK | Ampel-Logik, Aggregationen, Category-Chips |
+| 26 | Reporting/Exporte | useTenancyReport | TLCReportSection | OK | KPIs + CSV-Export |
+| 27 | Audit-Trail | useLeaseLifecycle | TLCEventsSection | OK | Chronologische Event-Liste |
+| 28 | Fristen-Management | useTenancyDeadlines | TLCDeadlinesSection | OK | Urgenz-Anzeige, Erledigung |
+| 29 | Automations/Rules | Edge Function | CRON | OK | sot-tenancy-lifecycle v1.5 deployed |
+| 30 | KI-Assistenz | Edge Function | — | OK | AI Summary via gemini-2.5-flash in Edge Function |
 
 ---
 
-## 30 Aufgabenfelder — Referenz
+## Gefundene Probleme
 
-| # | Aufgabenfeld | Hook | Engine-Funktion |
-|---|---|---|---|
-| 01 | Mietakte (SSOT) | useLeaseLifecycle | — |
-| 02 | DMS/Versionen | — | — |
-| 03 | Rollen & Rechte | — | — |
-| 04 | Kommunikationshub | useTenancyCommunication | — |
-| 05 | Ticketing/Service Desk | useDefectReport | triageDefect |
-| 06 | Bewerbermanagement | useTenancyApplicants | — |
-| 07 | Besichtigungsplanung | useTenancyApplicants | scheduleViewing |
-| 08 | Vertragsgenerator | useLeaseContractGenerator | — |
-| 09 | Übergabeprotokoll | useHandoverProtocol | — |
-| 10 | Kündigung/Auszug | useLeaseLifecycle | — |
-| 11 | Zahlungsmanagement | — | ENG-KONTOMATCH |
-| 12 | Mahnwesen | useLeaseLifecycle | calculateDunningLevel |
-| 13 | Ratenplan | usePaymentPlan | generatePaymentPlanSchedule |
-| 14 | Kaution | — | calculateDepositInterest |
-| 15 | Nebenkosten | useMeterReadings | ENG-NK |
-| 16 | Vorauszahlungsanpassung | usePrepaymentAdjustment | — |
-| 17 | Mängelmanagement | useDefectReport | triageDefect |
-| 18 | Dienstleistersteuerung | useServiceProviders | — |
-| 19 | Rechnungsprüfung | useInvoiceVerification | — |
-| 20 | Schadenmanagement | useDefectReport | — |
-| 21 | Versicherungskoordination | useInsuranceCoordination | — |
-| 22 | Mieterhöhungen | — | checkRentIncreaseEligibility |
-| 23 | 3-Jahres-Check | — | checkRentIncreaseEligibility |
-| 24 | Mietminderung | useRentReduction | calculateRentReduction |
-| 25 | Owner-Cockpit | TLCWidget | — |
-| 26 | Reporting/Exporte | useTenancyReport | — |
-| 27 | Audit-Trail | useLeaseLifecycle | — |
-| 28 | Fristen-Management | useTenancyDeadlines | checkDeadlines |
-| 29 | Automations/Rules | — | TLC State Machine |
-| 30 | KI-Assistenz | — | Armstrong |
+### BUG (muss gefixt werden)
+
+**1. TLCRentReductionSection — `val.label` statt `val.description`**
+- Datei: `src/components/portfolio/tlc/TLCRentReductionSection.tsx`, Zeile 127
+- `RENT_REDUCTION_GUIDELINES` hat Felder `minPercent`, `maxPercent`, `description` — aber der Code greift auf `val.label` zu, was `undefined` ergibt
+- Fix: `val.label` → `val.description`
+
+### WARNUNG (sollte gefixt werden)
+
+**2. TLCContractSection erhaelt immer leeren `landlordName`**
+- Datei: `src/components/portfolio/TenancyTab.tsx`, Zeile 723
+- `landlordName: ''` wird hardcoded uebergeben, daher zeigt der Vertragsgenerator immer "Vertragsdaten unvollstaendig"
+- Fix: `landlordName` aus Tenant-Profil oder Property-Daten beziehen
+
+**3. 3-Jahres-Check (`performThreeYearCheck`) hat kein UI**
+- Die Engine-Funktion existiert und ist getestet, aber nirgendwo in der UI aufgerufen
+- Das waere eine wertvolle Anzeige innerhalb der TenancyTab (Kappungsgrenze-Status pro Lease)
+
+**4. Kautions-Zinsgutschrift (`calculateDepositInterest`) hat kein UI**
+- Engine-Funktion existiert, aber kein UI zeigt die berechneten Zinsen an
+- Koennte als kleine Info-Box in der Lease-Card oder als eigene Section
+
+### UX-HINWEISE (nice to have)
+
+**5. TLC-Sections nur fuer `activeLeases[0]`**
+- Zeile 710-760: Alle Workflow-Sections werden nur fuer den ersten aktiven Lease gerendert
+- Bei mehreren aktiven Leases (z.B. Gewerbe + Wohnung in einer Einheit) fehlen die Sections fuer die weiteren
+
+**6. Defect-Section zeigt keine bestehenden Maengel**
+- `TLCDefectSection` hat nur ein Eingabeformular, aber keine Liste bestehender Defect-Reports
+- Der Hook `useDefectReport` liefert vermutlich bereits erstellte Reports, sie werden aber nicht angezeigt
+
+**7. Collapsible-Flut**
+- 16 Collapsible-Sections in einer TenancyTab koennen ueberfordernd wirken
+- Ueberlegung: Gruppierung in "Kernfunktionen" (Events, Tasks, Deadlines, Zaehler) vs. "Erweitert" (Handover, Defect, Bewerber, etc.) durch eine zweite Ebene
 
 ---
 
-## Regeln
+## Vorgeschlagener Fix-Plan
 
-- **Keine Demo-Daten** im Golden Tenant oder User-Modulen
-- Demo-Daten ausschließlich über Demo Seed Engine + public/demo-data/ CSVs
-- Jede Phase wird nach Abschluss im Backlog als ✅ DONE markiert
-- Nach jeder Phase: Re-Freeze-Entscheidung
+### Sofort (1 Nachricht)
+1. Bug #1 fixen: `val.label` → `val.description` in TLCRentReductionSection
+2. Warnung #2 fixen: landlordName aus Property/Tenant-Daten laden
+3. Bug #6: Bestehende Defect-Reports in TLCDefectSection anzeigen
+
+### Naechste Iteration
+4. 3-Jahres-Check UI als Collapsible-Section hinzufuegen
+5. Deposit-Interest-Anzeige in Lease-Card
+6. Multi-Lease-Support fuer TLC-Sections (Loop statt `activeLeases[0]`)
+
