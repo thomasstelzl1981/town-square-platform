@@ -18467,6 +18467,139 @@ export type Database = {
           },
         ]
       }
+      sales_settlements: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          buyer_commission_netto: number
+          calculated_at: string | null
+          case_id: string
+          created_at: string
+          created_by: string | null
+          deal_value: number
+          house_share_amount: number | null
+          id: string
+          invoiced_at: string | null
+          manager_netto_amount: number
+          notes: string | null
+          paid_at: string | null
+          partner_org_id: string | null
+          partner_share_amount: number | null
+          partner_share_pct: number | null
+          platform_share_amount: number
+          platform_share_pct: number
+          reservation_id: string | null
+          seller_commission_netto: number
+          status: string
+          tenant_id: string
+          total_commission_brutto: number
+          total_commission_netto: number
+          updated_at: string
+          vat_amount: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          buyer_commission_netto?: number
+          calculated_at?: string | null
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          deal_value?: number
+          house_share_amount?: number | null
+          id?: string
+          invoiced_at?: string | null
+          manager_netto_amount?: number
+          notes?: string | null
+          paid_at?: string | null
+          partner_org_id?: string | null
+          partner_share_amount?: number | null
+          partner_share_pct?: number | null
+          platform_share_amount?: number
+          platform_share_pct?: number
+          reservation_id?: string | null
+          seller_commission_netto?: number
+          status?: string
+          tenant_id: string
+          total_commission_brutto?: number
+          total_commission_netto?: number
+          updated_at?: string
+          vat_amount?: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          buyer_commission_netto?: number
+          calculated_at?: string | null
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          deal_value?: number
+          house_share_amount?: number | null
+          id?: string
+          invoiced_at?: string | null
+          manager_netto_amount?: number
+          notes?: string | null
+          paid_at?: string | null
+          partner_org_id?: string | null
+          partner_share_amount?: number | null
+          partner_share_pct?: number | null
+          platform_share_amount?: number
+          platform_share_pct?: number
+          reservation_id?: string | null
+          seller_commission_netto?: number
+          status?: string
+          tenant_id?: string
+          total_commission_brutto?: number
+          total_commission_netto?: number
+          updated_at?: string
+          vat_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_settlements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "sales_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_settlements_partner_org_id_fkey"
+            columns: ["partner_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_settlements_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_settlements_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "v_dev_project_reservations_legacy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_settlements_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "v_reservations_legacy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_settlements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scan_runs: {
         Row: {
           account_ids: string[] | null
