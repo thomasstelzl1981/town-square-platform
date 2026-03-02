@@ -1,6 +1,6 @@
 /**
  * useAdminResearch — Hook for Zone 1 Contact Research & Enrichment
- * Manages Apollo searches, Firecrawl scraping, and research jobs
+ * Manages research engine searches, Firecrawl scraping, and research jobs
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +18,7 @@ export interface ResearchJob {
   completed_at: string | null;
 }
 
-export interface ApolloSearchParams {
+export interface ResearchSearchParams {
   industries?: string[];
   regions?: string[];
   titles?: string[];
@@ -27,7 +27,7 @@ export interface ApolloSearchParams {
   keywords?: string[];
 }
 
-export interface ApolloContact {
+export interface ResearchContact {
   id: string;
   first_name: string;
   last_name: string;
@@ -59,9 +59,9 @@ export function useAdminResearch() {
     },
   });
 
-  // Start Apollo search
-  const startApolloSearch = useMutation({
-    mutationFn: async (params: ApolloSearchParams) => {
+  // Start research engine search
+  const startResearch = useMutation({
+    mutationFn: async (params: ResearchSearchParams) => {
       // Create job record first
       const { data: job, error: jobError } = await supabase
         .from('admin_research_jobs')
@@ -90,7 +90,7 @@ export function useAdminResearch() {
 
         if (error) throw error;
 
-        // Map engine results to ApolloContact format
+        // Map engine results to ResearchContact format
         const results = (data?.results || []).map((r: any, idx: number) => ({
           id: `engine_${job.id}_${idx}`,
           first_name: '',
@@ -141,7 +141,7 @@ export function useAdminResearch() {
       category,
       tags = [],
     }: { 
-      contacts: ApolloContact[];
+      contacts: ResearchContact[];
       category: string;
       tags?: string[];
     }) => {
@@ -244,7 +244,7 @@ export function useAdminResearch() {
   return {
     jobs: jobsQuery.data || [],
     isLoading: jobsQuery.isLoading,
-    startApolloSearch,
+    startResearch,
     importContacts,
     startWebsiteScrape,
   };

@@ -1,5 +1,5 @@
 /**
- * Sourcing Tab — Apollo, Apify, Firecrawl, Manual Entry
+ * Sourcing Tab — KI-Recherche, Apify, Firecrawl, Manual Entry
  */
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -36,7 +36,7 @@ interface SourcingTabProps {
 
 const SOURCE_CONFIG = {
   manual: { label: 'Manuell', icon: UserPlus, color: 'bg-gray-100 text-gray-700' },
-  apollo: { label: 'Apollo', icon: Database, color: 'bg-blue-100 text-blue-700' },
+  engine: { label: 'KI-Recherche', icon: Database, color: 'bg-blue-100 text-blue-700' },
   apify: { label: 'Apify', icon: Globe, color: 'bg-purple-100 text-purple-700' },
   firecrawl: { label: 'Firecrawl', icon: Search, color: 'bg-orange-100 text-orange-700' },
   geomap: { label: 'GeoMap', icon: MapPin, color: 'bg-green-100 text-green-700' },
@@ -58,9 +58,9 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
   const bulkCreate = useBulkCreateStagingContacts();
   
   const [showAddDialog, setShowAddDialog] = React.useState(false);
-  const [showApolloDialog, setShowApolloDialog] = React.useState(false);
+  const [showSearchDialog, setShowSearchDialog] = React.useState(false);
   const [showApifyDialog, setShowApifyDialog] = React.useState(false);
-  const [apolloLoading, setApolloLoading] = React.useState(false);
+  const [searchLoading, setSearchLoading] = React.useState(false);
   const [apifyLoading, setApifyLoading] = React.useState(false);
   
   // Manual entry form
@@ -75,8 +75,8 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
     service_area: '',
   });
 
-  // Apollo search form
-  const [apolloForm, setApolloForm] = React.useState({
+  // Search form
+  const [searchForm, setSearchForm] = React.useState({
     jobTitles: 'Makler, Immobilienmakler, Geschäftsführer',
     locations: '',
     industries: 'Real Estate',
@@ -103,16 +103,16 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
     setShowAddDialog(false);
   };
 
-  const handleApolloSearch = async () => {
-    setApolloLoading(true);
+  const handleEngineSearch = async () => {
+    setSearchLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('sot-research-engine', {
         body: {
           intent: 'find_brokers',
-          query: apolloForm.jobTitles,
-          location: apolloForm.locations,
-          max_results: apolloForm.limit,
-          filters: { must_have_email: true, industry: apolloForm.industries },
+          query: searchForm.jobTitles,
+          location: searchForm.locations,
+          max_results: searchForm.limit,
+          filters: { must_have_email: true, industry: searchForm.industries },
           context: { module: 'akquise', reference_id: mandateId },
         },
       });
@@ -123,7 +123,7 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
         await bulkCreate.mutateAsync({
           mandateId,
           contacts: data.results.map((c: any) => ({
-            source: 'apollo' as const,
+            source: 'engine' as const,
             source_id: `engine_${Date.now()}_${Math.random()}`,
             company_name: c.name,
             first_name: '',
@@ -137,11 +137,11 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
         });
       }
       
-      setShowApolloDialog(false);
+      setShowSearchDialog(false);
     } catch (err) {
       toast.error('Kontaktrecherche fehlgeschlagen: ' + (err as Error).message);
     } finally {
-      setApolloLoading(false);
+      setSearchLoading(false);
     }
   };
 
@@ -183,9 +183,9 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowApolloDialog(true)}>
+          <Button variant="outline" onClick={() => setShowSearchDialog(true)}>
             <Database className="h-4 w-4 mr-2" />
-            Apollo
+            KI-Recherche
           </Button>
           <Button variant="outline" onClick={() => setShowApifyDialog(true)}>
             <Globe className="h-4 w-4 mr-2" />
@@ -297,7 +297,7 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
             <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold">Keine Kontakte</h3>
             <p className="text-muted-foreground mt-2">
-              Starten Sie mit Apollo, Portal Scraping oder manueller Eingabe.
+              Starten Sie mit KI-Recherche, Portal Scraping oder manueller Eingabe.
             </p>
           </CardContent>
         </Card>
@@ -370,13 +370,13 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Apollo Search Dialog */}
-      <Dialog open={showApolloDialog} onOpenChange={setShowApolloDialog}>
+      {/* KI-Recherche Dialog */}
+      <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Database className="h-5 w-5 text-blue-600" />
-              Apollo Kontaktsuche
+              KI-Kontaktrecherche
             </DialogTitle>
             <DialogDescription>Suchen Sie nach Immobilien-Profis in Ihrer Zielregion.</DialogDescription>
           </DialogHeader>
@@ -384,30 +384,30 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
             <div className="space-y-2">
               <Label>Job-Titel (kommagetrennt)</Label>
               <Input 
-                value={apolloForm.jobTitles} 
-                onChange={e => setApolloForm(f => ({ ...f, jobTitles: e.target.value }))}
+                value={searchForm.jobTitles} 
+                onChange={e => setSearchForm(f => ({ ...f, jobTitles: e.target.value }))}
                 placeholder="Makler, Immobilienmakler, Geschäftsführer"
               />
             </div>
             <div className="space-y-2">
               <Label>Standorte (kommagetrennt)</Label>
               <Input 
-                value={apolloForm.locations} 
-                onChange={e => setApolloForm(f => ({ ...f, locations: e.target.value }))}
+                value={searchForm.locations} 
+                onChange={e => setSearchForm(f => ({ ...f, locations: e.target.value }))}
                 placeholder="Berlin, Hamburg, München"
               />
             </div>
             <div className="space-y-2">
               <Label>Branchen (kommagetrennt)</Label>
               <Input 
-                value={apolloForm.industries} 
-                onChange={e => setApolloForm(f => ({ ...f, industries: e.target.value }))}
+                value={searchForm.industries} 
+                onChange={e => setSearchForm(f => ({ ...f, industries: e.target.value }))}
                 placeholder="Real Estate, Property Management"
               />
             </div>
             <div className="space-y-2">
               <Label>Max. Ergebnisse</Label>
-              <Select value={String(apolloForm.limit)} onValueChange={v => setApolloForm(f => ({ ...f, limit: Number(v) }))}>
+              <Select value={String(searchForm.limit)} onValueChange={v => setSearchForm(f => ({ ...f, limit: Number(v) }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="10">10</SelectItem>
@@ -419,9 +419,9 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowApolloDialog(false)}>Abbrechen</Button>
-            <Button onClick={handleApolloSearch} disabled={apolloLoading}>
-              {apolloLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            <Button variant="outline" onClick={() => setShowSearchDialog(false)}>Abbrechen</Button>
+            <Button onClick={handleEngineSearch} disabled={searchLoading}>
+              {searchLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Suchen
             </Button>
           </DialogFooter>
