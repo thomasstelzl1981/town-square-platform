@@ -1,206 +1,67 @@
 
 
-# TLC Komplett-Umbau: Collapsible → Inline-Scroll mit CI-Design
+# Steuereffekt bei gewerblichen Anbietern entfernen + NK-Input
 
-## Ist-Zustand
+## Analyse
 
-Das gesamte TLC-System besteht aus **18 Sektions-Komponenten** + **4 Kategorie-Wrappern** in `TenancyTab.tsx`, die alle das gleiche `Collapsible`-Pattern nutzen. Alles ist hinter Klicks versteckt — der User sieht nur eine Liste von Ghost-Buttons.
+### Problem 1: Steuereffekt bei Gesellschaften
+Die `sot-investment-engine` Edge Function berechnet **immer** einen persoenlichen Einkommensteuer-Vorteil (ESt-Vergleich zvE mit/ohne Immobilie). Das ist korrekt fuer **Privatpersonen** (Anlage V), aber **falsch fuer gewerbliche Anbieter** (GmbH, KG, etc.). Bei einer Kapitalgesellschaft gibt es keinen persoenlichen Steuervorteil, der die Liquiditaet des Investors verbessert — die Gesellschaft zahlt Koerperschaftsteuer + Gewerbesteuer unabhaengig vom Privatvermoegen des Eigentuemers.
 
-```text
-IST (alles zugeklappt):
-┌─────────────────────────────────┐
-│ ▶ 📋 Kernfunktionen            │
-│ ▶ 📝 Vertrag & Übergabe        │
-│ ▶ 💶 Finanzen                   │
-│ ▶ 🏢 Verwaltung                 │
-│   Portfolio-Report              │
-└─────────────────────────────────┘
-```
+**Aktueller Fehler:** `yearlyTaxSavings` wird **immer** berechnet und in `monthlyBurden` eingerechnet (Z. 178: `monthlyBurden = -yearlyCashFlowAfterTax / 12`). Das verfaelscht die Liquiditaetsberechnung fuer gewerbliche Kontexte.
 
-## Soll-Zustand
+### Problem 2: Steuersatz-Aenderungen wirken nicht
+Der Tax-Rate-Slider existiert in der UI, aber die Engine nutzt den **BMF-Formel-basierten** Steuersatz (aus `taxableIncome` berechnet), nicht einen manuell gesetzten Steuersatz. Es gibt keinen `taxRate`-Input in der Engine — Aenderungen am Steuersatz im Kontext werden ignoriert.
 
-Alles inline sichtbar, durch Scrollen erreichbar. Jede Kategorie wird eine `SectionCard` mit CI-konformer Typografie. Jede Sub-Sektion wird direkt gerendert ohne eigenes Collapsible.
+### Problem 3: Nicht umlagefaehige NK ohne Eingabe
+Die Engine hat `managementCostMonthly` (Default: 25€/Mo = 300€/Jahr) — **hardcoded** in `Haushaltsrechnung.tsx` (Z. 112, 121, 301). Es gibt **keinen Slider und kein Eingabefeld** dafuer im `InvestmentSliderPanel`. Der Wert wird auch nicht aus den Property-Daten geladen.
 
-```text
-SOLL (scrollbar, alles sichtbar):
-┌─────────────────────────────────────────────────┐
-│ [📋] Kernfunktionen                             │  ← SectionCard
-│      Lifecycle-Events, Aufgaben & Fristen       │    TYPOGRAPHY.SECTION_TITLE
-│                                                 │
-│  ┌ Lifecycle-Events (24) ── [3 offen] ────┐     │  ← Inline, kein Collapsible
-│  │  ⚠ Mieterhöhung fällig  │ 01.03.26    │     │
-│  │  ℹ Vertrag verlängert   │ 28.02.26    │     │
-│  │  ...                                   │     │
-│  └────────────────────────────────────────┘     │
-│                                                 │
-│  ┌ Aufgaben (16 offen) ──────────────────┐      │
-│  │  🔴 Rohrbruch EG │ urgent │ 4h SLA    │      │
-│  │  ...                                  │      │
-│  └───────────────────────────────────────┘      │
-│                                                 │
-│  ┌ Fristen ──────────────────────────────┐      │
-│  │  ...                                  │      │
-│  └───────────────────────────────────────┘      │
-│                                                 │
-│  ┌ Zählerstände ─────────────────────────┐      │
-│  │  ...                                  │      │
-│  └───────────────────────────────────────┘      │
-└─────────────────────────────────────────────────┘
+## Plan
 
-┌─────────────────────────────────────────────────┐
-│ [📝] Vertrag & Übergabe                         │  ← SectionCard
-│      Inserate, Verträge, Übergaben, Bewerber    │
-│                                                 │
-│  ┌ Vermietungsinserat ── [● Aktiv] ──────┐      │
-│  │  Kaltmiete: 850€  │  Warmmiete: 1150€ │      │
-│  │  [Auf IS24 buchen (2 Cr)]             │      │
-│  └───────────────────────────────────────┘      │
-│                                                 │
-│  ┌ Mietvertrag ─────────────────────────┐       │
-│  │  ...                                 │       │
-│  └──────────────────────────────────────┘       │
-│  ┌ Übergabeprotokoll ──────────────────┐        │
-│  │  ...                                │        │
-│  └─────────────────────────────────────┘        │
-│  ┌ Bewerber ───────────────────────────┐        │
-│  │  ...                                │        │
-│  └─────────────────────────────────────┘        │
-└─────────────────────────────────────────────────┘
+### 1. Engine erweitern: `isCommercial` Flag
 
-┌─────────────────────────────────────────────────┐
-│ [💶] Finanzen                                    │  ← SectionCard
-│      Zahlungsplan, Mietminderung, NK, Prüfungen │
-│  ┌ Zahlungsplan ─────────────────────────┐      │
-│  │  ...                                  │      │
-│  └───────────────────────────────────────┘      │
-│  ┌ Mietminderung ────────────────────────┐      │
-│  │  ...                                  │      │
-│  └───────────────────────────────────────┘      │
-│  ┌ NK-Vorauszahlung ─────────────────────┐      │
-│  │  ...                                  │      │
-│  └───────────────────────────────────────┘      │
-│  ┌ 3-Jahres-Check ───────────────────────┐      │
-│  │  ...                                  │      │
-│  └───────────────────────────────────────┘      │
-│  ┌ Rechnungen ───────────────────────────┐      │
-│  │  ...                                  │      │
-│  └───────────────────────────────────────┘      │
-└─────────────────────────────────────────────────┘
+**Datei:** `supabase/functions/sot-investment-engine/index.ts`
+- Neuen Input-Parameter `isCommercial: boolean` (Default: `false`)
+- Wenn `isCommercial === true`:
+  - `yearlyTaxSavings = 0` (keine persoenliche Steuerersparnis)
+  - `monthlyBurden` basiert nur auf `yearlyCashFlowBeforeTax`
+  - `roiAfterTax = roiBeforeTax` (kein Steuereffekt)
+  - In der Projektion: `taxSavings = 0` fuer jedes Jahr
 
-┌─────────────────────────────────────────────────┐
-│ [🏢] Verwaltung                                  │  ← SectionCard
-│      Kommunikation, Mängel, Dienstleister, Vers.│
-│  ┌ Kommunikation ────────────────────────┐      │
-│  │  ...                                  │      │
-│  └───────────────────────────────────────┘      │
-│  ┌ Mängelmelder ─────────────────────────┐      │
-│  │  ...                                  │      │
-│  └───────────────────────────────────────┘      │
-│  ┌ Dienstleister ────────────────────────┐      │
-│  │  ...                                  │      │
-│  └───────────────────────────────────────┘      │
-│  ┌ Versicherung ─────────────────────────┐      │
-│  │  ...                                  │      │
-│  └───────────────────────────────────────┘      │
-└─────────────────────────────────────────────────┘
+### 2. Hook-Interface erweitern
 
-┌─────────────────────────────────────────────────┐
-│ [📊] Portfolio-Report                            │  ← SectionCard
-└─────────────────────────────────────────────────┘
-```
+**Datei:** `src/hooks/useInvestmentEngine.ts`
+- `CalculationInput` um `isCommercial?: boolean` erweitern
 
-## Technische Umsetzung
+### 3. Haushaltsrechnung: Steuer-Sektion bedingt ausblenden
 
-### Ebene 1: TenancyTab.tsx (Kategorie-Wrapper)
+**Datei:** `src/components/investment/Haushaltsrechnung.tsx`
+- Pruefen ob `result.inputs.isCommercial === true`
+- Wenn ja: Steuerersparnis-Zeilen, "Steuereffekt"-Sektion, und "nach Steuervorteil"-Texte ausblenden
+- Im Ledger-Variant: Steuerersparnis aus Einnahmen-Spalte entfernen, Summe anpassen
+- Ergebnis-Text: "Monatlicher Eigenanteil" statt "Monatlicher Eigenanteil nach Steuervorteil"
 
-Die 4 Kategorie-`Collapsible`-Wrapper (Zeilen 764-896) werden ersetzt durch 4 `SectionCard`-Komponenten mit passenden Icons und Descriptions:
+### 4. SliderPanel: Steuer-Inputs bedingt ausblenden + NK-Slider hinzufuegen
 
-| Kategorie | Icon | Titel | Description |
-|-----------|------|-------|-------------|
-| Kernfunktionen | `ClipboardList` | Kernfunktionen | Lifecycle-Events, Aufgaben & Fristen |
-| Vertrag & Uebergabe | `FileText` | Vertrag & Uebergabe | Inserate, Vertraege, Uebergaben, Bewerber |
-| Finanzen | `Euro` | Finanzen | Zahlungsplaene, Minderungen, NK-Pruefungen |
-| Verwaltung | `Building2` | Verwaltung | Kommunikation, Maengel, Dienstleister |
+**Datei:** `src/components/investment/InvestmentSliderPanel.tsx`
+- Wenn `isCommercial === true`: zvE-Slider, Kirchensteuer-Switch, Veranlagung-Buttons, AfA-Modell, Gebaeudeanteil **ausblenden** (irrelevant fuer gewerblich)
+- **Neuer Slider:** "Nicht umlagefaehige NK" mit Range 0–500€/Mo, Step 5€, Default 25€ — mapped auf `managementCostMonthly`
 
-Historische Vertraege (Z. 724-753) bleiben als einziges `Collapsible` — das ist korrekt, da es optionaler Archiv-Content ist.
+### 5. Haushaltsrechnung: Hardcoded 300€ durch Engine-Wert ersetzen
 
-### Ebene 2: Alle 18 TLC-Sektions-Komponenten
+**Datei:** `src/components/investment/Haushaltsrechnung.tsx`
+- Z. 112, 121, 301: `300` ersetzen durch `year1?.managementCost || (summary.yearlyRent > 0 ? result.inputs.managementCostMonthly * 12 : 300)`
 
-Jede der 18 Komponenten hat intern das gleiche Pattern:
+### 6. Kontext-Integration (Erkennung ob gewerblich)
 
-```tsx
-// ALT (alle 18 Dateien):
-<Collapsible open={open} onOpenChange={setOpen}>
-  <CollapsibleTrigger asChild>
-    <Button variant="ghost" className="w-full justify-between h-8 text-xs">
-      <span>...</span>
-      <ChevronDown />
-    </Button>
-  </CollapsibleTrigger>
-  <CollapsibleContent>
-    {/* Inhalt */}
-  </CollapsibleContent>
-</Collapsible>
-```
+Die Aufrufer (`InvestmentExposeView`, diverse Expose-Pages) muessen das `isCommercial`-Flag setzen. Fuer das **Portfolio** (MOD-04) kann das aus dem `landlord_context.context_type === 'BUSINESS'` abgeleitet werden. Fuer Projekte (MOD-13) aus dem Developer-Context. Default bleibt `false` (Privat).
 
-Wird ersetzt durch:
+## Betroffene Dateien
 
-```tsx
-// NEU (alle 18 Dateien):
-<div className="space-y-2">
-  <div className="flex items-center justify-between">
-    <h4 className={DESIGN.TYPOGRAPHY.LABEL}>
-      <Icon className="h-3.5 w-3.5 inline mr-1.5" />
-      Sektions-Titel
-    </h4>
-    {/* Badge/Counter bleibt */}
-  </div>
-  {/* Inhalt direkt sichtbar */}
-</div>
-```
-
-Entfernt aus jeder Datei:
-- `Collapsible`, `CollapsibleContent`, `CollapsibleTrigger` Imports
-- `useState` fuer `open`/`setOpen` (wenn nur dafuer genutzt)
-- `ChevronDown` Icon Import (wenn nur dafuer genutzt)
-
-### Betroffene Dateien (20 Dateien)
-
-| # | Datei | Zeilen ca. | Aenderung |
-|---|-------|-----------|-----------|
-| 1 | `TenancyTab.tsx` | 928 | 4 Kategorie-Collapsibles → 4 SectionCards |
-| 2 | `TLCEventsSection.tsx` | 87 | Collapsible → inline |
-| 3 | `TLCTasksSection.tsx` | 106 | Collapsible → inline |
-| 4 | `TLCDeadlinesSection.tsx` | 119 | Collapsible → inline |
-| 5 | `TLCMeterSection.tsx` | ~100 | Collapsible → inline |
-| 6 | `TLCRentalListingSection.tsx` | 422 | Collapsible → inline (bereits geplant) |
-| 7 | `TLCContractSection.tsx` | ~150 | Collapsible → inline |
-| 8 | `TLCHandoverSection.tsx` | 129 | Collapsible → inline |
-| 9 | `TLCApplicantSection.tsx` | ~120 | Collapsible → inline |
-| 10 | `TLCPaymentPlanSection.tsx` | 140 | Collapsible → inline |
-| 11 | `TLCRentReductionSection.tsx` | ~120 | Collapsible → inline |
-| 12 | `TLCPrepaymentSection.tsx` | ~140 | Collapsible → inline |
-| 13 | `TLCThreeYearCheckSection.tsx` | 145 | Collapsible → inline |
-| 14 | `TLCInvoiceSection.tsx` | ~100 | Collapsible → inline |
-| 15 | `TLCCommunicationSection.tsx` | ~200 | Collapsible → inline |
-| 16 | `TLCDefectSection.tsx` | 195 | Collapsible → inline |
-| 17 | `TLCServiceProviderSection.tsx` | ~120 | Collapsible → inline |
-| 18 | `TLCInsuranceSection.tsx` | ~120 | Collapsible → inline |
-| 19 | `TLCReportSection.tsx` | ~100 | Collapsible → inline |
-
-### CI-Elemente die verwendet werden
-
-- `SectionCard` aus `src/components/shared/SectionCard.tsx` — fuer Kategorie-Wrapper
-- `DESIGN.TYPOGRAPHY.SECTION_TITLE` — fuer Kategorie-Ueberschriften
-- `DESIGN.TYPOGRAPHY.LABEL` — fuer Sub-Sektions-Titel
-- `DESIGN.TYPOGRAPHY.HINT` — fuer Beschreibungstexte
-- `DESIGN.SPACING.SECTION` — fuer Abstaende zwischen Kategorien
-- `DESIGN.CARD.SECTION` — via SectionCard automatisch
-
-### Was sich NICHT aendert
-
-- Alle Queries, Mutations, Business-Logik — 100% identisch
-- Props-Schnittstellen der Komponenten bleiben gleich
-- Historische Vertraege bleiben Collapsible (Archiv-Pattern)
-- IS24-Integration, AlertDialog, Form-Lock — alles bleibt
+| # | Datei | Aenderung |
+|---|-------|-----------|
+| 1 | `supabase/functions/sot-investment-engine/index.ts` | `isCommercial` Flag, Steuer-Bypass |
+| 2 | `src/hooks/useInvestmentEngine.ts` | `isCommercial` in `CalculationInput` |
+| 3 | `src/components/investment/Haushaltsrechnung.tsx` | Steuer-Sektion bedingt, hardcoded 300€ weg |
+| 4 | `src/components/investment/InvestmentSliderPanel.tsx` | Steuer-Inputs bedingt, NK-Slider neu |
+| 5 | `src/components/investment/InvestmentExposeView.tsx` | `isCommercial` Prop durchreichen |
 
