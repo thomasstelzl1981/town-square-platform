@@ -33,6 +33,12 @@ import { TLCEventsSection } from './tlc/TLCEventsSection';
 import { TLCTasksSection } from './tlc/TLCTasksSection';
 import { TLCDeadlinesSection } from './tlc/TLCDeadlinesSection';
 import { TLCMeterSection } from './tlc/TLCMeterSection';
+import { TLCHandoverSection } from './tlc/TLCHandoverSection';
+import { TLCDefectSection } from './tlc/TLCDefectSection';
+import { TLCApplicantSection } from './tlc/TLCApplicantSection';
+import { TLCContractSection } from './tlc/TLCContractSection';
+import { TLCPaymentPlanSection } from './tlc/TLCPaymentPlanSection';
+import { TLCRentReductionSection } from './tlc/TLCRentReductionSection';
 
 interface Lease {
   id: string;
@@ -693,6 +699,41 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
           onDismiss={(id) => dismissDeadline.mutate(id)}
         />
         <TLCMeterSection readings={readings} loading={metersLoading} onFetch={fetchReadings} />
+        
+        {/* Phase 2: Workflows */}
+        {activeLeases.length > 0 && (
+          <>
+            <TLCHandoverSection
+              leaseId={activeLeases[0].id}
+              unitId={unitId}
+              tenantId={tenantId}
+              tenantName={activeLeases[0].tenant_contact ? `${activeLeases[0].tenant_contact.first_name} ${activeLeases[0].tenant_contact.last_name}` : undefined}
+            />
+            <TLCDefectSection tenantId={tenantId} leaseId={activeLeases[0].id} propertyId={propertyId} />
+            <TLCPaymentPlanSection leaseId={activeLeases[0].id} unitId={unitId} />
+            <TLCRentReductionSection leaseId={activeLeases[0].id} unitId={unitId} />
+            <TLCContractSection
+              leaseData={activeLeases[0].rent_cold_eur ? {
+                landlordName: '', // filled by user
+                landlordAddress: '',
+                tenantName: activeLeases[0].tenant_contact ? `${activeLeases[0].tenant_contact.first_name} ${activeLeases[0].tenant_contact.last_name}` : '',
+                propertyAddress: '',
+                unitDescription: '',
+                areaSqm: 0,
+                roomCount: 0,
+                rentColdEur: activeLeases[0].rent_cold_eur || 0,
+                nkAdvanceEur: activeLeases[0].nk_advance_eur || 0,
+                depositEur: activeLeases[0].deposit_amount_eur || 0,
+                startDate: activeLeases[0].start_date,
+                endDate: activeLeases[0].end_date || undefined,
+                noticePeriodMonths: 3,
+                rentModel: (activeLeases[0].rent_model as 'FIX' | 'INDEX' | 'STAFFEL') || 'FIX',
+              } : undefined}
+              contactId={activeLeases[0].tenant_contact?.id}
+            />
+          </>
+        )}
+        <TLCApplicantSection unitId={unitId} />
       </div>
 
 

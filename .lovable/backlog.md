@@ -21,12 +21,12 @@
 
 | ID | Aufgabe | Status | Prio |
 |----|---------|--------|------|
-| B-010 | Übergabeprotokoll-Dialog (Modal/Inline) via useHandoverProtocol | ⬜ TODO | P1 |
-| B-011 | Mängelmelder + Ticketing UI via useDefectReport | ⬜ TODO | P1 |
-| B-012 | Bewerbermanagement Section (8-Stufen-Pipeline) via useTenancyApplicants | ⬜ TODO | P1 |
-| B-013 | Vertragsgenerator Preview via useLeaseContractGenerator | ⬜ TODO | P1 |
-| B-014 | Ratenplan-Dialog via usePaymentPlan | ⬜ TODO | P1 |
-| B-015 | Mietminderungs-Dialog (§536 BGB) via useRentReduction | ⬜ TODO | P1 |
+| B-010 | Übergabeprotokoll-Dialog (Modal/Inline) via useHandoverProtocol | ✅ DONE | P1 |
+| B-011 | Mängelmelder + Ticketing UI via useDefectReport | ✅ DONE | P1 |
+| B-012 | Bewerbermanagement Section (8-Stufen-Pipeline) via useTenancyApplicants | ✅ DONE | P1 |
+| B-013 | Vertragsgenerator Preview via useLeaseContractGenerator | ✅ DONE | P1 |
+| B-014 | Ratenplan-Dialog via usePaymentPlan | ✅ DONE | P1 |
+| B-015 | Mietminderungs-Dialog (§536 BGB) via useRentReduction | ✅ DONE | P1 |
 
 ## Phase 3 — Kommunikation, Finanzen & Dienstleister
 
