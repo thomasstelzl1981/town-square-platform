@@ -10923,6 +10923,8 @@ export type Database = {
           tenant_contact_id: string
           tenant_id: string
           tenant_since: string | null
+          tlc_last_check: string | null
+          tlc_phase: string
           unit_id: string
           updated_at: string
         }
@@ -10958,6 +10960,8 @@ export type Database = {
           tenant_contact_id: string
           tenant_id: string
           tenant_since?: string | null
+          tlc_last_check?: string | null
+          tlc_phase?: string
           unit_id: string
           updated_at?: string
         }
@@ -10993,6 +10997,8 @@ export type Database = {
           tenant_contact_id?: string
           tenant_id?: string
           tenant_since?: string | null
+          tlc_last_check?: string | null
+          tlc_phase?: string
           unit_id?: string
           updated_at?: string
         }
@@ -20553,6 +20559,229 @@ export type Database = {
           value?: number
         }
         Relationships: []
+      }
+      tenancy_dunning_configs: {
+        Row: {
+          auto_send: boolean
+          created_at: string
+          days_after_due: number
+          escalation_target: string | null
+          fee_eur: number | null
+          id: string
+          label: string
+          level: number
+          send_channel: string
+          template_code: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          auto_send?: boolean
+          created_at?: string
+          days_after_due?: number
+          escalation_target?: string | null
+          fee_eur?: number | null
+          id?: string
+          label: string
+          level?: number
+          send_channel?: string
+          template_code?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          auto_send?: boolean
+          created_at?: string
+          days_after_due?: number
+          escalation_target?: string | null
+          fee_eur?: number | null
+          id?: string
+          label?: string
+          level?: number
+          send_channel?: string
+          template_code?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenancy_dunning_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenancy_lifecycle_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          lease_id: string
+          payload: Json | null
+          phase: string
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          tenant_id: string
+          title: string
+          triggered_by: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          lease_id: string
+          payload?: Json | null
+          phase?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          tenant_id: string
+          title: string
+          triggered_by?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          lease_id?: string
+          payload?: Json | null
+          phase?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          tenant_id?: string
+          title?: string
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenancy_lifecycle_events_lease_id_fkey"
+            columns: ["lease_id"]
+            isOneToOne: false
+            referencedRelation: "leases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenancy_lifecycle_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenancy_tasks: {
+        Row: {
+          assigned_contact_id: string | null
+          assigned_to: string | null
+          category: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          lease_id: string | null
+          lifecycle_event_id: string | null
+          metadata: Json | null
+          parent_task_id: string | null
+          priority: string
+          property_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          sla_deadline: string | null
+          status: string
+          task_type: string
+          tenant_id: string
+          title: string
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_contact_id?: string | null
+          assigned_to?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lease_id?: string | null
+          lifecycle_event_id?: string | null
+          metadata?: Json | null
+          parent_task_id?: string | null
+          priority?: string
+          property_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sla_deadline?: string | null
+          status?: string
+          task_type?: string
+          tenant_id: string
+          title: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_contact_id?: string | null
+          assigned_to?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lease_id?: string | null
+          lifecycle_event_id?: string | null
+          metadata?: Json | null
+          parent_task_id?: string | null
+          priority?: string
+          property_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sla_deadline?: string | null
+          status?: string
+          task_type?: string
+          tenant_id?: string
+          title?: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenancy_tasks_lease_id_fkey"
+            columns: ["lease_id"]
+            isOneToOne: false
+            referencedRelation: "leases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenancy_tasks_lifecycle_event_id_fkey"
+            columns: ["lifecycle_event_id"]
+            isOneToOne: false
+            referencedRelation: "tenancy_lifecycle_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenancy_tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tenancy_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenancy_tasks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tenant_credit_balance: {
         Row: {

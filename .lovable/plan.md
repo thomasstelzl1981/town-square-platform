@@ -1,133 +1,139 @@
+# Digitale Miet-Sonderverwaltung — Masterplan (TLC)
 
+> **Version:** 1.0.0 | **Stand:** 2026-03-02
+> **Orchestrator:** Tenancy Lifecycle Controller (ENG-TLC)
+> **CRON:** Wöchentlich (Sonntag 03:00 UTC)
+> **KI-Power:** google/gemini-2.5-pro (Maximum Power)
 
-# NK-Abrechnung Flow — Vollstaendige Pruefung und Lueckenanalyse
+---
 
-## Ist-Stand: Der aktuelle End-to-End Flow
+## Architektur: Tenancy Lifecycle Controller (TLC)
 
-Der Flow laeuft ueber 4 Systeme: **Zahlungsverkehr-Tab** → **NK-Abrechnung-Tab** → **Steuer (Anlage V)** → **BWA**
-
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  ZAHLUNGSVERKEHR-TAB (GeldeingangTab.tsx)                          │
-│                                                                     │
-│  Zone A: Kontenabgleich-Button → sot-rent-match Edge Function      │
-│          + "Zahlung manuell erfassen" Button                        │
-│  Zone B: 12-Monats-Grid (Soll vs Ist, Status, Quelle)             │
-│  Zone C: Nicht zugeordnete Buchungen → "Zuordnen" Button          │
-│                                                                     │
-│  Bankkonto-Verknuepfung: Lease → linked_bank_account_id            │
-│  Auto-Match: Switch pro Lease aktivierbar                          │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │ rent_payments Tabelle
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  NK-ABRECHNUNG-TAB (NKAbrechnungTab.tsx) — 5 Sektionen            │
-│                                                                     │
-│  1. WEG-Abrechnung (BetrKV §2, umlagefaehig/nicht umlagefaehig)   │
-│  2. Grundsteuerbescheid (Direktzahlung)                             │
-│  3. Mieteinnahmen & Vorauszahlungen (inkl. Zahlungseingaenge)      │
-│  4. Berechnung & Saldo → calculateSettlement()                     │
-│  5. Export & Versand (PDF, DMS, Briefgenerator)                    │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │ nk_cost_items + nk_tenant_settlements
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  STEUER / ANLAGE V (VVAnlageVForm.tsx + useVVSteuerData.ts)       │
-│                                                                     │
-│  Auto-Felder:                                                       │
-│   - Kaltmiete p.a. ← leases.rent_cold_eur * 12                    │
-│   - NK-Vorauszahlungen p.a. ← leases.nk_advance_eur * 12         │
-│   - NK-Nachzahlung ← nk_tenant_settlements.saldo_eur              │
-│   - Grundsteuer ← nk_cost_items (category=grundsteuer)            │
-│   - Nicht umlf. NK ← nk_cost_items (is_apportionable=false)      │
-│   - Darlehenszinsen ← property_financing.annual_interest           │
-│                                                                     │
-│  Manuelle Felder (vv_annual_data):                                 │
-│   - Instandhaltung, Verwalterkosten, Rechtsberatung               │
-│   - Versicherung, Fahrtkosten, Bankgebuehren, Sonstige            │
-│   - Disagio, Finanzierungsnebenkosten                              │
-│   - AfA (autom. aus property_accounting)                           │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │ gleiche Datenquellen
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  BWA / DATEV (BWATab.tsx)                                          │
-│                                                                     │
-│  Liest parallel: units, leases, property_financing,                │
-│  property_accounting, vv_annual_data, nk_periods, nk_cost_items    │
-│  → calcDatevBWA() → SKR04 Kontenrahmen → DATEV-Export             │
-└─────────────────────────────────────────────────────────────────────┘
+```
+┌─────────────────────────────────────────────────────────┐
+│              TENANCY LIFECYCLE CONTROLLER                │
+│              1 Lease = 1 Mietverhältnis                 │
+│                                                         │
+│  State Machine:                                         │
+│  BEWERBUNG → VERTRAG → EINZUG → LAUFEND →              │
+│       → KÜNDIGUNG → AUSZUG → WIEDERVERMIETUNG           │
+│                                                         │
+│  DB:   tenancy_lifecycle_events (Event-Log)             │
+│        tenancy_dunning_configs  (Mahnstufen)            │
+│        tenancy_tasks            (Aufgaben/Worklist)     │
+│  Edge: sot-tenancy-lifecycle    (Weekly CRON + KI)      │
+│  Hook: useLeaseLifecycle        (Client consumption)    │
+│  Engine: src/engines/tenancyLifecycle/                   │
+└─────────────────────────────────────────────────────────┘
 ```
 
-## Bewertung: Was funktioniert
+---
 
-1. **Bankkonto-Verknuepfung**: Lease → `linked_bank_account_id` → `msv_bank_accounts` — korrekt
-2. **Auto-Match**: `sot-rent-match` Edge Function + `sot-rent-arrears-check` — vorhanden
-3. **Manuelle Zuordnung**: Zone C zeigt unmatched `bank_transactions` mit "Zuordnen"-Button → erstellt `rent_payment` + markiert Transaktion als `MANUAL_OVERRIDE` — funktioniert
-4. **Manuelle Zahlungserfassung**: "Zahlung manuell erfassen" in Zone A — funktioniert (z.B. Barzahlung)
-5. **NK-Engine**: Vollstaendige allocationLogic mit 6 Verteilerschluesseln + unterjaerig — korrekt
-6. **Datenfluss NK → Steuer**: `useVVSteuerData` liest `nk_cost_items` fuer Grundsteuer und nicht-umlagefaehige Kosten — korrekt
-7. **Datenfluss NK → BWA**: `BWATab` liest `nk_cost_items` via `nk_periods` — korrekt
+## 30 Aufgabenfelder — Status & Zuordnung
 
-## Identifizierte Luecken und Probleme
+| # | Aufgabenfeld | TLC-Phase | Engine/Komponente | IST % | ZIEL % | Prio |
+|---|---|---|---|---|---|---|
+| 01 | **Mietakte (Casefile/SSOT)** | ALLE | Immobilienakte (MOD-04) | 90 | 100 | ✅ |
+| 02 | **DMS/Versionen/Vorlagen** | ALLE | DMS (MOD-03), StorageX | 90 | 100 | ✅ |
+| 03 | **Rollen & Rechte (RBAC)** | ALLE | RLS, org_memberships | 60 | 90 | T2 |
+| 04 | **Kommunikationshub** | LAUFEND | MOD-02 Email, MOD-14 | 40 | 80 | T2 |
+| 05 | **Ticketing/Service Desk** | LAUFEND | tenancy_tasks (NEU) | 0 | 70 | T1 |
+| 06 | **Vermietung/Bewerbermanagement** | BEWERBUNG | applicant_profiles | 55 | 85 | T2 |
+| 07 | **Besichtigungs- & Terminplanung** | BEWERBUNG | Google Calendar (MOD-02) | 30 | 70 | T2 |
+| 08 | **Vertragsgenerator & E-Signatur** | VERTRAG | Briefgenerator + Google E-Sign | 40 | 80 | T3 |
+| 09 | **Einzug/Übergabeprotokoll** | EINZUG | tenancy_tasks + DMS | 15 | 70 | T2 |
+| 10 | **Kündigung/Auszug/Rückgabe** | KÜNDIGUNG | TLC State Machine | 15 | 80 | T2 |
+| 11 | **Zahlungsmanagement/OP-Liste** | LAUFEND | ENG-KONTOMATCH, sot-rent-match | 85 | 95 | T1 |
+| 12 | **Mahnwesen (Stufen/Zustellung)** | LAUFEND | tenancy_dunning_configs (NEU) | 25 | 90 | T1 |
+| 13 | **Ratenplan- & Rückstandsmanagement** | LAUFEND | TLC + ENG-KONTOMATCH | 20 | 80 | T2 |
+| 14 | **Kaution (Anlage/Abrechnung)** | VERTRAG→AUSZUG | leases.deposit_* + TLC | 20 | 85 | T1 |
+| 15 | **Nebenkosten/Betriebskosten** | LAUFEND | ENG-NK (vollständig) | 90 | 95 | ✅ |
+| 16 | **Vorauszahlungsanpassung** | LAUFEND | ENG-NK + Briefgenerator | 30 | 80 | T2 |
+| 17 | **Mängelmanagement/Instandhaltung** | LAUFEND | tenancy_tasks (ticket_type: defect) | 10 | 70 | T2 |
+| 18 | **Dienstleistersteuerung** | LAUFEND | tenancy_tasks + contacts | 10 | 60 | T3 |
+| 19 | **Rechnungsprüfung/Kostenstellen** | LAUFEND | property_expenses + ENG-BWA | 50 | 80 | T2 |
+| 20 | **Schadenmanagement (Incident)** | LAUFEND | tenancy_tasks (ticket_type: damage) | 10 | 70 | T2 |
+| 21 | **Versicherungskoordination** | LAUFEND | MOD-11 Claims + TLC | 10 | 60 | T3 |
+| 22 | **Mieterhöhungen (Index/Staffel)** | LAUFEND | ENG-TLC rent_increase check | 40 | 90 | T1 |
+| 23 | **3-Jahres-Erhöhungscheck** | LAUFEND | ENG-TLC + Armstrong KI | 0 | 85 | T1 |
+| 24 | **Mietminderung** | LAUFEND | leases + tenancy_lifecycle_events | 0 | 70 | T2 |
+| 25 | **Owner-Cockpit/Dashboards** | ALLE | MOD-00 Dashboard Widgets | 75 | 95 | T1 |
+| 26 | **Reporting/Exporte** | ALLE | PDF/CSV + Anlage V + BWA | 70 | 90 | T2 |
+| 27 | **Audit-Trail/Ledger** | ALLE | tenancy_lifecycle_events | 30 | 90 | T1 |
+| 28 | **Fristen- & Aufgabenmanagement** | ALLE | tenancy_tasks + TLC CRON | 10 | 85 | T1 |
+| 29 | **Automations/Rules Engine** | ALLE | TLC State Machine + CRON | 0 | 80 | T1 |
+| 30 | **KI-Assistenz (Max Power)** | ALLE | Armstrong + gemini-2.5-pro | 80 | 95 | T1 |
 
-### Luecke 1: Manuelle Ausgaben fehlen im Zahlungsverkehr-Tab
-**Problem**: Der Zahlungsverkehr-Tab zeigt nur **Mieteinnahmen** (rent_payments). Ausgaben wie Handwerker, Sanierungen, Reparaturen, die nicht ueber das Bankkonto laufen (z.B. Barzahlung, private Karte), koennen nirgends erfasst werden.
+---
 
-**Auswirkung**: Diese Kosten fehlen in:
-- NK-Abrechnung (falls umlagefaehig)
-- Anlage V → `costMaintenance` muss manuell im Steuer-Tab eingetragen werden (ist dort als Feld vorhanden, aber ohne Verbindung zum Zahlungsverkehr)
-- BWA → `vv_annual_data.cost_maintenance` wird separat geladen
+## Tier-1 Implementierung (Sofort — Sprint S6)
 
-**Loesung**: Im Zahlungsverkehr-Tab eine **"Ausgabe erfassen"**-Funktion ergaenzen, die in eine eigene Tabelle schreibt (z.B. `property_expenses`) mit Kategorisierung (Instandhaltung, Handwerker, Versicherung, Reisekosten etc.). Diese Daten fliessen dann automatisch in Steuer + BWA.
+### 1. TLC Foundation
+- [x] DB: `tenancy_lifecycle_events` Tabelle
+- [x] DB: `tenancy_dunning_configs` Tabelle
+- [x] DB: `tenancy_tasks` Tabelle (Tickets + Aufgaben)
+- [x] Engine: `src/engines/tenancyLifecycle/spec.ts`
+- [x] Engine: `src/engines/tenancyLifecycle/engine.ts`
+- [x] Hook: `src/hooks/useLeaseLifecycle.ts`
+- [x] Edge Function: `sot-tenancy-lifecycle` (Weekly CRON + KI)
+- [ ] CRON-Job registrieren (pg_cron + pg_net)
+- [ ] ENGINE_REGISTRY.md + GOLDEN_PATH_REGISTRY.md aktualisieren
 
-### Luecke 2: Ist-Zahlungseingaenge in NK-Abrechnung nicht mit Zahlungsverkehr verbunden
-**Problem**: In der NK-Abrechnung (Sektion 3) gibt es einen eigenen "Zahlungseingaenge laden"-Button der `rent_payments` separat abfragt. Die Daten aus dem Zahlungsverkehr-Tab (Zone B) werden nicht wiederverwendet — es sind die gleichen Daten, aber die Logik ist dupliziert.
+### 2. Mahnwesen (Feld 12)
+- [ ] Mahnstufen-Config Seed-Daten
+- [ ] Automatische Mahnung via `sot-mail-send`
+- [ ] Chronologie in `tenancy_lifecycle_events`
 
-**Auswirkung**: Nutzer muss Zahlungen ggf. doppelt pruefen/bearbeiten.
+### 3. Mieterhöhungs-Engine (Felder 22+23)
+- [ ] Sperrfristen-Prüfung (§558 BGB, 15 Monate)
+- [ ] Kappungsgrenze (20%/15%)
+- [ ] Index-Trigger bei VPI-Änderung
+- [ ] 3-Jahres-Check pro Einheit
+- [ ] Vorschlagslogik (konservativ/markt/max)
 
-**Loesung**: Die NK-Sektion 3 sollte direkt auf die bereits im Zahlungsverkehr-Tab festgestellten Daten verweisen, statt eine eigene Lade-/Bearbeitungs-UI zu haben. Alternativ: Read-Only-Ansicht mit Verweis "Details im Zahlungsverkehr-Tab".
+### 4. Kautionsverwaltung (Feld 14)
+- [ ] Kautionskonto-Tracking erweitern
+- [ ] Abrechnungs-Template bei Auszug
+- [ ] Zinsgutschrift-Berechnung
 
-### Luecke 3: Banktransaktionen nur als Mieteinnahmen zuordenbar
-**Problem**: Zone C im Zahlungsverkehr ordnet Buchungen nur als `rent_payment` zu. Ausgaben-Buchungen (Handwerker-Rechnung, WEG-Hausgeld, Versicherung) koennen nicht kategorisiert werden.
+### 5. Dashboard-Widget (Feld 25)
+- [ ] "Offene Aufgaben pro Mietverhältnis" Widget
+- [ ] Fälligkeits-Ampel (grün/gelb/rot)
+- [ ] Armstrong Proactive Hints aus TLC-Events
 
-**Auswirkung**: Negative Banktransaktionen (Ausgaben) bleiben "unmatched" und fliessen nirgendwohin.
+---
 
-**Loesung**: "Zuordnen"-Button sollte auch Ausgaben-Kategorien anbieten: Instandhaltung, WEG-Hausgeld, Versicherung, Grundsteuer etc. → schreibt in `property_expenses` mit Referenz zur Banktransaktion.
+## Tier-2 Implementierung (Mittelfristig)
 
-### Luecke 4: Fehlender Rueckfluss NK-Saldo in Zahlungsverkehr
-**Problem**: Wenn die NK-Abrechnung einen Saldo ergibt (Nachzahlung oder Guthaben), wird dieser zwar in `nk_tenant_settlements` gespeichert und von der Anlage V gelesen, aber im Zahlungsverkehr-Tab gibt es keine Zeile dafuer.
+### Ticketing & Service Desk (Feld 5)
+- [ ] tenancy_tasks als Ticket-System
+- [ ] Auto-Kategorisierung via Armstrong KI
+- [ ] SLA-Timer, Eskalationspfade
 
-**Loesung**: NK-Nachzahlung/Guthaben als separate Zeile im Zahlungsverkehr-Grid anzeigen (Soll = NK-Saldo, Ist = tatsaechliche Zahlung/Erstattung).
+### Einzug/Auszug Workflows (Felder 9+10)
+- [ ] Digitales Übergabeprotokoll (Fotos, Checkliste)
+- [ ] Zählerstand-Workflow
+- [ ] Kautionsabrechnung bei Auszug
 
-### Luecke 5: Keine Verbindung manuelle Steuer-Felder ← Zahlungsverkehr
-**Problem**: In der Anlage V sind Felder wie `costMaintenance`, `costTravel`, `costBankFees` rein manuell. Es gibt keine automatische Aggregation aus tatsaechlichen Zahlungen.
+### Vermietung & Besichtigung (Felder 6+7)
+- [ ] Bewerberstrecke (Portal-UI)
+- [ ] Google Calendar Integration für Besichtigungen
 
-**Auswirkung**: Nutzer muss alle Einzelposten mental zusammenrechnen und manuell eintragen.
+### Mängelmanagement (Felder 17+20)
+- [ ] Mängelmeldung via Portal (Foto/Video)
+- [ ] Triage-Logik (Notfall/Standard)
+- [ ] Schadenfall-Akte
 
-**Loesung**: Wenn `property_expenses` eingefuehrt wird, koennen diese Felder automatisch vorbelegt werden (mit "auto"-Badge wie bei Grundsteuer), mit Ueberschreibungsmoeglichkeit.
+---
 
-## Empfohlener Implementierungsplan
+## Tier-3 Implementierung (Langfristig)
 
-### Phase 1: Property Expenses Tabelle + UI (Kernluecke)
-- Neue DB-Tabelle `property_expenses` (property_id, tenant_id, category, amount, date, description, bank_transaction_id, tax_deductible)
-- Im Zahlungsverkehr-Tab: "Ausgabe erfassen"-Button (Zone A) + Ausgaben-Zuordnung fuer negative Banktransaktionen (Zone C)
-- Kategorien: Instandhaltung/Reparatur, Handwerker, Versicherung (nicht umlagefaehig), Verwalterkosten, Rechtsberatung, Fahrtkosten, Bankgebuehren, Sonstige
+### E-Signatur (Feld 8)
+- [ ] Google E-Signature API Integration
 
-### Phase 2: Auto-Aggregation in Steuer + BWA
-- `useVVSteuerData.ts`: `property_expenses` nach Kategorie aggregieren und als Vorschlagswerte in die manuellen Felder einspeisen
-- `BWATab.tsx`: `property_expenses` in die SKR04-Konten einordnen
-- UI: "auto"-Badge bei vorausgefuellten Feldern, manuelle Ueberschreibung moeglich
+### Dienstleistersteuerung (Feld 18)
+- [ ] Angebotseinholung, Vergleich, Beauftragung
 
-### Phase 3: NK ↔ Zahlungsverkehr Konsolidierung
-- NK-Sektion 3 als Read-Only-Zusammenfassung mit Link zum Zahlungsverkehr-Tab
-- NK-Saldo als Zeile im Zahlungsverkehr-Grid
-
-### Betroffene Module und Freezes
-- **MOD-04** (Immobilienakte): Zahlungsverkehr-Tab, NK-Tab, BWA-Tab, Steuer-Tab — **muss unfrozen sein**
-- Engines: `nkAbrechnung`, `bewirtschaftung`, `vvSteuer` — nur lesend verwendet, kein Engine-Change in Phase 1
-
-### Technische Voraussetzung
-- Neue DB-Tabelle `property_expenses` mit RLS
-- Keine neuen Edge Functions noetig (rein client-seitige CRUD)
-
+### Versicherungskoordination (Feld 21)
+- [ ] Standardisierte Versicherer-Meldungen
+- [ ] Regulierungs-Nachverfolgung
