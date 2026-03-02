@@ -2,6 +2,7 @@
  * SourceEmailViewer — Display original inbound email
  */
 import * as React from 'react';
+import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -178,7 +179,7 @@ export function SourceEmailViewer({
           {message.body_html ? (
             <div 
               className="prose prose-sm max-w-none bg-white p-4 rounded-lg border"
-              dangerouslySetInnerHTML={{ __html: message.body_html }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(message.body_html) }}
             />
           ) : (
             <pre className="whitespace-pre-wrap text-sm bg-white p-4 rounded-lg border font-sans">

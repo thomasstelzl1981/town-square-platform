@@ -2,6 +2,7 @@
  * Inbound Tab — Eingegangene Nachrichten + Exposé-Konvertierung
  */
 import * as React from 'react';
+import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -171,7 +172,7 @@ export function InboundTab({ mandateId, mandateCode }: InboundTabProps) {
                     {selectedMessage.body_html ? (
                       <div 
                         className="prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: selectedMessage.body_html }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedMessage.body_html) }}
                       />
                     ) : (
                       <pre className="whitespace-pre-wrap text-sm">

@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -264,7 +265,7 @@ function MessageBubble({ message }: MessageBubbleProps) {
         )}>
           {message.body_text || (
             <div 
-              dangerouslySetInnerHTML={{ __html: message.body_html || '' }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(message.body_html) }}
               className="prose prose-sm max-w-none"
             />
           )}

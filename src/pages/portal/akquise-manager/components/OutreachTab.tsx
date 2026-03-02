@@ -2,6 +2,7 @@
  * Outreach Tab — E-Mail Queue + Versand
  */
 import * as React from 'react';
+import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -354,7 +355,7 @@ export function OutreachTab({ mandateId, mandateCode, clientName, searchArea, as
                     <CardContent className="p-4">
                       <div 
                         className="prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: preview.bodyHtml }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(preview.bodyHtml) }}
                       />
                     </CardContent>
                   </Card>

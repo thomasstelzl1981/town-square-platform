@@ -3,6 +3,7 @@
  * Create, edit, and manage reusable email templates
  */
 import { useState } from 'react';
+import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -403,7 +404,7 @@ export default function AdminKiOfficeTemplates() {
                         <div 
                           className="prose prose-sm max-w-none"
                           dangerouslySetInnerHTML={{ 
-                            __html: getPreview(form.body_html || form.body_text.replace(/\n/g, '<br>')) 
+                            __html: sanitizeHtml(getPreview(form.body_html || form.body_text.replace(/\n/g, '<br>'))) 
                           }}
                         />
                       )}
