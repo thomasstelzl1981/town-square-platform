@@ -60,3 +60,7 @@ export * from './tenancyLifecycle/spec';
 // Engine 15: Sales Lifecycle Controller (ENG-SLC)
 export * from './slc/engine';
 export * from './slc/spec';
+
+// Engine 16: Financing Lifecycle Controller (ENG-FLC)
+export * from './flc/engine';
+export * from './flc/spec';

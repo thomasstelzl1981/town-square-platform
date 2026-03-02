@@ -17,6 +17,40 @@ const DOCUMENT_CHECKLIST = [
   'Exposé / Objektunterlagen',
 ];
 
+// ─── FLC Event Writer (inline for Edge Function context) ─────
+async function writeFLCEvent(
+  supabase: any,
+  params: {
+    finance_request_id: string;
+    finance_mandate_id?: string | null;
+    event_type: string;
+    event_source: string;
+    idempotency_key: string;
+    correlation_key?: string | null;
+    metadata?: Record<string, unknown>;
+  }
+) {
+  try {
+    const { error } = await supabase
+      .from('finance_lifecycle_events')
+      .insert({
+        finance_request_id: params.finance_request_id,
+        finance_mandate_id: params.finance_mandate_id || null,
+        event_type: params.event_type,
+        actor_type: 'system',
+        event_source: params.event_source,
+        idempotency_key: params.idempotency_key,
+        correlation_key: params.correlation_key || null,
+        metadata: params.metadata || {},
+      });
+    if (error && error.code !== '23505') {
+      console.error(`[FLC] Event write failed (${params.event_type}):`, error.message);
+    }
+  } catch (e) {
+    console.error(`[FLC] Event write exception (${params.event_type}):`, e);
+  }
+}
+
 function buildConfirmationEmailHtml(params: {
   firstName: string;
   publicId: string;
@@ -173,8 +207,22 @@ Deno.serve(async (req) => {
 
     if (frError) throw frError;
 
+    // ── FLC Event: CASE_CREATED ──────────────────────────────────
+    await writeFLCEvent(supabase, {
+      finance_request_id: fr.id,
+      event_type: 'case.created',
+      event_source: 'edge_fn:sot-futureroom-public-submit',
+      idempotency_key: `case_created:${fr.id}`,
+      correlation_key: publicId,
+      metadata: {
+        source: requestSource,
+        object_address: object?.address || null,
+        purchase_price: request?.purchasePrice || null,
+      },
+    });
+
     // Create finance_mandate
-    const { error: fmError } = await supabase
+    const { data: mandate, error: fmError } = await supabase
       .from('finance_mandates')
       .insert({
         tenant_id: tenantId,
@@ -182,7 +230,9 @@ Deno.serve(async (req) => {
         status: 'new',
         source: requestSource,
         public_id: publicId,
-      });
+      })
+      .select('id')
+      .single();
 
     if (fmError) {
       console.error('Mandate creation error:', fmError);
@@ -225,6 +275,16 @@ Deno.serve(async (req) => {
         console.error('Data room creation error:', uploadError);
       } else {
         console.log(`Data room created at ${dataRoomPath}`);
+        // FLC Event: DATAROOM_LINKED
+        await writeFLCEvent(supabase, {
+          finance_request_id: fr.id,
+          finance_mandate_id: mandate?.id || null,
+          event_type: 'dataroom.linked',
+          event_source: 'edge_fn:sot-futureroom-public-submit',
+          idempotency_key: `dataroom_linked:${fr.id}`,
+          correlation_key: publicId,
+          metadata: { storage_path: dataRoomPath },
+        });
       }
     } catch (e) {
       console.error('Data room creation failed:', e);

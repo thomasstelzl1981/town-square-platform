@@ -1,43 +1,55 @@
 
+## FLC Wave 1 — Financing Lifecycle Controller (Implementierungsstand)
 
-## P0 Security Fixes — Direkt-Implementation
+### ✅ ERLEDIGT
 
-### 1. `sanitizeHtml.ts` erstellen (XSS-Schutz)
-- Neue Datei `src/lib/sanitizeHtml.ts` — DOMPurify-Wrapper mit strikter Tag/Attr-Allowlist
-- Bereits als Dependency installiert (`dompurify` + `@types/dompurify`)
+1. **DB Migration: `finance_lifecycle_events`**
+   - Append-only Eventlog mit Idempotency (UNIQUE index auf `idempotency_key`)
+   - RLS: service_role full access + authenticated read via `memberships` join
+   - Indexes: `(finance_request_id, created_at DESC)`, `(event_type, created_at DESC)`
 
-### 2. XSS: `dangerouslySetInnerHTML` absichern (7 Stellen)
-Alle Stellen mit `dangerouslySetInnerHTML` durch `sanitizeHtml()` wrappen:
-- `MessageRenderer.tsx`
-- `ConversationView.tsx`
-- `SourceEmailViewer.tsx`
-- `InboundTab.tsx`
-- `OutreachTab.tsx`
-- `FutureRoomTemplates.tsx` (2×)
-- `AdminKiOfficeTemplates.tsx`
+2. **DB Fix: `commissions.platform_share_pct` Default 30→25**
+   - ALTER DEFAULT auf 25
+   - UPDATE bestehender pending/approved Finance-Einträge
 
-### 3. Bearer Token Fix (6 Dateien)
-Ersetze `Bearer ${VITE_SUPABASE_PUBLISHABLE_KEY}` durch `session.access_token`:
-- `ScopeDefinitionPanel.tsx` (3 Aufrufe)
-- `MarketReportSheet.tsx`
-- `useArmstrongVoice.ts`
-- `ArmstrongWidget.tsx`
-- `KaufyArmstrongWidget.tsx`
-- `AcquiaryObjekt.tsx`
+3. **ENG-FLC Engine (`src/engines/flc/`)**
+   - `spec.ts`: 23 Phasen, 26 Event-Typen, 7 Quality Gates, SLA-Thresholds, Snapshot-Interface
+   - `engine.ts`: `computeFLCState()`, `determineFLCPhase()`, Gate-Evaluation, Stuck-Detection, Next Actions
+   - Registriert in `src/engines/index.ts`
 
-Pattern (Zone 2 — immer authentifiziert):
-```ts
-const { data: { session } } = await supabase.auth.getSession();
-if (!session?.access_token) throw new Error('Not authenticated');
-headers: {
-  Authorization: `Bearer ${session.access_token}`,
-  apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-}
-```
+4. **Central Event Writer (`src/services/flc/eventWriter.ts`)**
+   - Client-side Helper mit Idempotency (conflict handling on `23505`)
+   - Batch-Support
 
-### 4. Kein Risiko durch späteren Sync
-Die Änderungen sind identisch zu dem, was der GitHub-Agent committed hat. Falls der Sync doch noch durchkommt, gibt es keinen Konflikt.
+5. **Edge Function: `sot-futureroom-public-submit` (Z3 Intake)**
+   - FLC Events: `case.created` + `dataroom.linked` mit Idempotency
+   - Correlation via `public_id`
 
-### Umfang
-~15 Dateien, reine Security-Fixes, keine funktionalen Änderungen.
+6. **Edge Function: `sot-finance-manager-notify` (Acceptance Flow)**
+   - ZWEI E-Mails: Customer Intro + Manager Confirmation (NEU)
+   - FLC Events: `manager.accepted`, `email.customer_intro_sent`, `email.manager_confirm_sent`, `commission.terms_accepted`
+   - Vollständige Idempotenz: Duplicate-Calls senden keine doppelten E-Mails
 
+### ⬜ NÄCHSTE RUNDE (W1 Fortsetzung)
+
+7. **Cron Patrol: `sot-flc-lifecycle`** — Edge Function analog `sot-slc-lifecycle`
+   - Täglich 03:00 UTC, Stuck-Detection, SLA-Breach Events
+   - KI-Summary via Gemini 2.5 Pro
+   - `process_health_log` Eintrag
+
+8. **UI: Finance Desk FLC Integration**
+   - `useFLCMonitorCases()` Hook
+   - Finance Desk "Fälle" Tab: Timeline aus `finance_lifecycle_events`
+   - Finance Desk "Monitor" Tab: Stuck/SLA-Breach Alerts
+   - Optional: MOD-07 StatusTab computed state
+
+9. **ENGINE_REGISTRY.md** — ENG-FLC Eintrag hinzufügen
+
+10. **engines_freeze.json** — ENG-FLC Eintrag (frozen: false)
+
+### ⬜ WELLE 2 (nach W1 Stabilisierung)
+- Repair Action Queue + UI
+- Europace Real API (OAuth2)
+- Bank-Package Builder + Docs-Checklist Gate
+- Decision/Signature/Payout Tracking
+- Settlement Automation (Commission → Invoice → Paid)
