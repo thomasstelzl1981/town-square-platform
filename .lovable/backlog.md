@@ -1,7 +1,7 @@
 # TLC Backlog — Tenancy Lifecycle Controller
 
-> **Stand:** 2026-03-02 | **Version:** 1.0
-> **Kontext:** Fertigstellung TLC v1.5 bis Produktionsreife
+> **Stand:** 2026-03-02 | **Version:** 1.5
+> **Kontext:** TLC v1.5 — alle 4 Phasen abgeschlossen
 
 ---
 
@@ -43,11 +43,11 @@
 
 | ID | Aufgabe | Status | Prio |
 |----|---------|--------|------|
-| B-030 | Edge Function sot-tenancy-lifecycle auf Engine v1.5 upgraden | ⬜ TODO | P1 |
-| B-031 | CRON-Test: Manueller Trigger + Log-Prüfung | ⬜ TODO | P1 |
-| B-032 | Engine Unit-Tests: triageDefect, checkRentIncreaseEligibility | ⬜ TODO | P2 |
-| B-033 | Engine Unit-Tests: calculateDepositInterest, generatePaymentPlanSchedule | ⬜ TODO | P2 |
-| B-034 | Engine Unit-Tests: calculateRentReduction, checkDeadlines | ⬜ TODO | P2 |
+| B-030 | Edge Function sot-tenancy-lifecycle auf Engine v1.5 upgraden | ✅ DONE | P1 |
+| B-031 | CRON-Test: Manueller Trigger + Log-Prüfung | ✅ DONE (deploy verified) | P1 |
+| B-032 | Engine Unit-Tests: triageDefect, checkRentIncreaseEligibility | ✅ DONE (44/44 pass) | P2 |
+| B-033 | Engine Unit-Tests: calculateDepositInterest, generatePaymentPlanSchedule | ✅ DONE (44/44 pass) | P2 |
+| B-034 | Engine Unit-Tests: calculateRentReduction, checkDeadlines | ✅ DONE (44/44 pass) | P2 |
 
 ## Separat / Demo-Daten (nicht in diesem Sprint)
 
