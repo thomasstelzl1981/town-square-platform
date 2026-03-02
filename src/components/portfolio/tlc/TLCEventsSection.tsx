@@ -3,15 +3,10 @@
  */
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { useState } from 'react';
-import { Activity, ChevronDown, CheckCircle, AlertTriangle, Info, XCircle } from 'lucide-react';
+import { Activity, CheckCircle, AlertTriangle, Info, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { DESIGN } from '@/config/designManifest';
 import type { LifecycleEvent } from '@/hooks/useLeaseLifecycle';
 
 interface Props {
@@ -27,28 +22,24 @@ const severityConfig: Record<string, { icon: typeof Info; color: string; label: 
 };
 
 export function TLCEventsSection({ events, onResolve }: Props) {
-  const [open, setOpen] = useState(false);
   const unresolved = events.filter(e => !e.resolved_at);
 
   if (events.length === 0) return null;
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger asChild>
-        <Button variant="ghost" className="w-full justify-between h-8 text-xs">
-          <span className="flex items-center gap-2">
-            <Activity className="h-3.5 w-3.5" />
-            Lifecycle-Events ({events.length})
-            {unresolved.length > 0 && (
-              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 ml-1">
-                {unresolved.length} offen
-              </Badge>
-            )}
-          </span>
-          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-        </Button>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-1 mt-1">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h4 className={DESIGN.TYPOGRAPHY.LABEL}>
+          <Activity className="h-3.5 w-3.5 inline mr-1.5" />
+          Lifecycle-Events ({events.length})
+        </h4>
+        {unresolved.length > 0 && (
+          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+            {unresolved.length} offen
+          </Badge>
+        )}
+      </div>
+      <div className="space-y-1">
         {events.slice(0, 20).map(event => {
           const config = severityConfig[event.severity] || severityConfig.info;
           const Icon = config.icon;
@@ -86,7 +77,7 @@ export function TLCEventsSection({ events, onResolve }: Props) {
             </div>
           );
         })}
-      </CollapsibleContent>
-    </Collapsible>
+      </div>
+    </div>
   );
 }

@@ -3,15 +3,10 @@
  */
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { useState } from 'react';
-import { CalendarClock, ChevronDown, CheckCircle, Bell } from 'lucide-react';
+import { CalendarClock, CheckCircle, Bell } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { DESIGN } from '@/config/designManifest';
 
 interface Deadline {
   id: string;
@@ -43,27 +38,23 @@ const typeLabels: Record<string, string> = {
 };
 
 export function TLCDeadlinesSection({ deadlines, onComplete, onDismiss }: Props) {
-  const [open, setOpen] = useState(false);
   const pending = deadlines.filter(d => d.status === 'pending');
   const today = new Date();
 
   if (deadlines.length === 0) return null;
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger asChild>
-        <Button variant="ghost" className="w-full justify-between h-8 text-xs">
-          <span className="flex items-center gap-2">
-            <CalendarClock className="h-3.5 w-3.5" />
-            Fristen ({pending.length} offen)
-            {pending.some(d => differenceInDays(new Date(d.due_date), today) <= 7) && (
-              <Bell className="h-3 w-3 text-amber-500 animate-pulse" />
-            )}
-          </span>
-          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-        </Button>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-1 mt-1">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h4 className={DESIGN.TYPOGRAPHY.LABEL}>
+          <CalendarClock className="h-3.5 w-3.5 inline mr-1.5" />
+          Fristen ({pending.length} offen)
+        </h4>
+        {pending.some(d => differenceInDays(new Date(d.due_date), today) <= 7) && (
+          <Bell className="h-3 w-3 text-amber-500 animate-pulse" />
+        )}
+      </div>
+      <div className="space-y-1">
         {deadlines.map(deadline => {
           const dueDate = new Date(deadline.due_date);
           const daysLeft = differenceInDays(dueDate, today);
@@ -113,7 +104,7 @@ export function TLCDeadlinesSection({ deadlines, onComplete, onDismiss }: Props)
             </div>
           );
         })}
-      </CollapsibleContent>
-    </Collapsible>
+      </div>
+    </div>
   );
 }

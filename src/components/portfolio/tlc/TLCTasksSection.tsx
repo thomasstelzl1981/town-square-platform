@@ -3,15 +3,10 @@
  */
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { useState } from 'react';
-import { ListTodo, ChevronDown, CheckCircle } from 'lucide-react';
+import { ListTodo, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { DESIGN } from '@/config/designManifest';
 import type { TenancyTask } from '@/hooks/useLeaseLifecycle';
 import type { TenancyTaskStatus } from '@/engines/tenancyLifecycle/spec';
 
@@ -41,23 +36,17 @@ const categoryLabels: Record<string, string> = {
 };
 
 export function TLCTasksSection({ tasks, onUpdateStatus }: Props) {
-  const [open, setOpen] = useState(false);
   const openTasks = tasks.filter(t => t.status === 'open' || t.status === 'in_progress');
 
   if (tasks.length === 0) return null;
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger asChild>
-        <Button variant="ghost" className="w-full justify-between h-8 text-xs">
-          <span className="flex items-center gap-2">
-            <ListTodo className="h-3.5 w-3.5" />
-            Aufgaben ({openTasks.length} offen)
-          </span>
-          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-        </Button>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-1 mt-1">
+    <div className="space-y-2">
+      <h4 className={DESIGN.TYPOGRAPHY.LABEL}>
+        <ListTodo className="h-3.5 w-3.5 inline mr-1.5" />
+        Aufgaben ({openTasks.length} offen)
+      </h4>
+      <div className="space-y-1">
         {tasks.slice(0, 20).map(task => (
           <div
             key={task.id}
@@ -100,7 +89,7 @@ export function TLCTasksSection({ tasks, onUpdateStatus }: Props) {
             )}
           </div>
         ))}
-      </CollapsibleContent>
-    </Collapsible>
+      </div>
+    </div>
   );
 }

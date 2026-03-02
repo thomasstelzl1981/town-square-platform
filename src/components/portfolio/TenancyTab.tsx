@@ -19,7 +19,9 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock, History, Euro, Plus, FileText, TrendingUp, ChevronDown, Save, Trash2 } from 'lucide-react';
+import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock, History, Euro, Plus, FileText, TrendingUp, ChevronDown, Save, Trash2, ClipboardList, Building2, BarChart3 } from 'lucide-react';
+import { SectionCard } from '@/components/shared/SectionCard';
+import { DESIGN } from '@/config/designManifest';
 import { isDemoId } from '@/engines/demoData/engine';
 import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 import { useNavigate } from 'react-router-dom';
@@ -754,21 +756,11 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
       )}
 
       {/* TLC Sections */}
-      <div className="space-y-1 pt-2 border-t">
-        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 pb-1">
-          Lifecycle-Management (TLC)
-        </h4>
-
+      <div className={`${DESIGN.SPACING.SECTION} pt-4 border-t`}>
 
         {/* ── Kategorie 1: Kernfunktionen ── */}
-        <Collapsible defaultOpen>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="w-full justify-between h-8 text-xs font-semibold">
-              <span>📋 Kernfunktionen</span>
-              <ChevronDown className="h-3.5 w-3.5" />
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-1 pl-2">
+        <SectionCard icon={ClipboardList} title="Kernfunktionen" description="Lifecycle-Events, Aufgaben & Fristen">
+          <div className={DESIGN.SPACING.COMPACT}>
             <TLCEventsSection events={events} onResolve={resolveEvent} />
             <TLCTasksSection tasks={tasks} onUpdateStatus={updateTaskStatus} />
             <TLCDeadlinesSection
@@ -777,8 +769,8 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
               onDismiss={(id) => dismissDeadline.mutate(id)}
             />
             <TLCMeterSection readings={readings} loading={metersLoading} onFetch={fetchReadings} />
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+        </SectionCard>
 
         {/* ── Per-Lease Workflow Sections ── */}
         {activeLeases.map((lease) => {
@@ -792,14 +784,8 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
               )}
 
               {/* ── Kategorie 2: Vertrag & Übergabe ── */}
-              <Collapsible>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between h-8 text-xs font-semibold">
-                    <span>📝 Vertrag & Übergabe</span>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-1 pl-2">
+              <SectionCard icon={FileText} title="Vertrag & Übergabe" description="Inserate, Verträge, Übergaben, Bewerber">
+                <div className={DESIGN.SPACING.COMPACT}>
                   <TLCRentalListingSection
                     unitId={unitId}
                     propertyId={propertyId}
@@ -839,18 +825,12 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
                     tenantName={tName}
                   />
                   <TLCApplicantSection unitId={unitId} />
-                </CollapsibleContent>
-              </Collapsible>
+                </div>
+              </SectionCard>
 
               {/* ── Kategorie 3: Finanzen ── */}
-              <Collapsible>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between h-8 text-xs font-semibold">
-                    <span>💶 Finanzen</span>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-1 pl-2">
+              <SectionCard icon={Euro} title="Finanzen" description="Zahlungspläne, Minderungen, NK-Prüfungen">
+                <div className={DESIGN.SPACING.COMPACT}>
                   <TLCPaymentPlanSection leaseId={lease.id} unitId={unitId} />
                   <TLCRentReductionSection leaseId={lease.id} unitId={unitId} />
                   <TLCPrepaymentSection
@@ -870,18 +850,12 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
                     endDate={lease.end_date}
                   />
                   <TLCInvoiceSection propertyId={propertyId} />
-                </CollapsibleContent>
-              </Collapsible>
+                </div>
+              </SectionCard>
 
               {/* ── Kategorie 4: Verwaltung ── */}
-              <Collapsible>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between h-8 text-xs font-semibold">
-                    <span>🏢 Verwaltung</span>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-1 pl-2">
+              <SectionCard icon={Building2} title="Verwaltung" description="Kommunikation, Mängel, Dienstleister">
+                <div className={DESIGN.SPACING.COMPACT}>
                   <TLCCommunicationSection
                     leaseId={lease.id}
                     unitId={unitId}
@@ -892,8 +866,8 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
                   <TLCDefectSection tenantId={tenantId} leaseId={lease.id} propertyId={propertyId} />
                   <TLCServiceProviderSection propertyId={propertyId} />
                   <TLCInsuranceSection propertyId={propertyId} />
-                </CollapsibleContent>
-              </Collapsible>
+                </div>
+              </SectionCard>
             </div>
           );
         })}
@@ -902,7 +876,9 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
         {activeLeases.length === 0 && (
           <TLCApplicantSection unitId={unitId} />
         )}
-        <TLCReportSection propertyId={propertyId} />
+        <SectionCard icon={BarChart3} title="Portfolio-Report" description="Kennzahlen & CSV-Export">
+          <TLCReportSection propertyId={propertyId} />
+        </SectionCard>
       </div>
 
 
