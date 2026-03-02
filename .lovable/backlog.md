@@ -9,13 +9,13 @@
 
 | ID | Aufgabe | Status | Prio |
 |----|---------|--------|------|
-| B-001 | RLS-Policies für tenancy_deadlines, tenancy_payment_plans, tenancy_rent_reductions neu erstellen (PERMISSIVE, tenant_id-basiert, CRUD) | ⬜ TODO | P0 |
-| B-002 | TenancyTab: Lifecycle-Events Section (Chronologie/Audit-Trail) via useLeaseLifecycle | ⬜ TODO | P0 |
-| B-003 | TenancyTab: Offene Tasks/Tickets Section via useLeaseLifecycle | ⬜ TODO | P0 |
-| B-004 | TenancyTab: Mahnhistorie Section via useLeaseLifecycle Events | ⬜ TODO | P0 |
-| B-005 | TenancyTab: Deadlines Section via useTenancyDeadlines | ⬜ TODO | P0 |
-| B-006 | TenancyTab: Zählerstände Section via useMeterReadings | ⬜ TODO | P1 |
-| B-007 | TLCWidget: Echte Aggregationen (Deadlines, Mahnungen, Events zählen) | ⬜ TODO | P1 |
+| B-001 | RLS-Policies für tenancy_deadlines, tenancy_payment_plans, tenancy_rent_reductions neu erstellen (PERMISSIVE, tenant_id-basiert, CRUD) | ✅ DONE | P0 |
+| B-002 | TenancyTab: Lifecycle-Events Section (Chronologie/Audit-Trail) via useLeaseLifecycle | ✅ DONE | P0 |
+| B-003 | TenancyTab: Offene Tasks/Tickets Section via useLeaseLifecycle | ✅ DONE | P0 |
+| B-004 | TenancyTab: Mahnhistorie Section via useLeaseLifecycle Events | ✅ DONE (in Events) | P0 |
+| B-005 | TenancyTab: Deadlines Section via useTenancyDeadlines | ✅ DONE | P0 |
+| B-006 | TenancyTab: Zählerstände Section via useMeterReadings | ✅ DONE | P1 |
+| B-007 | TLCWidget: Echte Aggregationen (Deadlines, Mahnungen, Events zählen) | ✅ DONE | P1 |
 
 ## Phase 2 — Detailseiten & Workflows
 

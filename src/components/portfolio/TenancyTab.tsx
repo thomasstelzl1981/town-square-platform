@@ -26,6 +26,13 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useLeaseLifecycle } from '@/hooks/useLeaseLifecycle';
+import { useTenancyDeadlines } from '@/hooks/useTenancyDeadlines';
+import { useMeterReadings } from '@/hooks/useMeterReadings';
+import { TLCEventsSection } from './tlc/TLCEventsSection';
+import { TLCTasksSection } from './tlc/TLCTasksSection';
+import { TLCDeadlinesSection } from './tlc/TLCDeadlinesSection';
+import { TLCMeterSection } from './tlc/TLCMeterSection';
 
 interface Lease {
   id: string;
@@ -111,6 +118,11 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
   const [saving, setSaving] = useState(false);
   const [edits, setEdits] = useState<LeaseEdits>({});
   const [isCreating, setIsCreating] = useState(false);
+
+  // TLC Hooks
+  const { events, tasks, resolveEvent, updateTaskStatus } = useLeaseLifecycle();
+  const { deadlines, completeDeadline, dismissDeadline } = useTenancyDeadlines(undefined, propertyId);
+  const { readings, loading: metersLoading, fetchReadings } = useMeterReadings(unitId);
   const [historicalOpen, setHistoricalOpen] = useState(false);
 
   // New lease form state
@@ -668,7 +680,22 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
         </Collapsible>
       )}
 
-      {/* Sticky Save Bar (only when dirty) */}
+      {/* TLC Sections */}
+      <div className="space-y-1 pt-2 border-t">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 pb-1">
+          Lifecycle-Management (TLC)
+        </h4>
+        <TLCEventsSection events={events} onResolve={resolveEvent} />
+        <TLCTasksSection tasks={tasks} onUpdateStatus={updateTaskStatus} />
+        <TLCDeadlinesSection
+          deadlines={deadlines as any}
+          onComplete={(id) => completeDeadline.mutate(id)}
+          onDismiss={(id) => dismissDeadline.mutate(id)}
+        />
+        <TLCMeterSection readings={readings} loading={metersLoading} onFetch={fetchReadings} />
+      </div>
+
+
       {isDirty && (
         <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t p-3 z-50">
           <div className="container mx-auto flex items-center justify-between max-w-7xl">

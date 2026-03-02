@@ -1,8 +1,8 @@
 /**
  * TLCWidget — Tenancy Lifecycle Controller Dashboard Widget
  * 
- * Shows open tasks per lease with traffic-light urgency indicators.
- * Data source: tenancy_tasks + tenancy_lifecycle_events via useLeaseLifecycle hook.
+ * Shows open tasks, deadlines, and events with traffic-light urgency indicators.
+ * Data source: tenancy_tasks + tenancy_lifecycle_events + tenancy_deadlines
  */
 
 import { useMemo } from 'react';
@@ -14,26 +14,32 @@ import {
   CheckCircle2, 
   Clock,
   TrendingUp,
-  Home
+  Home,
+  CalendarClock
 } from 'lucide-react';
 import { useLeaseLifecycle } from '@/hooks/useLeaseLifecycle';
+import { useTenancyDeadlines } from '@/hooks/useTenancyDeadlines';
 import { cn } from '@/lib/utils';
+import { differenceInDays } from 'date-fns';
 
 /** Traffic light color based on urgency */
 function urgencyColor(urgentCount: number, highCount: number) {
-  if (urgentCount > 0) return 'text-red-500';
+  if (urgentCount > 0) return 'text-destructive';
   if (highCount > 0) return 'text-amber-500';
   return 'text-emerald-500';
 }
 
 function urgencyBg(urgentCount: number, highCount: number) {
-  if (urgentCount > 0) return 'bg-red-500/10';
+  if (urgentCount > 0) return 'bg-destructive/10';
   if (highCount > 0) return 'bg-amber-500/10';
   return 'bg-emerald-500/10';
 }
 
 export function TLCWidget() {
-  const { tasks, events, loading: isLoading } = useLeaseLifecycle();
+  const { tasks, events, loading: tasksLoading } = useLeaseLifecycle();
+  const { deadlines, isLoading: deadlinesLoading } = useTenancyDeadlines();
+
+  const isLoading = tasksLoading || deadlinesLoading;
 
   const stats = useMemo(() => {
     const openTasks = tasks.filter(t => t.status === 'open' || t.status === 'in_progress');
@@ -47,21 +53,38 @@ export function TLCWidget() {
       byCategory[cat] = (byCategory[cat] || 0) + 1;
     }
 
+    // Deadlines
+    const today = new Date();
+    const pendingDeadlines = (deadlines || []).filter((d: any) => d.status === 'pending');
+    const overdueDeadlines = pendingDeadlines.filter((d: any) => differenceInDays(new Date(d.due_date), today) < 0);
+    const urgentDeadlines = pendingDeadlines.filter((d: any) => {
+      const days = differenceInDays(new Date(d.due_date), today);
+      return days >= 0 && days <= 7;
+    });
+
     // Recent events (last 7 days)
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     const recentEvents = events.filter(e => new Date(e.created_at) >= oneWeekAgo);
     const criticalEvents = recentEvents.filter(e => e.severity === 'critical');
 
+    // Total action items = open tasks + overdue deadlines
+    const totalActionItems = openTasks.length + overdueDeadlines.length;
+    const totalUrgent = urgentTasks.length + overdueDeadlines.length;
+    const totalHigh = highTasks.length + urgentDeadlines.length;
+
     return {
-      total: openTasks.length,
-      urgent: urgentTasks.length,
-      high: highTasks.length,
+      total: totalActionItems,
+      urgent: totalUrgent,
+      high: totalHigh,
+      openTasks: openTasks.length,
+      pendingDeadlines: pendingDeadlines.length,
+      overdueDeadlines: overdueDeadlines.length,
       byCategory,
       recentEvents: recentEvents.length,
       criticalEvents: criticalEvents.length,
     };
-  }, [tasks, events]);
+  }, [tasks, events, deadlines]);
 
   if (isLoading) {
     return (
@@ -110,17 +133,35 @@ export function TLCWidget() {
             {stats.total}
           </span>
           <span className="text-xs text-muted-foreground mt-1">
-            offene Aufgaben
+            offene Aktionen
           </span>
         </div>
 
-        {/* Footer: Status + categories */}
+        {/* Footer: Status + metrics */}
         <div className="space-y-2">
           <div className="flex items-center gap-1.5">
             <StatusIcon className={cn('h-3.5 w-3.5', urgencyColor(stats.urgent, stats.high))} />
             <span className={cn('text-xs font-medium', urgencyColor(stats.urgent, stats.high))}>
               {statusLabel}
             </span>
+          </div>
+
+          {/* Metrics row */}
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+            {stats.openTasks > 0 && (
+              <span>{stats.openTasks} Aufgaben</span>
+            )}
+            {stats.pendingDeadlines > 0 && (
+              <span className="flex items-center gap-0.5">
+                <CalendarClock className="h-3 w-3" />
+                {stats.pendingDeadlines} Fristen
+              </span>
+            )}
+            {stats.overdueDeadlines > 0 && (
+              <span className="text-destructive font-medium">
+                {stats.overdueDeadlines} überfällig
+              </span>
+            )}
           </div>
 
           {/* Category chips */}
