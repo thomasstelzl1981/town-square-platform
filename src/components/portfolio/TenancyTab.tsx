@@ -130,6 +130,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
   const [saving, setSaving] = useState(false);
   const [edits, setEdits] = useState<LeaseEdits>({});
   const [isCreating, setIsCreating] = useState(false);
+  const [orgName, setOrgName] = useState<string>('');
 
   // TLC Hooks
   const { events, tasks, resolveEvent, updateTaskStatus } = useLeaseLifecycle();
@@ -177,6 +178,14 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
         .eq('tenant_id', tenantId)
         .order('last_name');
       setContacts(contactsData || []);
+
+      // Fetch org name for landlord display
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('name')
+        .eq('id', tenantId)
+        .single();
+      if (orgData?.name) setOrgName(orgData.name);
     } catch (err: unknown) {
       setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden');
     }
@@ -720,7 +729,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
             <TLCRentReductionSection leaseId={activeLeases[0].id} unitId={unitId} />
             <TLCContractSection
               leaseData={activeLeases[0].rent_cold_eur ? {
-                landlordName: '',
+                landlordName: orgName || 'Eigentümer',
                 landlordAddress: '',
                 tenantName: activeLeases[0].tenant_contact ? `${activeLeases[0].tenant_contact.first_name} ${activeLeases[0].tenant_contact.last_name}` : '',
                 propertyAddress: '',

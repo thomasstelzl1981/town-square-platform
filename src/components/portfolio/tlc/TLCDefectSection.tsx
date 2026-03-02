@@ -1,5 +1,5 @@
 /**
- * TLC Defect Report Section — Mängelmelder with auto-triage
+ * TLC Defect Report Section — Mängelmelder with auto-triage + existing reports list
  */
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,16 +11,31 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useState } from 'react';
-import { Wrench, ChevronDown, Plus, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Wrench, ChevronDown, Plus, AlertTriangle, Loader2 } from 'lucide-react';
 import { useDefectReport } from '@/hooks/useDefectReport';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 interface Props {
   tenantId: string;
   leaseId?: string;
   propertyId?: string;
 }
+
+const SEVERITY_COLORS: Record<string, string> = {
+  emergency: 'destructive',
+  urgent: 'default',
+  standard: 'secondary',
+};
+
+const SEVERITY_LABELS: Record<string, string> = {
+  emergency: 'Notfall',
+  urgent: 'Dringend',
+  standard: 'Normal',
+};
 
 export function TLCDefectSection({ tenantId, leaseId, propertyId }: Props) {
   const [open, setOpen] = useState(false);
@@ -29,8 +44,30 @@ export function TLCDefectSection({ tenantId, leaseId, propertyId }: Props) {
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [existingDefects, setExistingDefects] = useState<any[]>([]);
+  const [loadingDefects, setLoadingDefects] = useState(false);
 
   const { createDefectReport } = useDefectReport();
+
+  // Fetch existing defect reports
+  useEffect(() => {
+    if (!open) return;
+    const fetchDefects = async () => {
+      setLoadingDefects(true);
+      const query = supabase
+        .from('tenancy_tasks')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('task_type', 'defect')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (leaseId) query.eq('lease_id', leaseId);
+      const { data } = await query;
+      setExistingDefects(data || []);
+      setLoadingDefects(false);
+    };
+    fetchDefects();
+  }, [open, tenantId, leaseId]);
 
   const handleSubmit = async () => {
     if (!title.trim()) { toast.error('Titel ist erforderlich'); return; }
@@ -52,8 +89,21 @@ export function TLCDefectSection({ tenantId, leaseId, propertyId }: Props) {
       setTitle('');
       setDescription('');
       setLocation('');
+      // Refresh list
+      const query = supabase
+        .from('tenancy_tasks')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('task_type', 'defect')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (leaseId) query.eq('lease_id', leaseId);
+      const { data } = await query;
+      setExistingDefects(data || []);
     }
   };
+
+  const openCount = existingDefects.filter(d => d.status === 'open').length;
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -62,11 +112,53 @@ export function TLCDefectSection({ tenantId, leaseId, propertyId }: Props) {
           <span className="flex items-center gap-2">
             <Wrench className="h-3.5 w-3.5" />
             Mängelmelder
+            {openCount > 0 && (
+              <Badge variant="destructive" className="text-[9px] px-1 py-0">{openCount} offen</Badge>
+            )}
           </span>
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-2 mt-1">
+        {/* Existing defect reports */}
+        {loadingDefects ? (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground p-2">
+            <Loader2 className="h-3 w-3 animate-spin" />Lädt Mängel…
+          </div>
+        ) : existingDefects.length > 0 ? (
+          <div className="space-y-1">
+            {existingDefects.map(d => (
+              <div key={d.id} className="flex items-center justify-between p-2 rounded-lg border bg-card text-xs">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium truncate">{d.title}</span>
+                    <Badge
+                      variant={(SEVERITY_COLORS[d.severity_assessment] || 'secondary') as any}
+                      className="text-[9px] px-1 py-0 shrink-0"
+                    >
+                      {SEVERITY_LABELS[d.severity_assessment] || d.severity_assessment}
+                    </Badge>
+                    <Badge
+                      variant={d.status === 'open' ? 'outline' : 'secondary'}
+                      className="text-[9px] px-1 py-0 shrink-0"
+                    >
+                      {d.status === 'open' ? 'Offen' : d.status === 'in_progress' ? 'In Arbeit' : 'Erledigt'}
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground mt-0.5 truncate">
+                    {format(new Date(d.created_at), 'dd.MM.yyyy', { locale: de })}
+                    {d.location_detail && ` • ${d.location_detail}`}
+                    {d.sla_hours && ` • SLA: ${d.sla_hours}h`}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground px-2">Keine Mängel gemeldet.</p>
+        )}
+
+        {/* Create new defect */}
         {creating ? (
           <div className="p-3 rounded-lg border border-dashed border-primary/30 space-y-2">
             <div className="space-y-1">
