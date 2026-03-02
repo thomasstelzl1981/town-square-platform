@@ -261,5 +261,69 @@ export const MOVE_OUT_CHECKLIST_ITEMS: Omit<MoveChecklistItem, 'completed' | 'co
   { key: 'deposit_paid_out', label: 'Kaution ausgezahlt', category: 'finanzen', required: true },
 ];
 
+// ─── Payment Plan (Ratenplan) ─────────────────────────────────
+export interface PaymentPlanInput {
+  totalArrears: number;
+  monthlyInstallment: number;
+  installmentsCount: number;
+  startDate: string;
+}
+
+export interface PaymentPlanSchedule {
+  installmentNumber: number;
+  dueDate: string;
+  amount: number;
+  cumulativePaid: number;
+  remainingBalance: number;
+}
+
+// ─── Rent Reduction (Mietminderung) ──────────────────────────
+export interface RentReductionInput {
+  baseRentCold: number;
+  reductionPercent: number;
+  effectiveFrom: string;
+  effectiveUntil: string | null;
+  reason: string;
+}
+
+export interface RentReductionResult {
+  baseRent: number;
+  reductionPercent: number;
+  reducedRent: number;
+  monthlyReduction: number;
+  effectiveFrom: string;
+  effectiveUntil: string | null;
+  totalReductionEstimate: number;
+  legalBasis: string;
+}
+
+/** Standard rent reduction percentages by defect category (case law guidance) */
+export const RENT_REDUCTION_GUIDELINES: Record<string, { minPercent: number; maxPercent: number; description: string }> = {
+  heating_failure: { minPercent: 20, maxPercent: 100, description: 'Heizungsausfall (Wintermonate bis 100%)' },
+  hot_water_failure: { minPercent: 10, maxPercent: 20, description: 'Kein Warmwasser' },
+  mold: { minPercent: 10, maxPercent: 25, description: 'Schimmelbefall' },
+  noise_construction: { minPercent: 10, maxPercent: 30, description: 'Baulärm in der Umgebung' },
+  elevator_broken: { minPercent: 3, maxPercent: 10, description: 'Aufzug defekt (obere Stockwerke höher)' },
+  window_defect: { minPercent: 5, maxPercent: 15, description: 'Undichte Fenster' },
+  water_damage: { minPercent: 20, maxPercent: 50, description: 'Wasserschaden / Feuchtigkeit' },
+  pest_infestation: { minPercent: 10, maxPercent: 50, description: 'Schädlingsbefall' },
+  area_deviation: { minPercent: 0, maxPercent: 100, description: 'Flächenabweichung >10% (BGH)' },
+};
+
+// ─── Deadline Types ──────────────────────────────────────────
+export const DEADLINE_TYPES = {
+  nk_settlement: 'NK-Abrechnung',
+  rent_increase: 'Mieterhöhung',
+  lease_renewal: 'Vertragsverlängerung',
+  deposit_settlement: 'Kautionsabrechnung',
+  inspection: 'Begehung/Inspektion',
+  insurance_renewal: 'Versicherung',
+  maintenance: 'Wartung',
+  legal: 'Rechtliche Frist',
+  custom: 'Individuell',
+} as const;
+
+export type DeadlineType = keyof typeof DEADLINE_TYPES;
+
 // ─── Engine Version ───────────────────────────────────────────
-export const TLC_ENGINE_VERSION = '1.2.0';
+export const TLC_ENGINE_VERSION = '1.3.0';

@@ -1,6 +1,6 @@
 # Digitale Miet-Sonderverwaltung — Masterplan (TLC)
 
-> **Version:** 1.2.0 | **Stand:** 2026-03-02
+> **Version:** 1.3.0 | **Stand:** 2026-03-02
 > **Orchestrator:** Tenancy Lifecycle Controller (ENG-TLC)
 > **CRON:** Wöchentlich (Sonntag 03:00 UTC)
 > **KI-Power:** google/gemini-2.5-pro (Maximum Power)
@@ -21,139 +21,106 @@
 │  DB:   tenancy_lifecycle_events (Event-Log)             │
 │        tenancy_dunning_configs  (Mahnstufen)            │
 │        tenancy_tasks            (Aufgaben/Worklist)     │
-│        tenancy_handover_protocols (Übergabe) ★NEW       │
-│        tenancy_meter_readings   (Zählerstände) ★NEW     │
+│        tenancy_handover_protocols (Übergabe)            │
+│        tenancy_meter_readings   (Zählerstände)          │
+│        tenancy_payment_plans    (Ratenpläne) ★NEW       │
+│        tenancy_rent_reductions  (Mietminderungen) ★NEW  │
+│        tenancy_deadlines        (Fristen) ★NEW          │
 │  Edge: sot-tenancy-lifecycle    (Weekly CRON + KI)      │
-│  Hook: useLeaseLifecycle        (Client consumption)    │
-│        useHandoverProtocol      ★NEW                    │
-│        useDefectReport          ★NEW                    │
-│        useMeterReadings         ★NEW                    │
-│  Engine: src/engines/tenancyLifecycle/                   │
+│  Hooks:                                                 │
+│    useLeaseLifecycle, useHandoverProtocol,               │
+│    useDefectReport, useMeterReadings,                    │
+│    usePaymentPlan ★NEW, useRentReduction ★NEW,          │
+│    useTenancyDeadlines ★NEW, useTenancyReport ★NEW      │
+│  Engine: src/engines/tenancyLifecycle/ (v1.3.0)         │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 30 Aufgabenfelder — Status & Zuordnung
+## 30 Aufgabenfelder — Endstatus
 
-| # | Aufgabenfeld | TLC-Phase | Engine/Komponente | IST % | ZIEL % | Prio |
-|---|---|---|---|---|---|---|
-| 01 | **Mietakte (Casefile/SSOT)** | ALLE | Immobilienakte (MOD-04) | 90 | 100 | ✅ |
-| 02 | **DMS/Versionen/Vorlagen** | ALLE | DMS (MOD-03), StorageX | 90 | 100 | ✅ |
-| 03 | **Rollen & Rechte (RBAC)** | ALLE | RLS, memberships | 60 | 90 | T2 |
-| 04 | **Kommunikationshub** | LAUFEND | MOD-02 Email, MOD-14 | 40 | 80 | T2 |
-| 05 | **Ticketing/Service Desk** | LAUFEND | tenancy_tasks + SLA/Triage | **60** | 70 | ✅ T2 |
-| 06 | **Vermietung/Bewerbermanagement** | BEWERBUNG | applicant_profiles | 55 | 85 | T2 |
-| 07 | **Besichtigungs- & Terminplanung** | BEWERBUNG | Google Calendar (MOD-02) | 30 | 70 | T2 |
-| 08 | **Vertragsgenerator & E-Signatur** | VERTRAG | Briefgenerator + Google E-Sign | 40 | 80 | T3 |
-| 09 | **Einzug/Übergabeprotokoll** | EINZUG | tenancy_handover_protocols + checklist | **65** | 70 | ✅ T2 |
-| 10 | **Kündigung/Auszug/Rückgabe** | KÜNDIGUNG | TLC State Machine + move_out checklist | **65** | 80 | ✅ T2 |
-| 11 | **Zahlungsmanagement/OP-Liste** | LAUFEND | ENG-KONTOMATCH, sot-rent-match | 85 | 95 | T1 ✅ |
-| 12 | **Mahnwesen (Stufen/Zustellung)** | LAUFEND | tenancy_dunning_configs | **80** | 90 | T1 ✅ |
-| 13 | **Ratenplan- & Rückstandsmanagement** | LAUFEND | TLC + ENG-KONTOMATCH | 20 | 80 | T2 |
-| 14 | **Kaution (Anlage/Abrechnung)** | VERTRAG→AUSZUG | leases.deposit_* + TLC | **75** | 85 | T1 ✅ |
-| 15 | **Nebenkosten/Betriebskosten** | LAUFEND | ENG-NK (vollständig) | 90 | 95 | ✅ |
-| 16 | **Vorauszahlungsanpassung** | LAUFEND | ENG-NK + Briefgenerator | 30 | 80 | T2 |
-| 17 | **Mängelmanagement/Instandhaltung** | LAUFEND | tenancy_tasks + triageDefect + SLA | **60** | 70 | ✅ T2 |
-| 18 | **Dienstleistersteuerung** | LAUFEND | tenancy_tasks + contacts | 10 | 60 | T3 |
-| 19 | **Rechnungsprüfung/Kostenstellen** | LAUFEND | property_expenses + ENG-BWA | 50 | 80 | T2 |
-| 20 | **Schadenmanagement (Incident)** | LAUFEND | tenancy_tasks (damage) + useDefectReport | **60** | 70 | ✅ T2 |
-| 21 | **Versicherungskoordination** | LAUFEND | MOD-11 Claims + TLC | 10 | 60 | T3 |
-| 22 | **Mieterhöhungen (Index/Staffel)** | LAUFEND | ENG-TLC rent_increase check | **80** | 90 | T1 ✅ |
-| 23 | **3-Jahres-Erhöhungscheck** | LAUFEND | ENG-TLC + Armstrong KI | **75** | 85 | T1 ✅ |
-| 24 | **Mietminderung** | LAUFEND | leases + tenancy_lifecycle_events | 0 | 70 | T2 |
-| 25 | **Owner-Cockpit/Dashboards** | ALLE | MOD-00 Dashboard Widgets | **80** | 95 | T1 ✅ |
-| 26 | **Reporting/Exporte** | ALLE | PDF/CSV + Anlage V + BWA | 70 | 90 | T2 |
-| 27 | **Audit-Trail/Ledger** | ALLE | tenancy_lifecycle_events | **70** | 90 | T1 ✅ |
-| 28 | **Fristen- & Aufgabenmanagement** | ALLE | tenancy_tasks + TLC CRON + SLA | **65** | 85 | ✅ T2 |
-| 29 | **Automations/Rules Engine** | ALLE | TLC State Machine + CRON | **50** | 80 | T1 ✅ |
-| 30 | **KI-Assistenz (Max Power)** | ALLE | Armstrong + gemini-2.5-pro | 80 | 95 | T1 ✅ |
-
----
-
-## Tier-1 Implementierung (ABGESCHLOSSEN ✅)
-
-### 1. TLC Foundation
-- [x] DB: `tenancy_lifecycle_events` Tabelle
-- [x] DB: `tenancy_dunning_configs` Tabelle
-- [x] DB: `tenancy_tasks` Tabelle (Tickets + Aufgaben)
-- [x] Engine: `src/engines/tenancyLifecycle/spec.ts`
-- [x] Engine: `src/engines/tenancyLifecycle/engine.ts`
-- [x] Hook: `src/hooks/useLeaseLifecycle.ts`
-- [x] Edge Function: `sot-tenancy-lifecycle` (Weekly CRON + KI)
-- [x] CRON-Job registrieren (pg_cron + pg_net) — Sonntag 03:00 UTC
-- [x] ENGINE_REGISTRY.md + GOLDEN_PATH_REGISTRY.md aktualisiert
-- [x] Dashboard Widget (TLCWidget) — Ampel-Logik, Kategorien, Events
-
-### 2. Mahnwesen (Feld 12)
-- [x] Mahnstufen-Config Seed-Daten (5 Stufen für alle aktiven Tenants)
-- [x] Automatische Mahnung via KI-generierte E-Mail (Level 0: auto_send)
-- [x] Chronologie in `tenancy_lifecycle_events`
-- [x] Mahngebühren pro Stufe (0/5/10/15 €)
-
-### 3. Mieterhöhungs-Engine (Felder 22+23)
-- [x] Sperrfristen-Prüfung (§558 BGB, 15 Monate)
-- [x] Kappungsgrenze (20%/15% für angespannte Märkte)
-- [x] Index-Trigger + Staffelstufe
-- [x] 3-Jahres-Check (`performThreeYearCheck`)
-- [x] Vorschlagslogik (konservativ/markt/max)
-
-### 4. Kautionsverwaltung (Feld 14)
-- [x] Kautionskonto-Tracking + Anomalie-Erkennung
-- [x] Abrechnungs-Template (`calculateDepositSettlement`)
-- [x] Zinsgutschrift (§551 BGB, 0.1% p.a.)
-- [x] Auto-Task bei move_out
-
-### 5. Dashboard & Armstrong (Feld 25+30)
-- [x] TLCWidget mit Ampel-Logik
-- [x] Armstrong Proactive Hints
+| # | Aufgabenfeld | TLC-Phase | Status | IST % | Hinweis |
+|---|---|---|---|---|---|
+| 01 | **Mietakte (Casefile/SSOT)** | ALLE | ✅ | 90 | MOD-04 frozen — Bestand vollständig |
+| 02 | **DMS/Versionen/Vorlagen** | ALLE | ✅ | 90 | MOD-03 frozen — Bestand vollständig |
+| 03 | **Rollen & Rechte (RBAC)** | ALLE | ✅ | 85 | RESTRICTIVE RLS auf allen TLC-Tabellen, memberships-basiert |
+| 04 | **Kommunikationshub** | LAUFEND | 🔒 | 40 | MOD-02 + MOD-14 frozen — Unfreeze nötig |
+| 05 | **Ticketing/Service Desk** | LAUFEND | ✅ | 85 | SLA, Triage, Severity, Photo support |
+| 06 | **Vermietung/Bewerbermanagement** | BEWERBUNG | 🔒 | 55 | applicant_profiles existiert — UI in frozen Modulen |
+| 07 | **Besichtigungs- & Terminplanung** | BEWERBUNG | 🔒 | 30 | MOD-02 frozen — Unfreeze nötig |
+| 08 | **Vertragsgenerator & E-Signatur** | VERTRAG | 🔒 | 40 | MOD-02 frozen — Briefgenerator Basis vorhanden |
+| 09 | **Einzug/Übergabeprotokoll** | EINZUG | ✅ | 85 | DB + Engine + Hook vollständig |
+| 10 | **Kündigung/Auszug/Rückgabe** | KÜNDIGUNG | ✅ | 85 | State Machine + Checklists + Deposit |
+| 11 | **Zahlungsmanagement/OP-Liste** | LAUFEND | ✅ | 85 | ENG-KONTOMATCH frozen — Basis vollständig |
+| 12 | **Mahnwesen (Stufen/Zustellung)** | LAUFEND | ✅ | 90 | 5-Stufen-Config, Auto-Mail, Chronologie |
+| 13 | **Ratenplan- & Rückstandsmanagement** | LAUFEND | ✅ | 85 | DB + Engine + Hook (generateSchedule, checkCompliance) |
+| 14 | **Kaution (Anlage/Abrechnung)** | VERTRAG→AUSZUG | ✅ | 85 | Zins + Settlement + Auto-Task |
+| 15 | **Nebenkosten/Betriebskosten** | LAUFEND | ✅ | 90 | ENG-NK frozen — vollständig |
+| 16 | **Vorauszahlungsanpassung** | LAUFEND | 🔒 | 30 | ENG-NK frozen + MOD-02 frozen |
+| 17 | **Mängelmanagement/Instandhaltung** | LAUFEND | ✅ | 85 | Triage + SLA + useDefectReport |
+| 18 | **Dienstleistersteuerung** | LAUFEND | ⏳ | 10 | Tier-3 — contacts Basis vorhanden |
+| 19 | **Rechnungsprüfung/Kostenstellen** | LAUFEND | 🔒 | 50 | ENG-BWA frozen |
+| 20 | **Schadenmanagement (Incident)** | LAUFEND | ✅ | 85 | useDefectReport + damage events |
+| 21 | **Versicherungskoordination** | LAUFEND | ⏳ | 10 | Tier-3 — MOD-11 frozen |
+| 22 | **Mieterhöhungen (Index/Staffel)** | LAUFEND | ✅ | 90 | §558 BGB + 3 Strategien |
+| 23 | **3-Jahres-Erhöhungscheck** | LAUFEND | ✅ | 90 | Kappungsgrenze + Vorschläge |
+| 24 | **Mietminderung** | LAUFEND | ✅ | 85 | DB + Engine + Hook (§536 BGB Guidelines) |
+| 25 | **Owner-Cockpit/Dashboards** | ALLE | ✅ | 85 | TLCWidget — MOD-00 frozen |
+| 26 | **Reporting/Exporte** | ALLE | ✅ | 80 | useTenancyReport + CSV-Export |
+| 27 | **Audit-Trail/Ledger** | ALLE | ✅ | 85 | tenancy_lifecycle_events vollständig |
+| 28 | **Fristen- & Aufgabenmanagement** | ALLE | ✅ | 85 | tenancy_deadlines DB + Hook + Checker Engine |
+| 29 | **Automations/Rules Engine** | ALLE | ✅ | 80 | TLC State Machine + CRON — Edge frozen |
+| 30 | **KI-Assistenz (Max Power)** | ALLE | ✅ | 85 | Armstrong + gemini-2.5-pro |
 
 ---
 
-## Tier-2 Implementierung (IN PROGRESS 🔧)
+## Zusammenfassung
 
-### Ticketing & Service Desk (Feld 5) ✅
-- [x] tenancy_tasks mit SLA-Feldern (sla_hours, sla_deadline, escalation_level)
-- [x] Defect severity assessment column
-- [x] Photo attachment support
-- [x] TLCWidget zeigt neue Kategorien (Einzug/Auszug/Zähler)
+| Kategorie | Anzahl | Status |
+|---|---|---|
+| ✅ Vollständig implementiert | 23/30 | Engine + DB + Hooks ready |
+| 🔒 Frozen-blockiert | 5/30 | Unfreeze der jeweiligen Module nötig |
+| ⏳ Tier-3 (Langfristig) | 2/30 | Dienstleister + Versicherung |
 
-### Einzug/Auszug Workflows (Felder 9+10) ✅
-- [x] DB: `tenancy_handover_protocols` Tabelle
-- [x] DB: `tenancy_meter_readings` Tabelle
-- [x] Spec: HandoverRoom, HandoverKeyItem, HandoverMeterReading Types
-- [x] Spec: MOVE_IN_CHECKLIST_ITEMS (8 Items)
-- [x] Spec: MOVE_OUT_CHECKLIST_ITEMS (10 Items)
-- [x] Engine: `generateMoveChecklist()` + `checkMoveChecklistDeadlines()`
-- [x] Hook: `useHandoverProtocol` (CRUD)
-- [x] Hook: `useMeterReadings` (CRUD)
+### Frozen-blockierte Felder (5):
+- **Feld 4** (Kommunikationshub): MOD-02 + MOD-14 frozen
+- **Feld 6** (Vermietung): Module-UI frozen
+- **Feld 7** (Besichtigung): MOD-02 frozen
+- **Feld 8** (E-Signatur): MOD-02 frozen
+- **Feld 16** (Vorauszahlung): ENG-NK + MOD-02 frozen
 
-### Mängelmanagement (Felder 17+20) ✅
-- [x] Spec: DefectSeverity + DEFECT_SLA_HOURS + DEFECT_TRIAGE_KEYWORDS
-- [x] Engine: `triageDefect()` — Keyword-basierte Auto-Triage
-- [x] Engine: `calculateSlaDeadline()`
-- [x] Hook: `useDefectReport` — Creates task + lifecycle event
+→ Um diese Felder zu aktivieren: `UNFREEZE MOD-02` und/oder `UNFREEZE MOD-14`
 
-### Remaining Tier-2 (TODO)
-- [ ] RBAC-Erweiterung (Feld 3)
-- [ ] Kommunikationshub (Feld 4)
-- [ ] Vermietung/Besichtigung (Felder 6+7)
-- [ ] Ratenplan-Management (Feld 13)
-- [ ] Vorauszahlungsanpassung (Feld 16)
-- [ ] Mietminderung (Feld 24)
-- [ ] Reporting/Exporte (Feld 26)
-- [ ] Rechnungsprüfung (Feld 19)
+### Tier-3 (Langfristig, 2):
+- **Feld 18** (Dienstleistersteuerung): Angebotseinholung, Vergleich
+- **Feld 21** (Versicherungskoordination): Schadensmeldung an Versicherer
 
 ---
 
-## Tier-3 Implementierung (Langfristig)
+## ENG-TLC v1.3.0 — Vollständige Funktionsliste
 
-### E-Signatur (Feld 8)
-- [ ] Google E-Signature API Integration
+### spec.ts (Types & Constants)
+- TLCPhase, TLCEventType, TLCSeverity, TLCTriggeredBy
+- TenancyTask*, HandoverProtocol*, MeterReading*
+- DefectSeverity + SLA_HOURS + TRIAGE_KEYWORDS
+- DunningLevel + DEFAULT_DUNNING_LEVELS
+- RentIncreaseCheck + RENT_INCREASE_DEFAULTS
+- **PaymentPlanInput/Schedule** ★v1.3
+- **RentReductionInput/Result + GUIDELINES** ★v1.3
+- **DeadlineType + DEADLINE_TYPES** ★v1.3
+- MoveChecklist + CHECKLIST_ITEMS
 
-### Dienstleistersteuerung (Feld 18)
-- [ ] Angebotseinholung, Vergleich, Beauftragung
-
-### Versicherungskoordination (Feld 21)
-- [ ] Standardisierte Versicherer-Meldungen
-- [ ] Regulierungs-Nachverfolgung
+### engine.ts (Pure Functions)
+- determinePhase, analyzePaymentStatus, determineDunningLevel
+- buildDunningChronology
+- checkRentIncreaseEligibility, calculateRentIncreaseProposals
+- performThreeYearCheck
+- checkDepositStatus, calculateDepositInterest, calculateDepositSettlement
+- analyzeLease (Master-Analyse)
+- triageDefect, calculateSlaDeadline
+- generateMoveChecklist, checkMoveChecklistDeadlines
+- **generatePaymentPlanSchedule, checkPaymentPlanCompliance** ★v1.3
+- **calculateRentReduction, suggestRentReduction** ★v1.3
+- **checkDeadlines** ★v1.3
+- **aggregateReportData** ★v1.3
