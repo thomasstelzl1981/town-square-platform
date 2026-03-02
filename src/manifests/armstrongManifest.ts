@@ -645,7 +645,7 @@ export const armstrongActions: ArmstrongActionV2[] = [
   {
     action_code: 'ARM.MOD14.RESEARCH_PRO',
     title_de: 'Profi-Kontaktrecherche',
-    description_de: 'Sucht professionelle Kontakte über Apollo und liefert Kandidatenliste',
+    description_de: 'Sucht professionelle Kontakte über die Research Engine und liefert Kandidatenliste',
     zones: ['Z2'],
     module: 'MOD-14',
     risk_level: 'low',
@@ -659,7 +659,7 @@ export const armstrongActions: ArmstrongActionV2[] = [
     cost_model: 'metered',
     cost_unit: 'per_call',
     cost_hint_cents: null,
-    api_contract: { type: 'edge_function', endpoint: 'sot-research-pro-contacts' },
+    api_contract: { type: 'edge_function', endpoint: 'sot-research-engine' },
     ui_entrypoints: ['/portal/communication-pro/recherche'],
     audit_event_type: 'ARM_RESEARCH_PRO',
     status: 'active',

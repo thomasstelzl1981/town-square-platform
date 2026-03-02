@@ -79,7 +79,7 @@ interface ExtractedProfile {
 // ── Source & Status configs ──
 const SOURCE_CONFIG: Record<string, { label: string; icon: typeof UserPlus; color: string }> = {
   manual: { label: 'Manuell', icon: UserPlus, color: 'bg-gray-100 text-gray-700' },
-  apollo: { label: 'Apollo', icon: Database, color: 'bg-blue-100 text-blue-700' },
+  engine: { label: 'KI-Recherche', icon: Database, color: 'bg-blue-100 text-blue-700' },
   apify: { label: 'Apify', icon: Globe, color: 'bg-purple-100 text-purple-700' },
   firecrawl: { label: 'Firecrawl', icon: Search, color: 'bg-orange-100 text-orange-700' },
   geomap: { label: 'GeoMap', icon: MapPin, color: 'bg-green-100 text-green-700' },
@@ -150,13 +150,13 @@ export default function AkquiseMandate() {
   // ─── Kachel 3: Kontaktrecherche ───
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showApolloDialog, setShowApolloDialog] = useState(false);
+  const [showSearchDialog, setShowSearchDialog] = useState(false);
   const [showApifyDialog, setShowApifyDialog] = useState(false);
   const [showContactBookDialog, setShowContactBookDialog] = useState(false);
-  const [apolloLoading, setApolloLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [apifyLoading, setApifyLoading] = useState(false);
   const [manualForm, setManualForm] = useState({ company_name: '', first_name: '', last_name: '', email: '', phone: '', website_url: '', role_guess: '', service_area: '' });
-  const [apolloForm, setApolloForm] = useState({ jobTitles: 'Makler, Immobilienmakler, Geschäftsführer', locations: '', industries: 'Real Estate', limit: 25 });
+  const [searchForm, setSearchForm] = useState({ jobTitles: 'Makler, Immobilienmakler, Geschäftsführer', locations: '', industries: 'Real Estate', limit: 25 });
   const [apifyForm, setApifyForm] = useState({ portalUrl: '', searchType: 'brokers', limit: 50 });
 
   // ─── Kachel 4: E-Mail ───
@@ -339,27 +339,27 @@ export default function AkquiseMandate() {
     setShowAddDialog(false);
   };
 
-  const handleApolloSearch = async () => {
+  const handleEngineSearch = async () => {
     if (!activeMandateId) return;
-    setApolloLoading(true);
+    setSearchLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('sot-research-engine', {
         body: {
           intent: 'find_brokers',
-          query: apolloForm.jobTitles,
-          location: apolloForm.locations,
-          max_results: apolloForm.limit,
-          filters: { must_have_email: true, industry: apolloForm.industries },
+          query: searchForm.jobTitles,
+          location: searchForm.locations,
+          max_results: searchForm.limit,
+          filters: { must_have_email: true, industry: searchForm.industries },
           context: { module: 'akquise', reference_id: activeMandateId },
         },
       });
       if (error) throw error;
       if (data?.results?.length) {
-        await bulkCreate.mutateAsync({ mandateId: activeMandateId, contacts: data.results.map((c: any) => ({ source: 'apollo' as const, source_id: `engine_${Date.now()}_${Math.random()}`, company_name: c.name, first_name: '', last_name: '', email: c.email, phone: c.phone, role_guess: '', service_area: c.address, quality_score: c.confidence || 50 })) });
+        await bulkCreate.mutateAsync({ mandateId: activeMandateId, contacts: data.results.map((c: any) => ({ source: 'engine' as const, source_id: `engine_${Date.now()}_${Math.random()}`, company_name: c.name, first_name: '', last_name: '', email: c.email, phone: c.phone, role_guess: '', service_area: c.address, quality_score: c.confidence || 50 })) });
       }
-      setShowApolloDialog(false);
+      setShowSearchDialog(false);
     } catch (err) { toast.error('Kontaktrecherche fehlgeschlagen'); } 
-    finally { setApolloLoading(false); }
+    finally { setSearchLoading(false); }
   };
 
   const handleApifySearch = async () => {
@@ -453,7 +453,7 @@ export default function AkquiseMandate() {
           await bulkCreate.mutateAsync({
             mandateId: activeMandateId,
             contacts: data.results.map((c: any) => ({
-              source: 'apollo' as const,
+              source: 'engine' as const,
               source_id: `engine_${Date.now()}_${Math.random()}`,
               company_name: c.name,
               first_name: '',
@@ -788,7 +788,7 @@ export default function AkquiseMandate() {
                 )}
               </CardTitle>
               <div className="flex gap-1">
-                <Button variant="ghost" size="sm" onClick={() => setShowApolloDialog(true)} title="Apollo">
+                <Button variant="ghost" size="sm" onClick={() => setShowSearchDialog(true)} title="KI-Recherche">
                   <Database className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setShowApifyDialog(true)} title="Portal Scraper">
@@ -808,7 +808,7 @@ export default function AkquiseMandate() {
               <div className="text-center py-8 text-muted-foreground">
                 <Search className="h-10 w-10 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">Noch keine Kontakte</p>
-                <p className="text-xs mt-1">Nutzen Sie Apollo, Portal Scraper oder manuelle Eingabe</p>
+                <p className="text-xs mt-1">Nutzen Sie KI-Recherche, Portal Scraper oder manuelle Eingabe</p>
               </div>
             ) : (
               <div className="space-y-1 max-h-[400px] overflow-y-auto">
@@ -976,7 +976,7 @@ export default function AkquiseMandate() {
         </>
       )}
 
-      {/* ═══ Dialoge (Apollo, Apify, Manuell) ═══ */}
+      {/* ═══ Dialoge (KI-Recherche, Apify, Manuell) ═══ */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -1022,18 +1022,18 @@ export default function AkquiseMandate() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showApolloDialog} onOpenChange={setShowApolloDialog}>
+      <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Database className="h-5 w-5 text-blue-600" />Apollo Kontaktsuche</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Database className="h-5 w-5 text-blue-600" />KI-Kontaktrecherche</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="space-y-2"><Label>Job-Titel</Label><Input value={apolloForm.jobTitles} onChange={e => setApolloForm(f => ({ ...f, jobTitles: e.target.value }))} /></div>
-            <div className="space-y-2"><Label>Standorte</Label><Input value={apolloForm.locations} onChange={e => setApolloForm(f => ({ ...f, locations: e.target.value }))} placeholder="Berlin, Hamburg" /></div>
-            <div className="space-y-2"><Label>Branchen</Label><Input value={apolloForm.industries} onChange={e => setApolloForm(f => ({ ...f, industries: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Job-Titel</Label><Input value={searchForm.jobTitles} onChange={e => setSearchForm(f => ({ ...f, jobTitles: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Standorte</Label><Input value={searchForm.locations} onChange={e => setSearchForm(f => ({ ...f, locations: e.target.value }))} placeholder="Berlin, Hamburg" /></div>
+            <div className="space-y-2"><Label>Branchen</Label><Input value={searchForm.industries} onChange={e => setSearchForm(f => ({ ...f, industries: e.target.value }))} /></div>
             <div className="space-y-2">
               <Label>Max. Ergebnisse</Label>
-              <Select value={String(apolloForm.limit)} onValueChange={v => setApolloForm(f => ({ ...f, limit: Number(v) }))}>
+              <Select value={String(searchForm.limit)} onValueChange={v => setSearchForm(f => ({ ...f, limit: Number(v) }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="10">10</SelectItem>
@@ -1045,9 +1045,9 @@ export default function AkquiseMandate() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowApolloDialog(false)}>Abbrechen</Button>
-            <Button onClick={handleApolloSearch} disabled={apolloLoading}>
-              {apolloLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            <Button variant="outline" onClick={() => setShowSearchDialog(false)}>Abbrechen</Button>
+            <Button onClick={handleEngineSearch} disabled={searchLoading}>
+              {searchLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Suchen
             </Button>
           </DialogFooter>
