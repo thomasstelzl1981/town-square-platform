@@ -46,6 +46,7 @@ import { TLCServiceProviderSection } from './tlc/TLCServiceProviderSection';
 import { TLCInsuranceSection } from './tlc/TLCInsuranceSection';
 import { TLCReportSection } from './tlc/TLCReportSection';
 import { TLCThreeYearCheckSection } from './tlc/TLCThreeYearCheckSection';
+import { TLCRentalListingSection } from './tlc/TLCRentalListingSection';
 import { calculateDepositInterest } from '@/engines/tenancyLifecycle/engine';
 
 interface Lease {
@@ -793,6 +794,17 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-1 pl-2">
+                  <TLCRentalListingSection
+                    unitId={unitId}
+                    propertyId={propertyId}
+                    tenantId={tenantId}
+                    coldRent={lease.rent_cold_eur || 0}
+                    warmRent={lease.monthly_rent || 0}
+                    propertyAddress={propertyAddress}
+                    propertyCity={propertyAddress.split(',').pop()?.trim() || ''}
+                    areaSqm={unitAreaSqm}
+                    rooms={unitRooms}
+                  />
                   <TLCContractSection
                     leaseData={lease.rent_cold_eur ? {
                       landlordName: orgName || 'Eigentümer',

@@ -56,6 +56,7 @@ import {
   PiggyBank
 } from 'lucide-react';
 import { PartnerReleaseDialog, ExposeImageGallery, ExposeLocationMap } from '@/components/verkauf';
+import { IS24PublicationStatus } from '@/components/verkauf/IS24PublicationStatus';
 import { useViewTracking } from '@/hooks/useViewTracking';
 import { DictationButton } from '@/components/shared/DictationButton';
 
@@ -920,19 +921,22 @@ const ExposeDetail = () => {
 
                   <Separator />
 
-                  {/* Scout24 Placeholder */}
-                  <div className="space-y-2 opacity-60">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-4 w-4" />
-                        <span className="font-medium">ImmobilienScout24</span>
-                      </div>
-                      <Badge variant="outline" className="text-xs">Demnächst</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Kostenpflichtige Buchung (Phase 2)
-                    </p>
-                  </div>
+                  {/* Scout24 Live Status */}
+                  <IS24PublicationStatus
+                    listingId={listing?.id}
+                    tenantId={listing?.tenant_id}
+                    propertyData={{
+                      title: formData.title,
+                      asking_price: parseFloat(formData.asking_price) || 0,
+                      description: formData.description,
+                      commission_rate: formData.commission_rate[0],
+                      street: property?.address || '',
+                      postal_code: property?.postal_code || '',
+                      city: property?.city || '',
+                      area_sqm: unit?.area_sqm || 0,
+                      year_built: property?.year_built || undefined,
+                    }}
+                  />
                 </>
               )}
             </CardContent>
