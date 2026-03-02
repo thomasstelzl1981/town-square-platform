@@ -101,10 +101,10 @@ export function AddBankAccountDialog({ open, onOpenChange }: AddBankAccountDialo
       const cleanIban = data.iban.replace(/\s/g, '').toUpperCase();
 
       if (data.is_default) {
-        await supabase.from('msv_bank_accounts').update({ is_default: false }).eq('tenant_id', activeTenantId);
+        await supabase.from('bank_accounts').update({ is_default: false }).eq('tenant_id', activeTenantId);
       }
 
-      const { error } = await supabase.from('msv_bank_accounts').insert({
+      const { error } = await supabase.from('bank_accounts').insert({
         tenant_id: activeTenantId,
         account_name: data.account_name,
         iban: cleanIban,
@@ -118,8 +118,7 @@ export function AddBankAccountDialog({ open, onOpenChange }: AddBankAccountDialo
     },
     onSuccess: () => {
       toast.success('Bankkonto hinzugefügt');
-      queryClient.invalidateQueries({ queryKey: ['msv-bank-accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['msv_bank_accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
       setFormData(defaultFormData);
       setIbanError(null);
       onOpenChange(false);

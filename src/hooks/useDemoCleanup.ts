@@ -61,7 +61,7 @@ const CLEANUP_ORDER = [
   'loans',
   'leases',
   'units',
-  'msv_bank_accounts',
+  'bank_accounts',
   'properties',
   // Landlord contexts (after properties, before contacts)
   'landlord_contexts',

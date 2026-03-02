@@ -963,7 +963,7 @@ export async function seedDemoData(
   await seed('listing_publications', () => seedFromCSV('/demo-data/demo_listing_publications.csv', 'listing_publications', tenantId));
 
   // Phase 3: Bank
-  await seed('msv_bank_accounts', () => seedFromCSV('/demo-data/demo_bank_accounts.csv', 'msv_bank_accounts', tenantId));
+  await seed('bank_accounts', () => seedFromCSV('/demo-data/demo_bank_accounts.csv', 'bank_accounts', tenantId));
   await seed('bank_transactions', () => seedFromCSV('/demo-data/demo_bank_transactions.csv', 'bank_transactions', tenantId));
 
   // Phase 4: Household & Finance — household_persons MUST succeed before vorsorge/depots
@@ -1024,7 +1024,7 @@ export async function seedDemoData(
     profile: 1, contacts: 5, landlord_contexts: 1,
     properties: 3, units: 3, leases: 3, loans: 3, property_accounting: 3,
     property_features: 2, listings: 1, listing_publications: 2,
-    msv_bank_accounts: 1, bank_transactions: 100,
+    bank_accounts: 1, bank_transactions: 100,
     household_persons: 4, cars_vehicles: 2, pv_plants: 1,
     insurance_contracts: 7, kv_contracts: 4, vorsorge_contracts: 6,
     pension_records: 2,

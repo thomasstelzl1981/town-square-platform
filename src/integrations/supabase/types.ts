@@ -2812,7 +2812,63 @@ export type Database = {
             foreignKeyName: "bank_account_meta_account_id_fkey"
             columns: ["account_id"]
             isOneToOne: true
-            referencedRelation: "msv_bank_accounts"
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_accounts: {
+        Row: {
+          account_name: string
+          bank_name: string | null
+          bic: string | null
+          created_at: string
+          finapi_account_id: string | null
+          iban: string
+          id: string
+          is_default: boolean | null
+          owner_id: string | null
+          owner_type: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_name: string
+          bank_name?: string | null
+          bic?: string | null
+          created_at?: string
+          finapi_account_id?: string | null
+          iban: string
+          id?: string
+          is_default?: boolean | null
+          owner_id?: string | null
+          owner_type?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string
+          bank_name?: string | null
+          bic?: string | null
+          created_at?: string
+          finapi_account_id?: string | null
+          iban?: string
+          id?: string
+          is_default?: boolean | null
+          owner_id?: string | null
+          owner_type?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -11014,7 +11070,7 @@ export type Database = {
             foreignKeyName: "leases_linked_bank_account_id_fkey"
             columns: ["linked_bank_account_id"]
             isOneToOne: false
-            referencedRelation: "msv_bank_accounts"
+            referencedRelation: "bank_accounts"
             referencedColumns: ["id"]
           },
           {
@@ -12825,62 +12881,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "msv_action_notes_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      msv_bank_accounts: {
-        Row: {
-          account_name: string
-          bank_name: string | null
-          bic: string | null
-          created_at: string
-          finapi_account_id: string | null
-          iban: string
-          id: string
-          is_default: boolean | null
-          owner_id: string | null
-          owner_type: string | null
-          status: string
-          tenant_id: string
-          updated_at: string
-        }
-        Insert: {
-          account_name: string
-          bank_name?: string | null
-          bic?: string | null
-          created_at?: string
-          finapi_account_id?: string | null
-          iban: string
-          id?: string
-          is_default?: boolean | null
-          owner_id?: string | null
-          owner_type?: string | null
-          status?: string
-          tenant_id: string
-          updated_at?: string
-        }
-        Update: {
-          account_name?: string
-          bank_name?: string | null
-          bic?: string | null
-          created_at?: string
-          finapi_account_id?: string | null
-          iban?: string
-          id?: string
-          is_default?: boolean | null
-          owner_id?: string | null
-          owner_type?: string | null
-          status?: string
-          tenant_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "msv_bank_accounts_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"

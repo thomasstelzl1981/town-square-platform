@@ -85,7 +85,7 @@ export default function KontenTab() {
         if (data?.status === 'connected') {
           stopPolling();
           toast.success(`Bank verbunden! ${data.accounts_imported || 0} Konten importiert.`);
-          queryClient.invalidateQueries({ queryKey: ['msv_bank_accounts'] });
+          queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
           queryClient.invalidateQueries({ queryKey: ['finapi_connections'] });
         } else if (data?.status === 'failed') {
           stopPolling();
@@ -105,11 +105,11 @@ export default function KontenTab() {
   }, [stopPolling, queryClient]);
 
   const { data: bankAccounts = [], isLoading } = useQuery({
-    queryKey: ['msv_bank_accounts', activeTenantId],
+    queryKey: ['bank_accounts', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
       const { data } = await supabase
-        .from('msv_bank_accounts')
+        .from('bank_accounts')
         .select('*')
         .eq('tenant_id', activeTenantId);
       return data || [];
@@ -177,14 +177,14 @@ export default function KontenTab() {
     mutationFn: async (accountId: string) => {
       if (!readiness.requireReadiness()) throw new Error('Readiness required');
       setDeletingAccountId(accountId);
-      const { error } = await supabase.from('msv_bank_accounts').delete().eq('id', accountId);
+      const { error } = await supabase.from('bank_accounts').delete().eq('id', accountId);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success('Konto gelöscht');
       setDeletingAccountId(null);
       if (openKontoId === deletingAccountId) setOpenKontoId(null);
-      queryClient.invalidateQueries({ queryKey: ['msv_bank_accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
     },
     onError: (err: Error) => {
       setDeletingAccountId(null);

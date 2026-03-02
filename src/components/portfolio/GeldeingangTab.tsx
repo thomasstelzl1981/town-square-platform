@@ -250,11 +250,11 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
 
   // ─── Fetch bank accounts ───
   const { data: dbBankAccounts = [] } = useQuery({
-    queryKey: ['msv_bank_accounts', activeTenantId],
+    queryKey: ['bank_accounts', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
       const { data } = await supabase
-        .from('msv_bank_accounts')
+        .from('bank_accounts')
         .select('id, account_name, bank_name, iban')
         .eq('tenant_id', activeTenantId);
       return (data || []) as BankAccount[];
