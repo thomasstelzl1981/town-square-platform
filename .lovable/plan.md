@@ -1,110 +1,135 @@
 
 
-# Befund: MOD-05 Identitaetskrise + MSV-Altlasten
+# Research & Search Engine Audit — Apollo-Elimination + Provider-Klarheit
 
-## Das Problem
+## Befund nach tiefer Analyse
 
-MOD-05 hat in der Entwicklungsgeschichte **drei verschiedene Identitaeten** durchlaufen:
+### Die zentrale Engine: `sot-research-engine` (1206 Zeilen)
 
-| Phase | MOD-05 war | Status heute |
-|-------|-----------|--------------|
-| Frueh | **MSV (Mietsonderverwaltung)** | Funktionalitaet nach MOD-04 verschoben |
-| Mitte | **Website Builder** | Nach MOD-21 umgezogen, MOD-21 dann geloescht |
-| Jetzt | **Pets (Haustiere)** | Aktuell aktiv im routesManifest |
+Die zentrale Engine existiert und funktioniert. Sie nutzt **3 aktive Provider**:
 
-**Das Ergebnis:** Ueberall im Code stehen noch alte MOD-05-Referenzen, die auf "MSV" oder "Website Builder" zeigen, obwohl MOD-05 heute "Pets" ist.
+| Provider | Secret | Status | Zweck |
+|----------|--------|--------|-------|
+| **Google Places** (New API) | `GOOGLE_MAPS_API_KEY` | Konfiguriert, aktiv | Discovery: Firmen finden nach Name/Ort |
+| **Apify** | `APIFY_API_TOKEN` | Konfiguriert, aktiv | Portal-Scraping (ImmoScout, Immowelt, eBay) + Google Maps Scraper |
+| **Firecrawl** | `FIRECRAWL_API_KEY` | Konfiguriert, aktiv | E-Mail-Extraktion von Firmenwebsites |
+| **Netrows** | `NETROWS_API_KEY` | Konfiguriert, aktiv | LinkedIn-Scraping (Person/Company) |
+| **Lovable AI** | `LOVABLE_API_KEY` | Konfiguriert, aktiv | Merge, Deduplizierung, Scoring |
 
-## Gefundene Altlasten (46+ Stellen)
+**Apollo ist KEIN Provider in `sot-research-engine`.** Die Engine hat Apollo nie als Provider genutzt — sie nutzt Google Places, Apify, Firecrawl und Netrows.
 
-### 1. Verwaiste Komponenten: `src/components/msv/` (9 Dateien)
+---
 
-Diese Dateien werden **nirgends importiert** — 0 Treffer fuer `from.*components/msv`:
+### Apollo Dead Code — Vollstaendige Liste
 
-- `CreditsDisplay.tsx`
-- `LeaseFormDialog.tsx`
-- `PaywallBanner.tsx`
-- `PremiumLockBanner.tsx`
-- `ReadinessChecklist.tsx`
-- `RentalListingWizard.tsx`
-- `RentalPublishDialog.tsx`
-- `TemplateWizard.tsx`
-- `index.ts`
+| Typ | Datei/Stelle | Problem |
+|-----|-------------|---------|
+| **Edge Function** | `supabase/functions/sot-apollo-search/` | Komplette Apollo.io API-Integration, wird von NIEMANDEM aufgerufen |
+| **Edge Function** | `supabase/functions/sot-research-pro-contacts/` | Stub das "Apollo-Ersatz" sein sollte, liefert nur Mock-Daten |
+| **UI-Code** | `src/pages/portal/akquise-manager/AkquiseMandate.tsx` | `handleApolloSearch`, `showApolloDialog`, `apolloForm`, `apolloLoading`, SOURCE_CONFIG mit `apollo`-Eintrag — Button "Apollo" in UI |
+| **UI-Code** | `src/pages/portal/akquise-manager/components/SourcingTab.tsx` | Identische Duplikation: `handleApolloSearch`, Apollo-Dialog, Apollo-Button |
+| **Hook** | `src/hooks/useAdminResearch.ts` | Interface `ApolloSearchParams`, `ApolloContact`, Funktion `startApolloSearch` — alles Apollo-benannt, ruft aber `sot-research-engine` auf |
+| **Hook** | `src/hooks/useAcqContacts.ts` | Type `ContactStagingSource` enthaelt `'apollo'` als Wert |
+| **Manifest** | `src/manifests/armstrongManifest.ts` | Zeile 648: "Sucht professionelle Kontakte ueber Apollo" |
 
-→ **Komplett loeschen** (Dead Code)
+### Weitere tote/doppelte Edge Functions
 
-### 2. Falsche MOD-05-Bezeichnungen im Code
+| Function | Status | Empfehlung |
+|----------|--------|------------|
+| `sot-apollo-search` | **DEAD** — 0 Aufrufe, braucht `APOLLO_API_KEY` (nicht konfiguriert) | **Loeschen** |
+| `sot-research-pro-contacts` | **STUB** — liefert nur Mock-Daten, 0 echte Logik | **Loeschen** |
+| `sot-places-search` | **DEAD** — 0 Frontend-Aufrufe, Duplikat von `searchGooglePlaces()` in `sot-research-engine` | **Loeschen** |
 
-| Datei | Problem |
-|-------|---------|
-| `src/constants/rolesMatrix.ts` | `MOD-05: "Website Builder"` — muss "Pets" sein |
-| `src/components/presentation/MermaidDiagram.tsx` | `MOD-05 MSV` in 2 Diagrammen |
-| `src/pages/presentation/PresentationPage.tsx` | `MOD-05 MSV` im ASCII-Diagramm |
-| `src/docs/audit-tracker.md` | `MOD-05 Website Builder` |
+### Google Places — NICHT abgeschafft
 
-### 3. Falsche MOD-05-Bezeichnungen in Specs
+Google Places ist **aktiv und korrekt integriert** in `sot-research-engine` als Discovery-Provider. Der Key `GOOGLE_MAPS_API_KEY` ist konfiguriert. Es gibt zusaetzlich:
+- `sot-google-maps-key` — liefert den Key ans Frontend fuer Map-Rendering (korrekt, behalten)
+- `sot-places-search` — separate Edge Function die dasselbe macht wie `sot-research-engine` intern (Duplikat, loeschen)
+- `sot-solar-insights` — nutzt Google Maps fuer PV-Analyse (korrekt, behalten)
+- `pvgis-proxy` — nutzt Google Maps fuer Geocoding (korrekt, behalten)
 
-| Datei | Problem |
-|-------|---------|
-| `spec/current/01_platform/ZONE_OVERVIEW.md` | `MOD-05: MSV` |
-| `spec/current/01_platform/ACCESS_MATRIX.md` | `MOD-05 MSV` |
-| `spec/current/06_api_contracts/module_api_overview.md` | `MOD-05: MSV` — kompletter API-Block fuer ein nicht-existentes Modul |
-| `spec/current/02_modules/mod-04_immobilien.md` | Referenziert `MOD-05 MSV` und `MOD-05 Website-Builder` |
-| `spec/current/08_testing/E2E_TEST_BACKLOG.md` | `MOD-05 MSV/Pets` Mischbezeichnung |
-| `spec/current/00_frozen/AUDIT_PASS_2026-02-02.txt` | `MOD-05 MSV` mit alten Tiles |
+### Wer nutzt die zentrale Engine korrekt?
 
-### 4. Legacy-Datenbank-Referenzen
+| Konsument | Hook/Datei | Intent | Nutzt Engine korrekt? |
+|-----------|-----------|--------|----------------------|
+| MOD-04 Sanierung | `ProviderSearchPanel.tsx` via `useResearchEngine` | `find_contractors` | Ja |
+| MOD-11 FM | `FMEinreichung.tsx` via `useResearchEngine` | `find_companies` | Ja |
+| MOD-12 Akquise Tools | `useAcqTools.ts` | `search_portals` | Ja (direkt invoke) |
+| MOD-12 Akquise Mandate | `AkquiseMandate.tsx` | `find_brokers` | Ja, aber Apollo-benannt |
+| MOD-12 SourcingTab | `SourcingTab.tsx` | `find_brokers` | Ja, aber Apollo-benannt + Duplikat |
+| Zone 1 Admin | `useAdminResearch.ts` | `find_contacts` | Ja, aber Apollo-benannt |
+| Zone 1 Desk | `useDeskContacts.ts` | `find_contacts` | Ja |
+| Zone 1 SOAT | `useSoatSearchEngine.ts` | `find_contacts` | Ja |
+| Dossier Auto | `useDossierAutoResearch.ts` | via `sot-dossier-auto-research` | Ja (eigene Function) |
 
-- `msv_bank_accounts` wird in `KontenTab.tsx` und `FMUebersichtTab.tsx` referenziert — das ist aber **MOD-18 Finanzanalyse**, nicht MSV. Die Tabelle traegt nur noch den falschen Namens-Praefix.
-
-### 5. IS24-Klarstellung
-
-Die RentalPublishDialog in `src/components/msv/` ist Dead Code. Die IS24-Integration betrifft:
-- **MOD-04 Immobilien** → Verwaltung-Tab (Vermietung, Publishing)
-- **MOD-06 Verkauf** → VerkaufsauftragTab (Kauf-Inserate)
-- **NICHT** eine separate "MSV" oder "Mietverwaltung"
-
-Research Engines (Apify-basiertes Scraping) sind davon komplett getrennt und werden in einer eigenen Phase behandelt.
+**Alle Konsumenten rufen `sot-research-engine` auf — keiner ruft Apollo direkt auf.** Das "Apollo" ist nur noch in Labels, Variablennamen und UI-Texten.
 
 ---
 
 ## Bereinigungsplan
 
-### Schritt 1: Dead Code loeschen
-- `src/components/msv/` — kompletter Ordner (9 Dateien, 0 Imports)
-- `src/pages/portal/immobilien/RentalExposeDetail.tsx` — Stub-Redirect auf ein nicht-existentes Modul
-- Route `vermietung/:id` aus routesManifest MOD-04 dynamic_routes entfernen
-- `src/docs/backlog-v6.2-reparatur-msv.json` — historisches Backlog fuer MSV-Neubau (obsolet)
+### Schritt 1: Edge Functions loeschen (3 Funktionen)
 
-### Schritt 2: MOD-05 Referenzen korrigieren (Code)
-- `rolesMatrix.ts`: `MOD-05 Website Builder` → `MOD-05 Pets`
-- `MermaidDiagram.tsx`: `MOD-05 MSV` → `MOD-05 Pets` (2 Stellen)
-- `PresentationPage.tsx`: `MOD-05 MSV` → `MOD-05 Pets`
-- `audit-tracker.md`: Richtigstellung
+- `supabase/functions/sot-apollo-search/` — Dead Code, 0 Aufrufe
+- `supabase/functions/sot-research-pro-contacts/` — Stub mit Mock-Daten, 0 echte Nutzer
+- `supabase/functions/sot-places-search/` — Duplikat, 0 Frontend-Aufrufe
 
-### Schritt 3: MOD-05 Referenzen korrigieren (Specs)
-- `ZONE_OVERVIEW.md`: `MOD-05: MSV` → `MOD-05: Pets`
-- `ACCESS_MATRIX.md`: dto.
-- `module_api_overview.md`: MSV-API-Block entfernen oder durch Pets ersetzen
-- `mod-04_immobilien.md`: Cross-Module-References aktualisieren
-- `E2E_TEST_BACKLOG.md`: Klarstellung
-- `AUDIT_PASS_2026-02-02.txt`: Historisch, aber korrigieren
+### Schritt 2: Apollo-Referenzen in MOD-12 bereinigen
 
-### Schritt 4: Tabellen-Praefix pruefen
-- `msv_bank_accounts`: Gehoert funktional zu MOD-18 Finanzanalyse — Rename evaluieren oder als Legacy-Name dokumentieren
+**`AkquiseMandate.tsx`:**
+- `handleApolloSearch` umbenennen zu `handleEngineSearch`
+- `showApolloDialog` → `showSearchDialog`
+- `apolloForm` → `searchForm`
+- `apolloLoading` → `searchLoading`
+- SOURCE_CONFIG: `apollo` → `engine` (Label: "KI-Recherche")
+- Apollo-Dialog: Titel aendern zu "KI-Kontaktrecherche"
+- `source: 'apollo'` → `source: 'engine'`
 
-### Schritt 5: IS24-Integration korrekt planen
-- Nur MOD-04 (Immobilien) und MOD-06 (Verkauf) betroffen
-- Kein MSV-Modul involviert
-- Research Engines als separate Phase
+**`SourcingTab.tsx`:**
+- Identische Bereinigung wie AkquiseMandate.tsx (gleicher Code)
+
+### Schritt 3: Apollo-Referenzen in Zone 1 bereinigen
+
+**`useAdminResearch.ts`:**
+- `ApolloSearchParams` → `ResearchSearchParams`
+- `ApolloContact` → `ResearchContact`
+- `startApolloSearch` → `startResearch`
+- Kommentar Zeile 3 korrigieren
+
+### Schritt 4: Type + Manifest bereinigen
+
+**`useAcqContacts.ts`:**
+- `ContactStagingSource`: `'apollo'` → `'engine'`
+
+**`armstrongManifest.ts`:**
+- Zeile 648: "ueber Apollo" → "ueber die Research Engine"
+- `sot-research-pro-contacts` Eintrag entfernen (Function wird geloescht)
+
+### Schritt 5: Datenbank-Check
+
+- Pruefen ob `contact_staging.source` Eintraege mit `'apollo'` existieren → per Migration auf `'engine'` updaten
 
 ---
 
-## Ergebnis
+## Ergebnis nach Bereinigung
 
-Nach dieser Bereinigung:
-- MOD-05 = Pets (eindeutig, ueberall konsistent)
-- Vermietungsfunktionen = Teil von MOD-04 Immobilien (Verwaltung-Tab)
-- IS24 Publishing = MOD-04 + MOD-06
-- Research = eigene Phase, eigene Engines
-- 0 verwaiste MSV-Komponenten im Code
+```text
+Aktive Provider-Architektur:
+
+sot-research-engine (ZENTRAL)
+├── Google Places (New API)  → Discovery
+├── Apify                    → Portal-Scraping + Google Maps Scraper
+├── Firecrawl                → E-Mail-Extraktion
+├── Netrows                  → LinkedIn-Scraping
+└── Lovable AI               → Merge & Scoring
+
+Geloescht:
+├── sot-apollo-search        (Dead Code)
+├── sot-research-pro-contacts (Stub)
+└── sot-places-search        (Duplikat)
+
+Umbenannt:
+├── "Apollo" → "KI-Recherche" (UI)
+└── "apollo" → "engine" (Source-Typ)
+```
 
