@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ShoppingBag, Inbox, Users2, FileText, ArrowRight, Ban, CheckCircle2, Building2, Power } from 'lucide-react';
+import { ShoppingBag, Inbox, Users2, FileText, ArrowRight, Ban, CheckCircle2, Building2, Power, Activity, AlertTriangle } from 'lucide-react';
 import { useSalesDeskListings } from '@/hooks/useSalesDeskListings';
+import { useSLCKpis } from '@/hooks/useSalesCases';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -31,6 +32,7 @@ function NavCard({ icon: Icon, title, description, to }: { icon: React.ElementTy
 
 export default function SalesDeskDashboard() {
   const { data: listings } = useSalesDeskListings();
+  const { openCases, stuckCases } = useSLCKpis();
   const pendingCount = listings?.filter(l => !l.publications.some(p => p.status === 'active')).length || 0;
   const activeCount = listings?.filter(l => l.publications.some(p => p.status === 'active')).length || 0;
   const blockedCount = listings?.filter(l => l.is_blocked).length || 0;
@@ -76,10 +78,10 @@ export default function SalesDeskDashboard() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Neue Listings', value: pendingCount, icon: ShoppingBag, sub: 'Ausstehende Freigaben' },
+          { label: 'SLC Fälle', value: openCases, icon: Activity, color: 'text-primary', sub: 'Offene Verkaufsfälle' },
+          { label: 'Stuck', value: stuckCases, icon: AlertTriangle, color: stuckCases > 0 ? 'text-destructive' : 'text-muted-foreground', sub: 'Überschrittene Schwellwerte' },
           { label: 'Aktive Listings', value: activeCount, icon: CheckCircle2, color: 'text-primary', sub: 'Veröffentlicht' },
           { label: 'Blockiert', value: blockedCount, icon: Ban, color: 'text-destructive', sub: 'Durch Admin gesperrt' },
-          { label: 'Aktive Projekte', value: projectRequests?.length || 0, icon: Building2, sub: 'MOD-13 Vertriebsaufträge' },
         ].map(k => (
           <Card key={k.label}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
