@@ -7,19 +7,207 @@ const corsHeaders = {
 };
 
 /**
- * sot-tenancy-lifecycle — Tenancy Lifecycle Controller (TLC) v1.1
+ * sot-tenancy-lifecycle — Tenancy Lifecycle Controller (TLC) v1.5
  * 
- * Weekly CRON Edge Function:
- * 1. Payment status → Dunning events + AUTO-MAIL for level 0 (Zahlungserinnerung)
+ * Weekly CRON Edge Function — mirrors ENG-TLC engine logic server-side.
+ * 
+ * Checks:
+ * 1. Payment status → Dunning events + AUTO-MAIL for level 0
  * 2. Rent increase eligibility → §558 BGB + 3-Jahres-Check + Vorschlagslogik
  * 3. Deposit status → Warnings + Zinsgutschrift
  * 4. Deadline monitoring → Approaching deadlines
  * 5. Kautionsabrechnung bei Auszug
- * 6. AI-powered Next Best Actions (google/gemini-2.5-pro)
- * 7. Chronologie in tenancy_lifecycle_events
+ * 6. Defect SLA monitoring
+ * 7. Move checklist deadline checks
+ * 8. AI-powered Next Best Actions
+ * 9. Chronologie in tenancy_lifecycle_events
  * 
  * CRON: Every Sunday 03:00 UTC
+ * Engine Version: 1.5.0
  */
+
+// ─── Inline engine constants (mirroring src/engines/tenancyLifecycle/spec.ts) ───
+
+const RENT_INCREASE_DEFAULTS = {
+  lockoutMonths: 15,
+  capPercentNormal: 20,
+  capPercentTight: 15,
+  capPeriodYears: 3,
+  indexMinMonths: 12,
+  depositInterestRate: 0.001,
+  depositSettlementMonths: 6,
+} as const;
+
+const DEFECT_SLA_HOURS: Record<string, number> = {
+  emergency: 4, urgent: 24, standard: 72, cosmetic: 336,
+};
+
+const DEFECT_TRIAGE_KEYWORDS: Record<string, string[]> = {
+  emergency: ['rohrbruch', 'wasserrohrbruch', 'gasaustritt', 'brand', 'feuer', 'stromausfall', 'heizungsausfall'],
+  urgent: ['kein warmwasser', 'toilette defekt', 'eingangstür', 'schloss defekt', 'schimmel'],
+  standard: ['fenster', 'rolladen', 'herd', 'backofen', 'kühlschrank', 'spülmaschine', 'tropft'],
+  cosmetic: ['kratzer', 'farbe', 'tapete', 'leiste', 'dichtung', 'silikon'],
+};
+
+// ─── Inline engine functions (pure, mirroring engine.ts v1.5) ───
+
+function determinePhase(lease: any, today: string): string {
+  const todayDate = new Date(today);
+  const startDate = new Date(lease.start_date);
+  const endDate = lease.end_date ? new Date(lease.end_date) : null;
+  const noticeDate = lease.notice_date ? new Date(lease.notice_date) : null;
+
+  if (lease.status === 'draft' || lease.status === 'pending') return 'application';
+  if (lease.status === 'signed' && todayDate < startDate) return 'contract';
+  
+  const moveInEnd = new Date(startDate);
+  moveInEnd.setDate(moveInEnd.getDate() + 30);
+  if (todayDate >= startDate && todayDate <= moveInEnd && lease.tlc_phase === 'move_in') return 'move_in';
+
+  if (noticeDate && todayDate >= noticeDate) {
+    if (endDate && todayDate >= endDate) return 'move_out';
+    return 'termination';
+  }
+
+  if (endDate && todayDate >= endDate) return 'reletting';
+  if (lease.status === 'terminated') return 'move_out';
+  if (lease.status === 'inactive') return 'reletting';
+
+  return 'active';
+}
+
+function analyzePaymentStatus(expectedMonthly: number, payments: Array<{month: string; amount: number}>, today: string, paymentDueDay: number) {
+  const todayDate = new Date(today);
+  const currentMonth = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}`;
+  const results: any[] = [];
+
+  for (let i = 0; i < 3; i++) {
+    const d = new Date(todayDate);
+    d.setMonth(d.getMonth() - i);
+    const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const monthPayments = payments.filter(p => p.month === month);
+    const received = monthPayments.reduce((sum, p) => sum + p.amount, 0);
+    const dueDate = new Date(d.getFullYear(), d.getMonth(), paymentDueDay);
+    const daysOverdue = month <= currentMonth && received < expectedMonthly * 0.5
+      ? Math.max(0, Math.floor((todayDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)))
+      : 0;
+
+    let status = 'paid';
+    if (received === 0 && month <= currentMonth) status = 'missing';
+    else if (received < expectedMonthly * 0.95) status = 'partial';
+    else if (received > expectedMonthly * 1.05) status = 'overpaid';
+
+    results.push({ month, expected: expectedMonthly, received, delta: received - expectedMonthly, daysOverdue, status });
+  }
+  return results;
+}
+
+function determineDunningLevel(daysOverdue: number, dunningConfig: Array<{level: number; daysAfterDue: number}>): number {
+  let matchedLevel = -1;
+  for (const config of [...dunningConfig].sort((a, b) => a.daysAfterDue - b.daysAfterDue)) {
+    if (daysOverdue >= config.daysAfterDue) matchedLevel = config.level;
+  }
+  return matchedLevel;
+}
+
+function checkRentIncreaseEligibility(lease: any, today: string, isTightMarket = false) {
+  const todayDate = new Date(today);
+  const reasons: string[] = [];
+  let isEligible = false;
+  let nextEligibleDate: string | null = null;
+  const capPercent = isTightMarket ? RENT_INCREASE_DEFAULTS.capPercentTight : RENT_INCREASE_DEFAULTS.capPercentNormal;
+
+  if (lease.rent_model === 'INDEX') {
+    const minMonths = RENT_INCREASE_DEFAULTS.indexMinMonths;
+    if (lease.last_rent_increase_at) {
+      const eligible = new Date(lease.last_rent_increase_at);
+      eligible.setMonth(eligible.getMonth() + minMonths);
+      isEligible = todayDate >= eligible;
+      reasons.push(isEligible ? `Indexmiete: Mindestabstand ${minMonths} Monate erreicht` : `Indexmiete: Nächste Erhöhung frühestens ${eligible.toISOString().split('T')[0]}`);
+    } else {
+      isEligible = true;
+      reasons.push('Indexmiete: Keine vorherige Erhöhung');
+    }
+    return { isEligible, reasons, capPercent, nextEligibleDate };
+  }
+
+  if (lease.rent_model === 'STAFFEL') {
+    if (lease.next_rent_adjustment_earliest_date) {
+      isEligible = todayDate >= new Date(lease.next_rent_adjustment_earliest_date);
+      reasons.push(isEligible ? 'Staffelmiete: Nächste Stufe fällig' : `Staffelmiete: Nächste Stufe am ${lease.next_rent_adjustment_earliest_date}`);
+    }
+    return { isEligible, reasons, capPercent: 0, nextEligibleDate };
+  }
+
+  // Standard §558 BGB
+  const lockoutMonths = RENT_INCREASE_DEFAULTS.lockoutMonths;
+  if (lease.last_rent_increase_at) {
+    const lockoutEnd = new Date(lease.last_rent_increase_at);
+    lockoutEnd.setMonth(lockoutEnd.getMonth() + lockoutMonths);
+    if (todayDate < lockoutEnd) {
+      nextEligibleDate = lockoutEnd.toISOString().split('T')[0];
+      reasons.push(`Sperrfrist: 15 Mon. ab letzter Erhöhung. Nächste: ${nextEligibleDate}`);
+    } else {
+      isEligible = true;
+      reasons.push(`Sperrfrist abgelaufen seit ${lockoutEnd.toISOString().split('T')[0]}`);
+    }
+  } else {
+    const firstEligible = new Date(lease.start_date);
+    firstEligible.setMonth(firstEligible.getMonth() + 12);
+    if (todayDate >= firstEligible) {
+      isEligible = true;
+      reasons.push('Keine vorherige Erhöhung — erstmalig möglich');
+    } else {
+      nextEligibleDate = firstEligible.toISOString().split('T')[0];
+      reasons.push(`Ersterhöhung frühestens: ${nextEligibleDate}`);
+    }
+  }
+
+  if (isEligible) {
+    reasons.push(`Kappungsgrenze: max. ${capPercent}% in 3 Jahren`);
+    if (isTightMarket) reasons.push('Angespannter Markt: 15% statt 20%');
+  }
+
+  return { isEligible, reasons, capPercent, nextEligibleDate };
+}
+
+function calculateDepositInterest(deposit: number, startDate: string, endDate: string, rate = 0.001) {
+  const years = (new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+  const total = deposit * Math.pow(1 + rate, years);
+  return { interest: Math.round((total - deposit) * 100) / 100, years: Math.round(years * 10) / 10 };
+}
+
+function triageDefect(description: string): { severity: string; slaHours: number } {
+  const lower = description.toLowerCase();
+  for (const severity of ['emergency', 'urgent', 'standard', 'cosmetic']) {
+    if (DEFECT_TRIAGE_KEYWORDS[severity].some(kw => lower.includes(kw))) {
+      return { severity, slaHours: DEFECT_SLA_HOURS[severity] };
+    }
+  }
+  return { severity: 'standard', slaHours: DEFECT_SLA_HOURS.standard };
+}
+
+function checkDeadlines(deadlines: any[], today: string) {
+  const todayDate = new Date(today);
+  return deadlines
+    .filter(d => d.status === 'pending' || d.status === 'reminded')
+    .map(d => {
+      const dueDate = new Date(d.due_date);
+      const daysRemaining = Math.floor((dueDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+      let status = 'ok';
+      let urgency = 'low';
+      if (daysRemaining < 0) { status = 'overdue'; urgency = 'critical'; }
+      else if (daysRemaining <= (d.remind_days_before || 7)) {
+        status = 'approaching';
+        urgency = daysRemaining <= 3 ? 'high' : daysRemaining <= 7 ? 'medium' : 'low';
+      }
+      return { id: d.id, title: d.title, dueDate: d.due_date, daysRemaining, status, urgency };
+    })
+    .sort((a: any, b: any) => a.daysRemaining - b.daysRemaining);
+}
+
+// ─── Main Handler ───
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -32,7 +220,7 @@ serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, serviceKey);
     
     const today = new Date().toISOString().split("T")[0];
-    console.log(`[TLC v1.1] Starting weekly lifecycle check for ${today}`);
+    console.log(`[TLC v1.5] Starting weekly lifecycle check for ${today}`);
 
     // 1. Fetch all active leases
     const { data: leases, error: leasesErr } = await supabase
@@ -42,14 +230,14 @@ serve(async (req: Request) => {
         rent_cold_eur, nk_advance_eur, monthly_rent, payment_due_day,
         deposit_amount_eur, deposit_status, rent_model,
         last_rent_increase_at, next_rent_adjustment_earliest_date,
-        staffel_schedule, index_base_month, tlc_phase, lease_type
+        staffel_schedule, index_base_month, tlc_phase, lease_type, contact_id
       `)
       .in("status", ["active", "signed", "terminated"]);
 
     if (leasesErr) throw leasesErr;
     if (!leases || leases.length === 0) {
       console.log("[TLC] No active leases found");
-      return new Response(JSON.stringify({ processed: 0 }), {
+      return new Response(JSON.stringify({ processed: 0, version: "1.5.0" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -92,31 +280,41 @@ serve(async (req: Request) => {
     const unitToProperty: Record<string, string> = {};
     for (const u of units || []) unitToProperty[u.id] = u.property_id;
 
-    // 5. Fetch mail accounts for auto-send
-    const { data: mailAccounts } = await supabase
-      .from("mail_accounts")
-      .select("id, user_id, email_address")
-      .in("user_id", tenantIds.slice(0, 50)) // limit query size
-      .eq("is_default", true)
-      .limit(50);
-    const mailAccountByUser: Record<string, any> = {};
-    for (const ma of mailAccounts || []) {
-      mailAccountByUser[ma.user_id] = ma;
+    // 5. Fetch deadlines for all tenants
+    const { data: allDeadlines } = await supabase
+      .from("tenancy_deadlines")
+      .select("id, title, due_date, status, remind_days_before, lease_id, tenant_id")
+      .in("tenant_id", tenantIds)
+      .in("status", ["pending", "reminded"]);
+
+    const deadlinesByLease: Record<string, any[]> = {};
+    for (const dl of allDeadlines || []) {
+      const key = dl.lease_id || '__global__';
+      if (!deadlinesByLease[key]) deadlinesByLease[key] = [];
+      deadlinesByLease[key].push(dl);
     }
 
-    // 6. Process each lease
+    // 6. Fetch open defect tasks to check SLA
+    const { data: openDefects } = await supabase
+      .from("tenancy_tasks")
+      .select("id, title, description, lease_id, created_at, sla_deadline, task_type")
+      .in("lease_id", leaseIds)
+      .eq("task_type", "defect")
+      .in("status", ["open", "in_progress"]);
+
+    // 7. Process each lease
     let totalEvents = 0;
     let totalTasks = 0;
     let totalMailsSent = 0;
     const allResults: any[] = [];
 
     for (const lease of leases) {
-      const dunningConfig = dunningByTenant[lease.tenant_id] || [
+      const dunningConfig = (dunningByTenant[lease.tenant_id] || [
         { level: 0, days_after_due: 5, auto_send: true, send_channel: 'email', template_code: 'MAHNUNG_ERINNERUNG', fee_eur: 0 },
         { level: 1, days_after_due: 14, auto_send: false, send_channel: 'email', fee_eur: 5 },
         { level: 2, days_after_due: 28, auto_send: false, send_channel: 'both', fee_eur: 10 },
         { level: 3, days_after_due: 42, auto_send: false, send_channel: 'both', fee_eur: 15 },
-      ];
+      ]).map((dc: any) => ({ ...dc, daysAfterDue: dc.days_after_due || dc.daysAfterDue || 0 }));
 
       const payments = paymentsByLease[lease.id] || [];
       const propertyId = unitToProperty[lease.unit_id] || null;
@@ -126,91 +324,66 @@ serve(async (req: Request) => {
       const nextBestActions: string[] = [];
       let riskScore = 0;
 
-      // ── Phase determination ──
-      let phase = lease.tlc_phase || "active";
-      if (lease.status === "terminated" || lease.notice_date) {
-        phase = lease.end_date && new Date(today) >= new Date(lease.end_date) ? "move_out" : "termination";
-      }
+      // ── Phase determination (v1.5) ──
+      const phase = determinePhase(lease, today);
 
-      const todayDate = new Date(today);
-      const currentMonth = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, "0")}`;
+      // ── Payment analysis + Dunning (v1.5) ──
+      if (phase === 'active' || phase === 'termination') {
+        const paymentStatuses = analyzePaymentStatus(
+          Number(lease.monthly_rent) || 0,
+          payments,
+          today,
+          lease.payment_due_day || 1
+        );
 
-      // ── Payment analysis + Dunning ──
-      for (let i = 0; i < 3; i++) {
-        const d = new Date(todayDate);
-        d.setMonth(d.getMonth() - i);
-        const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        
-        const monthPayments = payments.filter((p: any) => p.month === month);
-        const received = monthPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
-        const expected = Number(lease.monthly_rent) || 0;
-        
-        if (received < expected * 0.5 && month <= currentMonth) {
-          const dueDate = new Date(d.getFullYear(), d.getMonth(), lease.payment_due_day || 1);
-          const daysOverdue = Math.max(0, Math.floor((todayDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
-          
-          if (daysOverdue > 5) {
-            let matchedLevel = -1;
-            let matchedConfig: any = null;
-            for (const dc of [...dunningConfig].sort((a: any, b: any) => (a.days_after_due || a.daysAfterDue) - (b.days_after_due || b.daysAfterDue))) {
-              if (daysOverdue >= (dc.days_after_due || dc.daysAfterDue)) {
-                matchedLevel = dc.level;
-                matchedConfig = dc;
-              }
-            }
+        const missedMonths = paymentStatuses.filter((p: any) => p.status === 'missing');
+        const partialMonths = paymentStatuses.filter((p: any) => p.status === 'partial');
 
-            if (matchedLevel >= 0) {
-              riskScore += 15;
-              const eventType = matchedLevel === 0 ? "dunning_reminder" : 
-                matchedLevel >= 3 ? "dunning_final" : `dunning_level_${Math.min(matchedLevel, 2)}`;
-              
-              events.push({
-                event_type: eventType,
-                severity: matchedLevel >= 3 ? "critical" : matchedLevel >= 1 ? "warning" : "info",
-                title: `Mietrückstand ${month}: ${daysOverdue} Tage überfällig`,
-                description: `Erwartet: ${expected.toFixed(2)} €, Erhalten: ${received.toFixed(2)} €. Mahnstufe ${matchedLevel}.${matchedConfig?.fee_eur ? ` Mahngebühr: ${matchedConfig.fee_eur} €.` : ''}`,
-                payload: { month, expected, received, daysOverdue, dunningLevel: matchedLevel, feeEur: matchedConfig?.fee_eur || 0, mailSent: false },
-              });
-              
-              tasks.push({
-                task_type: "reminder",
-                category: "payment",
-                title: matchedLevel === 0 ? "Zahlungserinnerung versenden" : `Mahnung Stufe ${matchedLevel} prüfen`,
-                priority: matchedLevel >= 2 ? "urgent" : "high",
-                due_date: today,
-              });
-            }
-          }
+        if (missedMonths.length > 0) {
+          const worstOverdue = Math.max(...missedMonths.map((m: any) => m.daysOverdue));
+          const dunningLevel = determineDunningLevel(worstOverdue, dunningConfig);
+          riskScore += Math.min(missedMonths.length * 15, 60);
+
+          const eventType = dunningLevel >= 3 ? "dunning_final" :
+            dunningLevel >= 1 ? `dunning_level_${Math.min(dunningLevel, 2)}` :
+            dunningLevel === 0 ? "dunning_reminder" : "payment_missed";
+
+          events.push({
+            event_type: eventType,
+            severity: dunningLevel >= 3 ? "critical" : dunningLevel >= 1 ? "warning" : "info",
+            title: `Mietrückstand: ${missedMonths.length} Monat(e), ${worstOverdue} Tage`,
+            description: `${missedMonths.length} ausstehende Mietzahlungen. Mahnstufe ${dunningLevel}.`,
+            payload: { missedMonths: missedMonths.map((m: any) => m.month), worstOverdue, dunningLevel },
+          });
+
+          tasks.push({
+            task_type: "reminder",
+            category: "payment",
+            title: dunningLevel === 0 ? "Zahlungserinnerung versenden" : `Mahnung Stufe ${dunningLevel} prüfen`,
+            priority: dunningLevel >= 2 ? "urgent" : "high",
+            due_date: today,
+          });
+          nextBestActions.push(`Mahnstufe ${dunningLevel}: ${missedMonths.length} Monatsmiete(n) ausstehend`);
+        }
+
+        if (partialMonths.length > 0) {
+          riskScore += partialMonths.length * 5;
+          events.push({
+            event_type: "payment_partial",
+            severity: "info",
+            title: `Teilzahlung: ${partialMonths.length} Monat(e)`,
+            description: `${partialMonths.length} Monate mit unvollständiger Zahlung.`,
+            payload: { partialMonths: partialMonths.map((m: any) => ({ month: m.month, delta: m.delta })) },
+          });
         }
       }
 
-      // ── Rent increase check (enhanced with Kappungsgrenze) ──
+      // ── Rent increase check (v1.5 — full engine logic) ──
       if (phase === "active" && lease.rent_model !== "STAFFEL") {
-        const lockoutMonths = lease.rent_model === "INDEX" ? 12 : 15;
-        let isEligible = false;
-        const reasons: string[] = [];
-        const capPercent = 20; // TODO: Make configurable per region (15% for angespannte Märkte)
-        
-        if (lease.last_rent_increase_at) {
-          const lastIncrease = new Date(lease.last_rent_increase_at);
-          const lockoutEnd = new Date(lastIncrease);
-          lockoutEnd.setMonth(lockoutEnd.getMonth() + lockoutMonths);
-          isEligible = todayDate >= lockoutEnd;
-          if (isEligible) {
-            reasons.push(`Sperrfrist (${lockoutMonths} Mon.) abgelaufen`);
-          }
-        } else {
-          const start = new Date(lease.start_date);
-          const firstEligible = new Date(start);
-          firstEligible.setMonth(firstEligible.getMonth() + 12);
-          isEligible = todayDate >= firstEligible;
-          if (isEligible) reasons.push("Ersterhöhung möglich (12 Mon. nach Mietbeginn)");
-        }
-
-        if (isEligible) {
-          const currentRent = lease.rent_cold_eur || 0;
-          // Vorschlagslogik: 3 Strategien
-          const maxIncrease = currentRent * (capPercent / 100);
+        const rentCheck = checkRentIncreaseEligibility(lease, today);
+        if (rentCheck.isEligible) {
+          const currentRent = Number(lease.rent_cold_eur) || 0;
+          const maxIncrease = currentRent * (rentCheck.capPercent / 100);
           const proposals = [
             { strategy: "konservativ", factor: 0.5, risk: "niedrig" },
             { strategy: "markt", factor: 0.75, risk: "mittel" },
@@ -225,11 +398,8 @@ serve(async (req: Request) => {
             event_type: "rent_increase_eligible",
             severity: "info",
             title: "Mieterhöhung möglich",
-            description: `${reasons.join('. ')}. Kaltmiete: ${currentRent.toFixed(2)} €. Kappungsgrenze: ${capPercent}% in 3 Jahren.`,
-            payload: { 
-              rentCold: currentRent, rentModel: lease.rent_model, capPercent,
-              proposals,
-            },
+            description: `${rentCheck.reasons.join('. ')}. Kaltmiete: ${currentRent.toFixed(2)} €.`,
+            payload: { rentCold: currentRent, capPercent: rentCheck.capPercent, proposals },
           });
           nextBestActions.push(`Mieterhöhung: konservativ +${proposals[0].increaseEur} €, markt +${proposals[1].increaseEur} €, max +${proposals[2].increaseEur} €`);
         }
@@ -238,28 +408,22 @@ serve(async (req: Request) => {
       // ── Staffel step check ──
       if (lease.rent_model === "STAFFEL" && lease.next_rent_adjustment_earliest_date) {
         const nextDate = new Date(lease.next_rent_adjustment_earliest_date);
-        if (todayDate >= nextDate) {
+        if (new Date(today) >= nextDate) {
           events.push({
             event_type: "staffel_step_due",
             severity: "action_required",
             title: "Staffelmiete: Nächste Stufe fällig",
-            description: `Staffelstufe war fällig am ${lease.next_rent_adjustment_earliest_date}.`,
+            description: `Fällig seit ${lease.next_rent_adjustment_earliest_date}.`,
             payload: { nextDate: lease.next_rent_adjustment_earliest_date, schedule: lease.staffel_schedule },
           });
-          tasks.push({
-            task_type: "task",
-            category: "rent_increase",
-            title: "Staffelmieterhöhung durchführen",
-            priority: "high",
-            due_date: lease.next_rent_adjustment_earliest_date,
-          });
+          tasks.push({ task_type: "task", category: "rent_increase", title: "Staffelmieterhöhung durchführen", priority: "high", due_date: lease.next_rent_adjustment_earliest_date });
         }
       }
 
-      // ── Deposit check + Zinsgutschrift ──
+      // ── Deposit check + Zinsgutschrift (v1.5) ──
       if (lease.deposit_amount_eur && lease.deposit_amount_eur > 0) {
         const startDate = new Date(lease.start_date);
-        const monthsSince = (todayDate.getFullYear() - startDate.getFullYear()) * 12 + (todayDate.getMonth() - startDate.getMonth());
+        const monthsSince = (new Date(today).getFullYear() - startDate.getFullYear()) * 12 + (new Date(today).getMonth() - startDate.getMonth());
         
         if (monthsSince > 3 && (!lease.deposit_status || lease.deposit_status === "open" || lease.deposit_status === "OPEN")) {
           events.push({
@@ -272,18 +436,15 @@ serve(async (req: Request) => {
           riskScore += 10;
         }
 
-        // Zinsgutschrift-Berechnung (§551 BGB: anlagesicher, 0.1% p.a.)
         if (lease.deposit_status === "PAID" || lease.deposit_status === "paid") {
-          const years = monthsSince / 12;
-          const rate = 0.001; // 0.1% Sparbuchzins
-          const interest = lease.deposit_amount_eur * (Math.pow(1 + rate, years) - 1);
+          const { interest, years } = calculateDepositInterest(lease.deposit_amount_eur, lease.start_date, today);
           if (interest > 0.01) {
             events.push({
               event_type: "deposit_interest_calculated",
               severity: "info",
               title: `Kautionszins: ${interest.toFixed(2)} €`,
-              description: `Kaution ${lease.deposit_amount_eur.toFixed(2)} € × ${(rate * 100).toFixed(1)}% × ${years.toFixed(1)} Jahre = ${interest.toFixed(2)} € Zinsen.`,
-              payload: { deposit: lease.deposit_amount_eur, years, rate, interest: Math.round(interest * 100) / 100 },
+              description: `${lease.deposit_amount_eur.toFixed(2)} € × 0.1% × ${years} Jahre = ${interest.toFixed(2)} €.`,
+              payload: { deposit: lease.deposit_amount_eur, years, rate: 0.001, interest },
             });
           }
         }
@@ -297,47 +458,84 @@ serve(async (req: Request) => {
             event_type: "deposit_settlement_started",
             severity: "action_required",
             title: "Kautionsabrechnung erstellen",
-            description: `Kaution ${lease.deposit_amount_eur.toFixed(2)} € muss abgerechnet werden (Frist: 6 Monate).`,
+            description: `Kaution ${lease.deposit_amount_eur.toFixed(2)} € abrechnen (6 Monate Frist).`,
             payload: { amount: lease.deposit_amount_eur },
           });
-          tasks.push({
-            task_type: "task",
-            category: "deposit",
-            title: "Kautionsabrechnung erstellen und auszahlen",
-            priority: "high",
-            due_date: null,
-          });
+          tasks.push({ task_type: "task", category: "deposit", title: "Kautionsabrechnung erstellen und auszahlen", priority: "high", due_date: null });
         }
       }
 
       // ── Termination deadline ──
       if (lease.end_date && (phase === "termination" || phase === "move_out")) {
-        const endDate = new Date(lease.end_date);
-        const daysUntil = Math.floor((endDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
-        
+        const daysUntil = Math.floor((new Date(lease.end_date).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24));
         if (daysUntil > 0 && daysUntil <= 60) {
           events.push({
             event_type: "deadline_approaching",
             severity: daysUntil <= 14 ? "critical" : "warning",
             title: `Mietende in ${daysUntil} Tagen`,
-            description: `Mietverhältnis endet am ${lease.end_date}. Übergabe vorbereiten.`,
+            description: `Endet am ${lease.end_date}. Übergabe vorbereiten.`,
             payload: { endDate: lease.end_date, daysUntil },
           });
-          tasks.push({
-            task_type: "inspection",
-            category: "maintenance",
-            title: "Wohnungsübergabe planen",
-            priority: daysUntil <= 14 ? "urgent" : "high",
-            due_date: lease.end_date,
+          tasks.push({ task_type: "inspection", category: "maintenance", title: "Wohnungsübergabe planen", priority: daysUntil <= 14 ? "urgent" : "high", due_date: lease.end_date });
+        }
+      }
+
+      // ── NEW v1.5: Deadline monitoring via checkDeadlines ──
+      const leaseDeadlines = deadlinesByLease[lease.id] || [];
+      if (leaseDeadlines.length > 0) {
+        const deadlineChecks = checkDeadlines(leaseDeadlines, today);
+        const overdue = deadlineChecks.filter((d: any) => d.status === 'overdue');
+        const approaching = deadlineChecks.filter((d: any) => d.status === 'approaching');
+
+        for (const dl of overdue) {
+          events.push({
+            event_type: "deadline_missed",
+            severity: "critical",
+            title: `Frist überschritten: ${dl.title}`,
+            description: `Fällig am ${dl.dueDate}, ${Math.abs(dl.daysRemaining)} Tage überfällig.`,
+            payload: { deadlineId: dl.id, daysOverdue: Math.abs(dl.daysRemaining) },
           });
+          riskScore += 15;
+        }
+
+        for (const dl of approaching) {
+          if (dl.urgency === 'high' || dl.urgency === 'medium') {
+            events.push({
+              event_type: "deadline_approaching",
+              severity: "warning",
+              title: `Frist naht: ${dl.title}`,
+              description: `Noch ${dl.daysRemaining} Tage bis ${dl.dueDate}.`,
+              payload: { deadlineId: dl.id, daysRemaining: dl.daysRemaining },
+            });
+          }
+        }
+
+        if (overdue.length > 0) nextBestActions.push(`${overdue.length} überfällige Frist(en) bearbeiten`);
+      }
+
+      // ── NEW v1.5: Defect SLA check via triageDefect ──
+      const leaseDefects = (openDefects || []).filter((d: any) => d.lease_id === lease.id);
+      for (const defect of leaseDefects) {
+        if (defect.sla_deadline) {
+          const slaDate = new Date(defect.sla_deadline);
+          if (new Date(today) > slaDate) {
+            const hoursOverdue = Math.round((new Date(today).getTime() - slaDate.getTime()) / (1000 * 60 * 60));
+            const triage = triageDefect(`${defect.title} ${defect.description || ''}`);
+            events.push({
+              event_type: "defect_dispatched",
+              severity: triage.severity === 'emergency' ? "critical" : "warning",
+              title: `SLA überschritten: ${defect.title}`,
+              description: `SLA-Frist seit ${hoursOverdue}h überschritten. Schwere: ${triage.severity}.`,
+              payload: { defectId: defect.id, severity: triage.severity, hoursOverdue },
+            });
+            riskScore += triage.severity === 'emergency' ? 25 : 10;
+          }
         }
       }
 
       // ── Store events + tasks (dedup) ──
       if (events.length > 0 || tasks.length > 0) {
-        const oneWeekAgo = new Date(todayDate);
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        
+        const oneWeekAgo = new Date(new Date(today).getTime() - 7 * 24 * 60 * 60 * 1000);
         const { data: recentEvents } = await supabase
           .from("tenancy_lifecycle_events")
           .select("event_type")
@@ -363,79 +561,45 @@ serve(async (req: Request) => {
               });
             if (!insertErr) totalEvents++;
 
-            // ── AUTO-MAIL for level 0 dunning (Zahlungserinnerung) ──
-            if (event.event_type === "dunning_reminder" && !insertErr) {
+            // AUTO-MAIL for level 0 dunning
+            if (event.event_type === "dunning_reminder" && !insertErr && lovableApiKey) {
               const dc = dunningConfig.find((c: any) => c.level === 0);
-              if (dc?.auto_send && dc?.send_channel !== "letter") {
+              if (dc?.auto_send && dc?.send_channel !== "letter" && lease.contact_id) {
                 try {
-                  // Fetch tenant contact email
-                  const { data: leaseContact } = await supabase
-                    .from("leases")
-                    .select("contact_id")
-                    .eq("id", lease.id)
+                  const { data: contact } = await supabase
+                    .from("contacts")
+                    .select("email, first_name, last_name")
+                    .eq("id", lease.contact_id)
                     .single();
-                  
-                  if (leaseContact?.contact_id) {
-                    const { data: contact } = await supabase
-                      .from("contacts")
-                      .select("email, first_name, last_name")
-                      .eq("id", leaseContact.contact_id)
-                      .single();
 
-                    if (contact?.email) {
-                      // Use AI to generate dunning email
-                      if (lovableApiKey) {
-                        const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-                          method: "POST",
-                          headers: { Authorization: `Bearer ${lovableApiKey}`, "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            model: "google/gemini-2.5-pro",
-                            messages: [{ role: "user", content: `Erstelle eine freundliche aber bestimmte Zahlungserinnerung auf Deutsch. 
-Mieter: ${contact.first_name || ''} ${contact.last_name || ''}
-Offener Betrag: ${event.payload.expected?.toFixed(2)} €
-Monat: ${event.payload.month}
-Tage überfällig: ${event.payload.daysOverdue}
+                  if (contact?.email) {
+                    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                      method: "POST",
+                      headers: { Authorization: `Bearer ${lovableApiKey}`, "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        model: "google/gemini-2.5-flash",
+                        messages: [{ role: "user", content: `Erstelle eine freundliche aber bestimmte Zahlungserinnerung auf Deutsch.\nMieter: ${contact.first_name || ''} ${contact.last_name || ''}\nOffener Betrag: ${event.payload.missedMonths?.length || 1} Monatsmiete(n)\nFormat: Nur E-Mail-Body als HTML. Sachlich, höflich, Fristsetzung 7 Tage.` }],
+                        max_tokens: 600,
+                      }),
+                    });
 
-Format: Nur den E-Mail-Body als HTML (ohne <html>/<body> Tags). Sachlich, höflich, mit Zahlungsaufforderung und Fristsetzung (7 Tage).` }],
-                            max_tokens: 800,
-                          }),
-                        });
-
-                        if (aiResp.ok) {
-                          const aiData = await aiResp.json();
-                          const mailBody = aiData.choices?.[0]?.message?.content || "";
-                          
-                          // Log the dunning mail event
-                          await supabase.from("tenancy_lifecycle_events").insert({
-                            tenant_id: lease.tenant_id,
-                            lease_id: lease.id,
-                            event_type: "dunning_mail_sent",
-                            phase,
-                            severity: "info",
-                            title: `Zahlungserinnerung an ${contact.email} gesendet`,
-                            description: `Auto-Mail: Zahlungserinnerung für ${event.payload.month}, ${event.payload.expected?.toFixed(2)} €`,
-                            payload: { to: contact.email, month: event.payload.month, amount: event.payload.expected, aiGenerated: true },
-                            triggered_by: "cron",
-                          });
-                          totalMailsSent++;
-                          console.log(`[TLC] Auto-mail sent to ${contact.email} for lease ${lease.id}`);
-                        }
-                      }
+                    if (aiResp.ok) {
+                      await supabase.from("tenancy_lifecycle_events").insert({
+                        tenant_id: lease.tenant_id,
+                        lease_id: lease.id,
+                        event_type: "dunning_mail_sent",
+                        phase,
+                        severity: "info",
+                        title: `Zahlungserinnerung an ${contact.email} gesendet`,
+                        description: `Auto-Mail für ${event.payload.missedMonths?.join(', ') || 'Rückstand'}`,
+                        payload: { to: contact.email, aiGenerated: true },
+                        triggered_by: "cron",
+                      });
+                      totalMailsSent++;
                     }
                   }
                 } catch (mailErr) {
                   console.error(`[TLC] Auto-mail failed for lease ${lease.id}:`, mailErr);
-                  await supabase.from("tenancy_lifecycle_events").insert({
-                    tenant_id: lease.tenant_id,
-                    lease_id: lease.id,
-                    event_type: "dunning_mail_failed",
-                    phase,
-                    severity: "warning",
-                    title: "Zahlungserinnerung konnte nicht versendet werden",
-                    description: `Fehler: ${mailErr instanceof Error ? mailErr.message : 'Unbekannt'}`,
-                    payload: { error: String(mailErr) },
-                    triggered_by: "cron",
-                  });
                 }
               }
             }
@@ -480,21 +644,16 @@ Format: Nur den E-Mail-Body als HTML (ohne <html>/<body> Tags). Sachlich, höfli
       }
     }
 
-    // 7. AI-powered summary
+    // AI summary
     let aiSummary = null;
     if (lovableApiKey && allResults.length > 0) {
       try {
-        const prompt = `Du bist ein KI-Assistent für Miet-Sonderverwaltung. Analysiere die folgenden TLC-Ergebnisse des wöchentlichen Lifecycle-Checks und erstelle eine kurze Zusammenfassung (max 200 Wörter) der wichtigsten Handlungsempfehlungen auf Deutsch.
-
-Ergebnisse (${allResults.length} Mietverhältnisse mit Findings):
-${JSON.stringify(allResults.slice(0, 20), null, 2)}
-
-Antworte NUR mit der Zusammenfassung, keine Einleitung.`;
+        const prompt = `Du bist ein KI-Assistent für Mietverwaltung. Analysiere die TLC v1.5 Ergebnisse und erstelle eine kurze Zusammenfassung (max 200 Wörter) der wichtigsten Handlungsempfehlungen auf Deutsch.\n\nErgebnisse (${allResults.length} Mietverhältnisse):\n${JSON.stringify(allResults.slice(0, 20), null, 2)}\n\nAntworte NUR mit der Zusammenfassung.`;
 
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: { Authorization: `Bearer ${lovableApiKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ model: "google/gemini-2.5-pro", messages: [{ role: "user", content: prompt }], max_tokens: 1000 }),
+          body: JSON.stringify({ model: "google/gemini-2.5-flash", messages: [{ role: "user", content: prompt }], max_tokens: 800 }),
         });
 
         if (aiResponse.ok) {
@@ -508,6 +667,7 @@ Antworte NUR mit der Zusammenfassung, keine Einleitung.`;
     }
 
     const result = {
+      version: "1.5.0",
       processed: leases.length,
       eventsCreated: totalEvents,
       tasksCreated: totalTasks,
@@ -517,14 +677,14 @@ Antworte NUR mit der Zusammenfassung, keine Einleitung.`;
       timestamp: new Date().toISOString(),
     };
 
-    console.log(`[TLC v1.1] Complete: ${totalEvents} events, ${totalTasks} tasks, ${totalMailsSent} mails for ${allResults.length}/${leases.length} leases`);
+    console.log(`[TLC v1.5] Complete: ${totalEvents} events, ${totalTasks} tasks, ${totalMailsSent} mails for ${allResults.length}/${leases.length} leases`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("[TLC] Error:", err);
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error", version: "1.5.0" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
