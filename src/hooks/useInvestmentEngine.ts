@@ -17,6 +17,7 @@ export interface CalculationInput {
   valueGrowthRate: number;
   rentGrowthRate: number;
   afaRateOverride?: number;
+  isCommercial?: boolean;
 }
 
 export interface YearlyData {

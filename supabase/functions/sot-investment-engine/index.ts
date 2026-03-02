@@ -24,6 +24,7 @@ interface CalculationInput {
   valueGrowthRate: number // % p.a.
   rentGrowthRate: number // % p.a.
   afaRateOverride?: number // Manueller AfA-Satz (überschreibt tax_parameters Default)
+  isCommercial?: boolean // Gewerblicher Kontext — kein persönlicher Steuereffekt
 }
 
 interface YearlyData {
@@ -156,31 +157,43 @@ async function calculateInvestment(
   const yearlyRepayment = loanAmount * (repaymentRate / 100)
 
   // Tax calculation: Compare zvE without vs with property
-  const taxOld = calculateIncomeTax(taxableIncome, maritalStatus)
-  const soliOld = calculateSoli(taxOld)
-  const churchOld = hasChurchTax ? calculateChurchTax(taxOld, churchTaxRate) : 0
+  // For commercial contexts (GmbH, KG etc.), no personal tax advantage applies
+  const isCommercial = input.isCommercial === true
 
-  // Rental income reduces taxable income (losses from renting)
-  const taxableRentalIncome = yearlyRent - yearlyInterest - yearlyManagement - yearlyAfa
-  const zvENew = taxableIncome + taxableRentalIncome // Can be negative (loss)
-  
-  const taxNew = calculateIncomeTax(Math.max(0, zvENew), maritalStatus)
-  const soliNew = calculateSoli(taxNew)
-  const churchNew = hasChurchTax ? calculateChurchTax(taxNew, churchTaxRate) : 0
+  let yearlyTaxSavings = 0
+  let totalTaxOld = 0
 
-  const totalTaxOld = taxOld + soliOld + churchOld
-  const totalTaxNew = taxNew + soliNew + churchNew
-  const yearlyTaxSavings = totalTaxOld - totalTaxNew
+  if (!isCommercial) {
+    const taxOld = calculateIncomeTax(taxableIncome, maritalStatus)
+    const soliOld = calculateSoli(taxOld)
+    const churchOld = hasChurchTax ? calculateChurchTax(taxOld, churchTaxRate) : 0
+
+    // Rental income reduces taxable income (losses from renting)
+    const taxableRentalIncome = yearlyRent - yearlyInterest - yearlyManagement - yearlyAfa
+    const zvENew = taxableIncome + taxableRentalIncome // Can be negative (loss)
+    
+    const taxNew = calculateIncomeTax(Math.max(0, zvENew), maritalStatus)
+    const soliNew = calculateSoli(taxNew)
+    const churchNew = hasChurchTax ? calculateChurchTax(taxNew, churchTaxRate) : 0
+
+    totalTaxOld = taxOld + soliOld + churchOld
+    const totalTaxNew = taxNew + soliNew + churchNew
+    yearlyTaxSavings = totalTaxOld - totalTaxNew
+  }
 
   // Monthly burden calculation
   const yearlyCashFlowBeforeTax = yearlyRent - yearlyInterest - yearlyManagement - yearlyRepayment
   const yearlyCashFlowAfterTax = yearlyCashFlowBeforeTax + yearlyTaxSavings
-  const monthlyBurden = -yearlyCashFlowAfterTax / 12 // Positive = you pay, negative = you receive
+  const monthlyBurden = isCommercial
+    ? -yearlyCashFlowBeforeTax / 12
+    : -yearlyCashFlowAfterTax / 12
 
   // Calculate ROI
   const totalInvestment = equity
   const roiBeforeTax = ((yearlyRent - yearlyInterest - yearlyManagement) / totalInvestment) * 100
-  const roiAfterTax = ((yearlyRent - yearlyInterest - yearlyManagement + yearlyTaxSavings) / totalInvestment) * 100
+  const roiAfterTax = isCommercial
+    ? roiBeforeTax
+    : ((yearlyRent - yearlyInterest - yearlyManagement + yearlyTaxSavings) / totalInvestment) * 100
 
   // 40-year projection
   const projection: YearlyData[] = []
@@ -200,12 +213,15 @@ async function calculateInvestment(
     remainingDebt = Math.max(0, remainingDebt - yearRepayment)
 
     const yearTaxableRental = currentRent - yearInterest - yearlyManagement - yearlyAfa
-    const yearZvENew = taxableIncome + yearTaxableRental
-    const yearTaxNew = calculateIncomeTax(Math.max(0, yearZvENew), maritalStatus)
-    const yearSoliNew = calculateSoli(yearTaxNew)
-    const yearChurchNew = hasChurchTax ? calculateChurchTax(yearTaxNew, churchTaxRate) : 0
-    const yearTotalTaxNew = yearTaxNew + yearSoliNew + yearChurchNew
-    const yearTaxSavings = totalTaxOld - yearTotalTaxNew
+    let yearTaxSavings = 0
+    if (!isCommercial) {
+      const yearZvENew = taxableIncome + yearTaxableRental
+      const yearTaxNew = calculateIncomeTax(Math.max(0, yearZvENew), maritalStatus)
+      const yearSoliNew = calculateSoli(yearTaxNew)
+      const yearChurchNew = hasChurchTax ? calculateChurchTax(yearTaxNew, churchTaxRate) : 0
+      const yearTotalTaxNew = yearTaxNew + yearSoliNew + yearChurchNew
+      yearTaxSavings = totalTaxOld - yearTotalTaxNew
+    }
 
     const yearCashFlowBefore = currentRent - yearInterest - yearlyManagement - yearRepayment
     const yearCashFlowAfter = yearCashFlowBefore + yearTaxSavings
