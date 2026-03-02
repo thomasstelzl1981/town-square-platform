@@ -15,7 +15,14 @@ import {
   type TLCTaskCandidate,
   type LeaseAnalysisInput,
   type RentIncreaseCheck,
+  type DefectSeverity,
+  type MoveChecklist,
+  type MoveChecklistItem,
   RENT_INCREASE_DEFAULTS,
+  DEFECT_SLA_HOURS,
+  DEFECT_TRIAGE_KEYWORDS,
+  MOVE_IN_CHECKLIST_ITEMS,
+  MOVE_OUT_CHECKLIST_ITEMS,
 } from './spec';
 
 // ─── Phase Determination ──────────────────────────────────────
@@ -709,4 +716,104 @@ export function analyzeLease(
     nextBestActions,
     riskScore: Math.min(riskScore, 100),
   };
+}
+
+// ─── Defect Triage (Mängel-Triage) ────────────────────────────
+
+/**
+ * Auto-triage a defect report based on description keywords.
+ * Returns severity and SLA hours.
+ */
+export function triageDefect(description: string): {
+  severity: DefectSeverity;
+  slaHours: number;
+  matchedKeywords: string[];
+} {
+  const lower = description.toLowerCase();
+  
+  for (const severity of ['emergency', 'urgent', 'standard', 'cosmetic'] as DefectSeverity[]) {
+    const keywords = DEFECT_TRIAGE_KEYWORDS[severity];
+    const matched = keywords.filter(kw => lower.includes(kw));
+    if (matched.length > 0) {
+      return {
+        severity,
+        slaHours: DEFECT_SLA_HOURS[severity],
+        matchedKeywords: matched,
+      };
+    }
+  }
+
+  // Default: standard
+  return { severity: 'standard', slaHours: DEFECT_SLA_HOURS.standard, matchedKeywords: [] };
+}
+
+/**
+ * Calculate SLA deadline from creation date and SLA hours.
+ */
+export function calculateSlaDeadline(createdAt: string, slaHours: number): string {
+  const date = new Date(createdAt);
+  date.setHours(date.getHours() + slaHours);
+  return date.toISOString();
+}
+
+// ─── Move-In / Move-Out Checklists ───────────────────────────
+
+/**
+ * Generate a move checklist with completion tracking.
+ */
+export function generateMoveChecklist(
+  leaseId: string,
+  type: 'move_in' | 'move_out',
+  completedKeys: string[] = []
+): MoveChecklist {
+  const templateItems = type === 'move_in' ? MOVE_IN_CHECKLIST_ITEMS : MOVE_OUT_CHECKLIST_ITEMS;
+  
+  const items: MoveChecklistItem[] = templateItems.map(item => ({
+    ...item,
+    completed: completedKeys.includes(item.key),
+    completedAt: completedKeys.includes(item.key) ? new Date().toISOString() : null,
+  }));
+
+  const completedCount = items.filter(i => i.completed).length;
+  const totalCount = items.length;
+
+  return {
+    leaseId,
+    type,
+    items,
+    completedCount,
+    totalCount,
+    percentComplete: totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0,
+  };
+}
+
+/**
+ * Generate TLC events/tasks for incomplete checklist items approaching deadline.
+ */
+export function checkMoveChecklistDeadlines(
+  checklist: MoveChecklist,
+  moveDate: string,
+  today: string
+): TLCTaskCandidate[] {
+  const tasks: TLCTaskCandidate[] = [];
+  const todayDate = new Date(today);
+  const moveDateObj = new Date(moveDate);
+  const daysUntilMove = Math.floor((moveDateObj.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (daysUntilMove > 14) return tasks; // Too early
+
+  const incompleteRequired = checklist.items.filter(i => i.required && !i.completed);
+  
+  for (const item of incompleteRequired) {
+    tasks.push({
+      taskType: 'task',
+      category: checklist.type === 'move_in' ? 'move_in' : 'move_out',
+      title: `${item.label} — noch offen`,
+      description: `${checklist.type === 'move_in' ? 'Einzug' : 'Auszug'} in ${daysUntilMove} Tagen. Pflichtaufgabe "${item.label}" ist noch nicht erledigt.`,
+      priority: daysUntilMove <= 3 ? 'urgent' : daysUntilMove <= 7 ? 'high' : 'normal',
+      dueDate: moveDate,
+    });
+  }
+
+  return tasks;
 }

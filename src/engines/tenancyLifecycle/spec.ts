@@ -72,9 +72,54 @@ export type TLCTriggeredBy = 'system' | 'user' | 'cron' | 'ai';
 
 // ─── Task Types ───────────────────────────────────────────────
 export type TenancyTaskType = 'task' | 'ticket' | 'defect' | 'damage' | 'reminder' | 'inspection' | 'handover';
-export type TenancyTaskCategory = 'payment' | 'nk' | 'maintenance' | 'insurance' | 'communication' | 'legal' | 'deposit' | 'rent_increase';
+export type TenancyTaskCategory = 'payment' | 'nk' | 'maintenance' | 'insurance' | 'communication' | 'legal' | 'deposit' | 'rent_increase' | 'move_in' | 'move_out' | 'meter_reading';
 export type TenancyTaskPriority = 'low' | 'normal' | 'high' | 'urgent';
 export type TenancyTaskStatus = 'open' | 'in_progress' | 'waiting' | 'resolved' | 'closed' | 'cancelled';
+
+// ─── Handover Protocol ───────────────────────────────────────
+export type HandoverProtocolType = 'move_in' | 'move_out';
+export type HandoverProtocolStatus = 'draft' | 'completed' | 'signed';
+
+export interface HandoverRoom {
+  name: string;
+  condition: 'excellent' | 'good' | 'fair' | 'poor' | 'damaged';
+  notes: string;
+  photos: string[];
+}
+
+export interface HandoverKeyItem {
+  type: string;
+  count: number;
+  serial: string | null;
+  handed_over: boolean;
+}
+
+export interface HandoverMeterReading {
+  meter_type: MeterType;
+  meter_number: string;
+  value: number;
+}
+
+// ─── Meter Readings ──────────────────────────────────────────
+export type MeterType = 'electricity' | 'gas' | 'water' | 'heating' | 'hot_water';
+export type MeterReadingType = 'regular' | 'move_in' | 'move_out' | 'interim';
+
+// ─── Defect Severity (Mängel-Triage) ─────────────────────────
+export type DefectSeverity = 'emergency' | 'urgent' | 'standard' | 'cosmetic';
+
+export const DEFECT_SLA_HOURS: Record<DefectSeverity, number> = {
+  emergency: 4,
+  urgent: 24,
+  standard: 72,
+  cosmetic: 336,
+};
+
+export const DEFECT_TRIAGE_KEYWORDS: Record<DefectSeverity, string[]> = {
+  emergency: ['rohrbruch', 'wasserrohrbruch', 'gasaustritt', 'brand', 'feuer', 'stromausfall', 'heizungsausfall'],
+  urgent: ['kein warmwasser', 'toilette defekt', 'eingangstür', 'schloss defekt', 'schimmel'],
+  standard: ['fenster', 'rolladen', 'herd', 'backofen', 'kühlschrank', 'spülmaschine', 'tropft'],
+  cosmetic: ['kratzer', 'farbe', 'tapete', 'leiste', 'dichtung', 'silikon'],
+};
 
 // ─── Dunning ──────────────────────────────────────────────────
 export interface DunningLevel {
@@ -173,5 +218,48 @@ export interface TLCTaskCandidate {
   dueDate: string | null;
 }
 
+// ─── Move-In/Move-Out Checklist ──────────────────────────────
+export interface MoveChecklist {
+  leaseId: string;
+  type: 'move_in' | 'move_out';
+  items: MoveChecklistItem[];
+  completedCount: number;
+  totalCount: number;
+  percentComplete: number;
+}
+
+export interface MoveChecklistItem {
+  key: string;
+  label: string;
+  category: string;
+  required: boolean;
+  completed: boolean;
+  completedAt: string | null;
+}
+
+export const MOVE_IN_CHECKLIST_ITEMS: Omit<MoveChecklistItem, 'completed' | 'completedAt'>[] = [
+  { key: 'deposit_received', label: 'Kaution eingegangen', category: 'finanzen', required: true },
+  { key: 'contract_signed', label: 'Mietvertrag unterzeichnet', category: 'vertrag', required: true },
+  { key: 'handover_protocol', label: 'Übergabeprotokoll erstellt', category: 'übergabe', required: true },
+  { key: 'meter_readings_recorded', label: 'Zählerstände abgelesen', category: 'übergabe', required: true },
+  { key: 'keys_handed_over', label: 'Schlüssel übergeben', category: 'übergabe', required: true },
+  { key: 'mailbox_label', label: 'Briefkasten beschriftet', category: 'übergabe', required: false },
+  { key: 'utility_registration', label: 'Versorger angemeldet', category: 'verwaltung', required: false },
+  { key: 'tenant_registered', label: 'Mieter im System angelegt', category: 'verwaltung', required: true },
+];
+
+export const MOVE_OUT_CHECKLIST_ITEMS: Omit<MoveChecklistItem, 'completed' | 'completedAt'>[] = [
+  { key: 'notice_confirmed', label: 'Kündigung bestätigt', category: 'vertrag', required: true },
+  { key: 'handover_date_set', label: 'Übergabetermin vereinbart', category: 'übergabe', required: true },
+  { key: 'handover_protocol', label: 'Übergabeprotokoll erstellt', category: 'übergabe', required: true },
+  { key: 'meter_readings_final', label: 'Zählerstände (Endablesung)', category: 'übergabe', required: true },
+  { key: 'keys_returned', label: 'Schlüssel zurückgegeben', category: 'übergabe', required: true },
+  { key: 'deposit_settlement', label: 'Kautionsabrechnung erstellt', category: 'finanzen', required: true },
+  { key: 'nk_settlement', label: 'NK-Abrechnung erstellt', category: 'finanzen', required: true },
+  { key: 'defects_resolved', label: 'Mängel behoben / dokumentiert', category: 'übergabe', required: false },
+  { key: 'utility_deregistration', label: 'Versorger abgemeldet', category: 'verwaltung', required: false },
+  { key: 'deposit_paid_out', label: 'Kaution ausgezahlt', category: 'finanzen', required: true },
+];
+
 // ─── Engine Version ───────────────────────────────────────────
-export const TLC_ENGINE_VERSION = '1.1.0';
+export const TLC_ENGINE_VERSION = '1.2.0';

@@ -20613,6 +20613,80 @@ export type Database = {
           },
         ]
       }
+      tenancy_handover_protocols: {
+        Row: {
+          created_at: string
+          general_notes: string | null
+          id: string
+          inspector_name: string | null
+          key_handover: Json
+          lease_id: string
+          meter_readings: Json
+          photos: Json
+          protocol_date: string
+          protocol_type: string
+          rooms: Json
+          signed_at: string | null
+          signed_by_inspector: string | null
+          signed_by_tenant: string | null
+          status: string
+          tenant_id: string
+          tenant_name: string | null
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          general_notes?: string | null
+          id?: string
+          inspector_name?: string | null
+          key_handover?: Json
+          lease_id: string
+          meter_readings?: Json
+          photos?: Json
+          protocol_date?: string
+          protocol_type?: string
+          rooms?: Json
+          signed_at?: string | null
+          signed_by_inspector?: string | null
+          signed_by_tenant?: string | null
+          status?: string
+          tenant_id: string
+          tenant_name?: string | null
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          general_notes?: string | null
+          id?: string
+          inspector_name?: string | null
+          key_handover?: Json
+          lease_id?: string
+          meter_readings?: Json
+          photos?: Json
+          protocol_date?: string
+          protocol_type?: string
+          rooms?: Json
+          signed_at?: string | null
+          signed_by_inspector?: string | null
+          signed_by_tenant?: string | null
+          status?: string
+          tenant_id?: string
+          tenant_name?: string | null
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenancy_handover_protocols_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenancy_lifecycle_events: {
         Row: {
           created_at: string
@@ -20676,25 +20750,88 @@ export type Database = {
           },
         ]
       }
+      tenancy_meter_readings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          lease_id: string | null
+          meter_number: string | null
+          meter_type: string
+          notes: string | null
+          photo_path: string | null
+          reading_date: string
+          reading_type: string
+          reading_value: number
+          tenant_id: string
+          unit_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lease_id?: string | null
+          meter_number?: string | null
+          meter_type: string
+          notes?: string | null
+          photo_path?: string | null
+          reading_date?: string
+          reading_type?: string
+          reading_value: number
+          tenant_id: string
+          unit_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lease_id?: string | null
+          meter_number?: string | null
+          meter_type?: string
+          notes?: string | null
+          photo_path?: string | null
+          reading_date?: string
+          reading_type?: string
+          reading_value?: number
+          tenant_id?: string
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenancy_meter_readings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenancy_tasks: {
         Row: {
           assigned_contact_id: string | null
           assigned_to: string | null
+          assigned_to_contact_id: string | null
           category: string | null
           created_at: string
           created_by: string | null
           description: string | null
           due_date: string | null
+          escalation_level: number | null
           id: string
           lease_id: string | null
           lifecycle_event_id: string | null
+          location_detail: string | null
           metadata: Json | null
           parent_task_id: string | null
+          photos: Json | null
           priority: string
           property_id: string | null
+          reported_by_contact_id: string | null
           resolved_at: string | null
           resolved_by: string | null
+          severity_assessment: string | null
           sla_deadline: string | null
+          sla_hours: number | null
           status: string
           task_type: string
           tenant_id: string
@@ -20705,21 +20842,28 @@ export type Database = {
         Insert: {
           assigned_contact_id?: string | null
           assigned_to?: string | null
+          assigned_to_contact_id?: string | null
           category?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           due_date?: string | null
+          escalation_level?: number | null
           id?: string
           lease_id?: string | null
           lifecycle_event_id?: string | null
+          location_detail?: string | null
           metadata?: Json | null
           parent_task_id?: string | null
+          photos?: Json | null
           priority?: string
           property_id?: string | null
+          reported_by_contact_id?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          severity_assessment?: string | null
           sla_deadline?: string | null
+          sla_hours?: number | null
           status?: string
           task_type?: string
           tenant_id: string
@@ -20730,21 +20874,28 @@ export type Database = {
         Update: {
           assigned_contact_id?: string | null
           assigned_to?: string | null
+          assigned_to_contact_id?: string | null
           category?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           due_date?: string | null
+          escalation_level?: number | null
           id?: string
           lease_id?: string | null
           lifecycle_event_id?: string | null
+          location_detail?: string | null
           metadata?: Json | null
           parent_task_id?: string | null
+          photos?: Json | null
           priority?: string
           property_id?: string | null
+          reported_by_contact_id?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          severity_assessment?: string | null
           sla_deadline?: string | null
+          sla_hours?: number | null
           status?: string
           task_type?: string
           tenant_id?: string
