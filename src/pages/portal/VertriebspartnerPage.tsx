@@ -11,7 +11,7 @@ const BeratungTab = lazy(() => import('./vertriebspartner/BeratungTab'));
 const PartnerExposePage = lazy(() => import('./vertriebspartner/PartnerExposePage'));
 const KundenTab = lazy(() => import('./vertriebspartner/KundenTab'));
 const NetworkTab = lazy(() => import('./vertriebspartner/NetworkTab'));
-const ImmoSystemgebuehr = lazy(() => import('./vertriebspartner/ImmoSystemgebuehr'));
+const ImmoProvisionen = lazy(() => import('./vertriebspartner/ImmoProvisionen'));
 
 const VertriebspartnerPage = () => {
   return (
@@ -25,7 +25,7 @@ const VertriebspartnerPage = () => {
       <Route path="beratung/objekt/:publicId" element={<PartnerExposePage />} />
       <Route path="kunden" element={<KundenTab />} />
       <Route path="network" element={<NetworkTab />} />
-      <Route path="systemgebuehr" element={<ImmoSystemgebuehr />} />
+      <Route path="provisionen" element={<ImmoProvisionen />} />
       
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/portal/vertriebspartner" replace />} />

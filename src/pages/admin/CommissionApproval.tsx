@@ -230,7 +230,7 @@ export default function CommissionApproval() {
                   <TableHead>Partner / Zahlungspfl.</TableHead>
                   <TableHead>Kontakt</TableHead>
                   <TableHead className="text-right">Brutto</TableHead>
-                  <TableHead className="text-right">Plattform (30%)</TableHead>
+                  <TableHead className="text-right">Plattformanteil (25%)</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Fakturiert</TableHead>
                   <TableHead>Bezahlt</TableHead>

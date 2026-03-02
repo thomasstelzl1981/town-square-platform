@@ -1,8 +1,8 @@
 /**
- * ManagerSystemgebuehr — Shared Component für erfolgsabhängige Systemgebühr
+ * ManagerProvisionen — Shared Component für Provisionsvereinbarung (Plattformanteil 25%)
  * 
  * Wird von MOD-09 (Immo), MOD-11 (Finance), MOD-12 (Akquise) genutzt.
- * SoT ist KEIN Tippgeber — die Systemgebühr ist eine Plattformgebühr.
+ * Manager führen 25% ihrer Provisionen als Plattformanteil an SoT ab.
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -18,9 +18,9 @@ import { FileText, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { calcSystemFee } from '@/engines/provision/engine';
+import { calcPlatformShare } from '@/engines/provision/engine';
 import { aggregateCommissions } from '@/engines/provision/engine';
-import type { SystemFeeConfig } from '@/engines/provision/spec';
+import type { ManagerCommissionConfig } from '@/engines/provision/spec';
 
 const eurFormat = new Intl.NumberFormat('de-DE', {
   style: 'currency',
@@ -28,14 +28,14 @@ const eurFormat = new Intl.NumberFormat('de-DE', {
   maximumFractionDigits: 0,
 });
 
-interface ManagerSystemgebuehrProps {
-  config: SystemFeeConfig;
+interface ManagerProvisionenProps {
+  config: ManagerCommissionConfig;
 }
 
 function useAgreement(templateCode: string) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['system-fee-agreement', templateCode, user?.id],
+    queryKey: ['platform-share-agreement', templateCode, user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
       const { data: template } = await supabase
@@ -63,7 +63,7 @@ function useAgreement(templateCode: string) {
 function useCommissions(commissionType: string) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['system-fee-commissions', commissionType, user?.id],
+    queryKey: ['platform-share-commissions', commissionType, user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
       const { data, error } = await supabase
@@ -80,7 +80,7 @@ function useCommissions(commissionType: string) {
   });
 }
 
-export function ManagerSystemgebuehr({ config }: ManagerSystemgebuehrProps) {
+export function ManagerProvisionen({ config }: ManagerProvisionenProps) {
   const { user, activeTenantId } = useAuth();
   const {
     data: agreementData,
@@ -140,7 +140,7 @@ export function ManagerSystemgebuehr({ config }: ManagerSystemgebuehrProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-5 w-5 text-primary" />
-            Systemgebühr-Vereinbarung
+            Provisionsvereinbarung
           </CardTitle>
           <CardDescription>{config.description}</CardDescription>
         </CardHeader>
@@ -168,7 +168,7 @@ export function ManagerSystemgebuehr({ config }: ManagerSystemgebuehrProps) {
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Bitte akzeptieren Sie die Systemgebühr-Vereinbarung, um Mandate bearbeiten zu können.
+                Bitte akzeptieren Sie die Provisionsvereinbarung, um Mandate bearbeiten zu können.
               </p>
               <Button onClick={handleAcceptAgreement} size="sm">
                 <CheckCircle2 className="h-4 w-4 mr-1" />
@@ -189,9 +189,9 @@ export function ManagerSystemgebuehr({ config }: ManagerSystemgebuehrProps) {
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Systemgebühr ({config.systemFeePct}%)</p>
+            <p className="text-sm text-muted-foreground">Plattformanteil ({config.platformSharePct}%)</p>
             <p className="text-2xl font-bold text-destructive">
-              {eurFormat.format(agg.total * (config.systemFeePct / 100))}
+              {eurFormat.format(agg.total * (config.platformSharePct / 100))}
             </p>
           </CardContent>
         </Card>
@@ -199,7 +199,7 @@ export function ManagerSystemgebuehr({ config }: ManagerSystemgebuehrProps) {
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">Ihr Netto</p>
             <p className="text-2xl font-bold text-primary">
-              {eurFormat.format(agg.total * (1 - config.systemFeePct / 100))}
+              {eurFormat.format(agg.total * (1 - config.platformSharePct / 100))}
             </p>
           </CardContent>
         </Card>
@@ -210,7 +210,7 @@ export function ManagerSystemgebuehr({ config }: ManagerSystemgebuehrProps) {
         <CardHeader>
           <CardTitle className="text-base">Abrechnungshistorie</CardTitle>
           <CardDescription>
-            Übersicht Ihrer Provisionen und der Systemgebühr an System of a Town.
+            Übersicht Ihrer Provisionen und des Plattformanteils an System of a Town.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -220,7 +220,7 @@ export function ManagerSystemgebuehr({ config }: ManagerSystemgebuehrProps) {
                 <TableRow>
                   <TableHead>Fall-ID</TableHead>
                   <TableHead>Provision (brutto)</TableHead>
-                  <TableHead>Systemgebühr</TableHead>
+                  <TableHead>Plattformanteil</TableHead>
                   <TableHead>Ihr Netto</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
@@ -235,9 +235,9 @@ export function ManagerSystemgebuehr({ config }: ManagerSystemgebuehrProps) {
                 ) : (
                   commissions.map((c) => {
                     const gross = c.gross_commission || c.amount || 0;
-                    const result = calcSystemFee({
+                    const result = calcPlatformShare({
                       grossCommission: gross,
-                      systemFeePct: config.systemFeePct,
+                      platformSharePct: config.platformSharePct,
                     });
                     return (
                       <TableRow key={c.id}>
@@ -246,7 +246,7 @@ export function ManagerSystemgebuehr({ config }: ManagerSystemgebuehrProps) {
                         </TableCell>
                         <TableCell>{eurFormat.format(gross)}</TableCell>
                         <TableCell className="text-destructive">
-                          {eurFormat.format(result.systemFee)}
+                          {eurFormat.format(result.platformShare)}
                         </TableCell>
                         <TableCell className="font-medium">
                           {eurFormat.format(result.managerNetto)}
@@ -272,3 +272,6 @@ export function ManagerSystemgebuehr({ config }: ManagerSystemgebuehrProps) {
     </div>
   );
 }
+
+/** @deprecated Use ManagerProvisionen */
+export const ManagerSystemgebuehr = ManagerProvisionen;

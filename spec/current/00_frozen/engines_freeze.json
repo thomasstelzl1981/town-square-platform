@@ -5,7 +5,7 @@
   "engines": {
     "ENG-AKQUISE": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/akquiseCalc/*", "reason": "Production freeze" },
     "ENG-FINANCE": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/finanzierung/*", "reason": "Production freeze" },
-    "ENG-PROVISION": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/provision/*", "reason": "Production freeze" },
+    "ENG-PROVISION": { "frozen": false, "frozen_at": "2026-02-26T15:00:00.000Z", "unfrozen_at": "2026-03-02T14:00:00.000Z", "path": "src/engines/provision/*", "reason": "Unfrozen for SLC Phase 0: Systemgebuehr → Provisionsabgabe rename + 25% fix" },
     "ENG-BWA": { "frozen": false, "frozen_at": "2026-02-26T15:00:00.000Z", "unfrozen_at": "2026-03-02T03:00:00.000Z", "path": "src/engines/bewirtschaftung/*", "reason": "Unfrozen for TLC Feld 19 Rechnungsprüfung" },
     "ENG-PROJEKT": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/projektCalc/*", "reason": "Production freeze" },
     "ENG-NK": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/nkAbrechnung/*", "reason": "Production freeze" },

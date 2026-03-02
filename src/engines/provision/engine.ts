@@ -10,8 +10,8 @@ import type {
   PartnerShareResult,
   TippgeberInput,
   TippgeberResult,
-  SystemFeeInput,
-  SystemFeeResult,
+  PlatformShareInput,
+  PlatformShareResult,
 } from './spec';
 import { PROVISION_DEFAULTS } from './spec';
 
@@ -60,22 +60,28 @@ export function calcTippgeberFee(input: TippgeberInput): TippgeberResult {
   };
 }
 
-// ─── Systemgebühr (erfolgsabhängig) ─────────────────────────────
+// ─── Plattformanteil (erfolgsabhängig, 25%) ─────────────────────
 
 /**
- * Berechnet die erfolgsabhängige Systemgebühr, die ein Manager
- * bei erfolgreichem Abschluss an SoT abführt.
+ * Berechnet den Plattformanteil, den ein Manager
+ * bei erfolgreichem Abschluss an SoT abfuehrt (25% seiner Provision).
  *
- * SoT ist KEIN Tippgeber und erhält KEINE Provision.
- * Es handelt sich um eine nutzungsbasierte Plattformgebühr.
+ * SoT ist KEIN Tippgeber und erhaelt KEINE Provision.
+ * Es handelt sich um einen erfolgsabhaengigen Plattformanteil.
  */
-export function calcSystemFee(input: SystemFeeInput): SystemFeeResult {
-  const pct = input.systemFeePct ?? PROVISION_DEFAULTS.systemFeePct;
-  const systemFee = input.grossCommission * (pct / 100);
+export function calcPlatformShare(input: PlatformShareInput): PlatformShareResult {
+  const pct = input.platformSharePct ?? PROVISION_DEFAULTS.platformSharePct;
+  const platformShare = input.grossCommission * (pct / 100);
   return {
-    systemFee,
-    managerNetto: input.grossCommission - systemFee,
+    platformShare,
+    managerNetto: input.grossCommission - platformShare,
   };
+}
+
+/** @deprecated Use calcPlatformShare — Legacy Alias */
+export function calcSystemFee(input: PlatformShareInput): { systemFee: number; managerNetto: number } {
+  const result = calcPlatformShare(input);
+  return { systemFee: result.platformShare, managerNetto: result.managerNetto };
 }
 
 // ─── Aggregation Helper ─────────────────────────────────────────
