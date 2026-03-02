@@ -86,6 +86,8 @@ interface PortfolioSummaryModalProps {
   totals: PortfolioTotals | null;
   contextName?: string;
   marginalTaxRate?: number;
+  /** Gewerblicher Kontext — blendet Steuereffekte aus */
+  isCommercial?: boolean;
 }
 
 export function PortfolioSummaryModal({
@@ -94,6 +96,7 @@ export function PortfolioSummaryModal({
   totals,
   contextName,
   marginalTaxRate = 0.42,
+  isCommercial = false,
 }: PortfolioSummaryModalProps) {
   // Parameter-State (Plus/Minus Steuerung)
   const [appreciationRate, setAppreciationRate] = useState(2.0); // in %
@@ -200,13 +203,16 @@ export function PortfolioSummaryModal({
     const monthlyAmortization = (totals.totalAnnuity / 12) - monthlyInterest;
     const monthlyNK = (totals.totalValue * 0.005) / 12;
     
-    // AfA und Steuervorteil
-    const annualAfa = totals.totalValue * 0.8 * 0.02;
-    const annualDeductible = monthlyInterest * 12 + annualAfa;
-    const taxableResult = totals.totalIncome - annualDeductible - (monthlyNK * 12);
-    const monthlyTaxBenefit = taxableResult < 0 
-      ? (Math.abs(taxableResult) * marginalTaxRate) / 12 
-      : 0;
+    // AfA und Steuervorteil (nur für Privatpersonen)
+    let monthlyTaxBenefit = 0;
+    if (!isCommercial) {
+      const annualAfa = totals.totalValue * 0.8 * 0.02;
+      const annualDeductible = monthlyInterest * 12 + annualAfa;
+      const taxableResult = totals.totalIncome - annualDeductible - (monthlyNK * 12);
+      monthlyTaxBenefit = taxableResult < 0 
+        ? (Math.abs(taxableResult) * marginalTaxRate) / 12 
+        : 0;
+    }
 
     const totalIncome = monthlyRent + monthlyTaxBenefit;
     const totalExpenses = monthlyNK + monthlyInterest + monthlyAmortization;
@@ -222,7 +228,7 @@ export function PortfolioSummaryModal({
       totalExpenses,
       result: monthlyResult,
     };
-  }, [totals, marginalTaxRate]);
+  }, [totals, marginalTaxRate, isCommercial]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('de-DE', {
@@ -360,9 +366,11 @@ export function PortfolioSummaryModal({
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center justify-between">
                   Monatliche Übersicht
-                  <Badge variant="outline" className="text-xs">
-                    Steuersatz: {(marginalTaxRate * 100).toFixed(0)}%
-                  </Badge>
+                  {!isCommercial && (
+                    <Badge variant="outline" className="text-xs">
+                      Steuersatz: {(marginalTaxRate * 100).toFixed(0)}%
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -375,7 +383,9 @@ export function PortfolioSummaryModal({
                     </h4>
                     <div className="space-y-1">
                       <EurRow label="Mieteinnahmen" value={monthlyEUR.rent} color="green" />
-                      <EurRow label="Steuervorteil" value={monthlyEUR.taxBenefit} color="blue" />
+                      {!isCommercial && (
+                        <EurRow label="Steuervorteil" value={monthlyEUR.taxBenefit} color="blue" />
+                      )}
                       <Separator className="my-2" />
                       <EurRow label="Summe" value={monthlyEUR.totalIncome} color="green" bold />
                     </div>
