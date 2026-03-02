@@ -1,6 +1,6 @@
 /**
  * useSalesSettlement — Hook for creating and managing settlement records
- * Uses ENG-PROVISION for calculations and records SLC events.
+ * Uses ENG-PROVISION for calculations and central useSLCEventRecorder for SLC events (SSOT).
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,10 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { calcCommission, calcPlatformShare, calcPartnerShare } from '@/engines/provision/engine';
 import { PROVISION_DEFAULTS } from '@/engines/provision/spec';
+import { useSLCEventRecorder } from './useSLCEventRecorder';
 import type { SLCPhase } from '@/engines/slc/spec';
-import { SLC_EVENT_PHASE_MAP } from '@/engines/slc/spec';
-import { isValidTransition } from '@/engines/slc/engine';
-
 export interface SettlementCalcInput {
   caseId: string;
   reservationId?: string;
@@ -73,6 +71,7 @@ export function useAllSettlements() {
 export function useCreateSettlement() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { recordEvent } = useSLCEventRecorder();
 
   return useMutation({
     mutationFn: async (input: SettlementCalcInput) => {
@@ -129,7 +128,7 @@ export function useCreateSettlement() {
 
       if (error) throw error;
 
-      // 5. Record SLC event: deal.commission_calculated
+      // 5. Record SLC event via central recorder
       try {
         const { data: caseData } = await supabase
           .from('sales_cases')
@@ -138,24 +137,17 @@ export function useCreateSettlement() {
           .single();
 
         if (caseData) {
-          const currentPhase = caseData.current_phase as SLCPhase;
-          const targetPhase = SLC_EVENT_PHASE_MAP['deal.commission_calculated'];
-          const phaseAfter = targetPhase && isValidTransition(currentPhase, targetPhase) ? targetPhase : null;
-
-          await supabase.from('sales_lifecycle_events').insert({
-            case_id: input.caseId,
-            event_type: 'deal.commission_calculated',
-            severity: 'info',
-            phase_before: currentPhase as any,
-            phase_after: (phaseAfter || currentPhase) as any,
-            actor_id: user?.id || null,
+          await recordEvent({
+            caseId: input.caseId,
+            eventType: 'deal.commission_calculated',
+            currentPhase: caseData.current_phase as SLCPhase,
+            tenantId: input.tenantId,
             payload: {
               settlement_id: data.id,
               deal_value: input.dealValue,
               total_commission: commission.total.brutto,
               platform_share: platformResult.platformShare,
-            } as any,
-            tenant_id: input.tenantId,
+            },
           });
         }
       } catch (e) {
@@ -178,6 +170,7 @@ export function useCreateSettlement() {
 export function useApproveSettlement() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { recordEvent } = useSLCEventRecorder();
 
   return useMutation({
     mutationFn: async ({ settlementId, caseId, tenantId }: { settlementId: string; caseId: string; tenantId: string }) => {
@@ -192,31 +185,18 @@ export function useApproveSettlement() {
 
       if (error) throw error;
 
-      // Record SLC event: deal.platform_share_settled
+      // Record SLC event via central recorder
       try {
         const { data: caseData } = await supabase
           .from('sales_cases').select('current_phase').eq('id', caseId).single();
         if (caseData) {
-          const currentPhase = caseData.current_phase as SLCPhase;
-          const targetPhase = SLC_EVENT_PHASE_MAP['deal.platform_share_settled'];
-          const phaseAfter = targetPhase && isValidTransition(currentPhase, targetPhase) ? targetPhase : null;
-
-          await supabase.from('sales_lifecycle_events').insert({
-            case_id: caseId,
-            event_type: 'deal.platform_share_settled',
-            severity: 'info',
-            phase_before: currentPhase as any,
-            phase_after: (phaseAfter || currentPhase) as any,
-            actor_id: user?.id || null,
-            payload: { settlement_id: settlementId } as any,
-            tenant_id: tenantId,
+          await recordEvent({
+            caseId,
+            eventType: 'deal.platform_share_settled',
+            currentPhase: caseData.current_phase as SLCPhase,
+            tenantId,
+            payload: { settlement_id: settlementId },
           });
-
-          if (phaseAfter) {
-            await supabase.from('sales_cases')
-              .update({ current_phase: phaseAfter as any, updated_at: new Date().toISOString() })
-              .eq('id', caseId);
-          }
         }
       } catch (e) {
         console.warn('[SLC] Settlement event recording failed:', e);

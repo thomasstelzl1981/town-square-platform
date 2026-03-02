@@ -3,16 +3,15 @@
  * Replaces both `reservations` (MOD-04) and `dev_project_reservations` (MOD-13)
  * with the unified `sales_reservations` table.
  * 
- * Automatically records SLC events on status changes.
+ * Uses central useSLCEventRecorder for all SLC event recording (SSOT).
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import type { SLCEventType, SLCPhase } from '@/engines/slc/spec';
-import { SLC_EVENT_PHASE_MAP } from '@/engines/slc/spec';
-import { isValidTransition } from '@/engines/slc/engine';
+import { useSLCEventRecorder } from './useSLCEventRecorder';
+import type { SLCEventType } from '@/engines/slc/spec';
 
 export const SALES_RESERVATIONS_KEY = 'sales-reservations';
 
@@ -82,6 +81,7 @@ export function useSalesReservations(options?: {
   const { profile, user } = useAuth();
   const queryClient = useQueryClient();
   const tenantId = profile?.active_tenant_id;
+  const { recordEvent } = useSLCEventRecorder();
 
   const queryKey = [SALES_RESERVATIONS_KEY, options?.projectId, options?.listingId, options?.caseId];
 
@@ -125,11 +125,10 @@ export function useSalesReservations(options?: {
       .reduce((sum, r) => sum + (r.commission_amount || 0), 0),
   };
 
-  /** Record an SLC event if case_id is available */
+  /** Record SLC event via central hook */
   const recordSLCEvent = async (caseId: string | null | undefined, eventType: SLCEventType, extraPayload?: Record<string, unknown>) => {
     if (!caseId || !tenantId) return;
     try {
-      // Get current phase
       const { data: caseData } = await supabase
         .from('sales_cases')
         .select('current_phase')
@@ -137,31 +136,17 @@ export function useSalesReservations(options?: {
         .single();
       if (!caseData) return;
 
-      const currentPhase = caseData.current_phase as SLCPhase;
-      const targetPhase = SLC_EVENT_PHASE_MAP[eventType];
-      const phaseAfter = targetPhase && isValidTransition(currentPhase, targetPhase) ? targetPhase : null;
-
-      await supabase.from('sales_lifecycle_events').insert({
-        case_id: caseId,
-        event_type: eventType as string,
-        severity: 'info',
-        phase_before: currentPhase as any,
-        phase_after: (phaseAfter || currentPhase) as any,
-        actor_id: user?.id || null,
-        payload: (extraPayload || {}) as any,
-        tenant_id: tenantId,
+      await recordEvent({
+        caseId,
+        eventType,
+        currentPhase: caseData.current_phase as any,
+        tenantId,
+        payload: extraPayload,
       });
-
-      if (phaseAfter) {
-        await supabase.from('sales_cases')
-          .update({ current_phase: phaseAfter as any, updated_at: new Date().toISOString() })
-          .eq('id', caseId);
-      }
     } catch (e) {
       console.warn('[SLC] Event recording failed:', e);
     }
   };
-
   const createReservation = useMutation({
     mutationFn: async (input: CreateSalesReservationInput) => {
       if (!tenantId) throw new Error('No tenant selected');

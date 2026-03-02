@@ -1,20 +1,28 @@
 /**
  * SLC Monitor Tab — Sales Lifecycle overview for Zone 1
- * Includes: Cases table, Channel Drift, Active Reservations
+ * Includes: Cases table with ACTION BUTTONS, Channel Drift, Active Reservations
  */
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Activity, AlertTriangle, Radio, CalendarCheck } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Activity, AlertTriangle, Radio, CalendarCheck, Play, XCircle, CheckCircle2 } from 'lucide-react';
 import { EmptyState } from '@/components/shared';
-import { useSalesCases } from '@/hooks/useSalesCases';
+import { useSalesCases, type SalesCaseRow } from '@/hooks/useSalesCases';
 import { useChannelDrift } from '@/hooks/useChannelDrift';
 import { SLC_PHASE_LABELS } from '@/engines/slc/spec';
-import type { SLCPhase } from '@/engines/slc/spec';
-import { isStuck } from '@/engines/slc/engine';
-import { useQuery } from '@tanstack/react-query';
+import type { SLCPhase, SLCEventType } from '@/engines/slc/spec';
+import { isStuck, isValidTransition } from '@/engines/slc/engine';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useSLCEventRecorder } from '@/hooks/useSLCEventRecorder';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 const PHASE_COLORS: Partial<Record<SLCPhase, string>> = {
   mandate_active: 'bg-muted text-muted-foreground',
@@ -39,9 +47,27 @@ const STATUS_LABELS: Record<string, string> = {
   expired: 'Abgelaufen',
 };
 
+/** Phase advance actions available per phase */
+const PHASE_ACTIONS: Partial<Record<SLCPhase, { label: string; eventType: SLCEventType }[]>> = {
+  inquiry: [{ label: 'Kaufvertrag erstellt', eventType: 'deal.contract_drafted' }],
+  contract_draft: [{ label: 'Kaufvertrag erstellt', eventType: 'deal.contract_drafted' }],
+  notary_completed: [{ label: 'Übergabe durchgeführt', eventType: 'deal.handover_completed' }],
+  handover: [{ label: 'Abrechnung erstellt', eventType: 'deal.commission_calculated' }],
+  settlement: [{ label: 'Abgeschlossen (Verkauf)', eventType: 'case.closed_won' }],
+};
+
 export default function SLCMonitorTab() {
   const { data: cases, isLoading } = useSalesCases();
   const { driftedItems, driftedCount } = useChannelDrift();
+  const { recordEvent, isRecording } = useSLCEventRecorder();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const [actionDialog, setActionDialog] = useState<{ open: boolean; caseRow: SalesCaseRow | null; action: 'advance' | 'close' }>({
+    open: false, caseRow: null, action: 'advance',
+  });
+  const [closeReason, setCloseReason] = useState<'won' | 'lost'>('lost');
+  const [closeNotes, setCloseNotes] = useState('');
 
   // Active reservations (non-terminal)
   const { data: reservations } = useQuery({
@@ -63,6 +89,51 @@ export default function SLCMonitorTab() {
   });
 
   const now = new Date();
+
+  const handleAdvancePhase = async (caseRow: SalesCaseRow, eventType: SLCEventType) => {
+    try {
+      await recordEvent({
+        caseId: caseRow.id,
+        eventType,
+        currentPhase: caseRow.current_phase,
+        tenantId: caseRow.tenant_id,
+        payload: { triggered_by: 'sales_desk_monitor' },
+      });
+      queryClient.invalidateQueries({ queryKey: ['sales-desk-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-desk-recent-events'] });
+      toast.success('Phase aktualisiert');
+    } catch (e) {
+      toast.error('Fehler beim Phasen-Advance');
+    }
+  };
+
+  const handleCloseCase = async () => {
+    if (!actionDialog.caseRow) return;
+    const c = actionDialog.caseRow;
+    const eventType: SLCEventType = closeReason === 'won' ? 'case.closed_won' : 'case.closed_lost';
+    try {
+      await recordEvent({
+        caseId: c.id,
+        eventType,
+        currentPhase: c.current_phase,
+        tenantId: c.tenant_id,
+        payload: { reason: closeReason, notes: closeNotes },
+      });
+      // Also update closed_at and close_reason on sales_cases
+      await supabase.from('sales_cases').update({
+        closed_at: new Date().toISOString(),
+        close_reason: closeReason,
+      }).eq('id', c.id);
+
+      queryClient.invalidateQueries({ queryKey: ['sales-desk-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-desk-recent-events'] });
+      toast.success(closeReason === 'won' ? 'Fall als Verkauf abgeschlossen' : 'Fall als verloren markiert');
+      setActionDialog({ open: false, caseRow: null, action: 'advance' });
+      setCloseNotes('');
+    } catch (e) {
+      toast.error('Fehler beim Schließen des Falls');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -101,7 +172,7 @@ export default function SLCMonitorTab() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Aktive Verkaufsfälle</CardTitle>
-            <CardDescription>Sales Lifecycle Controller — Phasen-Übersicht</CardDescription>
+            <CardDescription>Sales Lifecycle Controller — Phasen-Übersicht mit Aktionen</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -114,11 +185,13 @@ export default function SLCMonitorTab() {
                   <TableHead>Käufer</TableHead>
                   <TableHead>Eröffnet</TableHead>
                   <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-center">Aktionen</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {cases.map(c => {
                   const stuck = isStuck(c.current_phase, c.updated_at, now);
+                  const actions = PHASE_ACTIONS[c.current_phase] || [];
                   return (
                     <TableRow key={c.id} className={stuck ? 'bg-destructive/5' : ''}>
                       <TableCell>
@@ -151,6 +224,32 @@ export default function SLCMonitorTab() {
                           <Badge variant="secondary" className="text-xs">OK</Badge>
                         )}
                       </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {actions.map(a => (
+                            <Button
+                              key={a.eventType}
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs h-7"
+                              disabled={isRecording}
+                              onClick={() => handleAdvancePhase(c, a.eventType)}
+                            >
+                              <Play className="h-3 w-3" /> {a.label}
+                            </Button>
+                          ))}
+                          {c.current_phase !== 'closed_won' && c.current_phase !== 'closed_lost' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1 text-xs h-7 text-destructive hover:text-destructive"
+                              onClick={() => setActionDialog({ open: true, caseRow: c, action: 'close' })}
+                            >
+                              <XCircle className="h-3 w-3" /> Schließen
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -159,6 +258,42 @@ export default function SLCMonitorTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* ── Close Case Dialog ── */}
+      <Dialog open={actionDialog.open} onOpenChange={(open) => !open && setActionDialog({ open: false, caseRow: null, action: 'advance' })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verkaufsfall schließen</DialogTitle>
+            <DialogDescription>
+              {actionDialog.caseRow?.property?.address || 'Fall'} — Aktuell: {actionDialog.caseRow ? SLC_PHASE_LABELS[actionDialog.caseRow.current_phase] : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Ergebnis</label>
+              <Select value={closeReason} onValueChange={(v) => setCloseReason(v as 'won' | 'lost')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="won">Verkauf erfolgreich</SelectItem>
+                  <SelectItem value="lost">Kein Verkauf (verloren)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Notizen (optional)</label>
+              <Textarea value={closeNotes} onChange={(e) => setCloseNotes(e.target.value)} placeholder="Grund für den Abschluss..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActionDialog({ open: false, caseRow: null, action: 'advance' })}>Abbrechen</Button>
+            <Button onClick={handleCloseCase} disabled={isRecording} className="gap-1">
+              <CheckCircle2 className="h-4 w-4" /> Fall schließen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Channel Drift ── */}
       {driftedItems.length > 0 && (
