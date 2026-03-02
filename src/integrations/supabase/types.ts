@@ -8003,6 +8003,65 @@ export type Database = {
           },
         ]
       }
+      finance_data_registry: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          household_id: string | null
+          id: string
+          last_verified_at: string | null
+          linked_account_id: string | null
+          linked_property_id: string | null
+          owner_person_id: string | null
+          source_module: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          household_id?: string | null
+          id?: string
+          last_verified_at?: string | null
+          linked_account_id?: string | null
+          linked_property_id?: string | null
+          owner_person_id?: string | null
+          source_module?: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          household_id?: string | null
+          id?: string
+          last_verified_at?: string | null
+          linked_account_id?: string | null
+          linked_property_id?: string | null
+          owner_person_id?: string | null
+          source_module?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_data_registry_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_documents: {
         Row: {
           created_at: string
@@ -8051,6 +8110,53 @@ export type Database = {
           },
           {
             foreignKeyName: "finance_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_entity_links: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          created_by: string | null
+          from_id: string
+          from_type: string
+          id: string
+          link_type: string
+          tenant_id: string
+          to_id: string
+          to_type: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          from_id: string
+          from_type: string
+          id?: string
+          link_type: string
+          tenant_id: string
+          to_id: string
+          to_type: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          from_id?: string
+          from_type?: string
+          id?: string
+          link_type?: string
+          tenant_id?: string
+          to_id?: string
+          to_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_entity_links_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -8273,6 +8379,68 @@ export type Database = {
           },
           {
             foreignKeyName: "finance_packages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_repair_actions: {
+        Row: {
+          code: string
+          created_at: string
+          due_at: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          message: string
+          metadata: Json
+          owner_role: string
+          resolved_at: string | null
+          resolved_by: string | null
+          scope_key: string
+          severity: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          due_at?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          message: string
+          metadata?: Json
+          owner_role?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          scope_key?: string
+          severity?: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          due_at?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          message?: string
+          metadata?: Json
+          owner_role?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          scope_key?: string
+          severity?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_repair_actions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"

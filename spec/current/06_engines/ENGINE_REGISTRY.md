@@ -52,6 +52,7 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 | ENG-TRIP | Trip Engine (Fahrtenbuch) | MOD-17 | ⚡ Teilweise | `src/engines/tripEngine/spec.ts`, `engine.ts` |
 | ENG-TLC | Tenancy Lifecycle Controller | MOD-04, MOD-00 | ✅ Live | `src/engines/tenancyLifecycle/spec.ts`, `engine.ts` |
 | ENG-SLC | Sales Lifecycle Controller | MOD-04, MOD-06, MOD-13 | ⚡ Teilweise | `src/engines/slc/spec.ts`, `engine.ts` |
+| ENG-FDC | Finance Data Controller | MOD-18, MOD-20, MOD-04 | ✅ Live | `src/engines/fdc/spec.ts`, `engine.ts`, `conventions.ts` |
 
 ### Orchestrierung (1 Engine)
 
@@ -130,3 +131,4 @@ Jede Engine hat eine `engineVersion` die in `armstrong_action_runs.engine_versio
 | 2026-03-02 | v1.3 — ENG-TLC (Tenancy Lifecycle Controller) hinzugefuegt. Orchestrator fuer Miet-Sonderverwaltung: Weekly CRON, State Machine (7 Phasen), Mahnwesen, Mieterhoehungs-Checks, KI-Summary. DB: tenancy_lifecycle_events, tenancy_dunning_configs, tenancy_tasks. |
 | 2026-03-02 | v1.4 — ENG-SLC (Sales Lifecycle Controller) hinzugefuegt. Cross-Module Event-Layer fuer Verkaufsabwicklung: 11-Phasen State Machine, Drift-Detection, Stuck-Detection. DB: sales_cases, sales_lifecycle_events. |
 | 2026-03-02 | v1.5 — ENG-TLC + ENG-SLC in ArmstrongEngines.tsx als Orchestrierungs-Kategorie registriert. GP-VERKAUF Golden Path (11 Steps) mit Context Resolver und 17 Ledger-Events erstellt. Property Desk (Zone 1) für TLC-Governance implementiert. |
+| 2026-03-02 | v1.6 — ENG-FDC (Finance Data Controller) hinzugefuegt. DSGVO-konformes Governance Backbone fuer MOD-18: Registry (72 Objekte), Link Graph, Repair Actions. 12 Integritaetsregeln, Coverage Scoring, Patrol Cron (sot-fdc-patrol). |

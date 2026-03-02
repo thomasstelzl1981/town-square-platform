@@ -1,5 +1,6 @@
 /**
- * Finanzen Page (MOD-18) — 8 Tabs, Navigation via TopNavigation SubTabs
+ * Finanzen Page (MOD-18) — 9 Tabs, Navigation via TopNavigation SubTabs
+ * Added: Kontrolle (FDC Control Tab)
  */
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -14,6 +15,7 @@ const KrankenversicherungTab = lazy(() => import('./finanzanalyse/Krankenversich
 const AbonnementsTab = lazy(() => import('./finanzanalyse/AbonnementsTab'));
 const VorsorgedokumenteTab = lazy(() => import('./finanzanalyse/VorsorgedokumenteTab'));
 const DarlehenTab = lazy(() => import('./finanzanalyse/DarlehenTab'));
+const KontrolleTab = lazy(() => import('./finanzanalyse/KontrolleTab'));
 
 export default function FinanzanalysePage() {
   return (
@@ -30,6 +32,7 @@ export default function FinanzanalysePage() {
           <Route path="abonnements" element={<AbonnementsTab />} />
           <Route path="vorsorgedokumente" element={<VorsorgedokumenteTab />} />
           <Route path="darlehen" element={<DarlehenTab />} />
+          <Route path="kontrolle" element={<KontrolleTab />} />
           <Route path="*" element={<Navigate to="/portal/finanzanalyse" replace />} />
         </Routes>
       </Suspense>
