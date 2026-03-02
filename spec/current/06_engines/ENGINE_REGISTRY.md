@@ -53,6 +53,7 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 | ENG-TLC | Tenancy Lifecycle Controller | MOD-04, MOD-00 | ✅ Live | `src/engines/tenancyLifecycle/spec.ts`, `engine.ts` |
 | ENG-SLC | Sales Lifecycle Controller | MOD-04, MOD-06, MOD-13 | ⚡ Teilweise | `src/engines/slc/spec.ts`, `engine.ts` |
 | ENG-FDC | Finance Data Controller | MOD-18, MOD-20, MOD-04 | ✅ Live | `src/engines/fdc/spec.ts`, `engine.ts`, `conventions.ts` |
+| ENG-PLC | Pet Service Lifecycle Controller | MOD-22, MOD-05, Z3, Z1 | ⚡ Teilweise | `src/engines/plc/spec.ts`, `engine.ts` |
 
 ### Orchestrierung (1 Engine)
 
@@ -60,6 +61,7 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 |------|------|--------|---------|-------------|
 | ENG-TLC | Tenancy Lifecycle Controller | ✅ Live | Free + KI (1 Credit/Run) | Edge Function (`sot-tenancy-lifecycle`, Weekly CRON Sun 03:00 UTC) + Client Engine |
 | ENG-SLC | Sales Lifecycle Controller | ⚡ Teilweise | Free | Client Engine (Phase-Tracking, Drift-Detection, Stuck-Detection) |
+| ENG-PLC | Pet Service Lifecycle Controller | ⚡ Teilweise | Free | Client Engine (Marketplace Phase-Tracking, Deposit-Calculation, Stuck-Detection) |
 
 > **ENG-TLC** ist der uebergeordnete Orchestrator fuer alle Mietverhaeltnisse. Er prueft woechentlich: Zahlungsstatus, Mahnstufen, Mieterhoehungs-Berechtigung (§558 BGB), Kautionsstatus, Fristen und generiert KI-gestuetzte Next-Best-Actions via `google/gemini-2.5-pro`.
 
@@ -132,3 +134,4 @@ Jede Engine hat eine `engineVersion` die in `armstrong_action_runs.engine_versio
 | 2026-03-02 | v1.4 — ENG-SLC (Sales Lifecycle Controller) hinzugefuegt. Cross-Module Event-Layer fuer Verkaufsabwicklung: 11-Phasen State Machine, Drift-Detection, Stuck-Detection. DB: sales_cases, sales_lifecycle_events. |
 | 2026-03-02 | v1.5 — ENG-TLC + ENG-SLC in ArmstrongEngines.tsx als Orchestrierungs-Kategorie registriert. GP-VERKAUF Golden Path (11 Steps) mit Context Resolver und 17 Ledger-Events erstellt. Property Desk (Zone 1) für TLC-Governance implementiert. |
 | 2026-03-02 | v1.6 — ENG-FDC (Finance Data Controller) hinzugefuegt. DSGVO-konformes Governance Backbone fuer MOD-18: Registry (72 Objekte), Link Graph, Repair Actions. 12 Integritaetsregeln, Coverage Scoring, Patrol Cron (sot-fdc-patrol). |
+| 2026-03-02 | v1.7 — ENG-PLC (Pet Service Lifecycle Controller) hinzugefuegt. Marktplatz-Modell fuer Pet Services: 11-Phasen State Machine, 7.5% nicht-erstattbare Plattformgebuehr (Deposit), Stripe-Integration, Stuck-Detection. DB: pet_service_cases, pet_lifecycle_events. |

@@ -14924,6 +14924,50 @@ export type Database = {
           },
         ]
       }
+      pet_lifecycle_events: {
+        Row: {
+          actor_id: string | null
+          actor_type: string
+          case_id: string
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json | null
+          phase_after: string | null
+          phase_before: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_type?: string
+          case_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json | null
+          phase_after?: string | null
+          phase_before?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_type?: string
+          case_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          phase_after?: string | null
+          phase_before?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_lifecycle_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "pet_service_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pet_medical_records: {
         Row: {
           cost_amount: number | null
@@ -15290,6 +15334,100 @@ export type Database = {
           },
           {
             foreignKeyName: "pet_rooms_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_service_cases: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          current_phase: Database["public"]["Enums"]["plc_phase"]
+          customer_email: string | null
+          customer_name: string | null
+          customer_notes: string | null
+          customer_user_id: string | null
+          deposit_cents: number
+          deposit_paid_at: string | null
+          id: string
+          pet_id: string | null
+          phase_entered_at: string
+          provider_id: string
+          provider_notes: string | null
+          scheduled_end: string | null
+          scheduled_start: string | null
+          service_type: Database["public"]["Enums"]["plc_service_type"]
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          tenant_id: string
+          total_price_cents: number
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          current_phase?: Database["public"]["Enums"]["plc_phase"]
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_notes?: string | null
+          customer_user_id?: string | null
+          deposit_cents?: number
+          deposit_paid_at?: string | null
+          id?: string
+          pet_id?: string | null
+          phase_entered_at?: string
+          provider_id: string
+          provider_notes?: string | null
+          scheduled_end?: string | null
+          scheduled_start?: string | null
+          service_type?: Database["public"]["Enums"]["plc_service_type"]
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          tenant_id: string
+          total_price_cents?: number
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          current_phase?: Database["public"]["Enums"]["plc_phase"]
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_notes?: string | null
+          customer_user_id?: string | null
+          deposit_cents?: number
+          deposit_paid_at?: string | null
+          id?: string
+          pet_id?: string | null
+          phase_entered_at?: string
+          provider_id?: string
+          provider_notes?: string | null
+          scheduled_end?: string | null
+          scheduled_start?: string | null
+          service_type?: Database["public"]["Enums"]["plc_service_type"]
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          tenant_id?: string
+          total_price_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_service_cases_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_service_cases_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "pet_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_service_cases_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -24498,6 +24636,26 @@ export type Database = {
         | "won"
         | "lost"
       plan_interval: "monthly" | "yearly"
+      plc_phase:
+        | "search_initiated"
+        | "provider_selected"
+        | "deposit_requested"
+        | "deposit_paid"
+        | "provider_confirmed"
+        | "provider_declined"
+        | "checked_in"
+        | "checked_out"
+        | "settlement"
+        | "closed_completed"
+        | "closed_cancelled"
+      plc_service_type:
+        | "pension"
+        | "grooming"
+        | "walking"
+        | "daycare"
+        | "training"
+        | "veterinary"
+        | "other"
       publication_channel:
         | "kaufy"
         | "scout24"
@@ -25011,6 +25169,28 @@ export const Constants = {
         "lost",
       ],
       plan_interval: ["monthly", "yearly"],
+      plc_phase: [
+        "search_initiated",
+        "provider_selected",
+        "deposit_requested",
+        "deposit_paid",
+        "provider_confirmed",
+        "provider_declined",
+        "checked_in",
+        "checked_out",
+        "settlement",
+        "closed_completed",
+        "closed_cancelled",
+      ],
+      plc_service_type: [
+        "pension",
+        "grooming",
+        "walking",
+        "daycare",
+        "training",
+        "veterinary",
+        "other",
+      ],
       publication_channel: [
         "kaufy",
         "scout24",
