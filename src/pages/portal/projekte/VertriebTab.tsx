@@ -178,7 +178,7 @@ export default function VertriebTab() {
               <TableBody>
                 {reservations.slice(0, 10).map((res) => (
                   <TableRow key={res.id}>
-                    <TableCell className="font-medium">WE-{res.unit?.unit_number}</TableCell>
+                    <TableCell className="font-medium">WE-{(res.unit as any)?.unit_number}</TableCell>
                     <TableCell>{res.buyer_contact ? `${res.buyer_contact.first_name} ${res.buyer_contact.last_name}` : '–'}</TableCell>
                     <TableCell>{res.partner_org?.name || 'Direktvertrieb'}</TableCell>
                     <TableCell>{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(res.reserved_price || 0)}</TableCell>

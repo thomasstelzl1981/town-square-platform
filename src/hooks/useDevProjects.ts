@@ -248,7 +248,7 @@ export function useDevProjects(contextId?: string) {
     protocol.dbRecordsDeleted.units = unitCount || 0;
 
     const { count: reservationCount } = await supabase
-      .from('dev_project_reservations')
+      .from('sales_reservations')
       .select('*', { count: 'exact', head: true })
       .eq('project_id', id);
     protocol.dbRecordsDeleted.reservations = reservationCount || 0;
@@ -412,12 +412,12 @@ export function useProjectDossier(projectId: string | undefined) {
       
       // Fetch reservations with buyer info
       const { data: reservations, error: reservationsError } = await supabase
-        .from('dev_project_reservations')
+        .from('sales_reservations')
         .select(`
           *,
           unit:dev_project_units(*),
-          buyer_contact:contacts(id, first_name, last_name, email),
-          partner_org:organizations!dev_project_reservations_partner_org_id_fkey(id, name)
+          buyer_contact:contacts!sales_reservations_buyer_contact_id_fkey(id, first_name, last_name, email),
+          partner_org:organizations!sales_reservations_partner_org_id_fkey(id, name)
         `)
         .eq('project_id', projectId)
         .order('created_at', { ascending: false });

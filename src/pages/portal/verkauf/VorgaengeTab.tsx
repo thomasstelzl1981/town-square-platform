@@ -73,13 +73,14 @@ const VorgaengeTab = () => {
     queryKey: ['verkauf-reservations'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('reservations')
+        .from('sales_reservations')
         .select('*')
+        .is('project_id', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const listingIds = [...new Set(data?.map(r => r.listing_id) || [])];
+      const listingIds = [...new Set(data?.map(r => r.listing_id).filter(Boolean) || [])];
       const { data: listings } = await supabase
         .from('listings')
         .select('id, title, properties (address, city)')
