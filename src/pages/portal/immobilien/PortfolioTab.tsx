@@ -1419,6 +1419,7 @@ export function PortfolioTab() {
         onOpenChange={setShowSummaryModal}
         totals={totals}
         contextName={selectedContextId ? contexts.find(c => c.id === selectedContextId)?.name : undefined}
+        isCommercial={selectedContext?.context_type === 'BUSINESS'}
       />
     </PageShell>
   );
