@@ -1,6 +1,6 @@
 # Digitale Miet-Sonderverwaltung — Masterplan (TLC)
 
-> **Version:** 1.3.0 | **Stand:** 2026-03-02
+> **Version:** 1.4.0 | **Stand:** 2026-03-02
 > **Orchestrator:** Tenancy Lifecycle Controller (ENG-TLC)
 > **CRON:** Wöchentlich (Sonntag 03:00 UTC)
 > **KI-Power:** google/gemini-2.5-pro (Maximum Power)
@@ -18,109 +18,96 @@
 │  BEWERBUNG → VERTRAG → EINZUG → LAUFEND →              │
 │       → KÜNDIGUNG → AUSZUG → WIEDERVERMIETUNG           │
 │                                                         │
-│  DB:   tenancy_lifecycle_events (Event-Log)             │
-│        tenancy_dunning_configs  (Mahnstufen)            │
-│        tenancy_tasks            (Aufgaben/Worklist)     │
-│        tenancy_handover_protocols (Übergabe)            │
-│        tenancy_meter_readings   (Zählerstände)          │
-│        tenancy_payment_plans    (Ratenpläne) ★NEW       │
-│        tenancy_rent_reductions  (Mietminderungen) ★NEW  │
-│        tenancy_deadlines        (Fristen) ★NEW          │
-│  Edge: sot-tenancy-lifecycle    (Weekly CRON + KI)      │
-│  Hooks:                                                 │
+│  DB Tables (10):                                        │
+│    tenancy_lifecycle_events, tenancy_dunning_configs,    │
+│    tenancy_tasks, tenancy_handover_protocols,            │
+│    tenancy_meter_readings, tenancy_payment_plans,        │
+│    tenancy_rent_reductions, tenancy_deadlines,           │
+│    applicant_profiles (rental_applicant type)            │
+│                                                         │
+│  Edge: sot-tenancy-lifecycle (Weekly CRON + KI)         │
+│                                                         │
+│  Hooks (12):                                            │
 │    useLeaseLifecycle, useHandoverProtocol,               │
 │    useDefectReport, useMeterReadings,                    │
-│    usePaymentPlan ★NEW, useRentReduction ★NEW,          │
-│    useTenancyDeadlines ★NEW, useTenancyReport ★NEW      │
+│    usePaymentPlan, useRentReduction,                     │
+│    useTenancyDeadlines, useTenancyReport,                │
+│    useTenancyCommunication ★v1.4,                        │
+│    useTenancyApplicants ★v1.4,                           │
+│    useLeaseContractGenerator ★v1.4,                      │
+│    usePrepaymentAdjustment ★v1.4                         │
+│                                                         │
 │  Engine: src/engines/tenancyLifecycle/ (v1.3.0)         │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 30 Aufgabenfelder — Endstatus
+## 30 Aufgabenfelder — Endstatus v1.4
 
-| # | Aufgabenfeld | TLC-Phase | Status | IST % | Hinweis |
-|---|---|---|---|---|---|
-| 01 | **Mietakte (Casefile/SSOT)** | ALLE | ✅ | 90 | MOD-04 frozen — Bestand vollständig |
-| 02 | **DMS/Versionen/Vorlagen** | ALLE | ✅ | 90 | MOD-03 frozen — Bestand vollständig |
-| 03 | **Rollen & Rechte (RBAC)** | ALLE | ✅ | 85 | RESTRICTIVE RLS auf allen TLC-Tabellen, memberships-basiert |
-| 04 | **Kommunikationshub** | LAUFEND | 🔒 | 40 | MOD-02 + MOD-14 frozen — Unfreeze nötig |
-| 05 | **Ticketing/Service Desk** | LAUFEND | ✅ | 85 | SLA, Triage, Severity, Photo support |
-| 06 | **Vermietung/Bewerbermanagement** | BEWERBUNG | 🔒 | 55 | applicant_profiles existiert — UI in frozen Modulen |
-| 07 | **Besichtigungs- & Terminplanung** | BEWERBUNG | 🔒 | 30 | MOD-02 frozen — Unfreeze nötig |
-| 08 | **Vertragsgenerator & E-Signatur** | VERTRAG | 🔒 | 40 | MOD-02 frozen — Briefgenerator Basis vorhanden |
-| 09 | **Einzug/Übergabeprotokoll** | EINZUG | ✅ | 85 | DB + Engine + Hook vollständig |
-| 10 | **Kündigung/Auszug/Rückgabe** | KÜNDIGUNG | ✅ | 85 | State Machine + Checklists + Deposit |
-| 11 | **Zahlungsmanagement/OP-Liste** | LAUFEND | ✅ | 85 | ENG-KONTOMATCH frozen — Basis vollständig |
-| 12 | **Mahnwesen (Stufen/Zustellung)** | LAUFEND | ✅ | 90 | 5-Stufen-Config, Auto-Mail, Chronologie |
-| 13 | **Ratenplan- & Rückstandsmanagement** | LAUFEND | ✅ | 85 | DB + Engine + Hook (generateSchedule, checkCompliance) |
-| 14 | **Kaution (Anlage/Abrechnung)** | VERTRAG→AUSZUG | ✅ | 85 | Zins + Settlement + Auto-Task |
-| 15 | **Nebenkosten/Betriebskosten** | LAUFEND | ✅ | 90 | ENG-NK frozen — vollständig |
-| 16 | **Vorauszahlungsanpassung** | LAUFEND | 🔒 | 30 | ENG-NK frozen + MOD-02 frozen |
-| 17 | **Mängelmanagement/Instandhaltung** | LAUFEND | ✅ | 85 | Triage + SLA + useDefectReport |
-| 18 | **Dienstleistersteuerung** | LAUFEND | ⏳ | 10 | Tier-3 — contacts Basis vorhanden |
-| 19 | **Rechnungsprüfung/Kostenstellen** | LAUFEND | 🔒 | 50 | ENG-BWA frozen |
-| 20 | **Schadenmanagement (Incident)** | LAUFEND | ✅ | 85 | useDefectReport + damage events |
-| 21 | **Versicherungskoordination** | LAUFEND | ⏳ | 10 | Tier-3 — MOD-11 frozen |
-| 22 | **Mieterhöhungen (Index/Staffel)** | LAUFEND | ✅ | 90 | §558 BGB + 3 Strategien |
-| 23 | **3-Jahres-Erhöhungscheck** | LAUFEND | ✅ | 90 | Kappungsgrenze + Vorschläge |
-| 24 | **Mietminderung** | LAUFEND | ✅ | 85 | DB + Engine + Hook (§536 BGB Guidelines) |
-| 25 | **Owner-Cockpit/Dashboards** | ALLE | ✅ | 85 | TLCWidget — MOD-00 frozen |
-| 26 | **Reporting/Exporte** | ALLE | ✅ | 80 | useTenancyReport + CSV-Export |
-| 27 | **Audit-Trail/Ledger** | ALLE | ✅ | 85 | tenancy_lifecycle_events vollständig |
-| 28 | **Fristen- & Aufgabenmanagement** | ALLE | ✅ | 85 | tenancy_deadlines DB + Hook + Checker Engine |
-| 29 | **Automations/Rules Engine** | ALLE | ✅ | 80 | TLC State Machine + CRON — Edge frozen |
-| 30 | **KI-Assistenz (Max Power)** | ALLE | ✅ | 85 | Armstrong + gemini-2.5-pro |
+| # | Aufgabenfeld | Status | IST % | Hinweis |
+|---|---|---|---|---|
+| 01 | **Mietakte (Casefile/SSOT)** | ✅ | 90 | MOD-04 frozen — vollständig |
+| 02 | **DMS/Versionen/Vorlagen** | ✅ | 90 | MOD-03 frozen — vollständig |
+| 03 | **Rollen & Rechte (RBAC)** | ✅ | 85 | RESTRICTIVE RLS auf allen TLC-Tabellen |
+| 04 | **Kommunikationshub** | ✅ | 80 | useTenancyCommunication + 9 Templates |
+| 05 | **Ticketing/Service Desk** | ✅ | 85 | SLA, Triage, Severity |
+| 06 | **Vermietung/Bewerbermanagement** | ✅ | 80 | useTenancyApplicants + Status-Pipeline |
+| 07 | **Besichtigungs- & Terminplanung** | ✅ | 75 | scheduleViewing + Kalender-Integration |
+| 08 | **Vertragsgenerator** | ✅ | 80 | useLeaseContractGenerator (10 §§, 3 Mietmodelle) |
+| 09 | **Einzug/Übergabeprotokoll** | ✅ | 85 | DB + Engine + Hook |
+| 10 | **Kündigung/Auszug/Rückgabe** | ✅ | 85 | State Machine + Checklists |
+| 11 | **Zahlungsmanagement/OP-Liste** | ✅ | 85 | ENG-KONTOMATCH Basis |
+| 12 | **Mahnwesen (Stufen/Zustellung)** | ✅ | 90 | 5-Stufen, Auto-Mail, Chronologie |
+| 13 | **Ratenplan-Management** | ✅ | 85 | DB + Engine + Hook |
+| 14 | **Kaution (Anlage/Abrechnung)** | ✅ | 85 | Zins + Settlement |
+| 15 | **Nebenkosten/Betriebskosten** | ✅ | 90 | ENG-NK vollständig |
+| 16 | **Vorauszahlungsanpassung** | ✅ | 80 | usePrepaymentAdjustment + §560 BGB |
+| 17 | **Mängelmanagement** | ✅ | 85 | Triage + SLA |
+| 18 | **Dienstleistersteuerung** | ⏳ | 10 | Tier-3 |
+| 19 | **Rechnungsprüfung** | 🔒 | 50 | ENG-BWA frozen |
+| 20 | **Schadenmanagement** | ✅ | 85 | useDefectReport |
+| 21 | **Versicherungskoordination** | ⏳ | 10 | Tier-3 |
+| 22 | **Mieterhöhungen** | ✅ | 90 | §558 BGB + 3 Strategien |
+| 23 | **3-Jahres-Check** | ✅ | 90 | Kappungsgrenze |
+| 24 | **Mietminderung** | ✅ | 85 | §536 BGB Guidelines |
+| 25 | **Owner-Cockpit** | ✅ | 85 | TLCWidget |
+| 26 | **Reporting/Exporte** | ✅ | 80 | CSV-Export |
+| 27 | **Audit-Trail** | ✅ | 85 | Event-Log |
+| 28 | **Fristen-Management** | ✅ | 85 | tenancy_deadlines |
+| 29 | **Automations/Rules Engine** | ✅ | 80 | TLC State Machine + CRON |
+| 30 | **KI-Assistenz** | ✅ | 85 | Armstrong Max Power |
 
 ---
 
-## Zusammenfassung
+## Zusammenfassung v1.4
 
-| Kategorie | Anzahl | Status |
+| Kategorie | Anzahl | |
 |---|---|---|
-| ✅ Vollständig implementiert | 23/30 | Engine + DB + Hooks ready |
-| 🔒 Frozen-blockiert | 5/30 | Unfreeze der jeweiligen Module nötig |
-| ⏳ Tier-3 (Langfristig) | 2/30 | Dienstleister + Versicherung |
+| ✅ Implementiert | **27/30** | Engine + DB + Hooks |
+| 🔒 Frozen-blockiert | **1/30** | Feld 19: ENG-BWA frozen |
+| ⏳ Tier-3 | **2/30** | Felder 18 + 21 |
 
-### Frozen-blockierte Felder (5):
-- **Feld 4** (Kommunikationshub): MOD-02 + MOD-14 frozen
-- **Feld 6** (Vermietung): Module-UI frozen
-- **Feld 7** (Besichtigung): MOD-02 frozen
-- **Feld 8** (E-Signatur): MOD-02 frozen
-- **Feld 16** (Vorauszahlung): ENG-NK + MOD-02 frozen
-
-→ Um diese Felder zu aktivieren: `UNFREEZE MOD-02` und/oder `UNFREEZE MOD-14`
-
-### Tier-3 (Langfristig, 2):
-- **Feld 18** (Dienstleistersteuerung): Angebotseinholung, Vergleich
-- **Feld 21** (Versicherungskoordination): Schadensmeldung an Versicherer
+### Noch offen:
+- **Feld 19** (Rechnungsprüfung): `UNFREEZE ENG-BWA` nötig
+- **Feld 18** (Dienstleistersteuerung): Tier-3 — Angebotseinholung
+- **Feld 21** (Versicherungskoordination): Tier-3 — Schadensmeldung
 
 ---
 
-## ENG-TLC v1.3.0 — Vollständige Funktionsliste
+## Vollständige Hook-Übersicht (12 Hooks)
 
-### spec.ts (Types & Constants)
-- TLCPhase, TLCEventType, TLCSeverity, TLCTriggeredBy
-- TenancyTask*, HandoverProtocol*, MeterReading*
-- DefectSeverity + SLA_HOURS + TRIAGE_KEYWORDS
-- DunningLevel + DEFAULT_DUNNING_LEVELS
-- RentIncreaseCheck + RENT_INCREASE_DEFAULTS
-- **PaymentPlanInput/Schedule** ★v1.3
-- **RentReductionInput/Result + GUIDELINES** ★v1.3
-- **DeadlineType + DEADLINE_TYPES** ★v1.3
-- MoveChecklist + CHECKLIST_ITEMS
-
-### engine.ts (Pure Functions)
-- determinePhase, analyzePaymentStatus, determineDunningLevel
-- buildDunningChronology
-- checkRentIncreaseEligibility, calculateRentIncreaseProposals
-- performThreeYearCheck
-- checkDepositStatus, calculateDepositInterest, calculateDepositSettlement
-- analyzeLease (Master-Analyse)
-- triageDefect, calculateSlaDeadline
-- generateMoveChecklist, checkMoveChecklistDeadlines
-- **generatePaymentPlanSchedule, checkPaymentPlanCompliance** ★v1.3
-- **calculateRentReduction, suggestRentReduction** ★v1.3
-- **checkDeadlines** ★v1.3
-- **aggregateReportData** ★v1.3
+| Hook | Feld | Beschreibung |
+|---|---|---|
+| `useLeaseLifecycle` | 01,27 | Lifecycle Events + Tasks |
+| `useHandoverProtocol` | 09,10 | Übergabeprotokolle CRUD |
+| `useDefectReport` | 17,20 | Mangel-/Schadensmeldung + Triage |
+| `useMeterReadings` | 09 | Zählerstände CRUD |
+| `usePaymentPlan` | 13 | Ratenpläne + Schedule |
+| `useRentReduction` | 24 | Mietminderung §536 BGB |
+| `useTenancyDeadlines` | 28 | Fristen + Erinnerungen |
+| `useTenancyReport` | 26 | Aggregation + CSV-Export |
+| `useTenancyCommunication` | 04 | Templates + Protokollierung |
+| `useTenancyApplicants` | 06,07 | Bewerber-Pipeline + Besichtigung |
+| `useLeaseContractGenerator` | 08 | Vertrag §§1-10 + 3 Mietmodelle |
+| `usePrepaymentAdjustment` | 16 | NK-Vorauszahlung §560 BGB |
