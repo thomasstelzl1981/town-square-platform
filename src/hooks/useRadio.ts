@@ -7,6 +7,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useState, useRef, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface RadioStation {
   stationuuid: string;
@@ -26,37 +27,20 @@ export function useRadioStations(limit = 10) {
   return useQuery<RadioStation[]>({
     queryKey: ['radio-stations', limit],
     queryFn: async () => {
-      // Radio Browser API - multiple servers available
-      const servers = [
-        'https://de1.api.radio-browser.info',
-        'https://nl1.api.radio-browser.info',
-        'https://at1.api.radio-browser.info',
-      ];
-      
-      // Try servers in order
-      for (const server of servers) {
-        try {
-          const response = await fetch(
-            `${server}/json/stations/topvote/${limit}`,
-            {
-              headers: {
-                'User-Agent': 'SOT-Dashboard/1.0',
-              },
-            }
-          );
-          
-          if (response.ok) {
-            const data = await response.json();
-            // Filter out stations without resolved URL
-            return data.filter((s: RadioStation) => s.url_resolved);
-          }
-        } catch (e) {
-          console.warn(`Radio Browser server ${server} failed:`, e);
-          continue;
-        }
+      // Use edge function proxy to avoid CORS issues
+      const { data, error } = await supabase.functions.invoke('sot-radio-proxy', {
+        body: { limit },
+      });
+
+      if (error) {
+        throw new Error(`Radio proxy error: ${error.message}`);
       }
-      
-      throw new Error('All Radio Browser servers unavailable');
+
+      if (data?.stations) {
+        return data.stations as RadioStation[];
+      }
+
+      throw new Error(data?.error || 'No stations returned');
     },
     staleTime: 1000 * 60 * 60, // 1h cache
     gcTime: 1000 * 60 * 60 * 2, // Keep 2h
