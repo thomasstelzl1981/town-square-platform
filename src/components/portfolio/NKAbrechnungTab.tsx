@@ -28,8 +28,10 @@ import {
 import { useNKAbrechnung } from '@/hooks/useNKAbrechnung';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { WorkflowStepProgress, type WorkflowStep } from '@/components/shared/WorkflowStepProgress';
+import { toast } from 'sonner';
 
 interface NKAbrechnungTabProps {
   propertyId: string;
@@ -54,6 +56,8 @@ const KEY_LABELS: Record<string, string> = {
 
 export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTabProps) {
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const { createDMS } = useRecordCardDMS();
   const {
     readiness,
     settlement,
@@ -80,6 +84,7 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
     saveGrundsteuer,
     setGrundsteuerTotal,
     setGrundsteuerAnteil,
+    nkPeriodId,
   } = useNKAbrechnung(propertyId, tenantId, unitId, Number(selectedYear));
 
   const wegItems = costItems.filter(i => i.categoryCode !== 'grundsteuer');
@@ -709,14 +714,106 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
               <FileDown className="h-4 w-4 mr-2" />
               PDF erzeugen
             </Button>
-            <Button variant="outline" disabled={!settlement}>
+            <Button
+              variant="outline"
+              disabled={!settlement}
+              onClick={async () => {
+                if (!settlement) return;
+                try {
+                  await createDMS.mutateAsync({
+                    entityType: 'property' as any,
+                    entityId: propertyId,
+                    entityName: `NK-Abrechnung ${selectedYear} — ${settlement.header.tenantName}`,
+                    tenantId,
+                    keywords: ['Nebenkostenabrechnung', selectedYear, settlement.header.tenantName],
+                  });
+                  toast.success('NK-Abrechnung wurde im DMS abgelegt');
+                } catch {
+                  toast.error('DMS-Ablage fehlgeschlagen');
+                }
+              }}
+            >
               <FolderOpen className="h-4 w-4 mr-2" />
               Im DMS ablegen
             </Button>
-            <Button variant="outline" disabled={!settlement}>
+            <Button
+              variant="outline"
+              disabled={!settlement}
+              onClick={() => {
+                // Navigate to Briefgenerator with NK context
+                const params = new URLSearchParams({
+                  template: 'nk_abrechnung',
+                  propertyId,
+                  year: selectedYear,
+                  tenant: settlement?.header.tenantName || '',
+                });
+                window.location.href = `/portal/office/briefgenerator?${params.toString()}`;
+              }}
+            >
               <Send className="h-4 w-4 mr-2" />
               An Briefgenerator
             </Button>
+
+            <Separator orientation="vertical" className="h-8 mx-1" />
+
+            {/* Finalisierungs-Button (Lücke F) */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  disabled={!settlement || !nkPeriodId}
+                  variant={settlement ? 'default' : 'outline'}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Abrechnung finalisieren
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Abrechnung finalisieren?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Die NK-Abrechnung für {selectedYear} wird als bestätigt markiert.
+                    Der Saldo von <strong>{settlement ? (settlement.summary.balance >= 0 ? '+' : '') + settlement.summary.balance.toFixed(2) + ' €' : ''}</strong> wird
+                    festgeschrieben und im Zahlungsverkehr sowie in der Anlage V berücksichtigt.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={isFinalizing}
+                    onClick={async () => {
+                      if (!nkPeriodId || !settlement) return;
+                      setIsFinalizing(true);
+                      try {
+                        // Update nk_periods status
+                        await (supabase as any)
+                          .from('nk_periods')
+                          .update({ status: 'confirmed' })
+                          .eq('id', nkPeriodId);
+
+                        // Update nk_tenant_settlements status + confirmed_at
+                        await (supabase as any)
+                          .from('nk_tenant_settlements')
+                          .update({
+                            status: 'confirmed',
+                            confirmed_at: new Date().toISOString(),
+                          })
+                          .eq('nk_period_id', nkPeriodId)
+                          .eq('lease_id', settlement.header.leaseId);
+
+                        toast.success('Abrechnung wurde finalisiert');
+                      } catch {
+                        toast.error('Finalisierung fehlgeschlagen');
+                      } finally {
+                        setIsFinalizing(false);
+                      }
+                    }}
+                  >
+                    {isFinalizing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                    Endgültig bestätigen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </CardContent>
       </Card>

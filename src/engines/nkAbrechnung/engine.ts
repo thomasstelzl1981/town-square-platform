@@ -213,7 +213,7 @@ export async function calculateSettlement(
     balance,
   };
 
-  return {
+  const matrix: NKSettlementMatrix = {
     header: {
       propertyId: input.propertyId,
       propertyName: `${property.address}, ${property.city}`,
@@ -237,4 +237,51 @@ export async function calculateSettlement(
       lowConfidenceItems,
     },
   };
+
+  // ── LÜCKE B FIX: Persist settlement to nk_tenant_settlements ──
+  if (nkPeriodId) {
+    const settlementRow = {
+      tenant_id: input.tenantId,
+      nk_period_id: nkPeriodId,
+      property_id: input.propertyId,
+      unit_id: input.unitId,
+      lease_id: lease.id,
+      renter_contact_id: lease.tenant_contact_id || null,
+      period_start: periodStart,
+      period_end: periodEnd,
+      lease_days_in_period: leaseDays,
+      total_days_in_period: totalDays,
+      total_apportionable: summary.totalApportionable,
+      total_heating: summary.totalHeating,
+      total_prepaid_nk: summary.prepaidNK,
+      total_prepaid_heating: summary.prepaidHeating,
+      balance: summary.balance,
+      status: 'calculated',
+      calculation_json: matrix,
+      validation_warnings: matrix.validation.warnings,
+      calculated_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Check for existing settlement
+    const { data: existing } = await (supabase as any)
+      .from('nk_tenant_settlements')
+      .select('id')
+      .eq('nk_period_id', nkPeriodId)
+      .eq('lease_id', lease.id)
+      .maybeSingle();
+
+    if (existing?.id) {
+      await (supabase as any)
+        .from('nk_tenant_settlements')
+        .update(settlementRow)
+        .eq('id', existing.id);
+    } else {
+      await (supabase as any)
+        .from('nk_tenant_settlements')
+        .insert(settlementRow);
+    }
+  }
+
+  return matrix;
 }

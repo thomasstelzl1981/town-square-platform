@@ -471,6 +471,7 @@ export function useNKAbrechnung(
     rentPayments,
     isLoadingPayments,
     paymentsLocked,
+    nkPeriodId,
     fetchRentPayments,
     updateRentPayment,
     saveRentPayments,
