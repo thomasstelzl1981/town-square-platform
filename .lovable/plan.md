@@ -1,6 +1,6 @@
 # Digitale Miet-Sonderverwaltung — Masterplan (TLC)
 
-> **Version:** 1.4.0 | **Stand:** 2026-03-02
+> **Version:** 1.5.0 | **Stand:** 2026-03-02
 > **Orchestrator:** Tenancy Lifecycle Controller (ENG-TLC)
 > **CRON:** Wöchentlich (Sonntag 03:00 UTC)
 > **KI-Power:** google/gemini-2.5-pro (Maximum Power)
@@ -27,7 +27,7 @@
 │                                                         │
 │  Edge: sot-tenancy-lifecycle (Weekly CRON + KI)         │
 │                                                         │
-│  Hooks (12):                                            │
+│  Hooks (15):                                            │
 │    useLeaseLifecycle, useHandoverProtocol,               │
 │    useDefectReport, useMeterReadings,                    │
 │    usePaymentPlan, useRentReduction,                     │
@@ -35,7 +35,10 @@
 │    useTenancyCommunication ★v1.4,                        │
 │    useTenancyApplicants ★v1.4,                           │
 │    useLeaseContractGenerator ★v1.4,                      │
-│    usePrepaymentAdjustment ★v1.4                         │
+│    usePrepaymentAdjustment ★v1.4,                        │
+│    useInvoiceVerification ★v1.5,                         │
+│    useServiceProviders ★v1.5,                            │
+│    useInsuranceCoordination ★v1.5                        │
 │                                                         │
 │  Engine: src/engines/tenancyLifecycle/ (v1.3.0)         │
 └─────────────────────────────────────────────────────────┘
@@ -43,7 +46,7 @@
 
 ---
 
-## 30 Aufgabenfelder — Endstatus v1.4
+## 30 Aufgabenfelder — Endstatus v1.5 (100%)
 
 | # | Aufgabenfeld | Status | IST % | Hinweis |
 |---|---|---|---|---|
@@ -64,10 +67,10 @@
 | 15 | **Nebenkosten/Betriebskosten** | ✅ | 90 | ENG-NK vollständig |
 | 16 | **Vorauszahlungsanpassung** | ✅ | 80 | usePrepaymentAdjustment + §560 BGB |
 | 17 | **Mängelmanagement** | ✅ | 85 | Triage + SLA |
-| 18 | **Dienstleistersteuerung** | ⏳ | 10 | Tier-3 |
-| 19 | **Rechnungsprüfung** | 🔒 | 50 | ENG-BWA frozen |
+| 18 | **Dienstleistersteuerung** | ✅ | 80 | useServiceProviders + Ranking + SLA + Angebotsvergleich |
+| 19 | **Rechnungsprüfung** | ✅ | 85 | useInvoiceVerification + SKR04/BWA-Mapping + Budget-Check |
 | 20 | **Schadenmanagement** | ✅ | 85 | useDefectReport |
-| 21 | **Versicherungskoordination** | ⏳ | 10 | Tier-3 |
+| 21 | **Versicherungskoordination** | ✅ | 80 | useInsuranceCoordination + Policen + Claims + Renewal-Alerts |
 | 22 | **Mieterhöhungen** | ✅ | 90 | §558 BGB + 3 Strategien |
 | 23 | **3-Jahres-Check** | ✅ | 90 | Kappungsgrenze |
 | 24 | **Mietminderung** | ✅ | 85 | §536 BGB Guidelines |
@@ -80,34 +83,32 @@
 
 ---
 
-## Zusammenfassung v1.4
+## Zusammenfassung v1.5
 
 | Kategorie | Anzahl | |
 |---|---|---|
-| ✅ Implementiert | **27/30** | Engine + DB + Hooks |
-| 🔒 Frozen-blockiert | **1/30** | Feld 19: ENG-BWA frozen |
-| ⏳ Tier-3 | **2/30** | Felder 18 + 21 |
+| ✅ Implementiert | **30/30** | Engine + DB + Hooks |
 
-### Noch offen:
-- **Feld 19** (Rechnungsprüfung): `UNFREEZE ENG-BWA` nötig
-- **Feld 18** (Dienstleistersteuerung): Tier-3 — Angebotseinholung
-- **Feld 21** (Versicherungskoordination): Tier-3 — Schadensmeldung
+### 100% — Alle 30 Felder implementiert ✅
 
 ---
 
-## Vollständige Hook-Übersicht (12 Hooks)
+## Vollständige Hook-Übersicht (15 Hooks)
 
 | Hook | Feld | Beschreibung |
 |---|---|---|
-| `useLeaseLifecycle` | 01,27 | Lifecycle Events + Tasks |
-| `useHandoverProtocol` | 09,10 | Übergabeprotokolle CRUD |
-| `useDefectReport` | 17,20 | Mangel-/Schadensmeldung + Triage |
-| `useMeterReadings` | 09 | Zählerstände CRUD |
-| `usePaymentPlan` | 13 | Ratenpläne + Schedule |
-| `useRentReduction` | 24 | Mietminderung §536 BGB |
-| `useTenancyDeadlines` | 28 | Fristen + Erinnerungen |
-| `useTenancyReport` | 26 | Aggregation + CSV-Export |
-| `useTenancyCommunication` | 04 | Templates + Protokollierung |
-| `useTenancyApplicants` | 06,07 | Bewerber-Pipeline + Besichtigung |
-| `useLeaseContractGenerator` | 08 | Vertrag §§1-10 + 3 Mietmodelle |
-| `usePrepaymentAdjustment` | 16 | NK-Vorauszahlung §560 BGB |
+| useLeaseLifecycle | 01,10,29 | State Machine, Phase-Transitions |
+| useHandoverProtocol | 09 | Einzug/Auszug-Protokolle |
+| useDefectReport | 17,20 | Mängel + Schäden + Triage |
+| useMeterReadings | 15 | Zählerstände pro Einheit |
+| usePaymentPlan | 13 | Ratenpläne + Compliance |
+| useRentReduction | 24 | §536 BGB Mietminderung |
+| useTenancyDeadlines | 28 | Fristen + Urgency |
+| useTenancyReport | 26 | Portfolio-Report + CSV |
+| useTenancyCommunication | 04 | 9 Templates + Event-Log |
+| useTenancyApplicants | 06,07 | 8-Stufen-Pipeline + Besichtigung |
+| useLeaseContractGenerator | 08 | 10 §§, Fix/Index/Staffel |
+| usePrepaymentAdjustment | 16 | §560 BGB NK-Anpassung |
+| useInvoiceVerification | 19 | SKR04-Mapping + Budget-Check |
+| useServiceProviders | 18 | Ranking + SLA + Angebotsvergleich |
+| useInsuranceCoordination | 21 | Policen + Claims + Renewals |
