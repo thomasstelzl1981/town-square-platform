@@ -17,6 +17,7 @@ interface InvestmentSliderPanelProps {
   layout?: 'horizontal' | 'vertical' | 'compact';
   showAdvanced?: boolean;
   purchasePrice?: number;
+  isCommercial?: boolean;
 }
 
 const BUNDESLAENDER = [
@@ -44,6 +45,7 @@ export function InvestmentSliderPanel({
   layout = 'vertical',
   showAdvanced = true,
   purchasePrice,
+  isCommercial = false,
 }: InvestmentSliderPanelProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const isMobile = useIsMobile();

@@ -5,7 +5,7 @@
   "infrastructure": {
     "goldenpath": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/goldenpath/*", "reason": "Production freeze" },
     "manifests": { "frozen": false, "frozen_at": null, "path": "src/manifests/*", "reason": "Unfrozen for TLC Phase 1-4 completion" },
-    "shared_investment": { "frozen": true, "frozen_at": "2026-02-26T22:00:00.000Z", "path": "src/components/investment/*", "reason": "Re-frozen after full Expose SSOT consolidation (5/5 pages)" },
+    "shared_investment": { "frozen": true, "frozen_at": "2026-03-02T12:00:00.000Z", "path": "src/components/investment/*", "reason": "Re-frozen after isCommercial flag integration" },
     "shared_listings": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/components/listings/*", "reason": "Production freeze" },
     "edge_functions": { "frozen": false, "frozen_at": null, "path": "supabase/functions/*", "reason": "Unfrozen for TLC Phase 1-4 completion" },
     "validation": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/validation/*", "reason": "Production freeze" }

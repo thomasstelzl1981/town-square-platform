@@ -109,6 +109,8 @@ interface InvestmentExposeViewProps {
     factsBg?: string;
     factsLabel?: string;
   };
+  /** Whether this is a commercial/business context (disables personal tax effects) */
+  isCommercial?: boolean;
 }
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
@@ -147,6 +149,7 @@ export function InvestmentExposeView({
   notFoundContent,
   headerClassName,
   textColors,
+  isCommercial = false,
 }: InvestmentExposeViewProps) {
   const isMobile = useIsMobile();
 
@@ -356,6 +359,7 @@ export function InvestmentExposeView({
                 layout="vertical"
                 showAdvanced={false}
                 purchasePrice={listing.asking_price}
+                isCommercial={isCommercial}
               />
               {calculatorExtras}
             </div>
@@ -369,6 +373,7 @@ export function InvestmentExposeView({
                     layout="vertical"
                     showAdvanced={true}
                     purchasePrice={listing.asking_price}
+                    isCommercial={isCommercial}
                   />
                   {calculatorExtras}
                 </div>
