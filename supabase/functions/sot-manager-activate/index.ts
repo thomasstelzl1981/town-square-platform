@@ -103,8 +103,14 @@ Deno.serve(async (req) => {
     }
 
     const applicantEmail = (app as any).applicant_email;
-    const applicantName = (app as any).applicant_name || 'Manager';
+    const applicantNameRaw = (app as any).applicant_name || 'Manager';
     const requestedRole = app.requested_role;
+
+    // Split applicant name into first/last for proper profile creation
+    const nameParts = applicantNameRaw.trim().split(/\s+/);
+    const applicantFirstName = nameParts[0] || 'Manager';
+    const applicantLastName = nameParts.slice(1).join(' ') || '';
+    const applicantName = `${applicantFirstName}${applicantLastName ? ' ' + applicantLastName : ''}`;
 
     if (!applicantEmail) {
       return new Response(JSON.stringify({ error: 'No applicant email' }), {
@@ -120,6 +126,8 @@ Deno.serve(async (req) => {
       password: tempPassword,
       email_confirm: true,
       user_metadata: {
+        first_name: applicantFirstName,
+        last_name: applicantLastName,
         display_name: applicantName,
         source: 'manager_application',
         source_brand: (app as any).source_brand,
