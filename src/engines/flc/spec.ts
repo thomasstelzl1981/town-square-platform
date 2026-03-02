@@ -6,7 +6,7 @@
  * Backbone for: Z3 Intake → Z1 Assignment → MOD-11 Processing → Bank/Europace → Settlement
  * 
  * @engine ENG-FLC
- * @version 1.0.0
+ * @version 1.1.0
  * @scope Cross-Module (MOD-07, MOD-11, Zone 1 Finance Desk)
  */
 
@@ -111,8 +111,9 @@ export type FLCEventType =
   // Submission
   | 'submission.bank_email'
   | 'submission.europace'
+  // Deal — NOTE: bank.decision_received REMOVED from phase map (Fix #1)
+  // Decision (approved/declined) is derived from snapshot, NOT from events
   | 'bank.decision_received'
-  // Deal
   | 'deal.signed'
   | 'deal.paid_out'
   // Settlement
@@ -125,7 +126,9 @@ export type FLCEventType =
   | 'case.sla_breach'
   | 'repair.triggered';
 
-// ─── Event→Phase Mapping ──────────────────────────────────────
+// ─── Event→Phase Mapping (Fix #1: bank.decision_received REMOVED) ─────
+// Phase is derived from snapshot data, NOT from this event.
+// approved/declined phases come from future_room_cases.bank_response or metadata.
 export const FLC_EVENT_PHASE_MAP: Partial<Record<FLCEventType, FLCPhase>> = {
   'case.created': 'intake_received',
   'dataroom.linked': 'dataroom_linked',
@@ -138,15 +141,23 @@ export const FLC_EVENT_PHASE_MAP: Partial<Record<FLCEventType, FLCPhase>> = {
   'doc.checklist_complete': 'docs_complete',
   'submission.bank_email': 'submitted_bank_email',
   'submission.europace': 'submitted_europace',
-  'bank.decision_received': 'decision_pending',
+  // bank.decision_received → NO phase mapping (Fix #1)
+  // approved/declined derived from snapshot.bank_response
   'deal.signed': 'signed',
   'deal.paid_out': 'paid_out',
   'settlement.commission_confirmed': 'commission_confirmed',
   'settlement.platform_fee_invoiced': 'platform_fee_invoiced',
   'settlement.platform_fee_paid': 'platform_fee_paid',
   'case.closed': 'closed',
-  // NOTE: stuck_detected, sla_breach, repair.triggered have NO phase mapping
+  // stuck_detected, sla_breach, repair.triggered have NO phase mapping
 };
+
+// ─── Phase-Changing Event Types (Fix #2: for stuck-clock) ─────
+// Only events that cause a phase change are listed here.
+// Used to find "phase entered at" timestamp.
+export const FLC_PHASE_CHANGE_EVENTS: Set<FLCEventType> = new Set(
+  Object.keys(FLC_EVENT_PHASE_MAP) as FLCEventType[]
+);
 
 // ─── SLA Thresholds (in days) ─────────────────────────────────
 export const FLC_STUCK_THRESHOLDS: Partial<Record<FLCPhase, number>> = {
@@ -237,11 +248,14 @@ export interface FLCCaseSnapshot {
   // commissions
   commission_status: string | null;
   platform_share_pct: number | null;
-  // latest events
+  // Fix #2: Phase-entered-at from last phase-change event
+  // NOT last_event_at (which resets the stuck clock)
+  phase_entered_at: string | null;
+  // latest events (informational only, NOT for stuck-clock)
   last_event_type: string | null;
   last_event_at: string | null;
 }
 
 // ─── Constants ────────────────────────────────────────────────
-export const FLC_ENGINE_VERSION = '1.0.0';
+export const FLC_ENGINE_VERSION = '1.1.0';
 export const FLC_PLATFORM_SHARE_PCT = 25;
