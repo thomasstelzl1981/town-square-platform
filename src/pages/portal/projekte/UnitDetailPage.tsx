@@ -255,10 +255,10 @@ function RealUnitDetailPage() {
       if (unitError) throw unitError;
 
       const { data: reservation, error: resError } = await supabase
-        .from('dev_project_reservations')
+        .from('sales_reservations')
         .select(`
           *,
-          buyer_contact:contacts(id, first_name, last_name, email, phone)
+          buyer_contact:contacts!sales_reservations_buyer_contact_id_fkey(id, first_name, last_name, email, phone)
         `)
         .eq('unit_id', unitId)
         .not('status', 'eq', 'cancelled')

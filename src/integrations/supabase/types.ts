@@ -18320,6 +18320,153 @@ export type Database = {
           },
         ]
       }
+      sales_reservations: {
+        Row: {
+          buyer_confirmed_at: string | null
+          buyer_contact_id: string | null
+          cancellation_date: string | null
+          cancellation_reason: string | null
+          case_id: string | null
+          commission_amount: number | null
+          commission_rate: number | null
+          completion_date: string | null
+          confirmation_date: string | null
+          created_at: string
+          created_by: string | null
+          expiry_date: string | null
+          id: string
+          inquiry_id: string | null
+          listing_id: string | null
+          notary_date: string | null
+          notes: string | null
+          owner_confirmed_at: string | null
+          partner_org_id: string | null
+          partner_user_id: string | null
+          project_id: string | null
+          reservation_date: string | null
+          reserved_price: number | null
+          status: string
+          tenant_id: string
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          buyer_confirmed_at?: string | null
+          buyer_contact_id?: string | null
+          cancellation_date?: string | null
+          cancellation_reason?: string | null
+          case_id?: string | null
+          commission_amount?: number | null
+          commission_rate?: number | null
+          completion_date?: string | null
+          confirmation_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          expiry_date?: string | null
+          id?: string
+          inquiry_id?: string | null
+          listing_id?: string | null
+          notary_date?: string | null
+          notes?: string | null
+          owner_confirmed_at?: string | null
+          partner_org_id?: string | null
+          partner_user_id?: string | null
+          project_id?: string | null
+          reservation_date?: string | null
+          reserved_price?: number | null
+          status?: string
+          tenant_id: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          buyer_confirmed_at?: string | null
+          buyer_contact_id?: string | null
+          cancellation_date?: string | null
+          cancellation_reason?: string | null
+          case_id?: string | null
+          commission_amount?: number | null
+          commission_rate?: number | null
+          completion_date?: string | null
+          confirmation_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          expiry_date?: string | null
+          id?: string
+          inquiry_id?: string | null
+          listing_id?: string | null
+          notary_date?: string | null
+          notes?: string | null
+          owner_confirmed_at?: string | null
+          partner_org_id?: string | null
+          partner_user_id?: string | null
+          project_id?: string | null
+          reservation_date?: string | null
+          reserved_price?: number | null
+          status?: string
+          tenant_id?: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_reservations_buyer_contact_id_fkey"
+            columns: ["buyer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reservations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "sales_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reservations_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "listing_inquiries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reservations_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reservations_partner_org_id_fkey"
+            columns: ["partner_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reservations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "dev_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reservations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reservations_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "dev_project_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scan_runs: {
         Row: {
           account_ids: string[] | null
@@ -23107,6 +23254,114 @@ export type Database = {
         }
         Relationships: []
       }
+      v_dev_project_reservations_legacy: {
+        Row: {
+          buyer_contact_id: string | null
+          cancellation_date: string | null
+          cancellation_reason: string | null
+          commission_amount: number | null
+          completion_date: string | null
+          confirmation_date: string | null
+          created_at: string | null
+          created_by: string | null
+          expiry_date: string | null
+          id: string | null
+          notary_date: string | null
+          notes: string | null
+          partner_org_id: string | null
+          partner_user_id: string | null
+          project_id: string | null
+          reservation_date: string | null
+          reserved_price: number | null
+          status: string | null
+          tenant_id: string | null
+          unit_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          buyer_contact_id?: string | null
+          cancellation_date?: string | null
+          cancellation_reason?: string | null
+          commission_amount?: number | null
+          completion_date?: string | null
+          confirmation_date?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          expiry_date?: string | null
+          id?: string | null
+          notary_date?: string | null
+          notes?: string | null
+          partner_org_id?: string | null
+          partner_user_id?: string | null
+          project_id?: string | null
+          reservation_date?: string | null
+          reserved_price?: number | null
+          status?: string | null
+          tenant_id?: string | null
+          unit_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          buyer_contact_id?: string | null
+          cancellation_date?: string | null
+          cancellation_reason?: string | null
+          commission_amount?: number | null
+          completion_date?: string | null
+          confirmation_date?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          expiry_date?: string | null
+          id?: string | null
+          notary_date?: string | null
+          notes?: string | null
+          partner_org_id?: string | null
+          partner_user_id?: string | null
+          project_id?: string | null
+          reservation_date?: string | null
+          reserved_price?: number | null
+          status?: string | null
+          tenant_id?: string | null
+          unit_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_reservations_buyer_contact_id_fkey"
+            columns: ["buyer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reservations_partner_org_id_fkey"
+            columns: ["partner_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reservations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "dev_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reservations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reservations_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "dev_project_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_platform_cost_summary: {
         Row: {
           action_code: string | null
@@ -23169,6 +23424,89 @@ export type Database = {
           year_built: number | null
         }
         Relationships: []
+      }
+      v_reservations_legacy: {
+        Row: {
+          buyer_confirmed_at: string | null
+          buyer_contact_id: string | null
+          cancelled_at: string | null
+          cancelled_reason: string | null
+          created_at: string | null
+          id: string | null
+          inquiry_id: string | null
+          listing_id: string | null
+          notary_date: string | null
+          notes: string | null
+          owner_confirmed_at: string | null
+          reserved_price: number | null
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          buyer_confirmed_at?: string | null
+          buyer_contact_id?: string | null
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
+          created_at?: string | null
+          id?: string | null
+          inquiry_id?: string | null
+          listing_id?: string | null
+          notary_date?: string | null
+          notes?: string | null
+          owner_confirmed_at?: string | null
+          reserved_price?: number | null
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          buyer_confirmed_at?: string | null
+          buyer_contact_id?: string | null
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
+          created_at?: string | null
+          id?: string | null
+          inquiry_id?: string | null
+          listing_id?: string | null
+          notary_date?: string | null
+          notes?: string | null
+          owner_confirmed_at?: string | null
+          reserved_price?: number | null
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_reservations_buyer_contact_id_fkey"
+            columns: ["buyer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reservations_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "listing_inquiries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reservations_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reservations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {

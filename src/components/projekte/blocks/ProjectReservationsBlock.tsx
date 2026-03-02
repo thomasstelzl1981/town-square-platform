@@ -22,7 +22,10 @@ import { useProjectReservations } from '@/hooks/useProjectReservations';
 import { CreateReservationDialog } from '../CreateReservationDialog';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import type { DevProjectUnit, DevProjectReservation, ReservationStatus } from '@/types/projekte';
+import type { DevProjectUnit } from '@/types/projekte';
+import type { SalesReservation, SalesReservationStatus } from '@/hooks/useSalesReservations';
+
+type ReservationStatus = SalesReservationStatus;
 
 const STATUS_CONFIG: Record<ReservationStatus, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive'; icon: React.ComponentType<{ className?: string }> }> = {
   pending: { label: 'Ausstehend', variant: 'outline', icon: Clock },
@@ -42,7 +45,7 @@ export function ProjectReservationsBlock({ projectId, units }: ProjectReservatio
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const { reservations, updateStatus, stats, isLoading } = useProjectReservations(projectId);
 
-  const handleStatusChange = async (reservation: DevProjectReservation, newStatus: ReservationStatus) => {
+  const handleStatusChange = async (reservation: SalesReservation, newStatus: ReservationStatus) => {
     await updateStatus.mutateAsync({ id: reservation.id, status: newStatus });
   };
 
@@ -135,7 +138,7 @@ export function ProjectReservationsBlock({ projectId, units }: ProjectReservatio
                     return (
                       <tr key={reservation.id} className="border-b hover:bg-muted/50">
                         <td className="py-2 px-2 font-medium">
-                          {reservation.unit?.unit_number || 'N/A'}
+                          {(reservation.unit as any)?.unit_number || 'N/A'}
                         </td>
                         <td className="py-2 px-2">
                           {reservation.buyer_contact 
