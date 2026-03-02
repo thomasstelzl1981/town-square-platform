@@ -16053,6 +16053,51 @@ export type Database = {
           },
         ]
       }
+      process_health_log: {
+        Row: {
+          ai_summary: string | null
+          cases_checked: number
+          created_at: string
+          details: Json | null
+          error_message: string | null
+          events_created: number
+          id: string
+          issues_found: number
+          run_date: string
+          status: string
+          system: string
+          tenant_id: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          cases_checked?: number
+          created_at?: string
+          details?: Json | null
+          error_message?: string | null
+          events_created?: number
+          id?: string
+          issues_found?: number
+          run_date: string
+          status?: string
+          system: string
+          tenant_id?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          cases_checked?: number
+          created_at?: string
+          details?: Json | null
+          error_message?: string | null
+          events_created?: number
+          id?: string
+          issues_found?: number
+          run_date?: string
+          status?: string
+          system?: string
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           active_tenant_id: string | null

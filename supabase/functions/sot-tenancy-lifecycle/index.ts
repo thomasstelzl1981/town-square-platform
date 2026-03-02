@@ -697,6 +697,27 @@ serve(async (req: Request) => {
       timestamp: new Date().toISOString(),
     };
 
+    // Write to process_health_log
+    try {
+      await supabase.from("process_health_log").insert({
+        system: "tlc",
+        run_date: today,
+        cases_checked: leases.length,
+        issues_found: allResults.length,
+        events_created: totalEvents,
+        ai_summary: aiSummary,
+        status: "success",
+        details: {
+          version: "1.5.0",
+          tasksCreated: totalTasks,
+          mailsSent: totalMailsSent,
+          findings: allResults.slice(0, 50),
+        },
+      });
+    } catch (logErr) {
+      console.warn("[TLC] Failed to write process_health_log:", logErr);
+    }
+
     console.log(`[TLC v1.5] Complete: ${totalEvents} events, ${totalTasks} tasks, ${totalMailsSent} mails for ${allResults.length}/${leases.length} leases`);
 
     return new Response(JSON.stringify(result), {
