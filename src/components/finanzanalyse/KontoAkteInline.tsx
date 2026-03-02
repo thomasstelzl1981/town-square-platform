@@ -164,7 +164,7 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
   const updateOwner = useMutation({
     mutationFn: async ({ type, id }: { type: string; id: string }) => {
       if (!account?.id) throw new Error('Kein Konto');
-      const { error } = await supabase.from('msv_bank_accounts').update({
+      const { error } = await supabase.from('bank_accounts').update({
         owner_type: type || null,
         owner_id: id || null,
       }).eq('id', account.id);
@@ -172,7 +172,7 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
     },
     onSuccess: () => {
       toast.success('Zuordnung gespeichert');
-      queryClient.invalidateQueries({ queryKey: ['msv_bank_accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
     },
     onError: (err) => toast.error('Fehler: ' + err.message),
   });

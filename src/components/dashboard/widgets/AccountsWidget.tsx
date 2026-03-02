@@ -1,6 +1,6 @@
 /**
  * AccountsWidget — Bank account & depot balances overview
- * Shows connected account balances from applicant_profiles or msv_bank_accounts.
+ * Shows connected account balances from applicant_profiles or bank_accounts.
  * Falls back to applicant_profiles when no real bank accounts are linked.
  */
 
@@ -55,13 +55,13 @@ export const AccountsWidget = memo(function AccountsWidget() {
     enabled: !!activeTenantId,
   });
 
-  // Check if real bank accounts exist (msv_bank_accounts)
+  // Check if real bank accounts exist (bank_accounts)
   const { data: bankAccountsCount, isLoading: bankLoading } = useQuery({
     queryKey: ['accounts-widget-bank', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return 0;
       const { count, error } = await supabase
-        .from('msv_bank_accounts')
+        .from('bank_accounts')
         .select('id', { count: 'exact', head: true })
         .eq('tenant_id', activeTenantId);
       if (error) throw error;

@@ -324,7 +324,7 @@ Deno.serve(async (req) => {
                   finapi_account_id: String(acc.id),
                 }));
 
-                await sbAdmin.from("msv_bank_accounts").insert(rows);
+                await sbAdmin.from("bank_accounts").insert(rows);
                 accountsImported = rows.length;
               }
             }
@@ -405,7 +405,7 @@ Deno.serve(async (req) => {
 
         // Fetch transactions
         const accountIds = await sbAdmin
-          .from("msv_bank_accounts")
+          .from("bank_accounts")
           .select("finapi_account_id")
           .eq("tenant_id", tenantId);
 

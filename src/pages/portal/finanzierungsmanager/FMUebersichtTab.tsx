@@ -199,10 +199,10 @@ export default function FMUebersichtTab() {
 
   // Bank accounts
   const { data: bankAccounts = [], isLoading: loadingAccounts } = useQuery({
-    queryKey: ['msv_bank_accounts', activeTenantId],
+    queryKey: ['bank_accounts', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
-      const { data } = await supabase.from('msv_bank_accounts').select('*').eq('tenant_id', activeTenantId);
+      const { data } = await supabase.from('bank_accounts').select('*').eq('tenant_id', activeTenantId);
       return data || [];
     },
     enabled: !!activeTenantId,
