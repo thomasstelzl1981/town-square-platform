@@ -1,102 +1,87 @@
 
 
-# KI-gestützte Prozessüberwachung für TLC und SLC
+# Plan: Property Desk + ENG-TLC/ENG-SLC in Armstrong + GP-VERKAUF
 
-## Ist-Zustand
-
-| System | Cron-Job | KI-Analyse | Stuck-Detection | Auto-Actions |
-|--------|----------|------------|-----------------|--------------|
-| TLC | ✅ Wöchentlich So 03:00 | ✅ AI-Summary via Gemini | ✅ Payment, Deadlines, SLA | ✅ Auto-Mail Mahnstufe 0 |
-| SLC | ❌ Kein Cron-Job | ❌ Keine KI | ⚠️ Nur UI-seitig (isStuck) | ❌ Keine |
-
-**TLC ist bereits gut automatisiert.** Der SLC hat dagegen keinerlei serverseitige Überwachung — Stuck-Detection läuft nur client-seitig beim Öffnen des Monitors.
+INFRA-goldenpath is **UNFROZEN** for this session.
 
 ---
 
-## Plan: 3 Bausteine
+## 3 Work Packages
 
-### Baustein 1: `sot-slc-lifecycle` Edge Function (Cron — täglich 04:00 UTC)
+### 1. Property Desk (Zone 1) — TLC-Governance-Zentrale
 
-Neue Edge Function nach dem bewährten TLC-Muster. Prüft täglich:
+New operative desk following the ProjektDesk/SalesDesk pattern. Central hub for tenancy lifecycle monitoring.
 
-1. **Stuck-Cases**: Alle `sales_cases` gegen `SLC_STUCK_THRESHOLDS` (14d mandate, 60d published, 21d inquiry, 30d reserved, etc.)
-2. **Abgelaufene Reservierungen**: `sales_reservations` mit `expiry_date < now()` → Auto-Event `deal.reservation_expired`
-3. **Channel-Drift**: `listing_publications` wo `expected_hash ≠ last_synced_hash` → Drift-Alert-Event
-4. **Offene Settlements**: Cases in Phase `notary_completed` seit >14 Tagen ohne Settlement → Erinnerung
-5. **KI-Zusammenfassung**: Gemini-Flash analysiert alle Findings und generiert "Next Best Actions" pro Case
+**Tabs:** Dashboard (KPIs: active leases, open tasks, critical events, overdue payments) | TLC Monitor (events + tasks from `tenancy_lifecycle_events` / `tenancy_tasks`) | Leases (all leases systemwide) | Mahnwesen (dunning configs) | Process Health (embed existing `ProcessHealthTab` filtered to TLC)
 
-Ergebnis-Events werden in `sales_lifecycle_events` geschrieben (triggered_by: 'cron').
+**Files:**
+| File | Action |
+|------|--------|
+| `src/pages/admin/desks/PropertyDesk.tsx` | NEW — Full desk with 5 tabs, using `OperativeDeskShell` |
+| `src/pages/admin/desks/index.ts` | EDIT — Add `PropertyDesk` export |
+| `src/router/Zone1Router.tsx` | EDIT — Add `property-desk` to `adminDeskMap` + `DESK_PREFIXES` |
+| `src/manifests/operativeDeskManifest.ts` | EDIT — Add Property Desk definition |
 
-### Baustein 2: Unified Process Health Monitor (Zone 1)
-
-Neuer Tab im Armstrong Admin oder eigener Desk-Subtab: **"Process Health"**
-
-- Zeigt TLC + SLC Cron-Run-Ergebnisse nebeneinander
-- KI-Summaries beider Systeme auf einen Blick
-- Stuck-Cases + überfällige Leases in einer kombinierten Risiko-Ansicht
-- Letzte Cron-Runs mit Status (success/error/skipped)
-
-### Baustein 3: Cron-Job Registration + Alert-System
-
-- pg_cron Job für `sot-slc-lifecycle` (täglich 04:00 UTC)
-- Optional: `process_health_log` Tabelle für persistente Run-Ergebnisse beider Systeme
-- Armstrong-Briefing-Integration: Die KI-Summaries fließen in die tägliche `ArmstrongGreetingCard`
+**Zone-Flow:** Z2 (MOD-04 Immobilien) → Z1 (Property Desk) → Z2 (MOD-20 Miety)
 
 ---
 
-## Technische Details
+### 2. ENG-TLC + ENG-SLC in Armstrong Engine Registry
 
-### Edge Function Architektur (`sot-slc-lifecycle`)
+Add both orchestration engines to `ArmstrongEngines.tsx` with a new `orchestration` category.
 
-```text
-┌─────────────────────────────────────┐
-│  pg_cron (04:00 UTC daily)          │
-│  → net.http_post(sot-slc-lifecycle) │
-└──────────────┬──────────────────────┘
-               ▼
-┌─────────────────────────────────────┐
-│  1. Fetch active sales_cases        │
-│  2. For each case:                  │
-│     ├─ isStuck(phase, updated_at)?  │
-│     ├─ Check reservations expired?  │
-│     ├─ Check channel drift?         │
-│     └─ Check settlement pending?    │
-│  3. Write events to SLC events      │
-│  4. AI summary via Gemini Flash     │
-│  5. Write to process_health_log     │
-└─────────────────────────────────────┘
-```
+**File:** `src/pages/admin/armstrong/ArmstrongEngines.tsx`
+- Add `'orchestration'` to `EngineCategory` type + `CATEGORY_CONFIG`
+- Add ENG-TLC entry: status `live`, module `MOD-04/MOD-00`, billing `Free + KI (1 Credit/Run)`, capabilities: Phase-Tracking, Mahnwesen, CRON weekly, KI-Summary
+- Add ENG-SLC entry: status `partial`, module `MOD-04/MOD-06/MOD-13`, billing `Free + KI (1 Credit/Run)`, capabilities: 11-Phase State Machine, Drift-Detection, Stuck-Detection, CRON daily
+- Show capabilities detail for orchestration engines (same as data/ai)
 
-### Neue DB-Tabelle: `process_health_log`
+---
 
-| Spalte | Typ | Beschreibung |
-|--------|-----|-------------|
-| id | uuid | PK |
-| system | text | 'tlc' oder 'slc' |
-| run_date | date | Laufdatum |
-| cases_checked | int | Geprüfte Fälle |
-| issues_found | int | Gefundene Probleme |
-| events_created | int | Erstellte Events |
-| ai_summary | text | KI-Zusammenfassung |
-| details | jsonb | Vollständige Ergebnisse |
-| created_at | timestamptz | Zeitstempel |
+### 3. GP-VERKAUF Golden Path (SLC Workflow)
 
-### Dateien
+New 11-step Golden Path for the Sales Lifecycle Controller.
 
-| Datei | Aktion |
-|-------|--------|
-| `supabase/functions/sot-slc-lifecycle/index.ts` | NEU — SLC Cron Function |
-| `supabase/functions/sot-tenancy-lifecycle/index.ts` | EDIT — process_health_log schreiben |
-| `src/pages/admin/sales-desk/ProcessHealthTab.tsx` | NEU — Unified Health Monitor |
-| `src/hooks/useProcessHealth.ts` | NEU — Hook für process_health_log |
-| `src/pages/admin/desks/SalesDesk.tsx` | EDIT — ProcessHealth Tab hinzufügen |
-| Migration | NEU — process_health_log Tabelle + RLS |
-| pg_cron | NEU — Cron-Job für sot-slc-lifecycle |
+**Files:**
+| File | Action |
+|------|--------|
+| `src/manifests/goldenPaths/GP_VERKAUF.ts` | NEW — 11 steps matching SLC phases, fail-states on cross-zone steps |
+| `src/manifests/goldenPaths/index.ts` | EDIT — Export + register GP-VERKAUF, add SLC events to LEDGER_EVENT_WHITELIST |
+| `src/goldenpath/contextResolvers.ts` | EDIT — Add GP-VERKAUF resolver (reads `sales_cases` phase → flags) |
+| `src/pages/admin/armstrong/ArmstrongGoldenPaths.tsx` | EDIT — Add GP-VERKAUF to ENGINE_WORKFLOWS array |
+| `spec/current/07_golden_paths/GOLDEN_PATH_REGISTRY.md` | EDIT — Document GP-VERKAUF |
 
-### Weitere Stabilisierungs-Optionen (Zukunft)
+**GP-VERKAUF Context Resolver Flags:**
+`case_exists`, `mandate_active`, `published`, `inquiry_received`, `reserved`, `contract_drafted`, `notary_scheduled`, `notary_completed`, `handover_done`, `settlement_approved`, `case_closed`
 
-- **DB-Trigger auf sales_cases**: Automatische Event-Generierung bei Phase-Änderungen (statt nur Hook-basiert)
-- **Watchdog für Cron-Jobs**: Prüft ob Cron-Jobs gelaufen sind, Alert bei Ausfall
-- **Retry-Queue**: Fehlgeschlagene Events in einer Queue für erneuten Versuch
-- **SLA-Monitoring**: Messbare Zielzeiten pro SLC-Phase mit Eskalation
+**GP-VERKAUF Steps (11):**
+1. Mandat aktiviert (MOD-13/MOD-04 → Z1)
+2. Veröffentlicht (Z1 → Z3)
+3. Anfrage eingegangen (Z3 → Z1)
+4. Reserviert (Z1 → Z2)
+5. Kaufvertragsentwurf
+6. Notartermin vereinbart
+7. Beurkundet
+8. Übergabe
+9. Abrechnung/Settlement
+10. Abgeschlossen (won)
+11. Abgeschlossen (lost) — branching fail-state
+
+---
+
+## Summary: 11 Files
+
+| # | File | Action |
+|---|------|--------|
+| 1 | `src/pages/admin/desks/PropertyDesk.tsx` | NEW |
+| 2 | `src/pages/admin/desks/index.ts` | EDIT |
+| 3 | `src/router/Zone1Router.tsx` | EDIT |
+| 4 | `src/manifests/operativeDeskManifest.ts` | EDIT |
+| 5 | `src/pages/admin/armstrong/ArmstrongEngines.tsx` | EDIT |
+| 6 | `src/manifests/goldenPaths/GP_VERKAUF.ts` | NEW |
+| 7 | `src/manifests/goldenPaths/index.ts` | EDIT |
+| 8 | `src/goldenpath/contextResolvers.ts` | EDIT |
+| 9 | `src/pages/admin/armstrong/ArmstrongGoldenPaths.tsx` | EDIT |
+| 10 | `spec/current/07_golden_paths/GOLDEN_PATH_REGISTRY.md` | EDIT |
+| 11 | `spec/current/06_engines/ENGINE_REGISTRY.md` | EDIT (update orchestration section) |
 
