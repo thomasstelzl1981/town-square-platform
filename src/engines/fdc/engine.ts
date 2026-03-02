@@ -90,17 +90,16 @@ export function computeFinanceIntegrity(
   }
 
   // --- Rule 2: ACCOUNT_META_MISSING (WARN, not block) ---
+  // Wave 1: we only have aggregate counts, not per-account meta presence.
+  // Create one consolidated action if ANY accounts lack meta.
   if (counts.accounts > 0 && counts.accountsWithMeta < counts.accounts) {
-    const accountRegs = registry.filter(r => r.entity_type === 'account' && r.status === 'active');
-    // We can't tell which specific accounts lack meta without more data,
-    // so we create one action per account without meta
-    for (const r of accountRegs) {
-      actions.push(makeAction(tenantId, 'ACCOUNT_META_MISSING', 'account', r.entity_id));
-    }
-    // Remove excess actions if some accounts do have meta
-    if (counts.accountsWithMeta > 0 && actions.length > (counts.accounts - counts.accountsWithMeta)) {
-      // Trim to actual missing count — simplified: just flag all, engine is advisory
-    }
+    const missingCount = counts.accounts - counts.accountsWithMeta;
+    actions.push(makeAction(
+      tenantId, 'ACCOUNT_META_MISSING', 'account',
+      '00000000-0000-0000-0000-000000000000', // consolidated
+      `missing:${missingCount}`,
+      { missingCount, totalAccounts: counts.accounts }
+    ));
   }
 
   // --- Rule 3: CONTRACT_OWNER_MISSING ---
@@ -146,21 +145,21 @@ export function computeFinanceIntegrity(
   }
 
   // --- Rule 7: PROPERTY_LOAN_MISMATCH ---
-  // Requires comparing outstanding_balance vs property financing — needs enriched snapshot
-  // Wave 1: skip detailed mismatch, only check if property has any loan linked
-  if (counts.properties > 0 && counts.propertiesWithLoan < counts.properties) {
-    const propRegs = registry.filter(
-      r => r.entity_type === 'property_finance_ref' && r.status === 'active'
+  // Wave 1: Check if properties with linked mortgages have consistent loan refs.
+  // Properties without any loan are NOT flagged (not every property has financing).
+  // Only flag mortgages that claim a property_id but the registry link is missing.
+  const mortgagesWithProp = registry.filter(
+    r => r.entity_type === 'mortgage' && r.linked_property_id && r.status === 'active'
+  );
+  for (const r of mortgagesWithProp) {
+    const propExists = registry.some(
+      p => p.entity_type === 'property_finance_ref' && p.entity_id === r.linked_property_id && p.status === 'active'
     );
-    for (const r of propRegs) {
-      const hasLoanLink = links.some(
-        l => (l.to_type === 'property_finance_ref' && l.to_id === r.entity_id && l.link_type === 'secured_by') ||
-             (l.from_type === 'mortgage' && l.link_type === 'secured_by' && l.to_id === r.entity_id)
-      );
-      if (!hasLoanLink) {
-        // This is informational — not all properties have loans
-        // Only flag if there ARE mortgages without property links
-      }
+    if (!propExists) {
+      actions.push(makeAction(tenantId, 'PROPERTY_LOAN_MISMATCH', 'mortgage', r.entity_id, '', {
+        linked_property_id: r.linked_property_id,
+        reason: 'property_not_in_registry',
+      }));
     }
   }
 

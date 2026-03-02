@@ -28,7 +28,7 @@ export async function loadFDCSnapshot(tenantId: string): Promise<FDCSnapshotCoun
     // bank_accounts
     supabase.from('bank_accounts').select('id, owner_id, owner_type', { count: 'exact', head: false }).eq('tenant_id', tenantId),
     // bank_account_meta
-    supabase.from('bank_account_meta').select('id', { count: 'exact', head: true }),
+    supabase.from('bank_account_meta').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
     // insurance_contracts
     supabase.from('insurance_contracts').select('id, user_id', { count: 'exact', head: false }).eq('tenant_id', tenantId),
     // kv_contracts
@@ -36,7 +36,7 @@ export async function loadFDCSnapshot(tenantId: string): Promise<FDCSnapshotCoun
     // vorsorge_contracts
     supabase.from('vorsorge_contracts').select('id, person_id', { count: 'exact', head: false }).eq('tenant_id', tenantId),
     // pension_records
-    supabase.from('pension_records').select('id', { count: 'exact', head: true }),
+    supabase.from('pension_records').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
     // private_loans
     supabase.from('private_loans').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
     // loans (mortgages)
