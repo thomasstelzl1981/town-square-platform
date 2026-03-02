@@ -286,3 +286,6 @@ verify_jwt = false
 
 [functions.sot-mail-search]
 verify_jwt = false
+
+[functions.sot-is24-gateway]
+verify_jwt = false

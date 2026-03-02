@@ -77,10 +77,10 @@ const FEATURE_CONFIG: Record<string, FeatureConfig> = {
   },
   immoscout24: {
     label: 'ImmobilienScout24',
-    description: 'Veröffentlicht das Exposé automatisch auf ImmobilienScout24 (API-Integration).',
+    description: 'Veröffentlicht das Exposé auf ImmobilienScout24 (2 Credits pro Buchung).',
     icon: ExternalLink,
-    requiresAgreement: true,
-    comingSoon: true,
+    requiresAgreement: false,
+    dependsOn: 'verkaufsauftrag',
   },
 };
 
