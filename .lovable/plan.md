@@ -1,87 +1,141 @@
 
 
-# Plan: Property Desk + ENG-TLC/ENG-SLC in Armstrong + GP-VERKAUF
+# Vollständiger TLC + SLC Audit — Befunde und Optimierungsvorschläge
 
-INFRA-goldenpath is **UNFROZEN** for this session.
+## Zusammenfassung
 
----
-
-## 3 Work Packages
-
-### 1. Property Desk (Zone 1) — TLC-Governance-Zentrale
-
-New operative desk following the ProjektDesk/SalesDesk pattern. Central hub for tenancy lifecycle monitoring.
-
-**Tabs:** Dashboard (KPIs: active leases, open tasks, critical events, overdue payments) | TLC Monitor (events + tasks from `tenancy_lifecycle_events` / `tenancy_tasks`) | Leases (all leases systemwide) | Mahnwesen (dunning configs) | Process Health (embed existing `ProcessHealthTab` filtered to TLC)
-
-**Files:**
-| File | Action |
-|------|--------|
-| `src/pages/admin/desks/PropertyDesk.tsx` | NEW — Full desk with 5 tabs, using `OperativeDeskShell` |
-| `src/pages/admin/desks/index.ts` | EDIT — Add `PropertyDesk` export |
-| `src/router/Zone1Router.tsx` | EDIT — Add `property-desk` to `adminDeskMap` + `DESK_PREFIXES` |
-| `src/manifests/operativeDeskManifest.ts` | EDIT — Add Property Desk definition |
-
-**Zone-Flow:** Z2 (MOD-04 Immobilien) → Z1 (Property Desk) → Z2 (MOD-20 Miety)
+Beide Wertschopfungsketten sind architektonisch solide aufgebaut. Die Engine-Logik (reine Funktionen), Cron-Automatisierung und KI-Integration folgen einem konsistenten Muster. Dennoch gibt es **12 konkrete Befunde** — von kritischen Inkonsistenzen bis zu UX-Verbesserungen.
 
 ---
 
-### 2. ENG-TLC + ENG-SLC in Armstrong Engine Registry
+## Kritische Befunde (Geld-relevant)
 
-Add both orchestration engines to `ArmstrongEngines.tsx` with a new `orchestration` category.
+### K1: GP-VERKAUF Resolver — Phasen-Mismatch mit SLC Spec
 
-**File:** `src/pages/admin/armstrong/ArmstrongEngines.tsx`
-- Add `'orchestration'` to `EngineCategory` type + `CATEGORY_CONFIG`
-- Add ENG-TLC entry: status `live`, module `MOD-04/MOD-00`, billing `Free + KI (1 Credit/Run)`, capabilities: Phase-Tracking, Mahnwesen, CRON weekly, KI-Summary
-- Add ENG-SLC entry: status `partial`, module `MOD-04/MOD-06/MOD-13`, billing `Free + KI (1 Credit/Run)`, capabilities: 11-Phase State Machine, Drift-Detection, Stuck-Detection, CRON daily
-- Show capabilities detail for orchestration engines (same as data/ai)
+**Problem:** Der `gpVerkaufResolver` (contextResolvers.ts:649-653) verwendet eine PHASE_ORDER mit 13 Einträgen (`captured`, `readiness_check`, `finance_submitted` etc.), die SLC spec.ts aber nur 11 Phasen definiert. `captured`, `readiness_check`, `finance_submitted` existieren NICHT in `SLCPhase`.
 
----
+**Auswirkung:** Wenn `sales_cases.phase` den Wert `captured` oder `readiness_check` hat, werden die Resolver-Flags korrekt gesetzt — aber die Phasen sind nicht in der Engine registriert. Kein Stuck-Detection, kein Cron-Check, kein Event-Mapping.
 
-### 3. GP-VERKAUF Golden Path (SLC Workflow)
+**Fix:**
+- SLC spec.ts um `captured`, `readiness_check`, `finance_submitted` erweitern ODER
+- Resolver an die 11 existierenden Phasen angleichen
+- `SLC_STUCK_THRESHOLDS` und `SLC_EVENT_PHASE_MAP` synchronisieren
 
-New 11-step Golden Path for the Sales Lifecycle Controller.
+### K2: SLC Cron — falscher Event-Type für Stuck-Detection
 
-**Files:**
-| File | Action |
-|------|--------|
-| `src/manifests/goldenPaths/GP_VERKAUF.ts` | NEW — 11 steps matching SLC phases, fail-states on cross-zone steps |
-| `src/manifests/goldenPaths/index.ts` | EDIT — Export + register GP-VERKAUF, add SLC events to LEDGER_EVENT_WHITELIST |
-| `src/goldenpath/contextResolvers.ts` | EDIT — Add GP-VERKAUF resolver (reads `sales_cases` phase → flags) |
-| `src/pages/admin/armstrong/ArmstrongGoldenPaths.tsx` | EDIT — Add GP-VERKAUF to ENGINE_WORKFLOWS array |
-| `spec/current/07_golden_paths/GOLDEN_PATH_REGISTRY.md` | EDIT — Document GP-VERKAUF |
+**Problem:** `sot-slc-lifecycle/index.ts:114` schreibt Stuck-Events als `case.reopened`. Das ist semantisch falsch — "reopened" bedeutet Wiederöffnung, nicht Stagnation. Das verfälscht Audit-Trails und KI-Analyse.
 
-**GP-VERKAUF Context Resolver Flags:**
-`case_exists`, `mandate_active`, `published`, `inquiry_received`, `reserved`, `contract_drafted`, `notary_scheduled`, `notary_completed`, `handover_done`, `settlement_approved`, `case_closed`
+**Fix:** Eigenen Event-Type `case.stuck_detected` einführen oder zumindest `channel.sync_failed` (für Drift) verwenden.
 
-**GP-VERKAUF Steps (11):**
-1. Mandat aktiviert (MOD-13/MOD-04 → Z1)
-2. Veröffentlicht (Z1 → Z3)
-3. Anfrage eingegangen (Z3 → Z1)
-4. Reserviert (Z1 → Z2)
-5. Kaufvertragsentwurf
-6. Notartermin vereinbart
-7. Beurkundet
-8. Übergabe
-9. Abrechnung/Settlement
-10. Abgeschlossen (won)
-11. Abgeschlossen (lost) — branching fail-state
+### K3: SLC Cron — Settlement-Check schreibt `deal.commission_calculated`
+
+**Problem:** `sot-slc-lifecycle/index.ts:223` nutzt `deal.commission_calculated` als Event-Type für "Settlement ausstehend". Aber `SLC_EVENT_PHASE_MAP` mappt diesen Event auf Phase `settlement` — der Cron-Job könnte damit unbeabsichtigt eine Phase-Transition triggern.
+
+**Fix:** Dediziertes `deal.settlement_pending` Event einführen (ohne Phase-Mapping).
+
+### K4: TLC Cron — Payment-Analyse nur 3 Monate
+
+**Problem:** `sot-tenancy-lifecycle/index.ts:84` prüft nur 3 Monate (`for (let i = 0; i < 3; i++)`), die Client-Engine (`engine.ts:82`) prüft 12 Monate. Langfristige Rückstände werden im Cron übersehen.
+
+**Fix:** Cron auf 6 Monate erweitern (Kompromiss aus Performance und Abdeckung).
 
 ---
 
-## Summary: 11 Files
+## Engine-Befunde (Berechnung / Logik)
 
-| # | File | Action |
-|---|------|--------|
-| 1 | `src/pages/admin/desks/PropertyDesk.tsx` | NEW |
-| 2 | `src/pages/admin/desks/index.ts` | EDIT |
-| 3 | `src/router/Zone1Router.tsx` | EDIT |
-| 4 | `src/manifests/operativeDeskManifest.ts` | EDIT |
-| 5 | `src/pages/admin/armstrong/ArmstrongEngines.tsx` | EDIT |
-| 6 | `src/manifests/goldenPaths/GP_VERKAUF.ts` | NEW |
-| 7 | `src/manifests/goldenPaths/index.ts` | EDIT |
-| 8 | `src/goldenpath/contextResolvers.ts` | EDIT |
-| 9 | `src/pages/admin/armstrong/ArmstrongGoldenPaths.tsx` | EDIT |
-| 10 | `spec/current/07_golden_paths/GOLDEN_PATH_REGISTRY.md` | EDIT |
-| 11 | `spec/current/06_engines/ENGINE_REGISTRY.md` | EDIT (update orchestration section) |
+### E1: TLC Engine — Mieterhöhung Kappungsgrenzen-Berechnung unvollständig
+
+**Problem:** `calculateRentIncreaseProposals` (engine.ts:317) berechnet `capLimit` als `baseRent * (capPercent / 100)`, wobei `baseRent = rentThreeYearsAgo ?? currentRent`. Wenn `rentThreeYearsAgo` null ist, ist `alreadyIncreased = 0` und die volle Kappungsgrenze wird als verfügbar ausgewiesen — das ist juristisch falsch, weil in dem Fall gar keine Berechnung möglich ist.
+
+**Fix:** Wenn `rentThreeYearsAgo` null, soll `proposals` leer bleiben mit Hinweis "Miete vor 3 Jahren nicht bekannt — bitte nachpflegen".
+
+### E2: SLC Engine — `notary_completed` hat keinen Stuck-Threshold
+
+**Problem:** `SLC_STUCK_THRESHOLDS` definiert keinen Wert für `notary_completed` und `handover`, obwohl beides kritische Phasen sind.
+
+**Fix:** `notary_completed: 60` (Übergabe nach max 60 Tagen) und `handover: 14` (Settlement nach max 14 Tagen) ergänzen.
+
+### E3: SLC Engine — `isValidTransition` erlaubt keine Rückwärts-Transition für Reopening
+
+**Problem:** Ein Case der `closed_lost` ist, kann laut `isValidTransition` nie wieder aktiviert werden. Aber `case.reopened` existiert als Event-Type.
+
+**Fix:** Transition von `closed_lost` → `mandate_active` explizit erlauben (nur via Admin/Z1).
+
+---
+
+## Golden Path Befunde
+
+### G1: GP-VERMIETUNG — Lease-Existenz nutzt `unit_id` statt `property_id`
+
+**Problem:** Der `gpVermietungResolver` (contextResolvers.ts:384-390) prüft Leases über `unit_id`, verwendet aber `as never` TypeScript-Casts. Das funktioniert, ist aber fragil und verhindert Typ-Sicherheit.
+
+**Fix:** Die `leases` Tabelle typsicher machen (aus `types.ts` prüfen ob `unit_id` korrekt gemappt ist) und Casts entfernen.
+
+### G2: GP-VERKAUF — fehlende `on_timeout` / `on_error` für Phasen 4-7
+
+**Problem:** Nur Phasen 2, 3, 9 und 11 haben Fail-States. Phasen 4 (Reserved), 5 (Contract Draft), 6 (Notary Scheduled), 7 (Notary Completed) haben keine — obwohl sie Stuck-Thresholds in der Engine haben (14-30 Tage).
+
+**Fix:** `on_timeout` für Phasen 4-8 ergänzen, analog zu den SLC_STUCK_THRESHOLDS.
+
+---
+
+## UI/UX Befunde
+
+### U1: Property Desk — keine KPIs im Desk-Header
+
+**Problem:** `PropertyDesk.tsx:501-502` liest `events`, `tasks`, `criticalEvents`, `openTasks`, aber die KPIs werden aus diesen Werten berechnet. Die Leases-Gesamtzahl fehlt als KPI — das ist die wichtigste Kennzahl für einen Property Manager.
+
+**Fix:** Zusätzliche Query `SELECT count(*) FROM leases WHERE status = 'active'` für "Aktive Leases" KPI. Außerdem "Leerstand" als KPI ergänzen (Units ohne aktiven Lease).
+
+### U2: Property Desk — Leases-Tab zeigt `tenant_name || renter_name`
+
+**Problem:** `PropertyDesk.tsx:304` zeigt `l.tenant_name || l.renter_name` — diese Felder existieren wahrscheinlich nicht auf der `leases` Tabelle. Die Lease hat nur `contact_id`. Der Tab zeigt daher '–' für alle Mieter.
+
+**Fix:** JOIN auf `contacts` Tabelle: `leases.select('*, contact:contacts(first_name, last_name)')` und dann `contact.first_name contact.last_name` anzeigen.
+
+### U3: SLC Monitor — `isStuck` Visualisierung fehlt in der Cases-Tabelle
+
+**Problem:** `SLCMonitorTab.tsx` importiert `isStuck` aus der Engine, aber es ist nicht ersichtlich ob der Stuck-Status prominent in der Case-Tabelle angezeigt wird. Stuck-Cases sollten rot markiert sein mit Tage-Anzeige.
+
+**Empfehlung:** Badge "STUCK seit X Tagen" in der Cases-Tabelle ergänzen, rot bei > 2x Threshold.
+
+---
+
+## Stabilisierungs-Empfehlungen (Zukunft)
+
+| # | Maßnahme | Priorität | Aufwand |
+|---|----------|-----------|---------|
+| S1 | DB-Trigger auf `sales_cases.current_phase` UPDATE → automatisches `sales_lifecycle_events` INSERT | Hoch | Mittel |
+| S2 | Idempotenz-Guard im SLC-Cron (Event-Dedup wie TLC es bereits macht) | Hoch | Gering |
+| S3 | Watchdog-Cron der prüft ob TLC/SLC Cron gelaufen sind (Cron-Health-Check) | Mittel | Gering |
+| S4 | TLC Engine Unit Tests (src/engines/tenancyLifecycle/__tests__/) erweitern — aktuell unklar wie viel Coverage | Mittel | Mittel |
+| S5 | SLC Engine Tests fehlen komplett (kein __tests__/ Ordner) | Hoch | Mittel |
+
+---
+
+## Vorgeschlagene Implementierungsreihenfolge
+
+1. **K1 + K2 + K3** (Phasen-Mismatch + falsche Event-Types) — kritisch, verfälscht Daten
+2. **K4 + E2** (Cron-Abdeckung + Stuck-Thresholds) — Lücken schließen
+3. **U2** (Leases-Tab Mieter-Anzeige) — sofort sichtbarer UX-Bug
+4. **G2** (Fail-States für GP-VERKAUF Phasen 4-8) — Prozess-Governance
+5. **E1** (Kappungsgrenzen-Fix) — juristisch relevant
+6. **S2 + S5** (Idempotenz + Tests) — Stabilität
+7. **U1 + U3** (KPIs + Stuck-Visualisierung) — UX-Verbesserung
+
+---
+
+## Dateien betroffen
+
+| Datei | Befund | Aktion |
+|-------|--------|--------|
+| `src/engines/slc/spec.ts` | K1, E2, E3 | Phasen + Thresholds + Transition erweitern |
+| `src/engines/slc/engine.ts` | E3 | `isValidTransition` für Reopening |
+| `src/goldenpath/contextResolvers.ts` | K1, G1 | Resolver PHASE_ORDER synchronisieren |
+| `supabase/functions/sot-slc-lifecycle/index.ts` | K2, K3, S2 | Event-Types + Dedup |
+| `supabase/functions/sot-tenancy-lifecycle/index.ts` | K4 | Payment-Analyse 3→6 Monate |
+| `src/engines/tenancyLifecycle/engine.ts` | E1 | Kappungsgrenzen-Guard |
+| `src/manifests/goldenPaths/GP_VERKAUF.ts` | G2 | Fail-States für Phasen 4-8 |
+| `src/pages/admin/desks/PropertyDesk.tsx` | U1, U2 | KPIs + Leases JOIN |
+| `src/pages/admin/sales-desk/SLCMonitorTab.tsx` | U3 | Stuck-Badge |
 
