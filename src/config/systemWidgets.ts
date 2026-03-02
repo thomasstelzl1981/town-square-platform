@@ -213,6 +213,20 @@ export const SYSTEM_WIDGETS: SystemWidgetDefinition[] = [
     privacy_note: 'Nutzt Ihr Mikrofon. Es wird kein Audio gespeichert, nur Text.',
     default_enabled: true,
   },
+  {
+    code: 'SYS.TLC.LIFECYCLE',
+    name_de: 'Mietverwaltung',
+    description_de: 'Tenancy Lifecycle Controller — Offene Aufgaben, Mahnstufen, Fristen und Mieterhöhungs-Checks pro Mietverhältnis.',
+    icon: 'Shield',
+    gradient: 'from-primary/10 to-primary/5',
+    data_source: 'TLC Engine (ENG-TLC)',
+    cache_interval_min: 0,
+    cost_model: 'free',
+    status: 'live',
+    has_autoplay: false,
+    privacy_note: 'Zeigt Mietverwaltungs-Daten aus Ihrem Konto',
+    default_enabled: true,
+  },
 ];
 
 // Helper to get widget by code

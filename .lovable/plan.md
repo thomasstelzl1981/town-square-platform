@@ -76,8 +76,9 @@
 - [x] Engine: `src/engines/tenancyLifecycle/engine.ts`
 - [x] Hook: `src/hooks/useLeaseLifecycle.ts`
 - [x] Edge Function: `sot-tenancy-lifecycle` (Weekly CRON + KI)
-- [ ] CRON-Job registrieren (pg_cron + pg_net)
-- [ ] ENGINE_REGISTRY.md + GOLDEN_PATH_REGISTRY.md aktualisieren
+- [x] CRON-Job registrieren (pg_cron + pg_net) — Sonntag 03:00 UTC
+- [x] ENGINE_REGISTRY.md + GOLDEN_PATH_REGISTRY.md aktualisiert
+- [x] Dashboard Widget (TLCWidget) — Ampel-Logik, Kategorien, Events
 
 ### 2. Mahnwesen (Feld 12)
 - [ ] Mahnstufen-Config Seed-Daten

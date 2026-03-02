@@ -50,6 +50,15 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 | ENG-KONTOMATCH | Konto-Matching Engine | MOD-04, MOD-18, MOD-19 | ⚡ Teilweise | `src/engines/kontoMatch/spec.ts`, `engine.ts`, `recurring.ts` |
 | ENG-MKTDIR | Market Directory Engine | Zone 1 | ✅ Live | `src/engines/marketDirectory/spec.ts`, `engine.ts` |
 | ENG-TRIP | Trip Engine (Fahrtenbuch) | MOD-17 | ⚡ Teilweise | `src/engines/tripEngine/spec.ts`, `engine.ts` |
+| ENG-TLC | Tenancy Lifecycle Controller | MOD-04, MOD-00 | ✅ Live | `src/engines/tenancyLifecycle/spec.ts`, `engine.ts` |
+
+### Orchestrierung (1 Engine)
+
+| Code | Name | Status | Billing | Ausfuehrung |
+|------|------|--------|---------|-------------|
+| ENG-TLC | Tenancy Lifecycle Controller | ✅ Live | Free + KI (1 Credit/Run) | Edge Function (`sot-tenancy-lifecycle`, Weekly CRON Sun 03:00 UTC) + Client Engine |
+
+> **ENG-TLC** ist der uebergeordnete Orchestrator fuer alle Mietverhaeltnisse. Er prueft woechentlich: Zahlungsstatus, Mahnstufen, Mieterhoehungs-Berechtigung (§558 BGB), Kautionsstatus, Fristen und generiert KI-gestuetzte Next-Best-Actions via `google/gemini-2.5-pro`.
 
 ### Daten (4 Engines)
 
@@ -116,3 +125,4 @@ Jede Engine hat eine `engineVersion` die in `armstrong_action_runs.engine_versio
 | 2026-02-25 | v1.1 — ENG-DOCINT auf v3 aktualisiert: Universeller Parser mit XLSX/CSV/PDF-Support via `_shared/tabular-parser.ts`. `sot-pdf-to-csv` entfernt (Logik in `sot-document-parser` konsolidiert). Upload-Sanitization systemweit homogenisiert (`sanitizeFileName` + `UPLOAD_BUCKET`). |
 | 2026-02-18 | v1.0 — Initiale Konsolidierung aller 15 Engines aus UI-Registry und Code-Specs |
 | 2026-02-28 | v1.2 — ENG-TRIP (Trip Engine) fuer MOD-17 Fahrtenbuch hinzugefuegt. Pure TS Functions fuer Fahrterkennung aus GPS/Telematics (Standard A + B). |
+| 2026-03-02 | v1.3 — ENG-TLC (Tenancy Lifecycle Controller) hinzugefuegt. Orchestrator fuer Miet-Sonderverwaltung: Weekly CRON, State Machine (7 Phasen), Mahnwesen, Mieterhoehungs-Checks, KI-Summary. DB: tenancy_lifecycle_events, tenancy_dunning_configs, tenancy_tasks. |
