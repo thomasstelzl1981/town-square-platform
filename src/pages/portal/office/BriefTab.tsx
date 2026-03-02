@@ -65,6 +65,7 @@ import { SenderSelector, type SenderOption } from '@/components/shared';
 import { generateLetterPdf, type LetterPdfData } from '@/lib/letterPdf';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { isDemoId } from '@/engines/demoData/engine';
+import { DictationButton } from '@/components/shared/DictationButton';
 interface Contact {
   id: string;
   first_name: string;
@@ -709,18 +710,20 @@ ${senderLine}`);
         {/* Step 3: Prompt + Generate */}
         <Card className="glass-card">
           <CardContent className="p-5 space-y-4">
-            <Label className="flex items-center gap-2">
-              <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">3</Badge>
-              Anliegen beschreiben
-            </Label>
+            <div className="flex items-center gap-1">
+              <Label className="flex items-center gap-2">
+                <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">3</Badge>
+                Anliegen beschreiben
+              </Label>
+              <DictationButton onTranscript={(text) => setPrompt(prev => prev + ' ' + text)} />
+            </div>
             <div className="relative">
               <Textarea
                 placeholder="Schreiben Sie einen formellen Brief zur Ankündigung einer Mieterhöhung von 5% gemäß Mietspiegel..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="min-h-[120px] pr-12"
+                className="min-h-[120px]"
               />
-              {/* Mic button removed — was disabled/dead code */}
             </div>
             <Button 
               onClick={handleGenerate} 
@@ -745,10 +748,13 @@ ${senderLine}`);
         {/* Step 4: Edit generated letter */}
         <Card className="glass-card">
           <CardContent className="p-5 space-y-3">
-            <Label className="flex items-center gap-2">
-              <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">4</Badge>
-              Brief bearbeiten
-            </Label>
+            <div className="flex items-center gap-1">
+              <Label className="flex items-center gap-2">
+                <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">4</Badge>
+                Brief bearbeiten
+              </Label>
+              <DictationButton onTranscript={(text) => setGeneratedBody(prev => prev + ' ' + text)} />
+            </div>
             <Textarea
               placeholder="Der generierte Brief erscheint hier..."
               value={generatedBody}

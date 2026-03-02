@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { DictationButton } from '@/components/shared/DictationButton';
 import type { ProjectPortfolioRow } from '@/types/projekte';
 import { LandingPagePublishSection } from '@/components/projekte/landing-page/LandingPagePublishSection';
 
@@ -518,7 +519,10 @@ export default function LandingPageTab() {
 
                 {/* About Text */}
                 <div className="space-y-2">
-                  <Label>Projektbeschreibung (Objekt-Seite)</Label>
+                  <div className="flex items-center gap-1">
+                    <Label>Projektbeschreibung (Objekt-Seite)</Label>
+                    <DictationButton onTranscript={(text) => updateEditor('about_text', editor.about_text + ' ' + text)} />
+                  </div>
                   <Textarea
                     value={editor.about_text}
                     onChange={(e) => updateEditor('about_text', e.target.value)}

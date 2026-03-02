@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { MapPin, Sparkles, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { DictationButton } from '@/components/shared/DictationButton';
 
 interface EditableAddressBlockProps {
   // Address fields kept for AI generation context but NOT rendered here
@@ -99,7 +100,10 @@ export function EditableAddressBlock({
 
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <Label className="text-[11px] text-muted-foreground">Objektbeschreibung</Label>
+            <div className="flex items-center gap-1">
+              <Label className="text-[11px] text-muted-foreground">Objektbeschreibung</Label>
+              <DictationButton onTranscript={(text) => onFieldChange('description', (description || '') + ' ' + text)} size="sm" />
+            </div>
             <Button 
               variant="ghost" 
               size="sm" 

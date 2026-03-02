@@ -19,6 +19,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { DictationButton } from '@/components/shared/DictationButton';
 
 interface InteresseDialogProps {
   open: boolean;
@@ -199,7 +200,10 @@ export function InteresseDialog({
 
           {/* Custom Message */}
           <div className="space-y-2">
-            <Label>Nachricht an Anbieter (optional)</Label>
+            <div className="flex items-center gap-1">
+              <Label>Nachricht an Anbieter (optional)</Label>
+              <DictationButton onTranscript={(text) => setCustomMessage(prev => prev + ' ' + text)} />
+            </div>
             <Textarea
               placeholder="Persönliche Nachricht oder spezifische Fragen..."
               value={customMessage}

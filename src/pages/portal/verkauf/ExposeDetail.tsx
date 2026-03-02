@@ -57,6 +57,7 @@ import {
 } from 'lucide-react';
 import { PartnerReleaseDialog, ExposeImageGallery, ExposeLocationMap } from '@/components/verkauf';
 import { useViewTracking } from '@/hooks/useViewTracking';
+import { DictationButton } from '@/components/shared/DictationButton';
 
 
 // Types
@@ -523,7 +524,10 @@ const ExposeDetail = () => {
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="description">Objektbeschreibung</Label>
+                      <div className="flex items-center gap-1">
+                        <Label htmlFor="description">Objektbeschreibung</Label>
+                        <DictationButton onTranscript={(text) => handleChange('description', formData.description + ' ' + text)} />
+                      </div>
                       <Button 
                         variant="outline" 
                         size="sm" 

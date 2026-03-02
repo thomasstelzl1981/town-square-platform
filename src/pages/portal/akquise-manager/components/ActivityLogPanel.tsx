@@ -33,6 +33,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow, format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { DictationButton } from '@/components/shared/DictationButton';
 
 interface ActivityLogPanelProps {
   offerId: string;
@@ -150,7 +151,10 @@ export function ActivityLogPanel({ offerId }: ActivityLogPanelProps) {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Beschreibung</Label>
+                <div className="flex items-center gap-1">
+                  <Label>Beschreibung</Label>
+                  <DictationButton onTranscript={(text) => setDescription(prev => prev + ' ' + text)} />
+                </div>
                 <Textarea
                   placeholder="Was wurde besprochen oder notiert?"
                   value={description}

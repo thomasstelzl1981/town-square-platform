@@ -20,4 +20,14 @@ export const VOICE_ENABLED_FIELDS: VoiceField[] = [
   { component: 'DeliveryTab', field: 'Präsentationsnotizen', status: 'aktiv' },
   { component: 'KontakteTab', field: 'Kontakt-Notizen', status: 'aktiv' },
   { component: 'MietyPortalPage', field: 'WhatsApp / E-Mail / Übersetzer', status: 'aktiv' },
+  // ── Neue Felder (Sprint Voice-Rollout) ──
+  { component: 'ExposeDetail', field: 'Objektbeschreibung', status: 'aktiv' },
+  { component: 'AkquiseMandate', field: 'Mandats-Freitext (Suchprofil)', status: 'aktiv' },
+  { component: 'AkquiseMandate', field: 'E-Mail-Body an Anbieter', status: 'aktiv' },
+  { component: 'ActivityLogPanel', field: 'Aktivitätsbeschreibung', status: 'aktiv' },
+  { component: 'InteresseDialog', field: 'Nachricht an Anbieter', status: 'aktiv' },
+  { component: 'LandingPageTab', field: 'Projektbeschreibung', status: 'aktiv' },
+  { component: 'UnitDetailPage', field: 'Einheit-Notizen', status: 'aktiv' },
+  { component: 'EditableAddressBlock', field: 'Objektbeschreibung / Lagebeschreibung', status: 'aktiv' },
+  { component: 'BriefTab', field: 'Anliegen + Brief-Body', status: 'aktiv' },
 ];

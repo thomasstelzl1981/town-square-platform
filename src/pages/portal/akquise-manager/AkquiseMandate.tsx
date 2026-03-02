@@ -61,6 +61,7 @@ import { ContactBookDialog } from '@/components/akquise/ContactBookDialog';
 import logoLight from '@/assets/logos/armstrong_logo_light.png';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { isDemoId } from '@/engines/demoData/engine';
+import { DictationButton } from '@/components/shared/DictationButton';
 
 // ── Types ──
 interface ExtractedProfile {
@@ -568,13 +569,18 @@ export default function AkquiseMandate() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Textarea
-              placeholder="z.B. Family Office sucht Mehrfamilienhäuser in der Rhein-Main-Region, Investitionsvolumen 2 bis 5 Millionen Euro, mindestens 4% Rendite, kein Denkmalschutz, keine Erbbaurechte."
-              value={freeText}
-              onChange={e => setFreeText(e.target.value)}
-              rows={6}
-              className="text-sm"
-            />
+            <div className="relative">
+              <Textarea
+                placeholder="z.B. Family Office sucht Mehrfamilienhäuser in der Rhein-Main-Region, Investitionsvolumen 2 bis 5 Millionen Euro, mindestens 4% Rendite, kein Denkmalschutz, keine Erbbaurechte."
+                value={freeText}
+                onChange={e => setFreeText(e.target.value)}
+                rows={6}
+                className="text-sm pr-10"
+              />
+              <div className="absolute top-2 right-2">
+                <DictationButton onTranscript={(text) => setFreeText(prev => prev + ' ' + text)} />
+              </div>
+            </div>
 
             {/* Optionale Steuerfelder */}
             <div className="space-y-3 border-t pt-3">
@@ -877,7 +883,10 @@ export default function AkquiseMandate() {
 
             {/* Body */}
             <div className="space-y-1">
-              <Label className="text-xs">Nachricht:</Label>
+              <div className="flex items-center gap-1">
+                <Label className="text-xs">Nachricht:</Label>
+                <DictationButton onTranscript={(text) => setEmailBody(prev => prev + ' ' + text)} />
+              </div>
               <Textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={6} className="text-sm" placeholder="E-Mail Text..." />
             </div>
 
