@@ -79,6 +79,7 @@ export const FLC_ACTOR_TYPES = {
   USER: 'user',
   SYSTEM: 'system',
   CRON: 'cron',
+  EDGE_FN: 'edge_fn',
 } as const;
 
 export type FLCActorType = typeof FLC_ACTOR_TYPES[keyof typeof FLC_ACTOR_TYPES];

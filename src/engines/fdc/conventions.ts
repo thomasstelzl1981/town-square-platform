@@ -37,6 +37,7 @@ export const FDC_ACTOR_TYPES = {
   USER: 'user',
   SYSTEM: 'system',
   CRON: 'cron',
+  EDGE_FN: 'edge_fn',
 } as const;
 
 // ─── Source Modules ───────────────────────────────────────────

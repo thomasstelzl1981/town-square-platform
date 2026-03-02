@@ -64,3 +64,10 @@ export * from './slc/spec';
 // Engine 16: Financing Lifecycle Controller (ENG-FLC)
 export * from './flc/engine';
 export * from './flc/spec';
+
+// Engine 17: Finance Data Controller (ENG-FDC)
+export * from './fdc/engine';
+export * from './fdc/spec';
+
+// Shared Controller Conventions
+export * from './shared/controllerConventions';
