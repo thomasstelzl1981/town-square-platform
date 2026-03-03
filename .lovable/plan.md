@@ -1,56 +1,76 @@
 
 
-# Pet Manager (MOD-22) — Audit-Ergebnis und Wiederherstellungsplan
+# Systemweite Reparatur-Analyse — 4 Funde
 
-## Diagnose: Was ist passiert?
+## Fund 1: Armstrong Greeting sagt immer "Mr."
 
-Ich habe das gesamte MOD-22 durchleuchtet. Hier ist die gute Nachricht zuerst: **Der Code ist nicht kaputt und es sind keine hardcoded Daten im eigentlichen Sinne.** Die Daten kommen aus der Datenbank. Das Problem liegt woanders:
-
-### Ist-Zustand (verifiziert)
-
-1. **Datenbank funktioniert**: 4 Services existieren in `pet_services` (Hundesalon 65€, Gassi 25€, Tagesbetreuung 45€, Urlaubsbetreuung 56€). Alle haben Demo-IDs (`d0000000-*`), sind aber echte DB-Eintraege.
-
-2. **API-Aufrufe funktionieren**: Die Network-Requests zeigen, dass `pet_services`, `pet_providers`, `pet_service_cases` alle korrekt geladen werden (Status 200).
-
-3. **Preise sind editierbar** — aber nur im Tab "Leistungen" (`/portal/petmanager/leistungen`). Dort gibt es ein Dialog-CRUD mit Preis-Eingabe (€-Feld mit Cent-Konvertierung). Das funktioniert technisch.
-
-4. **Das Problem**: Der Tab "Leistungen" ist **nicht in der Sub-Navigation sichtbar** (fehlt im `routesManifest.ts` als Tile!). Die Route existiert (`PetManagerPage.tsx` Zeile 36), aber es gibt kein Tile dafuer:
-
-```text
-routesManifest.ts MOD-22 Tiles:
-  ✅ dashboard, profil, pension, services, mitarbeiter
-  ✅ buchungen, kalender, kunden, finanzen
-  ❌ "leistungen" FEHLT als Tile!
+**Ursache gefunden**: `src/components/dashboard/ArmstrongGreetingCard.tsx`, Zeile 42:
+```typescript
+const formattedName = name ? `Mr. ${name}` : 'Freund';
 ```
+Hardcoded "Mr." vor dem Namen, unabhaengig vom Geschlecht.
 
-Das heisst: Man kann `/portal/petmanager/leistungen` manuell aufrufen, aber es gibt keinen sichtbaren Link dahin.
-
-5. **Weiteres Problem**: Alle 4 Services haben Demo-IDs (`d0000000-*`). Wenn Demo-Modus AUS ist, filtert `isDemoId()` diese potentiell weg (je nach Page-Implementierung). In `PMLeistungen.tsx` wird allerdings kein Demo-Filter angewandt — dort werden immer alle Services angezeigt.
-
-6. **PLC-Engine funktioniert**: 2 echte `pet_service_cases` existieren mit korrekten Preisen (22500 Cents = 225€).
-
-## Was die 3 Stunden produziert haben
-
-Die PLC-Engine (`src/engines/plc/`), `pet_service_cases`, `pet_lifecycle_events`, die Z3-Proxy-Architektur, das Stripe-Payment-Flow — das alles existiert und funktioniert. Die Buchungen in `pet_service_cases` beweisen das. Das Problem ist rein **UI/Navigation**: Der Preis-Editor ist da, aber versteckt.
-
-## Wiederherstellungsplan (3 Schritte)
-
-### Schritt 1: "Leistungen"-Tile im routesManifest sichtbar machen
-In `src/manifests/routesManifest.ts` bei MOD-22 den Tile `leistungen` hinzufuegen (zwischen `services` und `mitarbeiter`).
-
-### Schritt 2: PMLeistungen CI-konform machen
-Die Seite `PMLeistungen.tsx` nutzt bereits `ModulePageHeader`, `PageShell`, und CRUD-Dialog. Pruefen, ob sie dem Design Manifest (DESIGN-Tokens, Card-Patterns) entspricht — und ggf. angleichen.
-
-### Schritt 3: PMPersonal (Mitarbeiter-Tab) CI-Audit
-Du hast gesagt, der Mitarbeiter-Tab ist "verhunzt" und ausserhalb eures CI. Ich wuerde `PMPersonal.tsx` pruefen und an den Design Manifest Standard anpassen (PageShell, ModulePageHeader, DESIGN.CARD, DESIGN.LIST Tokens).
-
-## Betroffene Dateien (alle MOD-22, nicht frozen)
+**Reparatur**: `Mr. ${name}` ersetzen durch einfach `${name}` (Vorname). Geschlechtsneutral, kein Anrede-Feld noetig, rechtlich sauber.
 
 | Datei | Aenderung |
 |---|---|
-| `src/manifests/routesManifest.ts` | Tile `leistungen` in MOD-22 tiles einfuegen |
-| `src/pages/portal/petmanager/PMLeistungen.tsx` | CI-Audit (Design-Tokens, ggf. Feinschliff) |
-| `src/pages/portal/petmanager/PMPersonal.tsx` | CI-Audit (Design-Tokens, Layout-Korrektur) |
+| `src/components/dashboard/ArmstrongGreetingCard.tsx` | Zeile 42: `Mr. ${name}` → `${name}` |
 
-Keine DB-Migration noetig. Keine Engine-Aenderung noetig. Keine Freeze-Konflikte (MOD-22 ist unfrozen).
+---
+
+## Fund 2: Logo in Stammdaten wird aus Golden Tenant uebernommen
+
+**Analyse**: Die `letterhead_logo_url` im Profil von Robyn zeigt auf einen Storage-Pfad unter ihrem eigenen Tenant (`eac1778a-...`). Das Problem ist vermutlich, dass beim Onboarding oder bei der Demo-Seed ein Logo in diesen Slot geschrieben wird, das eigentlich das Golden Tenant Logo ist. Oder die Anzeige-Logik faellt auf ein falsches Fallback zurueck.
+
+**Reparatur**: Zwei Stellen pruefen:
+1. `src/pages/portal/stammdaten/ProfilTab.tsx` Zeile 386: Der Fallback-Mechanismus laedt `letterhead_logo_url` aus dem Profil. Wenn dort beim Seeding ein Golden-Tenant-Logo hinterlegt wurde, erscheint es als "eigenes" Logo.
+2. Seed-Engine / `handle_new_user` Trigger: Pruefen, ob dort ein Default-Logo gesetzt wird.
+
+**Empfehlung**: Die `letterhead_logo_url` soll beim Onboarding `null` bleiben. Wenn dort bereits ein Wert steht, zeigt ProfilTab das Logo an — korrekt. Das eigentliche Problem ist, dass ein Logo dort hineinkam, das nicht dem User gehoert. Loesung: Im ProfilTab einen klaren "Kein Logo hinterlegt"-State zeigen und sicherstellen, dass kein Seed-Prozess ein Default-Logo setzt.
+
+| Datei | Aenderung |
+|---|---|
+| `src/pages/portal/stammdaten/ProfilTab.tsx` | Fallback-Logik fuer Logo-Slot reviewen; kein automatisches Erben |
+
+---
+
+## Fund 3: Briefgenerator Logo-Uebernahme aus Stammdaten
+
+**Analyse**: `src/pages/portal/office/BriefTab.tsx` Zeile 838 nutzt `profile?.letterhead_logo_url` direkt. Wenn Fund 2 gefixt ist (kein falsches Logo im Profil), ist der Briefgenerator automatisch auch gefixt — er liest nur das, was in Stammdaten steht.
+
+**Reparatur**: Kein separater Fix noetig. Haengt direkt an Fund 2.
+
+---
+
+## Fund 4: Tierakte — Bild-Inkonsistenz (geschlossen vs. offen)
+
+**Ursache gefunden**: In `PetsMeineTiere.tsx` werden alle RecordCards mit `isOpen={false}` gerendert. Klickt man, oeffnet sich die PetDossier darunter (Inline-Detail). Aber:
+
+1. **Geschlossene Karte zeigt kein Bild**: `thumbnailUrl={pet.photo_url || undefined}` — aber `photo_url` ist `null` bis man in der geoeffneten Akte ein Foto hochlaedt. Erst dann wird `photo_url` gesetzt. Aber: Das Upload passiert in `PetProfileSection` (innerhalb PetDossier), das ein Public-URL in die DB schreibt. Die geschlossene RecordCard liest `pet.photo_url` aus dem Query-Cache — nach Upload muesste sie also das Bild zeigen, WENN der Cache invalidiert wird.
+
+2. **Kein Drag-and-Drop auf geschlossene Karte**: Anders als bei Fahrzeugen fehlt `onPhotoDrop` auf der RecordCard fuer Pets. Bei Fahrzeugen kann man ein Foto direkt auf die geschlossene Karte ziehen.
+
+3. **Redundanz Steckbrief-Foto + Galerie**: Im PetDossier gibt es erst ein 160x160px Profilfoto im Steckbrief, direkt darunter eine separate Fotogalerie-Section. Das ist redundant und verwirrend.
+
+**Reparatur**:
+
+| Schritt | Datei | Aenderung |
+|---|---|---|
+| A | `src/pages/portal/pets/PetsMeineTiere.tsx` | `onPhotoDrop` auf RecordCard hinzufuegen (wie Fahrzeuge), damit Drag-and-Drop auf geschlossene Karte funktioniert |
+| B | `src/pages/portal/pets/PetsMeineTiere.tsx` | Cache-Invalidierung nach PetDossier-Upload sicherstellen (react-query invalidate `pets`) |
+| C | `src/components/shared/pet-dossier/PetDossier.tsx` | Galerie-Section entfernen oder in Steckbrief integrieren (1 Foto-Bereich statt 2) — analog Fahrzeuge |
+
+---
+
+## Zusammenfassung der Aenderungen
+
+| # | Datei | Was |
+|---|---|---|
+| 1 | `ArmstrongGreetingCard.tsx` | `Mr. ${name}` → `${name}` |
+| 2 | `ProfilTab.tsx` | Logo-Fallback pruefen, kein Golden-Tenant-Erbe |
+| 3 | Kein separater Fix | Briefgenerator erbt aus Stammdaten (gefixt durch #2) |
+| 4a | `PetsMeineTiere.tsx` | `onPhotoDrop` hinzufuegen + Cache-Invalidierung |
+| 4b | `PetDossier.tsx` / `PetGallerySection` | Galerie in Steckbrief konsolidieren |
+
+Keine DB-Migration noetig. Keine Freeze-Konflikte (MOD-05 und MOD-22 sind unfrozen, Dashboard-Komponenten sind nicht frozen).
 
