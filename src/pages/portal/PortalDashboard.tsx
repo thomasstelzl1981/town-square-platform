@@ -135,7 +135,7 @@ export default function PortalDashboard() {
     if (widgetId === 'system_armstrong') {
       return (
         <ArmstrongGreetingCard
-          displayName={profile?.last_name || profile?.display_name || ''}
+          displayName={profile?.first_name || profile?.display_name?.split(' ')[0] || ''}
           city={location?.city || ''}
           weather={weather ?? null}
           todayEvents={todayEvents}
