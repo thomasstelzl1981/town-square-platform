@@ -1,7 +1,7 @@
 /**
  * LennoxMeinBereich — Zone 3 "Mein Bereich"
  * Two full-width inline sections:
- *   1. Buchungsanfrage + Status list
+ *   1. Buchungsanfrage + Status list (via pet_service_cases / PLC)
  *   2. Hundeakte (inline CRUD for pet_z1_pets)
  */
 import { useState, useEffect } from 'react';
@@ -19,6 +19,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
+import { useCasesForZ3Customer, useCreateCase, type CaseWithComputed } from '@/hooks/usePetServiceCases';
+import { PLC_PHASE_LABELS, type PLCPhase } from '@/engines/plc/spec';
 import { z } from 'zod';
 import { LENNOX as C, SPECIES_LABELS, GENDER_LABELS } from './lennoxTheme';
 
@@ -39,13 +41,16 @@ const petSchema = z.object({
 type PetForm = z.infer<typeof petSchema>;
 const emptyPet: PetForm = { name: '', species: 'dog', breed: '', gender: 'unknown', birth_date: '', weight_kg: null, chip_number: '', neutered: false, vet_name: '', allergies: [], notes: '' };
 
-const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  pending: { label: 'Angefragt', color: 'hsl(45,80%,50%)', icon: Clock },
-  confirmed: { label: 'Bestätigt', color: 'hsl(155,50%,40%)', icon: Check },
-  payment_pending: { label: 'Zahlung ausstehend', color: 'hsl(25,85%,55%)', icon: Clock },
-  paid: { label: 'Bezahlt', color: 'hsl(155,60%,35%)', icon: Check },
-  active: { label: 'Gebucht', color: 'hsl(155,60%,30%)', icon: Check },
-  rejected: { label: 'Abgelehnt', color: 'hsl(0,60%,50%)', icon: XCircle },
+/** PLC phase → status badge config */
+const phaseStatusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
+  provider_selected: { label: 'Angefragt', color: 'hsl(45,80%,50%)', icon: Clock },
+  provider_confirmed: { label: 'Bestätigt', color: 'hsl(155,50%,40%)', icon: Check },
+  provider_declined: { label: 'Abgelehnt', color: 'hsl(0,60%,50%)', icon: XCircle },
+  checked_in: { label: 'Eingecheckt', color: 'hsl(155,60%,35%)', icon: Check },
+  checked_out: { label: 'Ausgecheckt', color: 'hsl(200,60%,45%)', icon: Check },
+  settlement: { label: 'Abrechnung', color: 'hsl(25,85%,55%)', icon: Clock },
+  closed_completed: { label: 'Abgeschlossen', color: 'hsl(155,60%,30%)', icon: Check },
+  closed_cancelled: { label: 'Storniert', color: 'hsl(0,60%,50%)', icon: XCircle },
 };
 
 const selectCls = `w-full h-10 rounded-md border px-3 text-sm`;
@@ -62,15 +67,8 @@ export default function LennoxMeinBereich() {
     }
   }, [z3Loading, z3User, navigate]);
 
-  // ─── Tenant ID from customer ───────────────────────
-  const { data: tenantId } = useQuery({
-    queryKey: ['z3_tenant', z3User?.id],
-    queryFn: async () => {
-      const { data } = await supabase.from('pet_z1_customers').select('tenant_id').eq('id', z3User!.id).maybeSingle();
-      return data?.tenant_id || null;
-    },
-    enabled: !!z3User?.id,
-  });
+  // ─── Tenant ID from provider (for new bookings) ────
+  // We'll get it from the selected provider when submitting
 
   // ─── Pets ──────────────────────────────────────────
   const { data: pets = [], refetch: refetchPets } = useQuery({
@@ -86,7 +84,7 @@ export default function LennoxMeinBereich() {
   const { data: providers = [] } = useQuery({
     queryKey: ['z3_providers'],
     queryFn: async () => {
-      const { data } = await supabase.from('pet_providers').select('id, company_name').eq('is_published', true).order('company_name');
+      const { data } = await supabase.from('pet_providers').select('id, company_name, tenant_id').eq('is_published', true).order('company_name');
       return data || [];
     },
   });
@@ -102,23 +100,18 @@ export default function LennoxMeinBereich() {
     enabled: !!selectedProviderId,
   });
 
-  // ─── Booking requests ─────────────────────────────
-  const { data: bookingRequests = [], refetch: refetchBookings } = useQuery({
-    queryKey: ['z3_booking_requests', z3User?.id],
-    queryFn: async () => {
-      const { data } = await (supabase.from('pet_z1_booking_requests' as any) as any).select('*').eq('z1_customer_id', z3User!.id).order('created_at', { ascending: false });
-      return data || [];
-    },
-    enabled: !!z3User?.id,
-  });
+  // ─── Cases (PLC) ─────────────────────────────────
+  const { data: cases = [] } = useCasesForZ3Customer(z3User?.id);
+
+  // ─── Create Case mutation ─────────────────────────
+  const createCase = useCreateCase();
 
   // ─── Booking form state ────────────────────────────
   const [bookingService, setBookingService] = useState('');
   const [bookingDate, setBookingDate] = useState('');
-  const [bookingTime, setBookingTime] = useState('');
+  const [bookingDateEnd, setBookingDateEnd] = useState('');
   const [bookingPetId, setBookingPetId] = useState('');
   const [bookingNotes, setBookingNotes] = useState('');
-  const [bookingSending, setBookingSending] = useState(false);
 
   // ─── Pet form state ────────────────────────────────
   const [petEditId, setPetEditId] = useState<string | null>(null);
@@ -144,43 +137,43 @@ export default function LennoxMeinBereich() {
   const handleBookingSubmit = async () => {
     if (!bookingService) { toast.error('Bitte Service wählen'); return; }
     if (!selectedProviderId) { toast.error('Bitte Anbieter wählen'); return; }
-    if (!z3User || !tenantId) return;
+    if (!z3User) return;
 
-    setBookingSending(true);
-    const selectedPet = pets.find((p: any) => p.id === bookingPetId);
-    const { error } = await (supabase.from('pet_z1_booking_requests' as any) as any).insert({
-      tenant_id: tenantId,
-      z1_customer_id: z3User.id,
+    const selectedProvider = providers.find((p: any) => p.id === selectedProviderId);
+    if (!selectedProvider?.tenant_id) { toast.error('Anbieter-Konfiguration fehlt'); return; }
+
+    const customerName = [z3User.first_name, z3User.last_name].filter(Boolean).join(' ') || null;
+
+    createCase.mutate({
       provider_id: selectedProviderId,
-      service_title: bookingService,
-      preferred_date: bookingDate || null,
-      preferred_time: bookingTime || null,
-      pet_z1_id: bookingPetId || null,
-      pet_name: selectedPet?.name || null,
-      client_notes: bookingNotes || null,
-      status: 'pending',
-      payment_status: 'none',
+      service_type: 'pension',
+      customer_name: customerName,
+      customer_email: z3User.email,
+      customer_notes: bookingNotes || null,
+      scheduled_start: bookingDate || null,
+      scheduled_end: bookingDateEnd || null,
+      pet_id: bookingPetId || null,
+      tenant_id: selectedProvider.tenant_id,
+      z3_customer_id: z3User.id,
+    }, {
+      onSuccess: () => {
+        setBookingService('');
+        setBookingDate('');
+        setBookingDateEnd('');
+        setBookingPetId('');
+        setBookingNotes('');
+      },
     });
-    setBookingSending(false);
-
-    if (error) {
-      toast.error('Fehler beim Senden der Anfrage');
-      console.error(error);
-    } else {
-      toast.success('Buchungsanfrage gesendet!');
-      setBookingService('');
-      setBookingDate('');
-      setBookingTime('');
-      setBookingPetId('');
-      setBookingNotes('');
-      refetchBookings();
-    }
   };
 
   const handlePetSave = async () => {
     const parsed = petSchema.safeParse(petForm);
     if (!parsed.success) { toast.error(parsed.error.errors[0]?.message); return; }
-    if (!z3User || !tenantId) return;
+    if (!z3User) return;
+
+    // Get tenant from first provider (Z3 pets need a tenant_id)
+    const firstProvider = providers[0];
+    if (!firstProvider?.tenant_id) { toast.error('Konfiguration fehlt'); return; }
 
     setPetSaving(true);
     const payload: any = {
@@ -203,7 +196,7 @@ export default function LennoxMeinBereich() {
       else toast.success('Tier aktualisiert');
     } else {
       payload.z1_customer_id = z3User.id;
-      payload.tenant_id = tenantId;
+      payload.tenant_id = firstProvider.tenant_id;
       const { error } = await (supabase.from('pet_z1_pets' as any) as any).insert(payload);
       if (error) toast.error('Fehler beim Anlegen');
       else toast.success('Tier angelegt');
@@ -281,7 +274,7 @@ export default function LennoxMeinBereich() {
       </div>
 
       {/* ══════════════════════════════════════════════════
-          KACHEL 1: BUCHUNGSANFRAGE + STATUS
+          KACHEL 1: BUCHUNGSANFRAGE + STATUS (PLC)
           ══════════════════════════════════════════════════ */}
       <Card className="border shadow-sm" style={{ borderColor: C.sandLight, background: C.white }}>
         <CardHeader className="pb-3">
@@ -316,14 +309,15 @@ export default function LennoxMeinBereich() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1">
-                <Label className="text-xs font-medium" style={{ color: C.barkMuted }}>Wunschtermin</Label>
+                <Label className="text-xs font-medium" style={{ color: C.barkMuted }}>Von</Label>
                 <Input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)}
                   min={new Date().toISOString().split('T')[0]}
                   style={{ borderColor: C.sand }} />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs font-medium" style={{ color: C.barkMuted }}>Wunschzeit</Label>
-                <Input type="time" value={bookingTime} onChange={e => setBookingTime(e.target.value)}
+                <Label className="text-xs font-medium" style={{ color: C.barkMuted }}>Bis</Label>
+                <Input type="date" value={bookingDateEnd} onChange={e => setBookingDateEnd(e.target.value)}
+                  min={bookingDate || new Date().toISOString().split('T')[0]}
                   style={{ borderColor: C.sand }} />
               </div>
               <div className="space-y-1">
@@ -343,28 +337,31 @@ export default function LennoxMeinBereich() {
                 style={{ borderColor: C.sand, background: C.cream }} />
             </div>
 
-            <Button onClick={handleBookingSubmit} disabled={bookingSending}
+            <Button onClick={handleBookingSubmit} disabled={createCase.isPending}
               className="rounded-full text-white" style={{ background: C.coral }}>
               <Send className="h-4 w-4 mr-1.5" />
-              {bookingSending ? 'Wird gesendet...' : 'Anfrage senden'}
+              {createCase.isPending ? 'Wird gesendet...' : 'Anfrage senden'}
             </Button>
           </div>
 
-          {/* ── Booking Status List ──────────────────── */}
-          {bookingRequests.length > 0 && (
+          {/* ── Booking Status List (PLC Cases) ──────── */}
+          {cases.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold" style={{ color: C.bark }}>Meine Anfragen</h3>
-              {bookingRequests.map((br: any) => {
-                const cfg = statusConfig[br.status] || statusConfig.pending;
+              <h3 className="text-sm font-semibold" style={{ color: C.bark }}>Meine Buchungen</h3>
+              {cases.map((c: CaseWithComputed) => {
+                const phase = c.current_phase as string;
+                const cfg = phaseStatusConfig[phase] || { label: PLC_PHASE_LABELS[c.current_phase] || phase, color: 'hsl(0,0%,60%)', icon: Clock };
                 const StatusIcon = cfg.icon;
                 return (
-                  <div key={br.id} className="flex items-center justify-between p-3 rounded-lg text-sm"
+                  <div key={c.id} className="flex items-center justify-between p-3 rounded-lg text-sm"
                     style={{ background: C.sandLight }}>
                     <div className="space-y-0.5">
-                      <p className="font-medium" style={{ color: C.bark }}>{br.service_title}</p>
+                      <p className="font-medium" style={{ color: C.bark }}>
+                        {PLC_PHASE_LABELS[c.current_phase] || c.current_phase}
+                      </p>
                       <p className="text-xs" style={{ color: C.barkMuted }}>
-                        {br.preferred_date && new Date(br.preferred_date).toLocaleDateString('de-DE')}
-                        {br.pet_name && ` · ${br.pet_name}`}
+                        {c.scheduled_start && new Date(c.scheduled_start).toLocaleDateString('de-DE')}
+                        {c.scheduled_end && ` – ${new Date(c.scheduled_end).toLocaleDateString('de-DE')}`}
                       </p>
                     </div>
                     <Badge className="text-xs rounded-full gap-1 text-white" style={{ background: cfg.color }}>
