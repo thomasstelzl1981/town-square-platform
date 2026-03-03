@@ -1,27 +1,43 @@
 
 
-## Befund
+# Analyse & Plan: Lennox Shop Sichtbarkeit + Bildformat
 
-Ja — "AWIN Partner" steht aktuell als sichtbares Badge in beiden Shop-Seiten:
+## Problem 1: Produkte in Zone 3 nicht sichtbar
 
-- **Zone 3** `LennoxShop.tsx`: Badge `AWIN Partner` (Zeile 22 + 266)
-- **Zone 2** `PetsShop.tsx`: Badge `AWIN Partner` (Zeile 36 + 344)
+**Ursache gefunden:** Die RLS-Policy auf `service_shop_products` erlaubt SELECT nur fuer `authenticated`-Nutzer. Zone 3 ist oeffentlich (kein Login) — daher werden keine Produkte geladen.
 
-Das ist falsch — AWIN ist unser internes Affiliate-Netzwerk zur Provisionsabrechnung, das darf dem Endkunden **nicht** angezeigt werden.
+**Loesung:** Eine zusaetzliche RLS-Policy fuer `anon` (oeffentlichen Lesezugriff) anlegen:
 
-## Plan
+```sql
+CREATE POLICY "Public can read active products"
+ON public.service_shop_products
+FOR SELECT
+TO anon
+USING (is_active = true);
+```
 
-### Änderungen
+Damit koennen Zone-3-Besucher aktive Produkte sehen, aber nur eingeloggte Admins koennen schreiben.
 
-**1. Zone 3 — `src/pages/zone3/lennox/LennoxShop.tsx`**
-- Zeile 22: `badge: 'AWIN Partner'` entfernen → kein Badge oder neutrales Badge wie `'Partner'`
-- Zeile 266: Badge `AWIN Partner` entfernen → nur "Zooplus" als Label stehen lassen
+## Problem 2: Produkte in Zone 2
 
-**2. Zone 2 — `src/pages/portal/pets/PetsShop.tsx`**
-- Zeile 36: `badge: 'AWIN Partner'` entfernen → `badge: 'Partner'` oder komplett weg
-- Zeile 344: Badge `AWIN Partner` entfernen → neutrales "Partner"-Badge oder weglassen
+**Kein Problem:** Die bestehende Policy erlaubt SELECT fuer `authenticated` mit `USING (true)`. Zone-2-Nutzer sind eingeloggt — Produkte sollten sichtbar sein. Falls nicht, liegt es daran, dass kein Widget aktiv ist (Toggle-Klick noetig).
 
-### Grundsatz für alle Shops
+## Problem 3: See-Bild in Galerie abgeschnitten
 
-AWIN (und künftig ADCELL, Impact etc.) sind **interne Affiliate-Netzwerke**. Sie dürfen in keiner kundengerichteten UI erscheinen. Nur im Zone-1-Admin/Service-Desk dürfen diese Bezeichnungen sichtbar sein (dort gehören sie zur operativen Konfiguration).
+**Ursache:** In `LennoxLennox.tsx` Zeile 177 hat das See-Bild `aspect-[3/4]` (Portrait-Format). Das Foto ist aber ein Landschaftsbild — `object-cover` schneidet es stark ab.
+
+**Loesung:** Fuer das See-Bild ein breiteres Seitenverhaeltnis verwenden, z.B. `aspect-[4/3]`, oder `object-position: top` setzen, damit der relevante Bildteil (Person) sichtbar bleibt. Da alle drei Galerie-Bilder im gleichen Grid sind, kann man auch gemischte Aspect-Ratios nutzen:
+
+- See-Bild: `aspect-[4/5]` + `object-position: center top`
+- Pferd-Bild: bleibt `aspect-[3/4]`
+- Lennox-Bild: bleibt `aspect-[3/4]`
+
+Oder alternativ alle auf `aspect-square` setzen fuer Einheitlichkeit.
+
+## Zusammenfassung der Aenderungen
+
+| Datei | Aenderung |
+|---|---|
+| DB Migration | Neue RLS-Policy: anon SELECT auf active products |
+| `src/pages/zone3/lennox/LennoxLennox.tsx` | Zeile 177: See-Bild Aspect-Ratio + object-position anpassen |
 
