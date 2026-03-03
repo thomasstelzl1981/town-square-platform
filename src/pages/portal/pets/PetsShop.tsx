@@ -1,13 +1,11 @@
 /**
- * PetsShop — 4 CI-Widgets: Ernährung, Lennox Tracker, Lennox Style, Fressnapf
+ * PetsShop — 4 CI-Widgets: Lennox Tracker, Lennox Style, Ernährung, Zooplus
  * ALL products loaded from service_shop_products DB (Zone 1 SSOT)
  */
 import { useState } from 'react';
-import { ShoppingCart, MapPin, ExternalLink, Radar, Store, PawPrint, Clock, Search, Plug, WifiOff, UtensilsCrossed, Activity, Shield, Battery, Droplets, Heart, Check } from 'lucide-react';
+import { ShoppingCart, MapPin, ExternalLink, Radar, Store, PawPrint, Search, UtensilsCrossed, Activity, Shield, Battery, Droplets, Heart, Check } from 'lucide-react';
 import { DESIGN } from '@/config/designManifest';
 import lennoxHeroImg from '@/assets/lennox-hero.jpg';
-import lennoxProductImg from '@/assets/lennox-tracker-product.jpg';
-import lennoxLifestyleImg from '@/assets/lennox-lifestyle.jpg';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
@@ -29,13 +27,13 @@ const SPECIES_LABELS: Record<string, string> = {
   hamster: 'Hamster', fish: 'Fisch', reptile: 'Reptil', horse: 'Pferd', other: 'Sonstiges',
 };
 
-type ShopWidget = 'shop' | 'lennox' | 'zooplus' | 'fressnapf';
+type ShopWidget = 'tracker' | 'style' | 'ernaehrung' | 'zooplus';
 
 const WIDGETS: { key: ShopWidget; title: string; icon: typeof Store; description: string; badge?: string }[] = [
-  { key: 'shop', title: 'Ernährung', icon: UtensilsCrossed, description: 'Lakefields — Naturbelassenes Hundefutter' },
-  { key: 'lennox', title: 'Lennox Tracker', icon: Radar, description: 'GPS-Tracker für Ihr Tier bestellen' },
-  { key: 'zooplus', title: 'Lennox Style', icon: PawPrint, description: 'Premium Hundezubehör — eigene Kollektion' },
-  { key: 'fressnapf', title: 'Fressnapf', icon: ShoppingCart, description: 'Tierbedarf bei Fressnapf', badge: 'Partner' },
+  { key: 'tracker', title: 'Lennox Tracker', icon: Radar, description: 'GPS-Tracker für Ihr Tier bestellen' },
+  { key: 'style', title: 'Lennox Style', icon: PawPrint, description: 'Premium Hundezubehör — eigene Kollektion' },
+  { key: 'ernaehrung', title: 'Ernährung', icon: UtensilsCrossed, description: 'Lakefields — Naturbelassenes Hundefutter' },
+  { key: 'zooplus', title: 'Zooplus', icon: Store, description: 'Premium Tierbedarf bei Zooplus', badge: 'AWIN Partner' },
 ];
 
 /* ── Generic Product Grid (from DB via service_shop_products) ─── */
@@ -51,17 +49,12 @@ function ProductGrid({ shopKey, accentColor }: { shopKey: string; accentColor: s
     return matchSearch && matchCat;
   });
 
-  if (isLoading) {
-    return <div className="py-12 text-center text-sm text-muted-foreground">Lade Produkte…</div>;
-  }
-
-  if (products.length === 0) {
-    return (
-      <div className="py-12 text-center rounded-lg border border-dashed border-border">
-        <p className="text-sm text-muted-foreground">Produkte werden in Kürze hinzugefügt.</p>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="py-12 text-center text-sm text-muted-foreground">Lade Produkte…</div>;
+  if (products.length === 0) return (
+    <div className="py-12 text-center rounded-lg border border-dashed border-border">
+      <p className="text-sm text-muted-foreground">Produkte werden in Kürze hinzugefügt.</p>
+    </div>
+  );
 
   return (
     <>
@@ -69,22 +62,12 @@ function ProductGrid({ shopKey, accentColor }: { shopKey: string; accentColor: s
         <CardContent className="p-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="pl-10"
-              placeholder="Produkte suchen…"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
+            <Input className="pl-10" placeholder="Produkte suchen…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
           </div>
           {subCategories.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3">
               {subCategories.map(cat => (
-                <Badge
-                  key={cat}
-                  variant={activeSubCat === cat ? 'default' : 'secondary'}
-                  className="cursor-pointer hover:bg-accent transition-colors text-xs"
-                  onClick={() => setActiveSubCat(prev => prev === cat ? null : cat)}
-                >
+                <Badge key={cat} variant={activeSubCat === cat ? 'default' : 'secondary'} className="cursor-pointer hover:bg-accent transition-colors text-xs" onClick={() => setActiveSubCat(prev => prev === cat ? null : cat)}>
                   {cat}
                 </Badge>
               ))}
@@ -95,39 +78,19 @@ function ProductGrid({ shopKey, accentColor }: { shopKey: string; accentColor: s
 
       <div className={DESIGN.WIDGET_GRID.FULL}>
         {filtered.map(product => (
-          <Card
-            key={product.id}
-            className="group cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5"
-            onClick={() => product.external_url && window.open(product.external_url, '_blank')}
-          >
+          <Card key={product.id} className="group cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5" onClick={() => product.external_url && window.open(product.external_url, '_blank')}>
             <CardContent className="p-3 flex flex-col items-center text-center gap-2">
               <div className="aspect-square w-full rounded-xl bg-muted/40 overflow-hidden relative">
                 {product.image_url ? (
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+                  <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ShoppingCart className="h-8 w-8 text-muted-foreground/30" />
-                  </div>
+                  <div className="w-full h-full flex items-center justify-center"><ShoppingCart className="h-8 w-8 text-muted-foreground/30" /></div>
                 )}
-                {product.badge && (
-                  <Badge className="absolute top-2 left-2 text-white text-[10px] border-0" style={{ backgroundColor: accentColor }}>
-                    {product.badge}
-                  </Badge>
-                )}
-                {product.external_url && (
-                  <div className="absolute top-2 right-2">
-                    <ExternalLink className="h-3.5 w-3.5 text-white/70 drop-shadow-md" />
-                  </div>
-                )}
+                {product.badge && <Badge className="absolute top-2 left-2 text-white text-[10px] border-0" style={{ backgroundColor: accentColor }}>{product.badge}</Badge>}
+                {product.external_url && <div className="absolute top-2 right-2"><ExternalLink className="h-3.5 w-3.5 text-white/70 drop-shadow-md" /></div>}
               </div>
               <span className="text-xs font-medium leading-tight line-clamp-2">{product.name}</span>
-              {product.price_label && (
-                <span className="text-xs font-semibold" style={{ color: accentColor }}>{product.price_label}</span>
-              )}
+              {product.price_label && <span className="text-xs font-semibold" style={{ color: accentColor }}>{product.price_label}</span>}
             </CardContent>
           </Card>
         ))}
@@ -136,39 +99,81 @@ function ProductGrid({ shopKey, accentColor }: { shopKey: string; accentColor: s
   );
 }
 
-/* ── Lennox Tracker Products from DB ─── */
-function TrackerProductsFromDB() {
+/* ── Lennox Tracker Section ─── */
+function TrackerSection() {
   const { data: trackerProducts = [], isLoading } = useActiveServiceProducts('pet-tracker');
-  const variants = trackerProducts.filter(p => p.sub_category === 'Tracker');
-  const subscriptions = trackerProducts.filter(p => p.sub_category === 'Abo');
+  const trackers = trackerProducts.filter(p => p.sub_category === 'Tracker');
+  const subscription = trackerProducts.find(p => p.sub_category === 'Abo');
 
   if (isLoading) return <div className="py-8 text-center text-sm text-muted-foreground">Lade Produkte…</div>;
 
   return (
     <>
-      {variants.length > 0 && (
+      {/* Hero */}
+      <Card className="overflow-hidden border-0 relative">
+        <div className="relative">
+          <img src={lennoxHeroImg} alt="Lennox GPS Tracker – Hund mit Tracker" className="w-full h-64 sm:h-80 object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
+          <div className="absolute inset-0 flex flex-col justify-center p-6 sm:p-10">
+            <Badge className="w-fit mb-3 bg-teal-500/90 text-white border-0 text-[10px]">GPS-Tracker</Badge>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Lennox GPS Tracker</h2>
+            <p className="text-white/80 mt-2 max-w-md text-sm sm:text-base">Immer wissen, wo dein Liebling ist. Echtzeit-Ortung, Aktivitätstracking und Geofencing.</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Features */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {[
+          { icon: MapPin, title: 'Live-Ortung', desc: 'Weltweite Echtzeit-Verfolgung per GPS, WLAN & Mobilfunk' },
+          { icon: Activity, title: 'Aktivitätstracking', desc: 'Schritte, Ruhezeiten und Fitness deines Vierbeiners' },
+          { icon: Shield, title: 'Geofencing', desc: 'Sichere Zonen definieren und Benachrichtigungen erhalten' },
+          { icon: Battery, title: 'Bis 30 Tage Akku', desc: 'Intelligentes Power-Management, USB-C Laden' },
+          { icon: Droplets, title: 'Wasserdicht IP67', desc: 'Robust bei Regen, Schlamm und Badespaß' },
+          { icon: Heart, title: 'Gesundheitsdaten', desc: 'Schlaf, Aktivität und Auffälligkeiten erkennen' },
+        ].map((f, i) => {
+          const Icon = f.icon;
+          return (
+            <Card key={i} className="border-teal-500/10 hover:border-teal-500/30 transition-colors">
+              <CardContent className="p-4 flex flex-col gap-2">
+                <div className="p-2 rounded-lg bg-teal-500/10 w-fit"><Icon className="h-5 w-5 text-teal-600 dark:text-teal-400" /></div>
+                <p className="text-sm font-semibold">{f.title}</p>
+                <p className="text-[11px] text-muted-foreground leading-snug">{f.desc}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Tracker Products */}
+      {trackers.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Produktvarianten</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {variants.map(v => {
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Unsere Tracker</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {trackers.map(v => {
               const md = (v.metadata as Record<string, unknown>) ?? {};
-              const isPopular = md.popular === true || v.badge === 'Beliebt';
               return (
-                <Card key={v.id} className={`relative overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md ${isPopular ? 'border-teal-500/40 shadow-[0_0_20px_-5px_hsl(180_60%_40%/0.2)]' : 'border-border/40'}`}>
-                  {isPopular && <Badge className="absolute top-3 right-3 bg-teal-500 text-white border-0 text-[10px]">Beliebt</Badge>}
+                <Card key={v.id} className={`relative overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md ${v.badge === 'Bestseller' ? 'border-teal-500/40 shadow-[0_0_20px_-5px_hsl(180_60%_40%/0.2)]' : 'border-border/40'}`}>
+                  {v.badge && <Badge className="absolute top-3 right-3 bg-teal-500 text-white border-0 text-[10px]">{v.badge}</Badge>}
                   <CardContent className="p-5 flex flex-col items-center text-center gap-3">
-                    <div className="w-20 h-20 rounded-2xl overflow-hidden bg-muted/30">
-                      <img src={lennoxProductImg} alt={v.name} className="w-full h-full object-cover" />
+                    <div className="w-32 h-32 rounded-2xl overflow-hidden bg-muted/30">
+                      {v.image_url && <img src={v.image_url} alt={v.name} className="w-full h-full object-contain" />}
                     </div>
                     <div>
                       <p className="font-bold text-sm">{v.name}</p>
-                      {md.target && <p className="text-[11px] text-muted-foreground mt-0.5">{String(md.target)}</p>}
-                      {md.weight && <p className="text-[11px] text-muted-foreground">Gewicht: {String(md.weight)}</p>}
+                      <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{v.description}</p>
+                      <div className="flex items-center justify-center gap-2 mt-1 text-[10px] text-muted-foreground">
+                        {md.weight && <span>{String(md.weight)}</span>}
+                        {md.ip_rating && <span>• {String(md.ip_rating)}</span>}
+                        {md.battery_days && <span>• {String(md.battery_days)} Tage Akku</span>}
+                      </div>
                     </div>
                     <p className="text-xl font-bold text-teal-600 dark:text-teal-400">{v.price_label}</p>
-                    <Button variant="outline" size="sm" className="w-full gap-2 border-teal-500/30 hover:bg-teal-500/5" disabled>
-                      <ShoppingCart className="h-3.5 w-3.5" /> Vorbestellen
-                    </Button>
+                    {v.external_url && (
+                      <Button variant="outline" size="sm" className="w-full gap-2 border-teal-500/30 hover:bg-teal-500/5" onClick={() => window.open(v.external_url!, '_blank')}>
+                        <ExternalLink className="h-3.5 w-3.5" /> Details ansehen
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               );
@@ -177,35 +182,38 @@ function TrackerProductsFromDB() {
         </div>
       )}
 
-      {subscriptions.length > 0 && (
+      {/* Single Subscription */}
+      {subscription && (
         <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Abo-Modelle</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {subscriptions.map(plan => {
-              const md = (plan.metadata as Record<string, unknown>) ?? {};
-              const features = Array.isArray(md.features) ? md.features as string[] : [];
-              const isPopular = md.popular === true || plan.badge === 'Empfohlen';
-              return (
-                <Card key={plan.id} className={`transition-all ${isPopular ? 'border-teal-500/40' : 'border-border/40'}`}>
-                  <CardContent className="p-5 flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <p className="font-bold text-sm">{plan.name}</p>
-                      {isPopular && <Badge className="bg-teal-500 text-white border-0 text-[10px]">Empfohlen</Badge>}
-                    </div>
-                    <p className="text-lg font-bold text-teal-600 dark:text-teal-400">{plan.price_label}</p>
-                    <ul className="space-y-1.5">
-                      {features.map((f, fi) => (
-                        <li key={fi} className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                          <Check className="h-3 w-3 text-teal-500 flex-shrink-0" />
-                          {f}
-                        </li>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Abo-Modell</h3>
+          <Card className="border-teal-500/20">
+            <CardContent className="p-5 flex flex-col sm:flex-row items-center gap-4">
+              <div className="p-3 rounded-xl bg-teal-500/10">
+                <Radar className="h-6 w-6 text-teal-600 dark:text-teal-400" />
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                <div className="flex items-center gap-2 justify-center sm:justify-start">
+                  <p className="font-bold text-sm">{subscription.name}</p>
+                  {subscription.badge && <Badge className="bg-teal-500 text-white border-0 text-[10px]">{subscription.badge}</Badge>}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">{subscription.description}</p>
+                {(() => {
+                  const md = (subscription.metadata as Record<string, unknown>) ?? {};
+                  const features = Array.isArray(md.features) ? md.features as string[] : [];
+                  return features.length > 0 ? (
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                      {features.map((f, i) => (
+                        <span key={i} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Check className="h-3 w-3 text-teal-500 flex-shrink-0" />{f}
+                        </span>
                       ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+              <p className="text-xl font-bold text-teal-600 dark:text-teal-400 whitespace-nowrap">{subscription.price_label}</p>
+            </CardContent>
+          </Card>
         </div>
       )}
     </>
@@ -271,82 +279,15 @@ export default function PetsShop() {
         })}
       </WidgetGrid>
 
-      {/* ── Ernährung (from DB) ─────────────────────────── */}
-      {activeWidget === 'shop' && (
-        <div className="space-y-4">
-          <Card className="overflow-hidden border-0">
-            <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/5 p-6 sm:p-8">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-background/80 backdrop-blur-sm shadow-sm">
-                  <UtensilsCrossed className="h-7 w-7 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-amber-600 dark:text-amber-400">Lakefields</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Hochwertiges und naturbelassenes Hundefutter</p>
-                </div>
-                <Button className="gap-2 shadow-sm" onClick={() => window.open('https://www.lakefields.de/Hundefutter/', '_blank')}>
-                  <ExternalLink className="h-4 w-4" />
-                  Shop öffnen
-                </Button>
-              </div>
-            </div>
-          </Card>
-          <ProductGrid shopKey="pet-ernaehrung" accentColor="hsl(38, 92%, 50%)" />
-        </div>
-      )}
-
-      {/* ── Lennox Tracker (hardcoded product info — not shop items) ─────── */}
-      {activeWidget === 'lennox' && (
+      {/* ── Lennox Tracker ─────────────────────────── */}
+      {activeWidget === 'tracker' && (
         <div className="space-y-6">
-          <Card className="overflow-hidden border-0 relative">
-            <div className="relative">
-              <img src={lennoxHeroImg} alt="Lennox GPS Tracker – Hund mit Tracker" className="w-full h-64 sm:h-80 object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
-              <div className="absolute inset-0 flex flex-col justify-center p-6 sm:p-10">
-                <Badge className="w-fit mb-3 bg-teal-500/90 text-white border-0 text-[10px]">GPS-Tracker</Badge>
-                <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Lennox GPS Tracker</h2>
-                <p className="text-white/80 mt-2 max-w-md text-sm sm:text-base">Immer wissen, wo dein Liebling ist. Echtzeit-Ortung, Aktivitätstracking und Geofencing.</p>
-                <Button className="w-fit mt-4 gap-2 bg-teal-500 hover:bg-teal-600 text-white" disabled>
-                  <ShoppingCart className="h-4 w-4" /> Jetzt vorbestellen
-                </Button>
-              </div>
-            </div>
-          </Card>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {[
-              { icon: MapPin, title: 'Live-Ortung', desc: 'Weltweite Echtzeit-Verfolgung per GPS, WLAN & Mobilfunk' },
-              { icon: Activity, title: 'Aktivitätstracking', desc: 'Schritte, Ruhezeiten und Fitness deines Vierbeiners' },
-              { icon: Shield, title: 'Geofencing', desc: 'Sichere Zonen definieren und Benachrichtigungen erhalten' },
-              { icon: Battery, title: '14 Tage Akku', desc: 'Langlebiger Akku mit USB-C Schnellladung' },
-              { icon: Droplets, title: 'Wasserdicht IP67', desc: 'Robust bei Regen, Schlamm und Badespaß' },
-              { icon: Heart, title: 'Gesundheitswarnungen', desc: 'Auffälligkeiten bei Aktivität frühzeitig erkennen' },
-            ].map((f, i) => {
-              const Icon = f.icon;
-              return (
-                <Card key={i} className="border-teal-500/10 hover:border-teal-500/30 transition-colors">
-                  <CardContent className="p-4 flex flex-col gap-2">
-                    <div className="p-2 rounded-lg bg-teal-500/10 w-fit">
-                      <Icon className="h-5 w-5 text-teal-600 dark:text-teal-400" />
-                    </div>
-                    <p className="text-sm font-semibold">{f.title}</p>
-                    <p className="text-[11px] text-muted-foreground leading-snug">{f.desc}</p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-
-          <TrackerProductsFromDB />
-
-          <Card className="overflow-hidden border-0">
-            <img src={lennoxLifestyleImg} alt="Lennox Tracker im Alltag" className="w-full h-48 sm:h-64 object-cover rounded-2xl" />
-          </Card>
+          <TrackerSection />
         </div>
       )}
 
       {/* ── Lennox Style (from DB) ─────────────────────── */}
-      {activeWidget === 'zooplus' && (
+      {activeWidget === 'style' && (
         <div className="space-y-4">
           <Card className="overflow-hidden border-0">
             <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 p-6 sm:p-8">
@@ -365,55 +306,52 @@ export default function PetsShop() {
         </div>
       )}
 
-      {/* ── Fressnapf (from DB) ────────────────────────── */}
-      {activeWidget === 'fressnapf' && (
+      {/* ── Ernährung (from DB) ─────────────────────────── */}
+      {activeWidget === 'ernaehrung' && (
         <div className="space-y-4">
           <Card className="overflow-hidden border-0">
-            <div className="bg-gradient-to-br from-green-600/20 to-yellow-500/5 p-6 sm:p-8">
+            <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/5 p-6 sm:p-8">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-background/80 backdrop-blur-sm shadow-sm">
-                  <Store className="h-7 w-7 text-green-600 dark:text-green-400" />
+                  <UtensilsCrossed className="h-7 w-7 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-2xl font-bold text-green-600 dark:text-green-400">Fressnapf</h2>
-                    <Badge variant="outline" className="text-[10px] border-yellow-500/50 text-yellow-600">Awin Partner</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">Europas größte Fachmarktkette für Tierbedarf</p>
+                  <h2 className="text-2xl font-bold text-amber-600 dark:text-amber-400">Lakefields</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Hochwertiges und naturbelassenes Hundefutter</p>
                 </div>
-                <Button className="gap-2 shadow-sm bg-green-600 hover:bg-green-700 text-white" onClick={() => window.open('https://www.fressnapf.de', '_blank')}>
-                  <ExternalLink className="h-4 w-4" />
-                  Zum Shop
+                <Button className="gap-2 shadow-sm" onClick={() => window.open('https://www.lakefields.de/Hundefutter/', '_blank')}>
+                  <ExternalLink className="h-4 w-4" /> Shop öffnen
                 </Button>
               </div>
             </div>
           </Card>
-          <ProductGrid shopKey="pet-fressnapf" accentColor="hsl(142, 71%, 29%)" />
+          <ProductGrid shopKey="pet-ernaehrung" accentColor="hsl(38, 92%, 50%)" />
+        </div>
+      )}
 
-          <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Beliebte Kategorien</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {[
-                { name: 'Hundenassfutter', url: 'https://www.fressnapf.de/c/hund/hundefutter/nassfutter/' },
-                { name: 'Hundetrockenfutter', url: 'https://www.fressnapf.de/c/hund/hundefutter/trockenfutter/' },
-                { name: 'Katzennassfutter', url: 'https://www.fressnapf.de/c/katze/katzenfutter/nassfutter/' },
-                { name: 'Katzenstreu', url: 'https://www.fressnapf.de/c/katze/hygiene-pflege/katzenstreu/' },
-                { name: 'Hundesnacks', url: 'https://www.fressnapf.de/c/hund/hundefutter/snacks/' },
-                { name: 'Katzenspielzeug', url: 'https://www.fressnapf.de/c/katze/katzenspielzeug/' },
-              ].map((cat, i) => (
-                <Card
-                  key={i}
-                  className="group cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-green-500/30"
-                  onClick={() => window.open(cat.url, '_blank')}
-                >
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <span className="text-sm font-medium">{cat.name}</span>
-                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-green-500 transition-colors" />
-                  </CardContent>
-                </Card>
-              ))}
+      {/* ── Zooplus (from DB) ────────────────────────── */}
+      {activeWidget === 'zooplus' && (
+        <div className="space-y-4">
+          <Card className="overflow-hidden border-0">
+            <div className="bg-gradient-to-br from-orange-500/20 to-orange-600/5 p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-background/80 backdrop-blur-sm shadow-sm">
+                  <Store className="h-7 w-7 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-2xl font-bold text-orange-600 dark:text-orange-400">Zooplus</h2>
+                    <Badge variant="outline" className="text-[10px] border-orange-500/50 text-orange-600">AWIN Partner</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">Europas führender Online-Shop für Haustierbedarf</p>
+                </div>
+                <Button className="gap-2 shadow-sm bg-orange-600 hover:bg-orange-700 text-white" onClick={() => window.open('https://www.zooplus.de', '_blank')}>
+                  <ExternalLink className="h-4 w-4" /> Zum Shop
+                </Button>
+              </div>
             </div>
-          </div>
+          </Card>
+          <ProductGrid shopKey="pet-zooplus" accentColor="hsl(25, 95%, 53%)" />
         </div>
       )}
 

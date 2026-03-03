@@ -1,14 +1,14 @@
 /**
- * ServiceDeskPetShop — MOD-05: Ernährung, Lennox Tracker, Lennox Style, Fressnapf
- * Migrated from PetDeskShop, now uses service_shop_products
+ * ServiceDeskPetShop — MOD-05: Lennox Tracker, Lennox Style, Ernährung, Zooplus
+ * Uses service_shop_products via ServiceDeskProductCRUD
  */
 import ServiceDeskProductCRUD from './ServiceDeskProductCRUD';
 
 const SUB_TABS = [
-  { key: 'ernaehrung', label: 'Ernährung' },
   { key: 'tracker', label: 'Lennox Tracker' },
   { key: 'style', label: 'Lennox Style' },
-  { key: 'fressnapf', label: 'Fressnapf' },
+  { key: 'ernaehrung', label: 'Ernährung' },
+  { key: 'zooplus', label: 'Zooplus' },
 ];
 
 export default function ServiceDeskPetShop() {
