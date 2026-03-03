@@ -11,20 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { LENNOX as C } from './lennoxTheme';
-import { supabase } from '@/integrations/supabase/client';
 
+import foundersHero from '@/assets/lennox/founders_hero.jpg';
+import robynBusiness from '@/assets/lennox/robyn_business.jpeg';
 import gruenderinSee from '@/assets/lennox/gruenderin_see.jpeg';
 import gruenderinLennox from '@/assets/lennox/gruenderin_lennox.jpeg';
 import gruenderinPferd from '@/assets/lennox/gruenderin_pferd.jpeg';
 import lennoxPortrait from '@/assets/lennox/lennox_portrait.jpeg';
-
-const AVATAR_BUCKET = 'tenant-documents';
-const ROBYN_AVATAR_PATH = 'eac1778a-23bc-4d03-b3f9-b26be27c9505/MOD_01/99d271be-4ebb-4495-970d-ad91e943e4f0/avatars/avatar_1772488912468_9F77D730-1781-4AB0-B111-8D22260A0714_4_5005_c.jpeg';
-
-function getAvatarUrl() {
-  const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(ROBYN_AVATAR_PATH);
-  return data.publicUrl;
-}
 
 export default function LennoxLennox() {
   return (
@@ -41,7 +34,7 @@ export default function LennoxLennox() {
       {/* ═══════════════════ HERO — See-Bild ═══════════════════ */}
       <section className="relative overflow-hidden" style={{ minHeight: '50vh' }}>
         <div className="absolute inset-0">
-          <img src={gruenderinSee} alt="Robyn am Bergsee mit Lennox" className="w-full h-full object-cover" />
+          <img src={foundersHero} alt="Robyn und Lennox auf einer Almwiese mit Bergpanorama" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/60" />
         </div>
         <div className="relative z-10 max-w-5xl mx-auto px-6 flex flex-col items-center justify-center text-center" style={{ minHeight: '50vh' }}>
@@ -81,11 +74,10 @@ export default function LennoxLennox() {
                 <div className="flex flex-col md:flex-row">
                   <div className="md:w-64 h-64 md:h-auto flex-shrink-0">
                     <img
-                      src={getAvatarUrl()}
-                      alt="Robyn Gebhard — Founder"
-                      className="w-full h-full object-cover"
-                      onError={e => { (e.target as HTMLImageElement).src = gruenderinLennox; }}
-                    />
+                       src={robynBusiness}
+                       alt="Robyn Gebhard — Founder"
+                       className="w-full h-full object-cover"
+                     />
                   </div>
                   <div className="flex-1 p-6 space-y-4">
                     <div className="flex items-start justify-between">
@@ -183,7 +175,7 @@ export default function LennoxLennox() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="rounded-2xl overflow-hidden shadow-md aspect-[3/4]">
-              <img src={gruenderinLennox} alt="Robyn mit Lennox" className="w-full h-full object-cover" />
+              <img src={gruenderinSee} alt="Robyn am See" className="w-full h-full object-cover" />
             </div>
             <div className="rounded-2xl overflow-hidden shadow-md aspect-[3/4]">
               <img src={gruenderinPferd} alt="Robyn mit Pferd" className="w-full h-full object-cover" />
