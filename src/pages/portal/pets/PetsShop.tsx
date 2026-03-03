@@ -33,7 +33,7 @@ const WIDGETS: { key: ShopWidget; title: string; icon: typeof Store; description
   { key: 'tracker', title: 'Lennox Tracker', icon: Radar, description: 'GPS-Tracker für Ihr Tier bestellen' },
   { key: 'style', title: 'Lennox Style', icon: PawPrint, description: 'Premium Hundezubehör — eigene Kollektion' },
   { key: 'ernaehrung', title: 'Ernährung', icon: UtensilsCrossed, description: 'Lakefields — Naturbelassenes Hundefutter' },
-  { key: 'zooplus', title: 'Zooplus', icon: Store, description: 'Premium Tierbedarf bei Zooplus', badge: 'AWIN Partner' },
+  { key: 'zooplus', title: 'Zooplus', icon: Store, description: 'Premium Tierbedarf bei Zooplus' },
 ];
 
 /* ── Generic Product Grid (from DB via service_shop_products) ─── */
@@ -341,7 +341,6 @@ export default function PetsShop() {
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
                     <h2 className="text-2xl font-bold text-orange-600 dark:text-orange-400">Zooplus</h2>
-                    <Badge variant="outline" className="text-[10px] border-orange-500/50 text-orange-600">AWIN Partner</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">Europas führender Online-Shop für Haustierbedarf</p>
                 </div>

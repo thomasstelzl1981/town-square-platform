@@ -19,7 +19,7 @@ const WIDGETS: { key: ShopWidget; title: string; icon: typeof Store; desc: strin
   { key: 'tracker', title: 'Lennox Tracker', icon: Radar, desc: 'GPS-Tracker für deinen Liebling' },
   { key: 'style', title: 'Lennox Style', icon: PawPrint, desc: 'Accessoires & Kollektion' },
   { key: 'ernaehrung', title: 'Ernährung', icon: UtensilsCrossed, desc: 'Lakefields Premium-Futter' },
-  { key: 'zooplus', title: 'Zooplus', icon: Store, desc: 'Premium Tierbedarf', badge: 'AWIN Partner' },
+  { key: 'zooplus', title: 'Zooplus', icon: Store, desc: 'Premium Tierbedarf' },
 ];
 
 const SHOP_KEY_MAP: Record<ShopWidget, string> = {
@@ -263,7 +263,6 @@ export default function LennoxShop() {
             <div className="rounded-xl p-5 space-y-3" style={{ backgroundColor: C.sandLight }}>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold" style={{ color: C.bark }}>Zooplus</p>
-                <Badge variant="outline" className="text-[9px]" style={{ borderColor: C.forest, color: C.forest }}>AWIN Partner</Badge>
               </div>
               <p className="text-sm" style={{ color: C.bark }}>
                 Unsere Auswahl an hochwertigem Tierbedarf von Zooplus — Europas führender Online-Shop für Haustierbedarf.
