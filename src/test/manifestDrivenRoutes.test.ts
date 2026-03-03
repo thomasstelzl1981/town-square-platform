@@ -105,7 +105,7 @@ describe('Zone 2: Portal Modules', () => {
     'MOD-19': 4,
     'MOD-20': 4,
     'MOD-21': 5,
-    'MOD-22': 7,
+    'MOD-22': 9,
   };
 
   describe('Tile Counts', () => {
@@ -238,7 +238,7 @@ describe('Route Counts', () => {
     const modules = Object.values(zone2Portal.modules || {});
     const tileCount = modules.reduce((sum, m) => sum + m.tiles.length, 0);
     // Sum of all tile counts (MOD-21 removed: 111 - 5 = 106, +1 FDC Kontrolle = 107)
-    expect(tileCount).toBe(107);
+    expect(tileCount).toBe(109);
   });
 
   it('should calculate total Zone 3 routes', () => {
