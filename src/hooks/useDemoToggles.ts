@@ -117,6 +117,12 @@ export function useDemoToggles() {
   }, []);
 
   const toggleAll = useCallback(async (on: boolean) => {
+    // Demo session: data is persistent and read-only — no seed/cleanup needed
+    if (isDemoSession()) {
+      if (import.meta.env.DEV) console.log('[DemoToggles] Demo session — skipping seed/cleanup (persistent data)');
+      return;
+    }
+
     // Prevent concurrent seed/cleanup operations
     if (seedLockRef.current) return;
     seedLockRef.current = true;

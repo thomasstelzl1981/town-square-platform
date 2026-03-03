@@ -44,11 +44,18 @@ export function useDemoAutoLogin() {
   }, []);
 
   // Explicit end demo (called from banner button)
+  // P0-FIX: Navigate FIRST, then sign out — prevents spinning wheel
   const endDemo = useCallback(async () => {
     setDemoState('cleaning');
-    await cleanupAndLogout();
+    setDemoSessionFlag(false);
     navigate('/sot');
-  }, [cleanupAndLogout, navigate]);
+    // Sign out in background after navigation has started
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // ignore — user is already on /sot
+    }
+  }, [navigate]);
 
   // Auto-login flow — no seed, data is persistent in demo tenant
   useEffect(() => {
