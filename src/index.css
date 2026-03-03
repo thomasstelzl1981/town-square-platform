@@ -41,37 +41,37 @@
      ========================================================================= */
   :root {
     /* Core Backgrounds */
-    --background: 210 20% 98%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 25% 98%;
+    --foreground: 222 35% 10%;
 
     /* Glass-enabled surfaces with alpha channel */
-    --card: 0 0% 100% / 0.92;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100% / 0.96;
+    --card-foreground: 222 35% 10%;
     --card-glass: 0 0% 100% / 0.7;
     --surface-glass: 0 0% 98% / 0.6;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100% / 0.98;
+    --popover-foreground: 222 35% 10%;
 
     /* Primary Colors */
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 217 91% 56%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 18% 92%;
+    --secondary-foreground: 222 35% 10%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215 14% 45%;
+    --muted: 220 20% 96%;
+    --muted-foreground: 220 12% 38%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 220 18% 92%;
+    --accent-foreground: 222 35% 10%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     /* Borders & Inputs */
-    --border: 214 25% 88%;
-    --input: 214 25% 88%;
+    --border: 220 18% 86%;
+    --input: 220 18% 86%;
     --ring: var(--accent-primary);
 
     /* Radius System — iOS-style larger radii */
@@ -98,15 +98,15 @@
     --status-info: 199 80% 42%;
 
     /* Surface Layers */
-    --surface: 0 0% 98%;
-    --surface-2: 0 0% 96%;
+    --surface: 220 20% 96%;
+    --surface-2: 220 18% 94%;
     --border-subtle: 214 32% 91%;
     --border-glow: 217 91% 60%;
 
     /* Text Hierarchy */
-    --text-primary: 222 84% 5%;
-    --text-secondary: 215 18% 40%;
-    --text-dimmed: 215 12% 55%;
+    --text-primary: 222 35% 10%;
+    --text-secondary: 220 10% 36%;
+    --text-dimmed: 220 9% 52%;
 
     /* Accent (CI Primary - konfigurierbar) */
     --accent-primary: 217 91% 60%;
@@ -150,37 +150,37 @@
      ========================================================================= */
   .dark {
     /* Core Backgrounds - Dark enterprise UI */
-    --background: 222 47% 6%;
-    --foreground: 210 35% 96%;
+    --background: 222 20% 8%;
+    --foreground: 210 20% 96%;
 
     /* Glass-enabled surfaces with alpha channel */
-    --card: 222 30% 10% / 0.85;
-    --card-foreground: 210 40% 98%;
+    --card: 222 18% 12% / 0.92;
+    --card-foreground: 210 20% 96%;
     --card-glass: 222 47% 6% / 0.7;
     --surface-glass: 222 47% 5% / 0.6;
 
-    --popover: 222 35% 9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 222 18% 13% / 0.94;
+    --popover-foreground: 210 20% 96%;
 
     /* Primary Colors */
     --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 6%;
+    --primary-foreground: 222 20% 8%;
 
-    --secondary: 222 30% 14%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 222 14% 16%;
+    --secondary-foreground: 210 20% 96%;
 
-    --muted: 222 25% 16%;
-    --muted-foreground: 215 20% 70%;
+    --muted: 222 14% 16%;
+    --muted-foreground: 220 10% 70%;
 
-    --accent: 222 30% 14%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 222 14% 16%;
+    --accent-foreground: 210 20% 96%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 210 40% 98%;
 
     /* Borders & Inputs */
-    --border: 222 20% 22%;
-    --input: 222 25% 16%;
+    --border: 222 14% 22%;
+    --input: 222 14% 22%;
     --ring: 217 91% 60%;
 
     /* Sidebar - Dark (Menu bleibt dunkel) */
@@ -210,15 +210,15 @@
     --reading-surface: 222 28% 12% / 0.92;
 
     /* Surface Layers - Dark enterprise (original) */
-    --surface: 222 30% 11%;
-    --surface-2: 222 35% 8%;
+    --surface: 222 18% 12%;
+    --surface-2: 222 16% 10%;
     --border-subtle: 222 20% 18%;
     --border-glow: 217 50% 35%;
 
     /* Text Hierarchy */
-    --text-primary: 210 35% 96%;
-    --text-secondary: 215 20% 72%;
-    --text-dimmed: 215 18% 65%;
+    --text-primary: 210 20% 96%;
+    --text-secondary: 220 9% 72%;
+    --text-dimmed: 220 8% 62%;
 
     /* Accent (CI Primary - konfigurierbar) */
     --accent-primary: 217 91% 60%;
@@ -359,18 +359,18 @@
       hsl(215 40% 8%) 30%,
       transparent 55%
     ),
-    /* Layer 3: Violetter Nebel unten-links (kräftiger) */
+    /* Layer 3: Neutraler Graphite-Nebel unten-links */
     radial-gradient(
       ellipse 60% 50% at 5% 100%,
-      hsl(275 45% 14%) 0%,
-      hsl(270 35% 8%) 30%,
+      hsl(220 25% 12%) 0%,
+      hsl(222 20% 8%) 30%,
       transparent 60%
     ),
-    /* Layer 4: Sekundärer Nebel unten-rechts */
+    /* Layer 4: Neutraler Graphite-Nebel unten-rechts */
     radial-gradient(
       ellipse 45% 35% at 85% 90%,
-      hsl(250 35% 12%) 0%,
-      hsl(245 30% 6%) 25%,
+      hsl(222 20% 10%) 0%,
+      hsl(222 18% 6%) 25%,
       transparent 50%
     ),
     /* Layer 5: Zentraler Sternenstaub-Schimmer */
