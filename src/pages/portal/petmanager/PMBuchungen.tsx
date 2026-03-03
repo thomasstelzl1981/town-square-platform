@@ -1,101 +1,111 @@
 /**
- * PMBuchungen — Kalender & Buchungsverwaltung (Pet Manager)
- * Phase 2: Mit Belegungsprüfung vor Buchungsannahme
+ * PMBuchungen — Buchungsverwaltung via PLC-Engine (pet_service_cases SSOT)
  */
-import { useState } from 'react';
-import { Calendar, Check, X, Clock, PawPrint, AlertTriangle, LogIn, LogOut } from 'lucide-react';
+import { Calendar, Check, X, Clock, PawPrint, AlertTriangle, LogIn, LogOut, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useMyProvider, useBookings, useUpdateBookingStatus, type PetBooking } from '@/hooks/usePetBookings';
+import { useMyProvider } from '@/hooks/usePetBookings';
 import { usePetCapacity } from '@/hooks/usePetCapacity';
+import { useCasesForProvider, useTransitionCase, type CaseWithComputed } from '@/hooks/usePetServiceCases';
+import { PLC_PHASE_LABELS, type PLCPhase } from '@/engines/plc/spec';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
-import { useDemoToggles } from '@/hooks/useDemoToggles';
-import { isDemoId } from '@/engines/demoData';
+import { Progress } from '@/components/ui/progress';
 
-const STATUS_LABELS: Record<string, string> = {
-  requested: 'Angefragt', confirmed: 'Bestätigt', in_progress: 'Laufend',
-  completed: 'Abgeschlossen', cancelled: 'Storniert', no_show: 'Nicht erschienen',
+const PHASE_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  provider_selected: 'outline',
+  provider_confirmed: 'default',
+  checked_in: 'default',
+  checked_out: 'secondary',
+  settlement: 'secondary',
+  closed_completed: 'secondary',
+  closed_cancelled: 'destructive',
+  provider_declined: 'destructive',
 };
 
-const STATUS_COLORS: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  requested: 'outline', confirmed: 'default', in_progress: 'default',
-  completed: 'secondary', cancelled: 'destructive', no_show: 'destructive',
-};
-
-function BookingRow({ booking, onUpdateStatus, capacityWarning }: {
-  booking: PetBooking;
-  onUpdateStatus: (id: string, status: string) => void;
-  capacityWarning?: 'full' | 'almost' | null;
+function CaseRow({ c, onTransition, isPending }: {
+  c: CaseWithComputed;
+  onTransition: (caseId: string, eventType: string) => void;
+  isPending: boolean;
 }) {
-  const handleConfirm = () => {
-    if (capacityWarning === 'full') {
-      toast.error('Kapazität erschöpft — Buchung kann nicht angenommen werden.');
-      return;
-    }
-    if (capacityWarning === 'almost') {
-      toast.warning('Achtung: Fast ausgebucht an diesem Tag.');
-    }
-    onUpdateStatus(booking.id, 'confirmed');
-  };
+  const phase = c.current_phase;
 
   return (
     <div className={cn(DESIGN.LIST.ROW, 'flex-col sm:flex-row items-start')}>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-medium">{booking.service?.title}</p>
-          <Badge variant={STATUS_COLORS[booking.status] || 'secondary'} className="text-[10px]">
-            {STATUS_LABELS[booking.status] || booking.status}
+          <p className="text-sm font-medium">{c.customer_name || c.customer_email || 'Unbekannt'}</p>
+          <Badge variant={PHASE_BADGE_VARIANT[phase] || 'secondary'} className="text-[10px]">
+            {PLC_PHASE_LABELS[phase]}
           </Badge>
+          {c.computed.isStuck && (
+            <Badge variant="destructive" className="text-[10px]">
+              <AlertTriangle className="h-3 w-3 mr-0.5" /> Überfällig
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{format(parseISO(booking.scheduled_date), 'dd.MM.yyyy', { locale: de })}</span>
-          {booking.scheduled_time_start && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{booking.scheduled_time_start.slice(0, 5)}</span>}
-          <span className="flex items-center gap-1"><PawPrint className="h-3 w-3" />{booking.pet?.name}</span>
+          {c.scheduled_start && (
+            <span className="flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              {format(parseISO(c.scheduled_start), 'dd.MM.yyyy', { locale: de })}
+            </span>
+          )}
+          <span className="flex items-center gap-1">
+            <PawPrint className="h-3 w-3" />{c.service_type}
+          </span>
+          {c.total_price_cents > 0 && (
+            <span className="flex items-center gap-1">
+              <CreditCard className="h-3 w-3" />{(c.total_price_cents / 100).toFixed(2)} €
+            </span>
+          )}
         </div>
-        {booking.client_notes && <p className="text-xs text-muted-foreground mt-1 italic">„{booking.client_notes}"</p>}
+        {c.customer_notes && <p className="text-xs text-muted-foreground mt-1 italic">„{c.customer_notes}"</p>}
+        {/* PLC Progress */}
+        <div className="mt-2 flex items-center gap-2">
+          <Progress value={c.computed.progressPercent} className="h-1.5 flex-1" />
+          <span className="text-[10px] text-muted-foreground">{c.computed.progressPercent}%</span>
+        </div>
       </div>
-      <div className="flex gap-1 shrink-0 mt-2 sm:mt-0">
-        {booking.status === 'requested' && (
+      <div className="flex gap-1 shrink-0 mt-2 sm:mt-0 flex-wrap">
+        {phase === 'provider_selected' && (
           <>
-            <Button
-              size="sm"
-              variant="outline"
-              className={cn('h-7 gap-1 text-xs', capacityWarning === 'full' && 'opacity-50')}
-              onClick={handleConfirm}
-              disabled={capacityWarning === 'full'}
-            >
+            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => onTransition(c.id, 'provider.confirmed')} disabled={isPending}>
               <Check className="h-3 w-3" /> Annehmen
             </Button>
-            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs text-destructive" onClick={() => onUpdateStatus(booking.id, 'cancelled')}>
+            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs text-destructive" onClick={() => onTransition(c.id, 'provider.declined')} disabled={isPending}>
               <X className="h-3 w-3" /> Ablehnen
             </Button>
-            {capacityWarning === 'full' && (
-              <span className="flex items-center gap-1 text-[10px] text-destructive">
-                <AlertTriangle className="h-3 w-3" /> Voll
-              </span>
-            )}
           </>
         )}
-        {booking.status === 'confirmed' && (
+        {phase === 'provider_confirmed' && (
           <>
-            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => onUpdateStatus(booking.id, 'in_progress')}>
+            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => onTransition(c.id, 'service.checked_in')} disabled={isPending}>
               <LogIn className="h-3 w-3" /> Check-In
             </Button>
-            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs text-destructive" onClick={() => onUpdateStatus(booking.id, 'cancelled')}>
+            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs text-destructive" onClick={() => onTransition(c.id, 'case.cancelled_by_provider')} disabled={isPending}>
               <X className="h-3 w-3" /> Stornieren
             </Button>
           </>
         )}
-        {booking.status === 'in_progress' && (
-          <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => onUpdateStatus(booking.id, 'completed')}>
+        {phase === 'checked_in' && (
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => onTransition(c.id, 'service.checked_out')} disabled={isPending}>
             <LogOut className="h-3 w-3" /> Check-Out
+          </Button>
+        )}
+        {phase === 'checked_out' && (
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => onTransition(c.id, 'settlement.completed')} disabled={isPending}>
+            <CreditCard className="h-3 w-3" /> Abrechnen
+          </Button>
+        )}
+        {phase === 'settlement' && (
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => onTransition(c.id, 'case.closed_completed')} disabled={isPending}>
+            <Check className="h-3 w-3" /> Abschließen
           </Button>
         )}
       </div>
@@ -105,26 +115,21 @@ function BookingRow({ booking, onUpdateStatus, capacityWarning }: {
 
 export default function PMBuchungen() {
   const { data: provider } = useMyProvider();
-  const { data: allBookings = [], isLoading } = useBookings(provider ? { providerId: provider.id } : undefined);
+  const { data: cases = [], isLoading } = useCasesForProvider(provider?.id);
   const { data: capacity } = usePetCapacity(provider?.id);
-  const updateStatus = useUpdateBookingStatus();
-  const { isEnabled } = useDemoToggles();
-  const demoEnabled = isEnabled('GP-PET');
-  const bookings = demoEnabled ? allBookings : allBookings.filter(b => !isDemoId(b.id));
+  const transitionCase = useTransitionCase();
 
-  const handleUpdate = (id: string, status: string) => updateStatus.mutate({ id, status });
-
-  const pending = bookings.filter(b => b.status === 'requested');
-  const active = bookings.filter(b => ['confirmed', 'in_progress'].includes(b.status));
-  const past = bookings.filter(b => ['completed', 'cancelled', 'no_show'].includes(b.status));
-
-  const getCapacityWarning = (booking: PetBooking): 'full' | 'almost' | null => {
-    if (!capacity) return null;
-    // Check capacity for the booking's specific date (simplified: uses today's capacity)
-    if (capacity.isFullyBooked) return 'full';
-    if (capacity.availableSlots <= 2) return 'almost';
-    return null;
+  const handleTransition = (caseId: string, eventType: string) => {
+    transitionCase.mutate({
+      case_id: caseId,
+      event_type: eventType as any,
+      actor_type: 'provider',
+    });
   };
+
+  const pending = cases.filter(c => c.current_phase === 'provider_selected');
+  const active = cases.filter(c => ['provider_confirmed', 'checked_in', 'checked_out', 'settlement'].includes(c.current_phase));
+  const past = cases.filter(c => ['closed_completed', 'closed_cancelled', 'provider_declined'].includes(c.current_phase));
 
   if (!provider) {
     return (
@@ -148,18 +153,17 @@ export default function PMBuchungen() {
         <h1 className="text-2xl font-bold">Kalender & Buchungen</h1>
       </div>
 
-      {/* Capacity banner */}
       {capacity?.isFullyBooked && (
         <div className={cn(DESIGN.INFO_BANNER.BASE, DESIGN.INFO_BANNER.WARNING, 'flex items-center gap-2')}>
           <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-          <p className="text-sm">Heute ausgebucht — {capacity.bookedToday}/{capacity.totalCapacity} Plätze belegt. Neue Anfragen können nicht angenommen werden.</p>
+          <p className="text-sm">Heute ausgebucht — {capacity.bookedToday}/{capacity.totalCapacity} Plätze belegt.</p>
         </div>
       )}
 
       {/* KPIs */}
       <div className="grid grid-cols-3 gap-4">
         <Card><CardContent className="pt-4 text-center"><p className="text-2xl font-bold text-accent-foreground">{pending.length}</p><p className="text-xs text-muted-foreground">Offene Anfragen</p></CardContent></Card>
-        <Card><CardContent className="pt-4 text-center"><p className="text-2xl font-bold text-primary">{active.length}</p><p className="text-xs text-muted-foreground">Aktive Buchungen</p></CardContent></Card>
+        <Card><CardContent className="pt-4 text-center"><p className="text-2xl font-bold text-primary">{active.length}</p><p className="text-xs text-muted-foreground">Aktive Cases</p></CardContent></Card>
         <Card><CardContent className="pt-4 text-center"><p className="text-2xl font-bold text-muted-foreground">{past.length}</p><p className="text-xs text-muted-foreground">Abgeschlossen</p></CardContent></Card>
       </div>
 
@@ -172,17 +176,17 @@ export default function PMBuchungen() {
 
         <TabsContent value="pending" className="space-y-2 mt-4">
           {pending.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Keine offenen Anfragen</p> :
-            pending.map(b => <BookingRow key={b.id} booking={b} onUpdateStatus={handleUpdate} capacityWarning={getCapacityWarning(b)} />)}
+            pending.map(c => <CaseRow key={c.id} c={c} onTransition={handleTransition} isPending={transitionCase.isPending} />)}
         </TabsContent>
 
         <TabsContent value="active" className="space-y-2 mt-4">
-          {active.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Keine aktiven Buchungen</p> :
-            active.map(b => <BookingRow key={b.id} booking={b} onUpdateStatus={handleUpdate} />)}
+          {active.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Keine aktiven Cases</p> :
+            active.map(c => <CaseRow key={c.id} c={c} onTransition={handleTransition} isPending={transitionCase.isPending} />)}
         </TabsContent>
 
         <TabsContent value="past" className="space-y-2 mt-4">
           {past.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Noch keine Buchungshistorie</p> :
-            past.map(b => <BookingRow key={b.id} booking={b} onUpdateStatus={handleUpdate} />)}
+            past.map(c => <CaseRow key={c.id} c={c} onTransition={handleTransition} isPending={transitionCase.isPending} />)}
         </TabsContent>
       </Tabs>
     </div>

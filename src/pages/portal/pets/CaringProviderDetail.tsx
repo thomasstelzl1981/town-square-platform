@@ -16,7 +16,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useProviderDetail } from '@/hooks/usePetProviderSearch';
 import { usePublicProviderAvailability, usePublicProviderServices, usePublicProviderBlockedDates } from '@/hooks/usePublicPetProvider';
-import { useCreateBooking } from '@/hooks/usePetBookings';
+import { useCreateCase } from '@/hooks/usePetServiceCases';
+import { useAuth } from '@/contexts/AuthContext';
 import { usePets } from '@/hooks/usePets';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
@@ -63,7 +64,8 @@ export default function CaringProviderDetail() {
   const [selectedPet, setSelectedPet] = useState('');
   const [notes, setNotes] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState<{ service: string; date: string; pet: string; price: string } | null>(null);
-  const createBooking = useCreateBooking();
+  const createCase = useCreateCase();
+  const { user, profile } = useAuth();
 
   // Lightbox
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -129,26 +131,32 @@ export default function CaringProviderDetail() {
 
     if (!scheduledDate) return;
 
-    const slot = slotsForDate.find(s => s.id === selectedSlot);
-    const scheduledTimeStart = isBoarding ? undefined : slot?.start_time?.slice(0, 5);
+    // Map service category to PLC service_type
+    const serviceTypeMap: Record<string, string> = {
+      boarding: 'pension', daycare: 'daycare', walking: 'walking',
+      grooming: 'grooming', puppy_class: 'training',
+    };
 
-    // Berechne Preis: Pension = Tage * Tagespreis, sonst Einzelpreis
     let priceCents = selectedService.price_cents;
     if (isBoarding && dateRange?.from && dateRange?.to) {
       const days = differenceInCalendarDays(dateRange.to, dateRange.from);
       priceCents = days * selectedService.price_cents;
     }
 
+    const scheduledEnd = isBoarding && dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : scheduledDate;
+
     try {
-      await createBooking.mutateAsync({
-        pet_id: selectedPet,
-        service_id: selectedService.id,
+      await createCase.mutateAsync({
         provider_id: providerId,
-        scheduled_date: scheduledDate,
-        scheduled_time_start: scheduledTimeStart,
-        duration_minutes: selectedService.duration_minutes,
-        price_cents: priceCents,
-        client_notes: notes || undefined,
+        service_type: (serviceTypeMap[selectedService.category] || 'other') as any,
+        pet_id: selectedPet || null,
+        customer_name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : null,
+        customer_email: user?.email || null,
+        customer_notes: notes || null,
+        scheduled_start: scheduledDate,
+        scheduled_end: scheduledEnd,
+        total_price_cents: priceCents,
+        tenant_id: provider?.tenant_id || '',
       });
 
       setBookingSuccess({
@@ -160,14 +168,13 @@ export default function CaringProviderDetail() {
         price: `${(priceCents / 100).toFixed(2)} €`,
       });
 
-      // Reset form
       setSelectedDate(undefined);
       setDateRange(undefined);
       setSelectedSlot('');
       setSelectedPet('');
       setNotes('');
     } catch {
-      // Error toast is handled by useCreateBooking
+      // Error handled by hook
     }
   };
 
@@ -459,8 +466,8 @@ export default function CaringProviderDetail() {
               </div>
             </div>
 
-            <Button onClick={handleBooking} className="w-full" disabled={!selectedPet || !dateRange.to || createBooking.isPending}>
-              {createBooking.isPending ? 'Wird gesendet…' : 'Termin anfragen'}
+            <Button onClick={handleBooking} className="w-full" disabled={!selectedPet || !dateRange.to || createCase.isPending}>
+              {createCase.isPending ? 'Wird gesendet…' : 'Termin anfragen'}
             </Button>
           </CardContent>
         </Card>
@@ -507,8 +514,8 @@ export default function CaringProviderDetail() {
               </div>
             </div>
 
-            <Button onClick={handleBooking} className="w-full" disabled={!selectedSlot || !selectedPet || createBooking.isPending}>
-              {createBooking.isPending ? 'Wird gesendet…' : 'Termin anfragen'}
+            <Button onClick={handleBooking} className="w-full" disabled={!selectedSlot || !selectedPet || createCase.isPending}>
+              {createCase.isPending ? 'Wird gesendet…' : 'Termin anfragen'}
             </Button>
           </CardContent>
         </Card>
