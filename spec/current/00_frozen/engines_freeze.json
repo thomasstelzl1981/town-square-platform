@@ -1,22 +1,22 @@
 {
-  "version": "1.2",
-  "updated_at": "2026-03-01T12:00:00.000Z",
+  "version": "2.0",
+  "updated_at": "2026-03-03T12:00:00.000Z",
   "description": "SSOT for engine freeze states. AI MUST check this file before modifying any file in src/engines/*. If an engine is frozen, changes are NOT ALLOWED without explicit unfreeze.",
   "engines": {
     "ENG-AKQUISE": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/akquiseCalc/*", "reason": "Production freeze" },
     "ENG-FINANCE": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/finanzierung/*", "reason": "Production freeze" },
-    "ENG-PROVISION": { "frozen": false, "frozen_at": "2026-02-26T15:00:00.000Z", "unfrozen_at": "2026-03-02T14:00:00.000Z", "path": "src/engines/provision/*", "reason": "Unfrozen for SLC Phase 0: Systemgebuehr → Provisionsabgabe rename + 25% fix" },
-    "ENG-BWA": { "frozen": false, "frozen_at": "2026-02-26T15:00:00.000Z", "unfrozen_at": "2026-03-02T03:00:00.000Z", "path": "src/engines/bewirtschaftung/*", "reason": "Unfrozen for TLC Feld 19 Rechnungsprüfung" },
+    "ENG-PROVISION": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/engines/provision/*", "reason": "Full freeze — PLC Audit wave" },
+    "ENG-BWA": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/engines/bewirtschaftung/*", "reason": "Full freeze — PLC Audit wave" },
     "ENG-PROJEKT": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/projektCalc/*", "reason": "Production freeze" },
     "ENG-NK": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/nkAbrechnung/*", "reason": "Production freeze" },
     "ENG-DEMODATA": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/demoData/*", "reason": "Production freeze" },
-    "ENG-FINUEB": { "frozen": true, "frozen_at": "2026-03-01T12:00:00.000Z", "path": "src/engines/finanzuebersicht/*", "reason": "Re-frozen after Sachversicherung-Aggregation fix + other_income_monthly fix" },
+    "ENG-FINUEB": { "frozen": true, "frozen_at": "2026-03-01T12:00:00.000Z", "path": "src/engines/finanzuebersicht/*", "reason": "Production freeze" },
     "ENG-VORSORGE": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/vorsorgeluecke/*", "reason": "Production freeze" },
     "ENG-VVSTEUER": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/vvSteuer/*", "reason": "Production freeze" },
     "ENG-KONTOMATCH": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/kontoMatch/*", "reason": "Production freeze" },
     "ENG-MKTDIR": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/marketDirectory/*", "reason": "Production freeze" },
-    "ENG-SLC": { "frozen": false, "frozen_at": null, "path": "src/engines/slc/*", "reason": "New engine — Phase 1 SLC Backbone" },
-    "ENG-FDC": { "frozen": false, "frozen_at": null, "path": "src/engines/fdc/*", "reason": "New engine — Wave 1 FDC Backbone" },
-    "ENG-PLC": { "frozen": false, "frozen_at": null, "path": "src/engines/plc/*", "reason": "New engine — Wave 1 Pet Service Lifecycle Controller" }
+    "ENG-SLC": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/engines/slc/*", "reason": "Full freeze — PLC Audit wave" },
+    "ENG-FDC": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/engines/fdc/*", "reason": "Full freeze — PLC Audit wave" },
+    "ENG-PLC": { "frozen": false, "frozen_at": null, "path": "src/engines/plc/*", "reason": "Open for PLC Audit Wave A-F fixes" }
   }
 }
