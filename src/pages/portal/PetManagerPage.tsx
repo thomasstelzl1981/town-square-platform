@@ -29,7 +29,8 @@ export default function PetManagerPage() {
       <Route path="dashboard" element={<React.Suspense fallback={<Loading />}><PMDashboard /></React.Suspense>} />
       <Route path="profil" element={<React.Suspense fallback={<Loading />}><PMProfil /></React.Suspense>} />
       <Route path="pension" element={<React.Suspense fallback={<Loading />}><PMPension /></React.Suspense>} />
-      <Route path="services" element={<React.Suspense fallback={<Loading />}><PMServices /></React.Suspense>} />
+      <Route path="dienstplan" element={<React.Suspense fallback={<Loading />}><PMServices /></React.Suspense>} />
+      <Route path="services" element={<Navigate to="../dienstplan" replace />} />
       <Route path="mitarbeiter" element={<React.Suspense fallback={<Loading />}><PMPersonal /></React.Suspense>} />
       <Route path="buchungen" element={<React.Suspense fallback={<Loading />}><PMBuchungen /></React.Suspense>} />
       <Route path="kalender" element={<React.Suspense fallback={<Loading />}><PMKalender /></React.Suspense>} />
