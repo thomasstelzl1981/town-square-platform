@@ -18,6 +18,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { isDemoSession } from "@/config/demoAccountConfig";
+import { toast as sonnerToast } from "sonner";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { lazy, Suspense } from "react";
@@ -66,6 +68,20 @@ const queryClient = new QueryClient({
     },
     mutations: {
       retry: 0, // Never retry mutations automatically
+      onError: (error) => {
+        // Global demo-mode interceptor: catch RLS write-block errors
+        const msg = error instanceof Error ? error.message : String(error);
+        if (
+          (msg.includes('row-level security') || msg.includes('violates row-level security')) &&
+          isDemoSession()
+        ) {
+          sonnerToast.info('Demo-Modus: Änderungen können nicht gespeichert werden.', {
+            description: 'Erstellen Sie einen eigenen Account, um alle Funktionen zu nutzen.',
+            duration: 4000,
+          });
+          return; // Suppress further error handling
+        }
+      },
     },
   },
 });

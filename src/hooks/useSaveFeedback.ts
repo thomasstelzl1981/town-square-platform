@@ -1,9 +1,11 @@
 /**
  * useSaveFeedback — Shared Zone-2 Save-Feedback Hook
  * Wraps useMutation with automatic toast + query invalidation.
+ * Intercepts demo-mode RLS errors with a user-friendly message.
  */
 import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { isDemoSession } from '@/config/demoAccountConfig';
 
 interface SaveFeedbackOptions<TData, TError, TVariables, TContext>
   extends Omit<UseMutationOptions<TData, TError, TVariables, TContext>, 'onSuccess' | 'onError'> {
@@ -17,6 +19,15 @@ interface SaveFeedbackOptions<TData, TError, TVariables, TContext>
   onSuccess?: (data: TData, variables: TVariables, context: TContext | undefined) => void;
   /** Additional onError callback */
   onError?: (error: TError, variables: TVariables, context: TContext | undefined) => void;
+}
+
+/** Check if an error is a demo-mode RLS write block */
+function isDemoRlsError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return (
+    (msg.includes('row-level security') || msg.includes('violates row-level security')) &&
+    isDemoSession()
+  );
 }
 
 export function useSaveFeedback<TData = unknown, TError = Error, TVariables = void, TContext = unknown>(
@@ -42,7 +53,14 @@ export function useSaveFeedback<TData = unknown, TError = Error, TVariables = vo
       userOnSuccess?.(data, variables, context);
     },
     onError: (error, variables, context) => {
-      toast.error(errorMessage);
+      if (isDemoRlsError(error)) {
+        toast.info('Demo-Modus: Änderungen können nicht gespeichert werden.', {
+          description: 'Erstellen Sie einen eigenen Account, um alle Funktionen zu nutzen.',
+          duration: 4000,
+        });
+      } else {
+        toast.error(errorMessage);
+      }
       userOnError?.(error, variables, context);
     },
   });
