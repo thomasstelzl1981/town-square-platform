@@ -868,7 +868,7 @@ export interface DemoSeedResult {
 }
 
 /** Total number of seed() calls in the orchestrator — keep in sync! */
-const TOTAL_SEED_STEPS = 30;
+const TOTAL_SEED_STEPS = 31;
 
 export async function seedDemoData(
   tenantId: string,
@@ -1002,6 +1002,9 @@ export async function seedDemoData(
   await seed('applicant_profiles', () => seedFromCSV('/demo-data/demo_applicant_profiles.csv', 'applicant_profiles', tenantId));
   await seed('finance_mandates', () => seedFromCSV('/demo-data/demo_finance_mandates.csv', 'finance_mandates', tenantId, { assigned_manager_id: userId }));
 
+  // Phase 4.6: FutureRoom Cases (MOD-11 — created after mandate acceptance)
+  await seed('future_room_cases', () => seedFromCSV('/demo-data/demo_future_room_cases.csv', 'future_room_cases', tenantId, { manager_tenant_id: tenantId }));
+
   // Phase 5: Miety (Zuhause)
   await seed('miety_homes', () => seedFromCSV('/demo-data/demo_miety_homes.csv', 'miety_homes', tenantId, { user_id: userId }));
   await seed('miety_contracts', () => seedFromCSV('/demo-data/demo_miety_contracts.csv', 'miety_contracts', tenantId));
@@ -1033,6 +1036,7 @@ export async function seedDemoData(
     acq_mandates: 1, acq_offers: 1,
     dev_projects: 1, dev_project_units: 24,
     finance_requests: 2, applicant_profiles: 3, finance_mandates: 2,
+    future_room_cases: 1,
     pets: 2,
   };
 
