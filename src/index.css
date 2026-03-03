@@ -72,7 +72,7 @@
     /* Borders & Inputs */
     --border: 214 25% 88%;
     --input: 214 25% 88%;
-    --ring: 222.2 84% 4.9%;
+    --ring: var(--accent-primary);
 
     /* Radius System — iOS-style larger radii */
     --radius: 1rem;           /* 16px */
