@@ -21,7 +21,9 @@ import NotFound from '@/pages/NotFound';
 // =============================================================================
 // Loading Fallback
 // =============================================================================
-const LoadingFallback = () => (
+// Ref-safe: plain div instead of function component to avoid
+// "Function components cannot be given refs" warnings with Suspense
+const loadingFallbackJSX = (
   <div className="flex items-center justify-center p-8">
     <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
   </div>
@@ -51,11 +53,11 @@ function LegacyRedirect({ to }: { to: string }) {
 function PortalOrWebsiteRedirect({ domainEntry }: { domainEntry: { base: string } }) {
   const { user, session, isLoading } = useAuth();
 
-  if (isLoading) return <LoadingFallback />;
+  if (isLoading) return loadingFallbackJSX;
 
   if (user || session) {
     return (
-      <React.Suspense fallback={<LoadingFallback />}>
+      <React.Suspense fallback={loadingFallbackJSX}>
         <Zone2Router />
       </React.Suspense>
     );
@@ -91,7 +93,7 @@ export function ManifestRouter() {
 
         {/* Zone 1: Admin Portal */}
         <Route path="/admin/*" element={
-          <React.Suspense fallback={<LoadingFallback />}>
+          <React.Suspense fallback={loadingFallbackJSX}>
             <Zone1Router />
           </React.Suspense>
         } />
@@ -101,7 +103,7 @@ export function ManifestRouter() {
           domainEntry ? (
             <PortalOrWebsiteRedirect domainEntry={domainEntry} />
           ) : (
-            <React.Suspense fallback={<LoadingFallback />}>
+            <React.Suspense fallback={loadingFallbackJSX}>
               <Zone2Router />
             </React.Suspense>
           )
@@ -109,7 +111,7 @@ export function ManifestRouter() {
 
         {/* Zone 3: Websites (canonical + flat brand-domain routes) */}
         <Route path="/website/*" element={
-          <React.Suspense fallback={<LoadingFallback />}>
+          <React.Suspense fallback={loadingFallbackJSX}>
             <Zone3Router />
           </React.Suspense>
         } />
@@ -117,7 +119,7 @@ export function ManifestRouter() {
         {/* Zone 3: Flat routes for brand domains (e.g. kaufy.immo/vermieter) */}
         {domainEntry && (
           <Route path="/*" element={
-            <React.Suspense fallback={<LoadingFallback />}>
+            <React.Suspense fallback={loadingFallbackJSX}>
               <Zone3Router />
             </React.Suspense>
           } />

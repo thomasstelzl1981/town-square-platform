@@ -13,7 +13,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 // =============================================================================
 // Loading Fallback
 // =============================================================================
-const LoadingFallback = () => (
+const loadingFallbackJSX = (
   <div className="flex items-center justify-center p-8">
     <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
   </div>
@@ -170,16 +170,16 @@ export default function Zone1Router() {
     <Routes>
       <Route path="/" element={<AdminLayout />}>
         {/* FutureRoom — Explicit Nested Routes */}
-        <Route path="futureroom" element={<React.Suspense fallback={<LoadingFallback />}><AdminFutureRoomLayout /></React.Suspense>}>
+        <Route path="futureroom" element={<React.Suspense fallback={loadingFallbackJSX}><AdminFutureRoomLayout /></React.Suspense>}>
           <Route index element={<Navigate to="inbox" replace />} />
-          <Route path="inbox" element={<React.Suspense fallback={<LoadingFallback />}><FutureRoomInbox /></React.Suspense>} />
-          <Route path="zuweisung" element={<React.Suspense fallback={<LoadingFallback />}><FutureRoomZuweisung /></React.Suspense>} />
-          <Route path="finanzierungsmanager" element={<React.Suspense fallback={<LoadingFallback />}><FutureRoomManagers /></React.Suspense>} />
-          <Route path="bankkontakte" element={<React.Suspense fallback={<LoadingFallback />}><FutureRoomBanks /></React.Suspense>} />
-          <Route path="monitoring" element={<React.Suspense fallback={<LoadingFallback />}><FutureRoomMonitoring /></React.Suspense>} />
-          <Route path="vorlagen" element={<React.Suspense fallback={<LoadingFallback />}><FutureRoomTemplates /></React.Suspense>} />
-          <Route path="website-leads" element={<React.Suspense fallback={<LoadingFallback />}><FutureRoomWebLeads /></React.Suspense>} />
-          <Route path="contracts" element={<React.Suspense fallback={<LoadingFallback />}><FutureRoomContracts /></React.Suspense>} />
+          <Route path="inbox" element={<React.Suspense fallback={loadingFallbackJSX}><FutureRoomInbox /></React.Suspense>} />
+          <Route path="zuweisung" element={<React.Suspense fallback={loadingFallbackJSX}><FutureRoomZuweisung /></React.Suspense>} />
+          <Route path="finanzierungsmanager" element={<React.Suspense fallback={loadingFallbackJSX}><FutureRoomManagers /></React.Suspense>} />
+          <Route path="bankkontakte" element={<React.Suspense fallback={loadingFallbackJSX}><FutureRoomBanks /></React.Suspense>} />
+          <Route path="monitoring" element={<React.Suspense fallback={loadingFallbackJSX}><FutureRoomMonitoring /></React.Suspense>} />
+          <Route path="vorlagen" element={<React.Suspense fallback={loadingFallbackJSX}><FutureRoomTemplates /></React.Suspense>} />
+          <Route path="website-leads" element={<React.Suspense fallback={loadingFallbackJSX}><FutureRoomWebLeads /></React.Suspense>} />
+          <Route path="contracts" element={<React.Suspense fallback={loadingFallbackJSX}><FutureRoomContracts /></React.Suspense>} />
           <Route path="*" element={<Navigate to="inbox" replace />} />
         </Route>
 
@@ -189,7 +189,7 @@ export default function Zone1Router() {
             key={deskPath}
             path={`${deskPath}/*`}
             element={
-              <React.Suspense fallback={<LoadingFallback />}>
+              <React.Suspense fallback={loadingFallbackJSX}>
                 <DeskComponent />
               </React.Suspense>
             }
@@ -213,7 +213,7 @@ export default function Zone1Router() {
               index={route.path === ''}
               path={route.path || undefined}
               element={
-                <React.Suspense fallback={<LoadingFallback />}>
+                <React.Suspense fallback={loadingFallbackJSX}>
                   <Component />
                 </React.Suspense>
               }
