@@ -1,30 +1,33 @@
 
 
-# Bewertung: Light Mode Input-Surface Token
+# Bewertung: Table-Token für Header & Row-Hover
 
-## Meine Einschätzung: Guter Vorschlag, mit einer Anpassung
+## Einschätzung: Sinnvoll und konsistent
 
-Der Vorschlag ist sinnvoll — ein dedizierter `--input-bg` Token gibt zentrale Kontrolle über Input-Hintergründe, unabhängig von `--muted`.
+Der Vorschlag folgt exakt dem Muster von `--input-bg` — zentraler Token statt verstreuter `bg-muted/30`. Gut.
 
-**Allerdings:** Eure Inputs nutzen aktuell bereits `hsl(var(--muted) / 0.6)` in `.input-ios` (Zeile 579) und `bg-muted/40` in den Shadcn-Komponenten (`input.tsx`, `textarea.tsx`). Die sind also nicht transparent, sondern haben schon einen definierten Hintergrund.
+**Ein Detail:** Der `DESIGN.TABLE` wird aktuell nur von 2 Komponenten direkt referenziert (`LoanCalculator`, `BankExamplesCard`), aber das Shadcn `table.tsx` nutzt eigene Klassen (`hover:bg-muted/50` für Row, kein Header-BG). Für maximalen Effekt sollte auch `table.tsx` umgestellt werden.
 
-Ein reines Weiss (`0 0% 100%`) könnte im Light Mode **zu kontrastlos** wirken, wenn euer Background schon weiss oder nahe-weiss ist — die Inputs verschwinden dann visuell.
+## Umsetzung (3 Dateien)
 
-## Empfehlung: Token ja, aber mit leichtem Grauton
-
+### 1. `src/index.css` — Tokens einfügen
 ```css
 /* :root */
---input-bg: 210 20% 97%;   /* Hauch von Blau-Grau, nicht reines Weiss */
+--table-header-bg: 210 20% 95%;
+--table-row-hover: 210 20% 96%;
 
 /* .dark */
---input-bg: 215 15% 18%;   /* Dunkler als Surface, aber erkennbar */
+--table-header-bg: 222 25% 14%;
+--table-row-hover: 222 25% 12%;
 ```
 
-## Umsetzung (3 Stellen)
+### 2. `src/config/designManifest.ts` — DESIGN.TABLE umstellen
+- `HEADER_BG`: `bg-muted/30` → `bg-[hsl(var(--table-header-bg))]`
+- `ROW_HOVER`: `hover:bg-muted/30` → `hover:bg-[hsl(var(--table-row-hover))]`
 
-1. **Token einfügen** in `src/index.css` unter `:root` und `.dark`
-2. **`.input-ios`** (Zeile 579): `background: hsl(var(--input-bg));` statt `hsl(var(--muted) / 0.6)`
-3. **Shadcn Input/Textarea** (`src/components/ui/input.tsx`, `textarea.tsx`): `bg-muted/40` durch eine Klasse mit `hsl(var(--input-bg))` ersetzen — oder alternativ den Token direkt in `.input-ios` belassen und die Shadcn-Komponenten mit der Klasse `input-ios` versehen
+### 3. `src/components/ui/table.tsx` — Shadcn-Basis anpassen
+- `TableHeader`: Header-BG-Token hinzufügen
+- `TableRow`: `hover:bg-muted/50` → `hover:bg-[hsl(var(--table-row-hover))]`
 
-Kein Risiko, rein kosmetisch, keine Logik betroffen.
+Rein kosmetisch, keine Logik betroffen. Alle Stellen, die `DESIGN.TABLE.HEADER_BG` oder `DESIGN.TABLE.ROW_HOVER` nutzen, erben automatisch.
 
