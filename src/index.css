@@ -72,7 +72,7 @@
     /* Borders & Inputs */
     --border: 220 18% 86%;
     --input: 220 18% 86%;
-    --ring: var(--accent-primary);
+    --ring: 217 91% 56%;
 
     /* Radius System — iOS-style larger radii */
     --radius: 1rem;           /* 16px */
@@ -129,7 +129,7 @@
     /* Ambient Background — Enterprise Clean */
     --ambient-opacity: 0.06;
     --ambient-vignette: 0.06;
-    --ambient-horizon: 220 40% 75%;
+    --ambient-horizon: 220 15% 80%;
     --ambient-structure:
       repeating-linear-gradient(
         90deg,
@@ -156,8 +156,8 @@
     /* Glass-enabled surfaces with alpha channel */
     --card: 222 18% 12% / 0.92;
     --card-foreground: 210 20% 96%;
-    --card-glass: 222 47% 6% / 0.7;
-    --surface-glass: 222 47% 5% / 0.6;
+    --card-glass: 222 20% 6% / 0.7;
+    --surface-glass: 222 20% 5% / 0.6;
 
     --popover: 222 18% 13% / 0.94;
     --popover-foreground: 210 20% 96%;
@@ -184,7 +184,7 @@
     --ring: 217 91% 60%;
 
     /* Sidebar - Dark (Menu bleibt dunkel) */
-    --sidebar-background: 222 47% 5%;
+    --sidebar-background: 222 20% 5%;
     --sidebar-foreground: 210 30% 85%;
     --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
@@ -331,14 +331,13 @@
       hsla(40 70% 90% / 0.3) 0%,
       transparent 50%
     ),
-    /* Layer 5: Intensiver Himmelsblau-Gradient */
+    /* Layer 5: Neutraler Frost-Gradient (kein Himmelsblau) */
     radial-gradient(
       ellipse 160% 120% at 50% -40%,
-      hsl(195 90% 68%) 0%,
-      hsl(200 85% 75%) 25%,
-      hsl(205 70% 85%) 50%,
-      hsl(210 45% 94%) 80%,
-      hsl(210 30% 98%) 100%
+      hsl(210 12% 96%) 0%,
+      hsl(210 10% 97%) 35%,
+      hsl(210 8% 98%) 70%,
+      hsl(210 6% 99%) 100%
     );
 }
 
