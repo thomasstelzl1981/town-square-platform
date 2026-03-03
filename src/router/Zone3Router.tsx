@@ -183,6 +183,7 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
     LennoxPartnerProfil,
     LennoxShop,
     LennoxDoc: React.lazy(() => import('@/pages/zone3/lennox/LennoxDoc')),
+    LennoxLennox: React.lazy(() => import('@/pages/zone3/lennox/LennoxLennox')),
     LennoxPartnerWerden,
     LennoxAuth,
     LennoxMeinBereich,

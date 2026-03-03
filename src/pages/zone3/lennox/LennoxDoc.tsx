@@ -5,9 +5,9 @@
 import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Search, MapPin, Phone, Mail, Navigation, Star, Shield, Heart,
-  Stethoscope, ShieldCheck, Syringe, Scissors, PawPrint, ArrowRight,
-  Send, X, CheckCircle, Clock, Euro,
+  Search, MapPin, Phone, Mail, Navigation, Star,
+  Stethoscope, ShieldCheck, Syringe, PawPrint, ArrowRight,
+  Send,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -27,21 +27,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 import heroImage from '@/assets/lennox/doc_hero.jpg';
-import gruenderinSee from '@/assets/lennox/gruenderin_see.jpeg';
-import gruenderinLennox from '@/assets/lennox/gruenderin_lennox.jpeg';
-import gruenderinPferd from '@/assets/lennox/gruenderin_pferd.jpeg';
-import lennoxPortrait from '@/assets/lennox/lennox_portrait.jpeg';
 
 /* ═══════════════════ CONSTANTS ═══════════════════ */
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const AVATAR_BUCKET = 'tenant-documents';
-const ROBYN_AVATAR_PATH = 'eac1778a-23bc-4d03-b3f9-b26be27c9505/MOD_01/99d271be-4ebb-4495-970d-ad91e943e4f0/avatars/avatar_1772488912468_9F77D730-1781-4AB0-B111-8D22260A0714_4_5005_c.jpeg';
-
-function getAvatarUrl() {
-  const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(ROBYN_AVATAR_PATH);
-  return data.publicUrl;
-}
 
 const INSURANCE_PRODUCTS = [
   {
@@ -61,12 +48,6 @@ const INSURANCE_PRODUCTS = [
     title: 'OP-Versicherung',
     desc: 'Kostenübernahme für chirurgische Eingriffe inkl. Narkose, Nachsorge und Klinikaufenthalt.',
     highlight: 'Keine Wartezeit',
-  },
-  {
-    icon: Scissors,
-    title: 'Zahnzusatzversicherung',
-    desc: 'Zahnbehandlungen, Prophylaxe und Zahnextraktionen — oft nicht in der Basis-KV enthalten.',
-    highlight: 'Prophylaxe inklusive',
   },
 ];
 
@@ -317,7 +298,7 @@ export default function LennoxDoc() {
             </p>
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {INSURANCE_PRODUCTS.map(prod => (
               <Card key={prod.title}
                 className="bg-white border shadow-sm hover:shadow-md transition-all group cursor-pointer"
@@ -433,144 +414,6 @@ export default function LennoxDoc() {
         </DialogContent>
       </Dialog>
 
-      {/* ═══════════════════ PET MANAGER VORSTELLUNG ═══════════════════ */}
-      <section className="py-16 px-6" style={{ background: C.warmWhite }}>
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-10">
-            <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-2" style={{ color: C.coral }}>
-              Unser Team
-            </p>
-            <h2 className="text-2xl md:text-3xl font-bold mb-3" style={{ color: C.bark }}>
-              Dein Pet Manager
-            </h2>
-            <p className="text-sm max-w-xl mx-auto" style={{ color: C.barkMuted }}>
-              Persönliche Betreuung durch geprüfte Hundeprofis — sortiert nach Kundenbewertung.
-            </p>
-          </div>
-
-          {/* Inline Manager Card — Robyn Gebhard */}
-          <div className="max-w-3xl mx-auto space-y-6">
-            <Card className="bg-white border shadow-sm overflow-hidden" style={{ borderColor: C.sandLight }}>
-              <CardContent className="p-0">
-                <div className="flex flex-col md:flex-row">
-                  {/* Photo */}
-                  <div className="md:w-64 h-64 md:h-auto flex-shrink-0">
-                    <img
-                      src={getAvatarUrl()}
-                      alt="Robyn Gebhard — Pet Manager"
-                      className="w-full h-full object-cover"
-                      onError={e => { (e.target as HTMLImageElement).src = gruenderinSee; }}
-                    />
-                  </div>
-                  {/* Info */}
-                  <div className="flex-1 p-6 space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-bold text-lg" style={{ color: C.bark }}>Robyn Gebhard</h3>
-                        <p className="text-xs" style={{ color: C.barkMuted }}>Gründerin & Lead Pet Manager</p>
-                      </div>
-                      <div className="flex items-center gap-1 px-3 py-1 rounded-full" style={{ background: `${C.gold}20` }}>
-                        <Star className="h-3.5 w-3.5 fill-current" style={{ color: C.gold }} />
-                        <span className="text-xs font-bold" style={{ color: C.bark }}>4.9</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {['Pension', 'Daycare', 'Gassi-Service', 'Training', 'Ernährungsberatung'].map(s => (
-                        <Badge key={s} variant="secondary" className="text-[10px] font-medium"
-                          style={{ background: `${C.forest}10`, color: C.forest }}>
-                          {s}
-                        </Badge>
-                      ))}
-                    </div>
-                    <p className="text-xs leading-relaxed" style={{ color: C.barkMuted }}>
-                      Robyn ist seit über 10 Jahren leidenschaftliche Hundebetreuerin und hat Lennox & Friends 
-                      aus der Überzeugung gegründet, dass jeder Hund die beste Betreuung verdient. 
-                      Ihr Spezialgebiet: Mehrhundehaltung, artgerechte Ernährung und Verhaltensarbeit. 
-                      Standort: Ottobrunn bei München.
-                    </p>
-                    <div className="flex flex-wrap gap-3 text-xs" style={{ color: C.barkMuted }}>
-                      <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> Ottobrunn, Bayern</span>
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> 10+ Jahre Erfahrung</span>
-                      <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3" style={{ color: C.forest }} /> Verifiziert</span>
-                    </div>
-                    <Link to="/website/tierservice?locate=1">
-                      <Button size="sm" className="rounded-full text-white text-xs font-semibold mt-2"
-                        style={{ background: C.forest }}>
-                        <PawPrint className="h-3.5 w-3.5 mr-1" /> Kontakt aufnehmen
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════ GRÜNDERIN & LENNOX ═══════════════════ */}
-      <section className="py-16 px-6" style={{ background: C.cream }}>
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-10">
-            <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-2" style={{ color: C.coral }}>
-              Die Geschichte
-            </p>
-            <h2 className="text-2xl md:text-3xl font-bold mb-3" style={{ color: C.bark }}>
-              Robyn & Lennox
-            </h2>
-            <p className="text-sm max-w-xl mx-auto" style={{ color: C.barkMuted }}>
-              Hinter Lennox & Friends steht eine große Liebe — zu Tieren, zur Natur und zu höchsten Standards.
-            </p>
-          </div>
-
-          {/* Photo Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-            <div className="rounded-2xl overflow-hidden shadow-md aspect-[3/4]">
-              <img src={gruenderinSee} alt="Robyn am Bergsee" className="w-full h-full object-cover" />
-            </div>
-            <div className="rounded-2xl overflow-hidden shadow-md aspect-[3/4]">
-              <img src={gruenderinLennox} alt="Robyn mit Lennox" className="w-full h-full object-cover" />
-            </div>
-            <div className="rounded-2xl overflow-hidden shadow-md aspect-[3/4]">
-              <img src={gruenderinPferd} alt="Robyn mit Pferd" className="w-full h-full object-cover" />
-            </div>
-            <div className="rounded-2xl overflow-hidden shadow-md aspect-[3/4]">
-              <img src={lennoxPortrait} alt="Lennox — der Namensgeber" className="w-full h-full object-cover" />
-            </div>
-          </div>
-
-          {/* Story */}
-          <div className="max-w-3xl mx-auto space-y-6">
-            <div className="bg-white rounded-2xl p-8 border shadow-sm" style={{ borderColor: C.sandLight }}>
-              <div className="space-y-4 text-sm leading-relaxed" style={{ color: C.barkMuted }}>
-                <p>
-                  <strong style={{ color: C.bark }}>Robyn Gebhard</strong> hat ihre Leidenschaft für Tiere 
-                  zum Beruf gemacht. Was als kleine Hundebetreuung in Bayern begann, ist heute ein wachsendes 
-                  Netzwerk aus geprüften Hundeprofis im gesamten DACH-Raum.
-                </p>
-                <p>
-                  Der Namensgeber <strong style={{ color: C.bark }}>Lennox</strong> — ein charakterstarker 
-                  Beagle-Mix mit großem Herzen — begleitet Robyn seit dem ersten Tag. Er ist nicht nur der 
-                  beste Qualitätstester für jeden neuen Partner, sondern auch der Beweis: 
-                  Wer seinen eigenen Hund so liebt, sorgt dafür, dass jeder Vierbeiner in den besten Händen ist.
-                </p>
-                <p>
-                  Neben Hunden gehört auch <strong style={{ color: C.bark }}>die Arbeit mit Pferden</strong> zu 
-                  Robyns großer Leidenschaft — ein Verständnis für Tiere, das über Rassen und Arten hinausgeht 
-                  und in jeder Facette von Lennox & Friends spürbar ist.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3 mt-6">
-                {['Gründerin & CEO', '10+ Jahre Tierpflege', 'Mehrhundehaltung', 'Pferdemenschen'].map(tag => (
-                  <span key={tag} className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full"
-                    style={{ background: C.sandLight, color: C.forest }}>
-                    <Heart className="h-3 w-3" /> {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ═══════════════════ CTA ═══════════════════ */}
       <section className="py-16 px-6" style={{ background: C.forest }}>

@@ -2,7 +2,7 @@
  * LennoxLayout — Alpine Chic Shell
  */
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Menu, X, User, LogIn, ShoppingBag, Handshake, MapPin, Stethoscope } from 'lucide-react';
+import { Menu, X, User, LogIn, ShoppingBag, Handshake, MapPin, Stethoscope, PawPrint } from 'lucide-react';
 import { useState } from 'react';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
 import { LENNOX as C } from './lennoxTheme';
@@ -16,6 +16,7 @@ const navLinks = [
   { path: '/website/tierservice?locate=1', label: 'Partner finden', icon: MapPin },
   { path: '/website/tierservice/shop', label: 'Shop', icon: ShoppingBag },
   { path: '/website/tierservice/doc', label: 'Doc', icon: Stethoscope },
+  { path: '/website/tierservice/lennox', label: 'Lennox', icon: PawPrint },
   { path: '/website/tierservice/partner-werden', label: 'Partner werden', icon: Handshake },
 ];
 
