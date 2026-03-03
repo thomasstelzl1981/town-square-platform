@@ -132,8 +132,9 @@ export default function PetsMeineTiere() {
             {pets.map((pet) => {
               const age = getAge(pet.birth_date);
               const summaryItems = [
-                ...(pet.breed ? [{ label: '', value: `${SPECIES_LABELS[pet.species] || pet.species} · ${pet.breed}` }] : [{ label: '', value: SPECIES_LABELS[pet.species] || pet.species }]),
-                ...(age ? [{ label: '', value: age }] : []),
+                { label: '', value: SPECIES_LABELS[pet.species] || pet.species },
+                ...(pet.breed ? [{ label: '', value: pet.breed }] : []),
+                { label: '', value: age || 'Alter unbekannt' },
                 ...(pet.weight_kg ? [{ label: '', value: `${pet.weight_kg} kg` }] : []),
                 ...(pet.chip_number ? [{ label: '', value: `Chip: ${pet.chip_number}` }] : []),
               ];
