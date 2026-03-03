@@ -124,14 +124,17 @@ function PortalLayoutInner() {
     setShouldRedirect(false);
   }, [user, isDevelopmentMode, isLoading, isDemo]);
 
-  // Demo mode: show loading screen during login/seeding
+  // Demo mode: redirect immediately when cleaning (prevents spinning wheel)
+  if (isDemo && demoState === 'cleaning') {
+    return <Navigate to="/sot" replace />;
+  }
+
+  // Demo mode: show loading screen during login
   if (isDemo && demoState === 'logging-in') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">
-          {demoState === 'logging-in' ? 'Demo wird vorbereitet…' : 'Beispieldaten werden geladen…'}
-        </p>
+        <p className="text-sm text-muted-foreground">Demo wird vorbereitet…</p>
       </div>
     );
   }

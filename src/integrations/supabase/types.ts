@@ -24339,6 +24339,19 @@ export type Database = {
         Returns: undefined
       }
       is_akquise_manager: { Args: { _user_id: string }; Returns: boolean }
+      is_demo_tenant:
+        | {
+            Args: { p_tenant_id: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.is_demo_tenant(p_tenant_id => text), public.is_demo_tenant(p_tenant_id => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
+        | {
+            Args: { p_tenant_id: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.is_demo_tenant(p_tenant_id => text), public.is_demo_tenant(p_tenant_id => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
       is_kaufy_public_image_document: {
         Args: { doc_id: string }
         Returns: boolean
