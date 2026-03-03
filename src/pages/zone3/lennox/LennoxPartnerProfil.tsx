@@ -219,6 +219,7 @@ function BookingBlock({ providerId, providerName, serviceId, z3User, z3SessionTo
   const createCase = useCreateZ3Case();
 
   const handleSubmit = async () => {
+    if (createCase.isPending) return;
     if (!dateFrom) { toast.error('Bitte Datum auswählen'); return; }
     if (!serviceId) { toast.error('Bitte Service auswählen'); return; }
 
