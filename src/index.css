@@ -118,6 +118,9 @@
     /* Table Surface */
     --table-header-bg: 210 20% 95%;
     --table-row-hover: 210 20% 96%;
+
+    /* Reading Surface */
+    --reading-surface: 0 0% 100% / 0.96;
   }
 
   /* =========================================================================
@@ -180,6 +183,10 @@
     /* Table Surface */
     --table-header-bg: 222 25% 14%;
     --table-row-hover: 222 25% 12%;
+
+    /* Reading Surface */
+    --reading-surface: 222 28% 12% / 0.92;
+
     /* Surface Layers - Dark enterprise (original) */
     --surface: 222 30% 10%;
     --surface-2: 222 35% 8%;
@@ -555,6 +562,12 @@
     background: hsl(var(--card-glass));
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+  }
+
+  .reading-surface {
+    background-color: hsl(var(--reading-surface));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   /* ===========================================================================

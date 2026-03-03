@@ -70,6 +70,8 @@ export const CARD = {
   CONTENT: 'glass-card p-6 rounded-xl',
   /** Full-width Sektionskarten (Premium-Status, Automatisierung) */
   SECTION: 'glass-card p-4 rounded-xl',
+  /** Reading Surface — textlastige Sektionen (Formulare, Akten, Selbstauskunft) */
+  READING: 'reading-surface p-4 rounded-xl border border-border/20',
   /** Einheitlicher Card-Header-Bereich */
   SECTION_HEADER: 'px-4 py-2.5 border-b border-border/30 bg-muted/20',
   /** Hover-Effekt */

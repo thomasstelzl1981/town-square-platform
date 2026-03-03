@@ -16,11 +16,13 @@ interface SectionCardProps {
   children: ReactNode;
   className?: string;
   headerAction?: ReactNode;
+  variant?: 'default' | 'reading';
 }
 
-export const SectionCard = memo(function SectionCard({ title, description, icon: Icon, children, className, headerAction }: SectionCardProps) {
+export const SectionCard = memo(function SectionCard({ title, description, icon: Icon, children, className, headerAction, variant = 'default' }: SectionCardProps) {
+  const cardClass = variant === 'reading' ? DESIGN.CARD.READING : DESIGN.CARD.SECTION;
   return (
-    <Card className={cn(DESIGN.CARD.SECTION, className)}>
+    <Card className={cn(cardClass, className)}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {Icon && (
