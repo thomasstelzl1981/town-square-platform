@@ -1,110 +1,94 @@
 
 
-# Plan: Freeze-Update + Europace Integration Phase 1
+# Analyse: Demo-Modul — Luecken, Timing-Probleme und fehlende Datenketten
 
-## Teil 1: Freeze-Dateien aktualisieren
+## Zusammenfassung der gefundenen Probleme
 
-Alle 4 Freeze-Dateien werden auf "frozen: true" gesetzt, **ausser MOD-11** (Finanzierungsmanager), das explizit geoeffnet wird.
-
-### modules_freeze.json
-- MOD-00: frozen: true
-- MOD-01: frozen: true
-- MOD-05: frozen: true
-- MOD-11: **frozen: false** (reason: "Unfrozen for Europace API integration")
-- MOD-22: frozen: true
-- Alle anderen bleiben frozen (keine Aenderung)
-
-### engines_freeze.json
-- ENG-PLC: frozen: true
-- Alle anderen bleiben frozen (keine Aenderung)
-
-### infra_freeze.json
-- edge_functions: bleibt **frozen: false** (wird fuer Europace Edge Function benoetigt)
-- Alle anderen bleiben frozen (keine Aenderung)
-
-### zone3_freeze.json
-- LENNOX: frozen: true
-- Alle anderen bleiben frozen (keine Aenderung)
+Es gibt **3 strukturelle Luecken** und **2 Daten-Probleme**, die erklaeren, warum der Demo-Flow an mehreren Stellen abbricht.
 
 ---
 
-## Teil 2: Europace API Integration — Phase 1
+## Problem 1: Fehlende `future_room_cases` — Datenkette bricht ab
 
-### 2a) Secrets anlegen
+**Kern-Bug:** Die Demo-Daten seeden `finance_requests` → `applicant_profiles` → `finance_mandates`, aber es werden **keine `future_room_cases` angelegt**. Die `future_room_cases`-Tabelle ist im Demo-Tenant komplett leer (DB-Abfrage bestaetigt: `[]`).
 
-Zwei Secrets muessen vom User eingegeben werden:
-- `EUROPACE_CLIENT_ID` (Wert: KDH7UXYSQW5KC3FT)
-- `EUROPACE_CLIENT_SECRET` (Wert: aus separater E-Mail)
+**Auswirkung:**
+- `useFutureRoomCases()` liefert ein leeres Array
+- FMDashboard zeigt **keine echten Faelle** — nur den hartcodierten Demo-Widget ("Max Muster, 450k")
+- FMEinreichung hat `readyCases = []` → kein Fall auswaehlbar → Selbstauskunft nicht erreichbar
 
-### 2b) Edge Function `sot-europace-proxy` erstellen
+**Ursache:** `useAcceptMandate()` erstellt `future_room_cases` erst wenn ein Manager ein Mandat **manuell annimmt**. Die Demo-Mandates haben Status `delegated`/`new` und `assigned_manager_id = NULL`. Ohne Annahme entsteht kein FutureRoom-Case.
 
-Neue Edge Function als zentraler Proxy fuer alle Europace API Aufrufe.
+**Fix:** Entweder:
+- (A) CSV `demo_future_room_cases.csv` anlegen und im Seed-Engine seeden, ODER
+- (B) Den Seed-Engine erweitern: nach dem Seeden der `finance_mandates` automatisch das erste Mandat "annehmen" (Status → `accepted`, `future_room_cases` INSERT)
 
-**OAuth2 Client Credentials Flow:**
-```
-POST https://api.europace.de/auth/token
-Authorization: Basic base64(client_id:client_secret)
-Content-Type: application/x-www-form-urlencoded
-
-grant_type=client_credentials
-&subject=YFC80
-&actor=BUU82
-&scope=impersonieren baufinanzierung:angebote:ermitteln baufinanzierung:vorgaenge:schreiben
-```
-
-**Aktionen (action-basiert via POST body):**
-
-| Action | Europace Endpoint | Methode |
-|---|---|---|
-| `request-vorschlaege` | `baufinanzierung.api.europace.de/v1/vorschlaege` | POST |
-| `poll-vorschlaege` | `baufinanzierung.api.europace.de/v1/vorschlaege/{anfrageId}` | GET |
-| `bookmark-vorschlag` | `baufinanzierung.api.europace.de/vorschlag/bookmark` | POST |
-
-**Mapping der SOT-Falldaten auf Europace-Schema:**
-- `applicant.net_income_monthly` → `einkommenNetto`
-- `applicant.birth_date` → `geburtsdatum`
-- `applicant.equity_amount` → `eigenKapital`
-- `property.purchase_price` → `kaufpreis`
-- `property.object_type` → `objektArt` (EINFAMILIENHAUS, EIGENTUMSWOHNUNG etc.)
-- `property.postal_code` → `anschrift.plz`
-- `property.city` → `anschrift.ort`
-- Alle Requests im Testmodus: `datenkontext: "TEST_MODUS"`
-
-**Sicherheit:**
-- Auth-Check: Request muss von eingeloggtem User kommen (Authorization Header)
-- Token wird pro Request geholt (v1, kein Cache)
-- Secrets nur serverseitig in Edge Function
-
-### 2c) Adapter `src/services/europace/consumerLoanAdapter.ts` umbauen
-
-Vom Stub ("throw Error") auf echte Edge Function Calls:
-- `europace_request_vorschlaege(caseData)` → POST an Edge Function mit action `request-vorschlaege`
-- `europace_poll_vorschlaege(anfrageId)` → POST an Edge Function mit action `poll-vorschlaege`
-- `europace_bookmark_vorschlag(anfrageId, vorschlagId, vorgangId)` → POST an Edge Function mit action `bookmark-vorschlag`
-
-### 2d) FMEinreichung.tsx Kachel 4 erweitern (MOD-11, jetzt unfrozen)
-
-Die bestehende Kachel 4 "API-Uebergabe (Europace)" (Zeilen 819-858) wird von einem simplen "Fall uebergeben"-Button zu einem funktionalen Europace-Widget erweitert:
-
-1. "Konditionen ermitteln" Button → ruft `europace_request_vorschlaege` auf
-2. Polling-Loop mit Ladeindikator (202 → repeat, 200 → Ergebnis)
-3. Ergebnis-Anzeige: Vorschlaege als Karten (Zinssatz, Rate, Bank, Zinsbindung)
-4. LeadRating-Anzeige (successRating A-F, feasibilityRating 0-100)
-5. "In Vorgang uebernehmen" Button pro Vorschlag (Bookmark)
+Empfehlung: **Option A** (CSV), weil konsistent mit dem SSOT-Prinzip.
 
 ---
 
-## Betroffene Dateien
+## Problem 2: `assigned_manager_id = NULL` bei Demo-Mandaten
 
-| Datei | Aenderung | Freeze-Status |
-|---|---|---|
-| `spec/current/00_frozen/modules_freeze.json` | MOD-00,01,05,22 → frozen, MOD-11 → unfrozen | Meta-Datei |
-| `spec/current/00_frozen/engines_freeze.json` | ENG-PLC → frozen | Meta-Datei |
-| `spec/current/00_frozen/infra_freeze.json` | Keine Aenderung | Meta-Datei |
-| `spec/current/00_frozen/zone3_freeze.json` | LENNOX → frozen | Meta-Datei |
-| `supabase/functions/sot-europace-proxy/index.ts` | NEU | edge_functions: nicht frozen |
-| `src/services/europace/consumerLoanAdapter.ts` | Refactor Stub → echte Calls | Nicht in Modul-Pfad |
-| `src/pages/portal/finanzierungsmanager/FMEinreichung.tsx` | Kachel 4 Europace-Widget | MOD-11: wird unfrozen |
+**DB-Stand:**
+- `d0000000-...-0721`: status=`delegated`, `assigned_manager_id=NULL`
+- `d0000000-...-0722`: status=`new`, `assigned_manager_id=NULL`
 
-Keine DB-Aenderungen. Keine neuen Tabellen.
+**Auswirkung:** Der FMDashboard-Filter fuer "Pending Mandates" prueft `m.assigned_manager_id === user?.id`. Da `assigned_manager_id` NULL ist, erscheinen die Mandate **nicht** in der Annahme-Box. Der Manager kann sie nicht annehmen.
+
+**Fix:** Im `demo_finance_mandates.csv` ist keine `assigned_manager_id`-Spalte definiert. Der Seed-Engine setzt zwar `{ assigned_manager_id: userId }` als Override, aber das CSV hat bereits eine `id`-Spalte und `seedFromCSV` merged die Overrides korrekt. **Der Bug liegt darin, dass die DB-Werte NULL zeigen** — das deutet darauf hin, dass der Seed entweder noch nicht gelaufen ist oder der Override nicht greift.
+
+**Fix:** CSV erweitern oder Seed-Engine debuggen, warum der `assigned_manager_id`-Override nicht in der DB ankommt.
+
+---
+
+## Problem 3: Hardcodiertes Demo-Widget im Dashboard
+
+**Zeilen 325-343 in FMDashboard.tsx:** Es gibt ein hartcodiertes Demo-Widget ("Max Muster", "Friedrichstr. 100, Berlin", 450k, 1580/Monat) das ueber `demoEnabled` gesteuert wird. Das ist eine **DEMO DATA VIOLATION** — diese Daten sollten aus der DB kommen, nicht inline.
+
+**Fix:** Dieses Widget entfernen und durch echte DB-Faelle ersetzen (sobald Problem 1 geloest ist).
+
+---
+
+## Problem 4: MOD-04 Zahlungsverkehr — Kontenabgleich
+
+Die Suche nach `Kontenabgleich`, `sot-rent-match` und `Zuordnung` in `src/components/immobilien/` und `src/pages/portal/immobilien/` liefert **keine Treffer**. Das bedeutet:
+- Der Zahlungsverkehr-Tab existiert konzeptionell (Memory beschreibt 4 Zonen), aber die **Abgleich-Aktivierung** ist moeglicherweise in einer anderen Datei implementiert oder noch nicht vollstaendig.
+- Fuer die Demo muessen Demo-Banktransaktionen (existieren: 100 Stueck) korrekt den Demo-Mietvertraegen zugeordnet werden koennen.
+
+**Weitere Analyse noetig:** Die Zahlungsverkehr-Implementierung muss geprueft werden, um den genauen Aktivierungs-Mechanismus zu finden.
+
+---
+
+## Problem 5: Zins-Ticker mit hardcodierten Raten
+
+**Zeilen 94-99 in FMDashboard.tsx:** `mortgageRates` ist ein hardcodiertes Array mit Zinswerten. Das ist formal eine Demo-Data-Violation, aber als reine UI-Simulation (Storybook-Ausnahme) akzeptabel, solange es keine Business-Entity abbildet.
+
+---
+
+## Vorgeschlagener Umsetzungsplan
+
+### Schritt 1: CSV `demo_future_room_cases.csv` erstellen
+```
+id;manager_tenant_id;finance_mandate_id;status;first_action_at
+d0000000-0000-4000-a000-000000000731;{tenant};d0000000-0000-4000-a000-000000000721;active;2026-02-15T10:00:00Z
+```
+
+### Schritt 2: Seed-Engine erweitern
+- Neuen Seed-Step `future_room_cases` nach `finance_mandates` einfuegen
+- `demo_manifest.json` aktualisieren
+
+### Schritt 3: Demo-Mandate fixen
+- `demo_finance_mandates.csv` um Spalte `accepted_at` erweitern
+- Status des ersten Mandats auf `accepted` setzen
+- `assigned_manager_id` Uebertragung debuggen/fixen
+
+### Schritt 4: Hardcodiertes Demo-Widget entfernen
+- Zeilen 325-343 in FMDashboard.tsx entfernen (DEMO DATA VIOLATION)
+
+### Schritt 5: Demo-Manifest und Cleanup aktualisieren
+- `demo_manifest.json`: `future_room_cases` Entity hinzufuegen
+- `useDemoCleanup.ts`: Cleanup-Logik fuer `future_room_cases` ergaenzen
+
+### Schritt 6: MOD-04 Zahlungsverkehr pruefen
+- Genauere Analyse der Zahlungsverkehr-Komponente, um den Abgleich-Mechanismus zu identifizieren
 
