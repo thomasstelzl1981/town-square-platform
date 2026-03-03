@@ -20,13 +20,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { lazy, Suspense } from "react";
+import { getDomainEntry } from "./hooks/useDomainRouter";
+import { useAuth } from "./contexts/AuthContext";
+
 // Special routes (not in manifest) — lazy loaded to reduce initial module graph
 const Auth = lazy(() => import("./pages/Auth"));
 const AuthResetPassword = lazy(() => import("./pages/AuthResetPassword"));
 const PresentationPage = lazy(() => import("./pages/presentation/PresentationPage"));
-import { lazy, Suspense } from "react";
-import { getDomainEntry } from "./hooks/useDomainRouter";
-import { useAuth } from "./contexts/AuthContext";
 const VideocallJoinPage = lazy(() => import("./pages/portal/office/VideocallJoinPage"));
 const InstallPage = lazy(() => import("./pages/Install"));
 
