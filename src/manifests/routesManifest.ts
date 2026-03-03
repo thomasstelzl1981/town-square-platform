@@ -597,6 +597,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "profil", component: "PMProfil", title: "Profil" },
         { path: "pension", component: "PMPension", title: "Pension" },
         { path: "services", component: "PMServices", title: "Services" },
+        { path: "leistungen", component: "PMLeistungen", title: "Leistungen" },
         { path: "mitarbeiter", component: "PMPersonal", title: "Mitarbeiter" },
         { path: "buchungen", component: "PMBuchungen", title: "Buchungen" },
         { path: "kalender", component: "PMKalender", title: "Kalender" },
