@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
-import { Outlet, Navigate, useLocation, Link } from 'react-router-dom';
+import { Outlet, Navigate, useLocation, Link, useNavigate } from 'react-router-dom';
 
 // Preload core modules for instant navigation
 const preloadModules = () => {
@@ -32,6 +32,8 @@ import { ConsentRequiredModal } from './ConsentRequiredModal';
 import { useDemoAutoLogin } from '@/hooks/useDemoAutoLogin';
 import { useLennoxInitialSeed } from '@/hooks/useLennoxInitialSeed';
 import { isPreviewEnvironment } from '@/hooks/usePreviewSafeMode';
+import { DemoWelcomeOverlay } from '@/components/shared/DemoWelcomeOverlay';
+import { DemoExitOverlay } from '@/components/shared/DemoExitOverlay';
 
 const isPreviewEnv = isPreviewEnvironment();
 
@@ -58,6 +60,38 @@ function PortalLayoutInner() {
   const { showConsentModal, setShowConsentModal } = useLegalConsent();
   const { runSeed: runLennoxSeed } = useLennoxInitialSeed();
   const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Demo overlay states
+  const [showDemoWelcome, setShowDemoWelcome] = useState(false);
+  const [showDemoExit, setShowDemoExit] = useState(false);
+
+  // Show welcome overlay when demo becomes ready
+  useEffect(() => {
+    if (isDemo && demoState === 'ready') {
+      setShowDemoWelcome(true);
+    }
+  }, [isDemo, demoState]);
+
+  // Intercept endDemo to show exit overlay first
+  const handleDemoEndClick = useCallback(() => {
+    setShowDemoExit(true);
+  }, []);
+
+  const handleExitConfirm = useCallback(() => {
+    setShowDemoExit(false);
+    endDemo();
+  }, [endDemo]);
+
+  const handleExitCreateAccount = useCallback(() => {
+    setShowDemoExit(false);
+    // Sign out demo, navigate to register
+    endDemo();
+    // Small delay to let signOut process, then redirect to auth
+    setTimeout(() => {
+      navigate('/auth?mode=register&source=sot');
+    }, 300);
+  }, [endDemo, navigate]);
   
   // Armstrong sheet state removed — mobile uses full-screen chat now
   const [mobileHomeMode, setMobileHomeMode] = useState<'modules' | 'chat'>('modules'); // kept for chat activation
@@ -196,7 +230,7 @@ function PortalLayoutInner() {
           Eigenen Account erstellen
         </Link>
         <button
-          onClick={endDemo}
+          onClick={handleDemoEndClick}
           className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
         >
           <LogOut className="h-3.5 w-3.5" />
@@ -204,6 +238,21 @@ function PortalLayoutInner() {
         </button>
       </div>
     </div>
+  ) : null;
+
+  // Demo overlays
+  const DemoOverlays = isDemo ? (
+    <>
+      <DemoWelcomeOverlay 
+        open={showDemoWelcome && demoState === 'ready'} 
+        onDismiss={() => setShowDemoWelcome(false)} 
+      />
+      <DemoExitOverlay 
+        open={showDemoExit} 
+        onClose={handleExitConfirm} 
+        onCreateAccount={handleExitCreateAccount} 
+      />
+    </>
   ) : null;
 
 
@@ -248,6 +297,8 @@ function PortalLayoutInner() {
         />
         {/* Global Consent Modal (mobile) */}
         <ConsentRequiredModal open={showConsentModal} onOpenChange={setShowConsentModal} />
+        {/* Demo Overlays */}
+        {DemoOverlays}
       </div>
     );
   }
@@ -282,6 +333,8 @@ function PortalLayoutInner() {
       
       {/* Global Consent Modal */}
       <ConsentRequiredModal open={showConsentModal} onOpenChange={setShowConsentModal} />
+      {/* Demo Overlays */}
+      {DemoOverlays}
     </div>
   );
 }
