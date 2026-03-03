@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
-import { useCasesForZ3Customer, useCreateZ3Case, type CaseWithComputed } from '@/hooks/usePetServiceCases';
+import { useCasesForZ3Customer, useCreateZ3Case, useDepositCheckout, type CaseWithComputed } from '@/hooks/usePetServiceCases';
 import { PLC_PHASE_LABELS, type PLCPhase } from '@/engines/plc/spec';
 import { PetDossier } from '@/components/shared/pet-dossier';
 import { z } from 'zod';
@@ -144,6 +144,7 @@ export default function LennoxMeinBereich() {
 
   // ─── Create Case mutation (Z3 proxy) ──────────────
   const createCase = useCreateZ3Case();
+  const depositCheckout = useDepositCheckout();
 
   // ─── Booking form state ────────────────────────────
   const [bookingService, setBookingService] = useState('');
@@ -400,21 +401,40 @@ export default function LennoxMeinBereich() {
                 const phase = c.current_phase as string;
                 const cfg = phaseStatusConfig[phase] || { label: PLC_PHASE_LABELS[c.current_phase] || phase, color: 'hsl(0,0%,60%)', icon: Clock };
                 const StatusIcon = cfg.icon;
+                const showDepositButton = c.current_phase === 'provider_selected';
                 return (
-                  <div key={c.id} className="flex items-center justify-between p-3 rounded-lg text-sm"
+                  <div key={c.id} className="p-3 rounded-lg text-sm space-y-2"
                     style={{ background: C.sandLight }}>
-                    <div className="space-y-0.5">
-                      <p className="font-medium" style={{ color: C.bark }}>
-                        {PLC_PHASE_LABELS[c.current_phase] || c.current_phase}
-                      </p>
-                      <p className="text-xs" style={{ color: C.barkMuted }}>
-                        {c.scheduled_start && new Date(c.scheduled_start).toLocaleDateString('de-DE')}
-                        {c.scheduled_end && ` – ${new Date(c.scheduled_end).toLocaleDateString('de-DE')}`}
-                      </p>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <p className="font-medium" style={{ color: C.bark }}>
+                          {PLC_PHASE_LABELS[c.current_phase] || c.current_phase}
+                        </p>
+                        <p className="text-xs" style={{ color: C.barkMuted }}>
+                          {c.scheduled_start && new Date(c.scheduled_start).toLocaleDateString('de-DE')}
+                          {c.scheduled_end && ` – ${new Date(c.scheduled_end).toLocaleDateString('de-DE')}`}
+                        </p>
+                        {c.total_price_cents > 0 && (
+                          <p className="text-xs" style={{ color: C.barkMuted }}>
+                            Gesamt: {(c.total_price_cents / 100).toFixed(2)} € · Gebühr (7,5%): {(Math.max(500, Math.round(c.total_price_cents * 0.075)) / 100).toFixed(2)} €
+                          </p>
+                        )}
+                      </div>
+                      <Badge className="text-xs rounded-full gap-1 text-white shrink-0" style={{ background: cfg.color }}>
+                        <StatusIcon className="h-3 w-3" /> {cfg.label}
+                      </Badge>
                     </div>
-                    <Badge className="text-xs rounded-full gap-1 text-white" style={{ background: cfg.color }}>
-                      <StatusIcon className="h-3 w-3" /> {cfg.label}
-                    </Badge>
+                    {showDepositButton && (
+                      <Button
+                        size="sm"
+                        className="rounded-full text-white w-full text-xs"
+                        style={{ background: C.coral }}
+                        disabled={depositCheckout.isPending}
+                        onClick={() => depositCheckout.mutate({ case_id: c.id })}
+                      >
+                        {depositCheckout.isPending ? 'Wird geladen…' : 'Plattformgebühr zahlen (7,5%)'}
+                      </Button>
+                    )}
                   </div>
                 );
               })}

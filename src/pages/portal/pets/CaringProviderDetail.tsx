@@ -148,6 +148,7 @@ export default function CaringProviderDetail() {
     try {
       await createCase.mutateAsync({
         provider_id: providerId,
+        service_id: selectedService.id,
         service_type: (serviceTypeMap[selectedService.category] || 'other') as any,
         pet_id: selectedPet || null,
         customer_name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : null,
@@ -155,7 +156,6 @@ export default function CaringProviderDetail() {
         customer_notes: notes || null,
         scheduled_start: scheduledDate,
         scheduled_end: scheduledEnd,
-        total_price_cents: priceCents,
         tenant_id: provider?.tenant_id || '',
       });
 
