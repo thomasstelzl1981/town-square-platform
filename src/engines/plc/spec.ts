@@ -110,6 +110,7 @@ export const PLC_PHASE_CHANGE_EVENTS: Set<PLCEventType> = new Set(
 
 // ─── SLA Thresholds (in hours) ────────────────────────────────
 export const PLC_STUCK_THRESHOLDS: Partial<Record<PLCPhase, number>> = {
+  provider_selected: 48,       // 48h for provider to respond (Wave D fix)
   deposit_requested: 24,       // 24h to complete payment
   deposit_paid: 48,            // 48h for provider to respond
   provider_confirmed: 168,     // 7d until check-in (or scheduled date)
@@ -152,12 +153,17 @@ export interface PLCCase {
   customer_name: string | null;
   provider_id: string;
   service_type: PLCServiceType;
+  service_id: string | null;
   pet_id: string | null;
+  pet_customer_id: string | null;
   current_phase: PLCPhase;
   phase_entered_at: string;
   total_price_cents: number;
   deposit_cents: number;
   deposit_paid_at: string | null;
+  platform_fee_pct: number;
+  pricing_snapshot_at: string;
+  pricing_snapshot: Record<string, unknown> | null;
   stripe_payment_intent_id: string | null;
   stripe_checkout_session_id: string | null;
   scheduled_start: string | null;
@@ -177,6 +183,9 @@ export interface PLCEvent {
   phase_after: PLCPhase | null;
   actor_id: string | null;
   actor_type: 'customer' | 'provider' | 'admin' | 'system';
+  event_source: string;
+  idempotency_key: string | null;
+  correlation_key: string | null;
   payload: Record<string, unknown>;
   created_at: string;
 }

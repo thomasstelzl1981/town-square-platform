@@ -14929,9 +14929,12 @@ export type Database = {
           actor_id: string | null
           actor_type: string
           case_id: string
+          correlation_key: string | null
           created_at: string
+          event_source: string
           event_type: string
           id: string
+          idempotency_key: string | null
           payload: Json | null
           phase_after: string | null
           phase_before: string | null
@@ -14940,9 +14943,12 @@ export type Database = {
           actor_id?: string | null
           actor_type?: string
           case_id: string
+          correlation_key?: string | null
           created_at?: string
+          event_source?: string
           event_type: string
           id?: string
+          idempotency_key?: string | null
           payload?: Json | null
           phase_after?: string | null
           phase_before?: string | null
@@ -14951,9 +14957,12 @@ export type Database = {
           actor_id?: string | null
           actor_type?: string
           case_id?: string
+          correlation_key?: string | null
           created_at?: string
+          event_source?: string
           event_type?: string
           id?: string
+          idempotency_key?: string | null
           payload?: Json | null
           phase_after?: string | null
           phase_before?: string | null
@@ -15353,12 +15362,17 @@ export type Database = {
           deposit_cents: number
           deposit_paid_at: string | null
           id: string
+          pet_customer_id: string | null
           pet_id: string | null
           phase_entered_at: string
+          platform_fee_pct: number
+          pricing_snapshot: Json | null
+          pricing_snapshot_at: string
           provider_id: string
           provider_notes: string | null
           scheduled_end: string | null
           scheduled_start: string | null
+          service_id: string | null
           service_type: Database["public"]["Enums"]["plc_service_type"]
           stripe_checkout_session_id: string | null
           stripe_payment_intent_id: string | null
@@ -15377,12 +15391,17 @@ export type Database = {
           deposit_cents?: number
           deposit_paid_at?: string | null
           id?: string
+          pet_customer_id?: string | null
           pet_id?: string | null
           phase_entered_at?: string
+          platform_fee_pct?: number
+          pricing_snapshot?: Json | null
+          pricing_snapshot_at?: string
           provider_id: string
           provider_notes?: string | null
           scheduled_end?: string | null
           scheduled_start?: string | null
+          service_id?: string | null
           service_type?: Database["public"]["Enums"]["plc_service_type"]
           stripe_checkout_session_id?: string | null
           stripe_payment_intent_id?: string | null
@@ -15401,12 +15420,17 @@ export type Database = {
           deposit_cents?: number
           deposit_paid_at?: string | null
           id?: string
+          pet_customer_id?: string | null
           pet_id?: string | null
           phase_entered_at?: string
+          platform_fee_pct?: number
+          pricing_snapshot?: Json | null
+          pricing_snapshot_at?: string
           provider_id?: string
           provider_notes?: string | null
           scheduled_end?: string | null
           scheduled_start?: string | null
+          service_id?: string | null
           service_type?: Database["public"]["Enums"]["plc_service_type"]
           stripe_checkout_session_id?: string | null
           stripe_payment_intent_id?: string | null
@@ -15415,6 +15439,13 @@ export type Database = {
           z3_customer_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pet_service_cases_pet_customer_id_fkey"
+            columns: ["pet_customer_id"]
+            isOneToOne: false
+            referencedRelation: "pet_customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pet_service_cases_pet_id_fkey"
             columns: ["pet_id"]
@@ -15427,6 +15458,13 @@ export type Database = {
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "pet_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_service_cases_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "pet_services"
             referencedColumns: ["id"]
           },
           {
@@ -15997,6 +16035,7 @@ export type Database = {
           updated_at: string
           vet_name: string | null
           weight_kg: number | null
+          z3_owner_id: string | null
         }
         Insert: {
           allergies?: string[] | null
@@ -16019,6 +16058,7 @@ export type Database = {
           updated_at?: string
           vet_name?: string | null
           weight_kg?: number | null
+          z3_owner_id?: string | null
         }
         Update: {
           allergies?: string[] | null
@@ -16041,6 +16081,7 @@ export type Database = {
           updated_at?: string
           vet_name?: string | null
           weight_kg?: number | null
+          z3_owner_id?: string | null
         }
         Relationships: [
           {

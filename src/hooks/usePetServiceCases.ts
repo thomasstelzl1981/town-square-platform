@@ -1,8 +1,9 @@
 /**
  * usePetServiceCases — Central CRUD hook for pet_service_cases + pet_lifecycle_events
  * 
- * Encapsulates all case operations and integrates with ENG-PLC engine
- * for phase validation, computed state, and event logging.
+ * Wave A: Z3 flows use Edge Function proxies (no direct DB access)
+ * Wave B: Idempotency + event_source on all events
+ * Wave C: service_id, platform_fee_pct, pricing_snapshot fields
  * 
  * @see src/engines/plc/spec.ts
  * @see src/engines/plc/engine.ts
@@ -19,7 +20,6 @@ import {
   type PLCCase,
   type PLCComputedState,
   PLC_EVENT_PHASE_MAP,
-  PLC_VALID_TRANSITIONS,
 } from '@/engines/plc/spec';
 import { computePLCState, isValidPLCTransition } from '@/engines/plc/engine';
 
@@ -28,6 +28,7 @@ import { computePLCState, isValidPLCTransition } from '@/engines/plc/engine';
 export interface CreateCaseInput {
   provider_id: string;
   service_type: PLCServiceType;
+  service_id?: string | null;
   pet_id?: string | null;
   customer_name?: string | null;
   customer_email?: string | null;
@@ -43,6 +44,7 @@ export interface CreateCaseInput {
 export interface TransitionInput {
   case_id: string;
   event_type: PLCEventType;
+  event_source?: string;
   actor_type?: 'customer' | 'provider' | 'admin' | 'system';
   payload?: Record<string, unknown>;
   provider_notes?: string | null;
@@ -73,12 +75,17 @@ function rowToCase(row: Record<string, unknown>): PLCCase {
     customer_name: row.customer_name as string | null,
     provider_id: row.provider_id as string,
     service_type: row.service_type as PLCServiceType,
+    service_id: (row.service_id as string | null) ?? null,
     pet_id: row.pet_id as string | null,
+    pet_customer_id: (row.pet_customer_id as string | null) ?? null,
     current_phase: row.current_phase as PLCPhase,
     phase_entered_at: row.phase_entered_at as string,
     total_price_cents: row.total_price_cents as number,
     deposit_cents: row.deposit_cents as number,
     deposit_paid_at: row.deposit_paid_at as string | null,
+    platform_fee_pct: (row.platform_fee_pct as number) ?? 7.5,
+    pricing_snapshot_at: (row.pricing_snapshot_at as string) ?? row.created_at as string,
+    pricing_snapshot: (row.pricing_snapshot as Record<string, unknown> | null) ?? null,
     stripe_payment_intent_id: row.stripe_payment_intent_id as string | null,
     stripe_checkout_session_id: row.stripe_checkout_session_id as string | null,
     scheduled_start: row.scheduled_start as string | null,
@@ -141,21 +148,21 @@ export function useCasesForCustomer(userId: string | null | undefined) {
 }
 
 /**
- * Load all cases for a Zone 3 customer (by z3_customer_id).
+ * Load all cases for a Zone 3 customer via Edge Function proxy.
+ * NO direct DB access for Z3 (P0 security fix).
  */
-export function useCasesForZ3Customer(z3CustomerId: string | null | undefined) {
+export function useCasesForZ3Customer(z3CustomerId: string | null | undefined, sessionToken: string | null | undefined) {
   return useQuery({
     queryKey: CASE_KEYS.forZ3Customer(z3CustomerId ?? ''),
-    enabled: !!z3CustomerId,
+    enabled: !!z3CustomerId && !!sessionToken,
     queryFn: async (): Promise<CaseWithComputed[]> => {
-      const { data, error } = await (supabase
-        .from('pet_service_cases') as any)
-        .select('*')
-        .eq('z3_customer_id', z3CustomerId!)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.functions.invoke('sot-pslc-z3-list-cases', {
+        body: { session_token: sessionToken },
+      });
 
       if (error) throw error;
-      return (data ?? []).map((r) => enrichWithComputed(rowToCase(r)));
+      const cases = data?.cases ?? [];
+      return cases.map((r: Record<string, unknown>) => enrichWithComputed(rowToCase(r)));
     },
   });
 }
@@ -204,43 +211,37 @@ export function useCaseEvents(caseId: string | null | undefined) {
 // ─── Mutations ────────────────────────────────────────────────
 
 /**
- * Create a new pet service case.
- * Starts at phase `provider_selected` (Stripe deposit skipped for now).
- * Also logs the initial `provider.selected` event.
+ * Create a new pet service case (for authenticated Z2 users only).
+ * Z3 uses Edge Function proxy (sot-pslc-z3-create-case).
  */
 export function useCreateCase() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: CreateCaseInput) => {
-      const isZ3 = !!input.z3_customer_id;
-      let actorId: string | null = null;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Nicht angemeldet');
 
-      if (!isZ3) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Nicht angemeldet');
-        actorId = user.id;
-      } else {
-        actorId = input.z3_customer_id!;
-      }
-
+      const now = new Date().toISOString();
       const initialPhase: PLCPhase = 'provider_selected';
 
       // 1. Insert case
       const { data: newCase, error: caseError } = await supabase
         .from('pet_service_cases')
         .insert({
-          customer_user_id: isZ3 ? null : actorId,
-          z3_customer_id: isZ3 ? input.z3_customer_id : null,
+          customer_user_id: user.id,
           customer_email: input.customer_email ?? null,
           customer_name: input.customer_name ?? null,
           provider_id: input.provider_id,
           service_type: input.service_type,
+          service_id: input.service_id ?? null,
           pet_id: input.pet_id ?? null,
           current_phase: initialPhase,
-          phase_entered_at: new Date().toISOString(),
+          phase_entered_at: now,
           total_price_cents: input.total_price_cents ?? 0,
           deposit_cents: 0,
+          platform_fee_pct: 7.5,
+          pricing_snapshot_at: now,
           scheduled_start: input.scheduled_start ?? null,
           scheduled_end: input.scheduled_end ?? null,
           customer_notes: input.customer_notes ?? null,
@@ -251,7 +252,8 @@ export function useCreateCase() {
 
       if (caseError) throw caseError;
 
-      // 2. Log initial event
+      // 2. Log initial event with idempotency
+      const idempotencyKey = `${newCase.id}:provider.selected:initial`;
       const { error: eventError } = await supabase
         .from('pet_lifecycle_events')
         .insert([{
@@ -259,13 +261,16 @@ export function useCreateCase() {
           event_type: 'provider.selected' as string,
           phase_before: null as string | null,
           phase_after: initialPhase as string,
-          actor_id: actorId,
+          actor_id: user.id,
           actor_type: 'customer' as string,
+          event_source: 'ui:z2_mod05' as string,
+          idempotency_key: idempotencyKey,
+          correlation_key: newCase.id,
           payload: {
             service_type: input.service_type,
+            service_id: input.service_id,
             scheduled_start: input.scheduled_start,
             scheduled_end: input.scheduled_end,
-            z3: isZ3,
           } as unknown as Json,
         }]);
 
@@ -287,8 +292,45 @@ export function useCreateCase() {
 }
 
 /**
+ * Create a Z3 case via Edge Function proxy (secure).
+ */
+export function useCreateZ3Case() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      session_token: string;
+      provider_id: string;
+      service_id?: string | null;
+      scheduled_start?: string | null;
+      scheduled_end?: string | null;
+      pet_id?: string | null;
+      customer_notes?: string | null;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('sot-pslc-z3-create-case', {
+        body: input,
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CASE_KEYS.all });
+      toast.success('Buchungsanfrage erstellt');
+    },
+    onError: (error: Error) => {
+      console.error('Z3 create case failed:', error);
+      toast.error(error.message || 'Buchungsanfrage fehlgeschlagen');
+    },
+  });
+}
+
+/**
  * Transition a case to the next phase by logging a PLC event.
  * Validates the transition via ENG-PLC engine before executing.
+ * Uses idempotency keys to prevent duplicate events.
  */
 export function useTransitionCase() {
   const queryClient = useQueryClient();
@@ -318,10 +360,14 @@ export function useTransitionCase() {
       const { data: { user } } = await supabase.auth.getUser();
       const actorId = user?.id ?? null;
       const actorType = input.actor_type ?? 'system';
+      const eventSource = input.event_source ?? 'ui:z2_mod22';
 
       const now = new Date().toISOString();
 
-      // 4. Log event
+      // 4. Generate idempotency key (deterministic per transition)
+      const idempotencyKey = `${input.case_id}:${input.event_type}:${targetPhase ?? fromPhase}`;
+
+      // 5. Log event (DB unique constraint handles idempotency)
       const { error: eventErr } = await supabase
         .from('pet_lifecycle_events')
         .insert([{
@@ -331,24 +377,31 @@ export function useTransitionCase() {
           phase_after: (targetPhase ?? fromPhase) as string,
           actor_id: actorId,
           actor_type: actorType as string,
+          event_source: eventSource as string,
+          idempotency_key: idempotencyKey,
+          correlation_key: input.case_id,
           payload: (input.payload ?? {}) as unknown as Json,
         }]);
 
-      if (eventErr) throw eventErr;
+      if (eventErr) {
+        // Handle idempotency duplicate as success (no-op)
+        if (eventErr.code === '23505' && eventErr.message?.includes('idempotency')) {
+          return { case_id: input.case_id, new_phase: targetPhase ?? fromPhase, idempotent_skip: true };
+        }
+        throw eventErr;
+      }
 
-      // 5. Update case phase if this is a phase-changing event
+      // 6. Update case phase if this is a phase-changing event
       if (targetPhase) {
         const updatePayload: Record<string, unknown> = {
           current_phase: targetPhase,
           phase_entered_at: now,
         };
 
-        // Set closed_at for terminal phases
         if (targetPhase === 'closed_completed' || targetPhase === 'closed_cancelled') {
           updatePayload.closed_at = now;
         }
 
-        // Append provider notes if provided
         if (input.provider_notes !== undefined) {
           updatePayload.provider_notes = input.provider_notes;
         }
@@ -365,7 +418,9 @@ export function useTransitionCase() {
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: CASE_KEYS.all });
-      toast.success('Status aktualisiert');
+      if (!(result as any).idempotent_skip) {
+        toast.success('Status aktualisiert');
+      }
     },
     onError: (error: Error) => {
       console.error('Transition failed:', error);

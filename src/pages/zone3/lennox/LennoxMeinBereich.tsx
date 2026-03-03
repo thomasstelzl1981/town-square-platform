@@ -19,7 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
-import { useCasesForZ3Customer, useCreateCase, type CaseWithComputed } from '@/hooks/usePetServiceCases';
+import { useCasesForZ3Customer, useCreateZ3Case, type CaseWithComputed } from '@/hooks/usePetServiceCases';
 import { PLC_PHASE_LABELS, type PLCPhase } from '@/engines/plc/spec';
 import { z } from 'zod';
 import { LENNOX as C, SPECIES_LABELS, GENDER_LABELS } from './lennoxTheme';
@@ -100,11 +100,12 @@ export default function LennoxMeinBereich() {
     enabled: !!selectedProviderId,
   });
 
-  // ─── Cases (PLC) ─────────────────────────────────
-  const { data: cases = [] } = useCasesForZ3Customer(z3User?.id);
+  // ─── Cases (PLC) — via Edge Function proxy (P0 security) ──
+  const { z3SessionToken } = useZ3Auth();
+  const { data: cases = [] } = useCasesForZ3Customer(z3User?.id, z3SessionToken);
 
-  // ─── Create Case mutation ─────────────────────────
-  const createCase = useCreateCase();
+  // ─── Create Case mutation (Z3 proxy) ──────────────
+  const createCase = useCreateZ3Case();
 
   // ─── Booking form state ────────────────────────────
   const [bookingService, setBookingService] = useState('');
@@ -137,24 +138,19 @@ export default function LennoxMeinBereich() {
   const handleBookingSubmit = async () => {
     if (!bookingService) { toast.error('Bitte Service wählen'); return; }
     if (!selectedProviderId) { toast.error('Bitte Anbieter wählen'); return; }
-    if (!z3User) return;
+    if (!z3User || !z3SessionToken) return;
 
-    const selectedProvider = providers.find((p: any) => p.id === selectedProviderId);
-    if (!selectedProvider?.tenant_id) { toast.error('Anbieter-Konfiguration fehlt'); return; }
-
-    const customerName = [z3User.first_name, z3User.last_name].filter(Boolean).join(' ') || null;
+    // Find the selected service's ID for pricing SSOT
+    const selectedSvc = services.find((s: any) => s.title === bookingService);
 
     createCase.mutate({
+      session_token: z3SessionToken,
       provider_id: selectedProviderId,
-      service_type: 'pension',
-      customer_name: customerName,
-      customer_email: z3User.email,
+      service_id: selectedSvc?.id || null,
       customer_notes: bookingNotes || null,
       scheduled_start: bookingDate || null,
       scheduled_end: bookingDateEnd || null,
       pet_id: bookingPetId || null,
-      tenant_id: selectedProvider.tenant_id,
-      z3_customer_id: z3User.id,
     }, {
       onSuccess: () => {
         setBookingService('');
