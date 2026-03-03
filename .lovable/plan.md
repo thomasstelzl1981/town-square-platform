@@ -1,47 +1,44 @@
 
 
-# Density-Schalter: Bewertung & Plan
+# Premium Polish: Overlay/Scrim + Modal Surface
 
-## Einschätzung: Guter CRM-Move, aber pragmatischer umsetzen
+Guter Vorschlag — die Tokens machen Overlays konsistent steuerbar, statt hardcoded `bg-black/60` in jeder Komponente. Aktuell hat Dialog `bg-black/60`, Popover/Dropdown nutzen `bg-popover/80` — das wird jetzt vereinheitlicht.
 
-Der Vorschlag ist sinnvoll — weniger Scroll bei langen Listen ist ein echter Produktivitätsgewinn. Allerdings würde ich die Umsetzung **schlanker** halten als vorgeschlagen:
+## Umsetzung (4 Dateien)
 
-**Gegen `--density-scale` als CSS-Variable:** Tailwind-Klassen wie `py-3`, `p-4`, `space-y-6` lassen sich nicht mit einer CSS-Variable skalieren — Tailwind generiert feste Utility-Klassen. Ein `calc()`-basierter Ansatz würde das gesamte System verkomplizieren.
+### 1. `src/index.css` — Overlay-Tokens einfügen
 
-**Stattdessen: CSS-Override auf `data-density="compact"`** — überschreibt gezielt die SSOT-relevanten Spacing-Werte über kompakte Klassen, die vom Attribut abhängen.
-
-## Umsetzung (4 Dateien, keine Module betroffen)
-
-### 1. `src/index.css` — Compact-Overrides via `data-density`
+**Light (`:root`):**
 ```css
-html[data-density="compact"] .page-shell { ... }  /* reduzierte Paddings */
-html[data-density="compact"] .glass-card { ... }   /* p-3 statt p-4 */
+--overlay-scrim: 222 84% 4.9% / 0.35;
+--overlay-surface: 0 0% 100% / 0.96;
 ```
-Gezielte Overrides für: PageShell-Spacing, Card-Padding, Table-Cell-Padding, Section-Gaps.
 
-### 2. `src/hooks/useDensity.ts` — Neuer Hook
-- Liest/schreibt `localStorage("sot-density")`
-- Setzt `document.documentElement.dataset.density`
-- Returns `{ density, setDensity, isCompact }`
+**Dark (`.dark`):**
+```css
+--overlay-scrim: 222 47% 6% / 0.62;
+--overlay-surface: 222 28% 14% / 0.92;
+```
 
-### 3. `src/components/shared/PageShell.tsx` — Klassen-Marker
-- Fügt eine CSS-Klasse `page-shell` hinzu, damit die CSS-Overrides greifen
+### 2. `src/components/ui/dialog.tsx`
 
-### 4. `src/pages/portal/stammdaten/ProfilTab.tsx` (oder Settings-Bereich)
-- Toggle-UI: "Kompakte Ansicht" Switch
-- Nutzt `useDensity()` Hook
+**Overlay** (Zeile 23): `bg-black/60` → `bg-[hsl(var(--overlay-scrim))]` (behält `backdrop-blur-sm`)
 
-### Was sich ändert (Compact aktiv)
-| Element | Comfortable | Compact |
-|---------|------------|---------|
-| PageShell padding | `p-6` | `p-4` |
-| Card padding | `p-4` | `p-3` |
-| Table cell | `py-3` | `py-2` |
-| Section gaps | `space-y-6` | `space-y-4` |
-| Widget grid gap | `gap-6` | `gap-4` |
+**Content** (Zeile 38): `bg-background/90 backdrop-blur-lg` → `bg-[hsl(var(--overlay-surface))] backdrop-blur-lg border-border/40`
 
-### Was sich NICHT ändert
-- Fonts, Farben, Border-Radii, Icons
-- Keine Änderungen an den 23 Modulen
-- Keine Änderungen am designManifest (die Werte bleiben als Default)
+### 3. `src/components/ui/alert-dialog.tsx`
+
+**Overlay** (Zeile 18): `bg-black/80` → `bg-[hsl(var(--overlay-scrim))]` + `backdrop-blur-sm`
+
+**Content** (Zeile 33): `bg-background` → `bg-[hsl(var(--overlay-surface))] border-border/40`
+
+### 4. `src/components/ui/dropdown-menu.tsx`
+
+**Content** (Zeile 64) + **SubContent** (Zeile 47): `bg-popover/80` → `bg-[hsl(var(--overlay-surface))]` (behält `backdrop-blur-md`)
+
+Popover (`popover.tsx`) nutzt `bg-popover` ohne Alpha — wird ebenfalls auf `bg-[hsl(var(--overlay-surface))]` umgestellt.
+
+### Nicht betroffen
+- Keine Modul-Dateien, keine Freeze-Konflikte
+- Alle Änderungen in `src/components/ui/` (shared primitives)
 
