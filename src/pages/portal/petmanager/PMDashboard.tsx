@@ -1,6 +1,6 @@
 /**
- * PMDashboard — Pet Manager Dashboard (Manager-Module-Workflow-Pattern V3.0)
- * ModulePageHeader + ManagerVisitenkarte + Kapazitäts-Widget + KPIs + Eingehende Anfragen + Nächste Buchungen
+ * PMDashboard — Pet Manager Dashboard (PLC-Engine V3.0)
+ * Reads from pet_service_cases (SSOT) instead of legacy pet_z1_booking_requests
  */
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,19 +8,16 @@ import { Button } from '@/components/ui/button';
 import { KPICard } from '@/components/shared/KPICard';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { ManagerVisitenkarte } from '@/components/shared/ManagerVisitenkarte';
-import { useMyProvider, useBookings } from '@/hooks/usePetBookings';
+import { useMyProvider } from '@/hooks/usePetBookings';
 import { usePetCapacity, useWeeklyBookingCount, useMonthlyRevenue } from '@/hooks/usePetCapacity';
+import { useCasesForProvider, useTransitionCase } from '@/hooks/usePetServiceCases';
+import { PLC_PHASE_LABELS } from '@/engines/plc/spec';
 import { Calendar, Users, TrendingUp, Clock, AlertTriangle, Check, XCircle, Inbox } from 'lucide-react';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { PageShell } from '@/components/shared/PageShell';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { useDemoToggles } from '@/hooks/useDemoToggles';
-import { isDemoId } from '@/engines/demoData';
 
 const FACILITY_LABELS: Record<string, string> = {
   daycare: 'Tagesstätte',
@@ -30,72 +27,39 @@ const FACILITY_LABELS: Record<string, string> = {
 };
 
 export default function PMDashboard() {
-  const queryClient = useQueryClient();
   const { data: provider, isLoading: provLoading } = useMyProvider();
   const { data: capacity } = usePetCapacity(provider?.id);
   const { data: weeklyCount } = useWeeklyBookingCount(provider?.id);
   const { data: monthlyRevenue } = useMonthlyRevenue(provider?.id);
-  const { data: rawBookings = [] } = useBookings(provider ? { providerId: provider.id } : undefined);
-  const { isEnabled } = useDemoToggles();
-  const demoEnabled = isEnabled('GP-PET');
-  const allBookings = demoEnabled ? rawBookings : rawBookings.filter(b => !isDemoId(b.id));
+  const { data: cases = [] } = useCasesForProvider(provider?.id);
+  const transitionCase = useTransitionCase();
 
-  // ── Incoming booking requests from Z3 ──────────────
-  const { data: incomingRequests = [] } = useQuery({
-    queryKey: ['pm-incoming-booking-requests', provider?.id],
-    queryFn: async () => {
-      const { data } = await (supabase.from('pet_z1_booking_requests' as any) as any)
-        .select('*')
-        .eq('provider_id', provider!.id)
-        .in('status', ['pending'])
-        .order('created_at', { ascending: false });
-      return data || [];
-    },
-    enabled: !!provider?.id,
-  });
-
-  const confirmMutation = useMutation({
-    mutationFn: async (requestId: string) => {
-      // Update the booking request status to confirmed
-      const { error } = await (supabase.from('pet_z1_booking_requests' as any) as any)
-        .update({
-          status: 'confirmed',
-          provider_confirmed_at: new Date().toISOString(),
-        })
-        .eq('id', requestId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pm-incoming-booking-requests'] });
-      toast.success('Buchungsanfrage bestätigt');
-    },
-    onError: () => toast.error('Fehler bei der Bestätigung'),
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: async (requestId: string) => {
-      const { error } = await (supabase.from('pet_z1_booking_requests' as any) as any)
-        .update({ status: 'rejected' })
-        .eq('id', requestId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pm-incoming-booking-requests'] });
-      toast.success('Buchungsanfrage abgelehnt');
-    },
-    onError: () => toast.error('Fehler'),
-  });
-
-  const pendingCount = allBookings.filter(b => b.status === 'requested').length;
+  // ── Cases by phase ──
+  const incomingCases = cases.filter(c => c.current_phase === 'provider_selected');
+  const activeCases = cases.filter(c => ['provider_confirmed', 'checked_in'].includes(c.current_phase));
   const todayStr = new Date().toISOString().split('T')[0];
-  const todayBookings = allBookings
-    .filter(b => b.scheduled_date === todayStr && ['confirmed', 'in_progress'].includes(b.status))
-    .sort((a, b) => (a.scheduled_time_start || '').localeCompare(b.scheduled_time_start || ''));
+  const todayCases = activeCases.filter(c => c.scheduled_start?.startsWith(todayStr));
 
-  const upcomingBookings = allBookings
-    .filter(b => b.scheduled_date >= todayStr && ['confirmed', 'in_progress', 'requested'].includes(b.status))
-    .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date) || (a.scheduled_time_start || '').localeCompare(b.scheduled_time_start || ''))
+  const upcomingCases = cases
+    .filter(c => ['provider_selected', 'provider_confirmed', 'checked_in'].includes(c.current_phase))
+    .sort((a, b) => (a.scheduled_start ?? '').localeCompare(b.scheduled_start ?? ''))
     .slice(0, 5);
+
+  const handleConfirm = (caseId: string) => {
+    transitionCase.mutate({
+      case_id: caseId,
+      event_type: 'provider.confirmed',
+      actor_type: 'provider',
+    });
+  };
+
+  const handleDecline = (caseId: string) => {
+    transitionCase.mutate({
+      case_id: caseId,
+      event_type: 'provider.declined',
+      actor_type: 'provider',
+    });
+  };
 
   if (provLoading) {
     return (
@@ -121,7 +85,6 @@ export default function PMDashboard() {
   return (
     <PageShell>
     <div className={DESIGN.SPACING.SECTION}>
-      {/* ModulePageHeader — CI-Standard */}
       <ModulePageHeader
         title="Pet Manager"
         description="Dein Dashboard für Tierpension und Services"
@@ -172,9 +135,9 @@ export default function PMDashboard() {
 
       {/* KPI-Leiste */}
       <div className={DESIGN.KPI_GRID.FULL}>
-        <KPICard label="Heute" value={todayBookings.length} icon={Calendar} subtitle="Bestätigte Termine" />
+        <KPICard label="Heute" value={todayCases.length} icon={Calendar} subtitle="Bestätigte Termine" />
         <KPICard label="Diese Woche" value={weeklyCount ?? 0} icon={TrendingUp} subtitle="Buchungen" />
-        <KPICard label="Offene Anfragen" value={pendingCount + incomingRequests.length} icon={Clock} subtitle={pendingCount + incomingRequests.length > 0 ? 'Prüfung nötig' : 'Keine'} subtitleClassName={pendingCount + incomingRequests.length > 0 ? 'text-amber-500' : undefined} />
+        <KPICard label="Offene Anfragen" value={incomingCases.length} icon={Clock} subtitle={incomingCases.length > 0 ? 'Prüfung nötig' : 'Keine'} subtitleClassName={incomingCases.length > 0 ? 'text-amber-500' : undefined} />
         <KPICard
           label="Monatsumsatz"
           value={`${((monthlyRevenue ?? 0) / 100).toLocaleString('de-DE', { minimumFractionDigits: 0 })} €`}
@@ -183,31 +146,28 @@ export default function PMDashboard() {
         />
       </div>
 
-      {/* ══════════════════════════════════════════════════
-          EINGEHENDE BUCHUNGSANFRAGEN (Z3 → Z2)
-          ══════════════════════════════════════════════════ */}
-      {incomingRequests.length > 0 && (
+      {/* EINGEHENDE CASES (Phase: provider_selected) */}
+      {incomingCases.length > 0 && (
         <Card className={DESIGN.CARD.SECTION}>
           <div className={DESIGN.CARD.SECTION_HEADER}>
             <div className="flex items-center gap-2">
               <Inbox className="h-4 w-4 text-amber-500" />
               <span className="text-sm font-medium">Eingehende Anfragen</span>
-              <Badge variant="outline" className="text-[10px]">{incomingRequests.length}</Badge>
+              <Badge variant="outline" className="text-[10px]">{incomingCases.length}</Badge>
             </div>
           </div>
           <CardContent className="p-4">
             <div className={DESIGN.LIST.GAP}>
-              {incomingRequests.map((req: any) => (
-                <div key={req.id} className="border rounded-lg p-3 flex items-center justify-between gap-3">
+              {incomingCases.map(c => (
+                <div key={c.id} className="border rounded-lg p-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{req.service_title}</p>
+                    <p className="text-sm font-medium truncate">{c.customer_name || c.customer_email || 'Unbekannt'}</p>
                     <p className="text-xs text-muted-foreground">
-                      {req.preferred_date && format(parseISO(req.preferred_date), 'dd.MM.yyyy', { locale: de })}
-                      {req.preferred_time && ` um ${req.preferred_time}`}
-                      {req.pet_name && ` · ${req.pet_name}`}
+                      {c.service_type && PLC_PHASE_LABELS[c.current_phase]}
+                      {c.scheduled_start && ` · ${format(parseISO(c.scheduled_start), 'dd.MM.yyyy', { locale: de })}`}
                     </p>
-                    {req.client_notes && (
-                      <p className="text-xs text-muted-foreground mt-0.5 italic">"{req.client_notes}"</p>
+                    {c.customer_notes && (
+                      <p className="text-xs text-muted-foreground mt-0.5 italic">"{c.customer_notes}"</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -215,16 +175,16 @@ export default function PMDashboard() {
                       size="sm"
                       variant="outline"
                       className="text-xs text-destructive border-destructive/30"
-                      onClick={() => rejectMutation.mutate(req.id)}
-                      disabled={rejectMutation.isPending}
+                      onClick={() => handleDecline(c.id)}
+                      disabled={transitionCase.isPending}
                     >
                       <XCircle className="h-3.5 w-3.5 mr-1" /> Ablehnen
                     </Button>
                     <Button
                       size="sm"
                       className="text-xs"
-                      onClick={() => confirmMutation.mutate(req.id)}
-                      disabled={confirmMutation.isPending}
+                      onClick={() => handleConfirm(c.id)}
+                      disabled={transitionCase.isPending}
                     >
                       <Check className="h-3.5 w-3.5 mr-1" /> Annehmen
                     </Button>
@@ -236,7 +196,7 @@ export default function PMDashboard() {
         </Card>
       )}
 
-      {/* Nächste Buchungen */}
+      {/* Nächste Termine */}
       <Card className={DESIGN.CARD.SECTION}>
         <div className={DESIGN.CARD.SECTION_HEADER}>
           <div className="flex items-center gap-2">
@@ -245,24 +205,23 @@ export default function PMDashboard() {
           </div>
         </div>
         <CardContent className="p-4">
-          {upcomingBookings.length === 0 ? (
+          {upcomingCases.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">Keine anstehenden Termine</p>
           ) : (
             <div className={DESIGN.LIST.GAP}>
-              {upcomingBookings.map(b => (
-                <div key={b.id} className={DESIGN.LIST.ROW}>
+              {upcomingCases.map(c => (
+                <div key={c.id} className={DESIGN.LIST.ROW}>
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="text-xs text-muted-foreground w-20 shrink-0">
-                      {format(parseISO(b.scheduled_date), 'dd.MM.', { locale: de })}
-                      {b.scheduled_time_start && ` ${b.scheduled_time_start.slice(0, 5)}`}
+                      {c.scheduled_start && format(parseISO(c.scheduled_start), 'dd.MM.', { locale: de })}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{b.service?.title}</p>
-                      <p className="text-xs text-muted-foreground">{b.pet?.name} ({b.pet?.species})</p>
+                      <p className="text-sm font-medium truncate">{c.customer_name || c.customer_email || 'Unbekannt'}</p>
+                      <p className="text-xs text-muted-foreground">{c.service_type}</p>
                     </div>
                   </div>
-                  <Badge variant={b.status === 'requested' ? 'outline' : 'default'} className="text-[10px] shrink-0">
-                    {b.status === 'requested' ? 'Angefragt' : b.status === 'confirmed' ? 'Bestätigt' : b.status}
+                  <Badge variant={c.current_phase === 'provider_selected' ? 'outline' : 'default'} className="text-[10px] shrink-0">
+                    {PLC_PHASE_LABELS[c.current_phase]}
                   </Badge>
                 </div>
               ))}

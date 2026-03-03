@@ -38,7 +38,7 @@ export const GP_PET_GOLDEN_PATH: GoldenPathDefinition = {
 
   required_entities: [
     { table: 'pet_z1_customers', description: 'Z1 Kundenprofil muss existieren (Lead/MOD-05)', scope: 'entity_id' },
-    { table: 'pet_z1_booking_requests', description: 'Buchungsanfrage in Z1 Staging', scope: 'entity_id' },
+    { table: 'pet_service_cases', description: 'PLC Service Case (SSOT für Buchungen)', scope: 'entity_id' },
     { table: 'pet_customers', description: 'Z2 Provider-Kunde muss existieren', scope: 'entity_id' },
     { table: 'pets', description: 'Mindestens ein Tier muss vorhanden/referenziert sein', scope: 'entity_id' },
   ],
@@ -46,10 +46,9 @@ export const GP_PET_GOLDEN_PATH: GoldenPathDefinition = {
     { key: 'CONTRACT_PET_LEAD_CAPTURE', source: 'pet_z1_customers', description: 'Lead-Erfassung Z3 -> Z1' },
     { key: 'CONTRACT_PET_Z1_PROFILE_CREATE', source: 'pet_z1_customers', description: 'Z1-Profilerstellung durch Admin' },
     { key: 'CONTRACT_PET_CUSTOMER_ASSIGN', source: 'pet_customers', description: 'Zuweisung Z1 -> Z2 an Provider' },
-    { key: 'CONTRACT_PET_BOOKING_REQUEST', source: 'pet_z1_booking_requests', description: 'Buchungsanfrage Z3 -> Z1 -> Z2' },
-    { key: 'CONTRACT_PET_BOOKING_CONFIRM', source: 'pet_z1_booking_requests', description: 'Provider-Bestaetigung Z2 -> Z1' },
-    { key: 'CONTRACT_PET_BOOKING_PAYMENT', source: 'pet_z1_booking_requests', description: 'Buchungsgebuehr Z3 -> Z1' },
-    { key: 'CONTRACT_PET_MOD05_BOOKING', source: 'pet_z1_customers', description: 'MOD-05 Buchungsanfrage Z2 -> Z1' },
+    { key: 'CONTRACT_PET_CASE_CREATE', source: 'pet_service_cases', description: 'Service Case erstellt (PLC provider_selected)' },
+    { key: 'CONTRACT_PET_CASE_CONFIRM', source: 'pet_service_cases', description: 'Provider-Bestätigung (PLC provider_confirmed)' },
+    { key: 'CONTRACT_PET_MOD05_BOOKING', source: 'pet_service_cases', description: 'MOD-05 Buchungsanfrage Z2 -> Case' },
   ],
   ledger_events: [
     { event_type: 'pet.lead.captured', trigger: 'on_complete' },
@@ -225,81 +224,53 @@ export const GP_PET_GOLDEN_PATH: GoldenPathDefinition = {
     {
       id: 'booking_request',
       phase: 5,
-      label: 'Buchungsanfrage stellen (Z3 -> Z1 Tracking -> Z2)',
+      label: 'Service Case erstellen (PLC: provider_selected)',
       type: 'system',
       task_kind: 'service_task',
-      camunda_key: 'GP_PET_STEP_05A_BOOKING_REQUEST',
+      camunda_key: 'GP_PET_STEP_05A_CASE_CREATE',
       preconditions: [
         { key: 'pet_exists', source: 'pets', description: 'Mindestens ein Tier muss existieren' },
       ],
       completion: [
-        { key: 'booking_requested', source: 'pet_z1_booking_requests', check: 'exists', description: 'Buchungsanfrage in Z1 Staging erfasst' },
+        { key: 'case_created', source: 'pet_service_cases', check: 'exists', description: 'PLC Service Case erstellt' },
       ],
       on_error: {
-        ledger_event: 'pet.booking.request.error',
+        ledger_event: 'pet.case.create.error',
         status_update: 'error',
         recovery_strategy: 'retry',
         max_retries: 3,
-        description: 'Fehler beim Erstellen der Buchungsanfrage',
+        description: 'Fehler beim Erstellen des Service Case',
       },
     },
 
-    // ═══════════════════════════════════════════════════════════
-    // PHASE 5b: Provider-Bestaetigung (Z2 -> Z1)
-    // ═══════════════════════════════════════════════════════════
     {
       id: 'provider_confirmation',
       phase: 5,
-      label: 'Provider bestaetigt Buchungsanfrage',
+      label: 'Provider bestätigt Service Case',
       type: 'action',
       routePattern: '/portal/petmanager',
       task_kind: 'user_task',
       camunda_key: 'GP_PET_STEP_05B_PROVIDER_CONFIRM',
       preconditions: [
-        { key: 'booking_requested', source: 'pet_z1_booking_requests', description: 'Buchungsanfrage muss existieren' },
+        { key: 'case_created', source: 'pet_service_cases', description: 'Service Case muss existieren' },
       ],
       completion: [
-        { key: 'booking_confirmed', source: 'pet_z1_booking_requests', check: 'exists', description: 'Status = confirmed' },
+        { key: 'case_confirmed', source: 'pet_service_cases', check: 'exists', description: 'Phase = provider_confirmed' },
       ],
       on_timeout: {
-        ledger_event: 'pet.booking.confirm.timeout',
+        ledger_event: 'pet.case.confirm.timeout',
         status_update: 'stale',
         recovery_strategy: 'escalate_to_z1',
         escalate_to: 'Z1',
         description: 'Provider reagiert nicht innerhalb 48h',
       },
       on_rejected: {
-        ledger_event: 'pet.booking.confirm.rejected',
+        ledger_event: 'pet.case.confirm.rejected',
         status_update: 'rejected',
         recovery_strategy: 'manual_review',
-        description: 'Provider hat Buchung abgelehnt',
+        description: 'Provider hat Case abgelehnt',
       },
       sla_hours: 48,
-    },
-
-    // ═══════════════════════════════════════════════════════════
-    // PHASE 5c: Zahlung Buchungsgebuehr (Z3 -> Z1)
-    // ═══════════════════════════════════════════════════════════
-    {
-      id: 'booking_payment',
-      phase: 5,
-      label: 'Buchungsgebuehr zahlen',
-      type: 'system',
-      task_kind: 'wait_message',
-      camunda_key: 'GP_PET_STEP_05C_PAYMENT',
-      preconditions: [
-        { key: 'booking_confirmed', source: 'pet_z1_booking_requests', description: 'Provider muss bestaetigt haben' },
-      ],
-      completion: [
-        { key: 'booking_paid', source: 'pet_z1_booking_requests', check: 'exists', description: 'payment_status = succeeded' },
-      ],
-      on_error: {
-        ledger_event: 'pet.booking.payment.failed',
-        status_update: 'payment_failed',
-        recovery_strategy: 'retry',
-        max_retries: 3,
-        description: 'Zahlung fehlgeschlagen',
-      },
     },
 
     // ═══════════════════════════════════════════════════════════
@@ -317,7 +288,7 @@ export const GP_PET_GOLDEN_PATH: GoldenPathDefinition = {
         { key: 'pet_exists', source: 'pets', description: 'Mindestens ein Tier muss existieren' },
       ],
       completion: [
-        { key: 'first_booking_completed', source: 'pet_bookings', check: 'exists', description: 'Mindestens eine Buchung confirmed/completed' },
+        { key: 'first_booking_completed', source: 'pet_service_cases', check: 'exists', description: 'Mindestens ein Case closed_completed' },
       ],
     },
 
@@ -334,7 +305,7 @@ export const GP_PET_GOLDEN_PATH: GoldenPathDefinition = {
       preconditions: [
         { key: 'customer_exists', source: 'pet_customers', description: 'Kunde existiert' },
         { key: 'pet_exists', source: 'pets', description: 'Tier existiert' },
-        { key: 'first_booking_completed', source: 'pet_bookings', description: 'Erste Buchung abgeschlossen' },
+        { key: 'first_booking_completed', source: 'pet_service_cases', description: 'Erste Buchung abgeschlossen (PLC closed_completed)' },
       ],
     },
   ],

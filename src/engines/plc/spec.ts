@@ -121,7 +121,7 @@ export const PLC_STUCK_THRESHOLDS: Partial<Record<PLCPhase, number>> = {
 // ─── Valid Transitions ────────────────────────────────────────
 export const PLC_VALID_TRANSITIONS: Record<PLCPhase, PLCPhase[]> = {
   search_initiated: ['provider_selected', 'closed_cancelled'],
-  provider_selected: ['deposit_requested', 'closed_cancelled'],
+  provider_selected: ['deposit_requested', 'provider_confirmed', 'provider_declined', 'closed_cancelled'],
   deposit_requested: ['deposit_paid', 'closed_cancelled'],
   deposit_paid: ['provider_confirmed', 'provider_declined'],
   provider_confirmed: ['checked_in', 'closed_cancelled'],
