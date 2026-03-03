@@ -1,34 +1,30 @@
 
 
-# Bewertung: Status-Farben Light/Dark differenzieren
+# Bewertung: Light Mode Input-Surface Token
 
-Dieser Patch behebt exakt **Pain Point #3** aus dem Audit: Status-Farben sind aktuell identisch in Light und Dark Mode.
+## Meine Einschätzung: Guter Vorschlag, mit einer Anpassung
 
-## Was die Änderungen bewirken
+Der Vorschlag ist sinnvoll — ein dedizierter `--input-bg` Token gibt zentrale Kontrolle über Input-Hintergründe, unabhängig von `--muted`.
 
-**Light Mode** — Sättigung und Helligkeit werden **reduziert**:
-- Weniger grell auf weissem/hellem Background
-- Bessere Lesbarkeit von Status-Badges und Dots
-- Success: 71%/45% → 45%/38% (ruhiger, weniger neon)
-- Warn: 92%/50% → 85%/45% (weniger blendend)
-- Error: 84%/60% → 75%/52% (kräftig aber nicht aggressiv)
-- Info: 89%/48% → 80%/42% (weniger grell)
+**Allerdings:** Eure Inputs nutzen aktuell bereits `hsl(var(--muted) / 0.6)` in `.input-ios` (Zeile 579) und `bg-muted/40` in den Shadcn-Komponenten (`input.tsx`, `textarea.tsx`). Die sind also nicht transparent, sondern haben schon einen definierten Hintergrund.
 
-**Dark Mode** — Sättigung leicht reduziert, Helligkeit **angehoben**:
-- Besserer Kontrast auf dunklem Background
-- Success: 71%/45% → 55%/45% (gleiche Helligkeit, weniger neon)
-- Warn: 92%/50% → 80%/52% (etwas heller, weniger gesättigt)
-- Error: 84%/60% → 70%/56% (etwas gedämpft)
-- Info: 89%/48% → 75%/50% (etwas heller)
+Ein reines Weiss (`0 0% 100%`) könnte im Light Mode **zu kontrastlos** wirken, wenn euer Background schon weiss oder nahe-weiss ist — die Inputs verschwinden dann visuell.
 
-## Betroffene Komponenten (keine Code-Änderungen nötig)
+## Empfehlung: Token ja, aber mit leichtem Grauton
 
-Alle nutzen `hsl(var(--status-*))` via Tailwind — greifen automatisch die neuen Werte:
-- `StatusBadge` / `StatusDot` (src/components/shared/StatusBadge.tsx)
-- `StatusIndicator` (src/components/immobilienakte/)
-- KPI-Cards, Dashboard-Widgets, Tabellen-Badges
+```css
+/* :root */
+--input-bg: 210 20% 97%;   /* Hauch von Blau-Grau, nicht reines Weiss */
 
-## Umsetzung
+/* .dark */
+--input-bg: 215 15% 18%;   /* Dunkler als Surface, aber erkennbar */
+```
 
-8 Zeilen in `src/index.css` ändern — 4 in `:root`, 4 in `.dark`. Keine weiteren Dateien betroffen.
+## Umsetzung (3 Stellen)
+
+1. **Token einfügen** in `src/index.css` unter `:root` und `.dark`
+2. **`.input-ios`** (Zeile 579): `background: hsl(var(--input-bg));` statt `hsl(var(--muted) / 0.6)`
+3. **Shadcn Input/Textarea** (`src/components/ui/input.tsx`, `textarea.tsx`): `bg-muted/40` durch eine Klasse mit `hsl(var(--input-bg))` ersetzen — oder alternativ den Token direkt in `.input-ios` belassen und die Shadcn-Komponenten mit der Klasse `input-ios` versehen
+
+Kein Risiko, rein kosmetisch, keine Logik betroffen.
 
