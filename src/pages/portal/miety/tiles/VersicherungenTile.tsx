@@ -118,15 +118,15 @@ export default function VersicherungenTile() {
 
               {/* SOLL Card — Neo Digital */}
               <WidgetCell key={`${category}-soll`}>
-                <Card className="glass-card border-blue-500/20 overflow-hidden h-full">
-                  <div className="h-1 bg-gradient-to-r from-blue-400 to-indigo-600" />
+                <Card className="glass-card border-primary/20 overflow-hidden h-full">
+                  <div className="h-1 bg-gradient-to-r from-primary/60 to-primary" />
                   <CardContent className="p-4 flex flex-col justify-between h-full">
                     <div className="flex items-start gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-blue-500/10">
-                        <Shield className="h-4 w-4 text-blue-600" />
+                      <div className="p-1.5 rounded-lg bg-primary/10">
+                        <Shield className="h-4 w-4 text-primary" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-[10px] text-blue-600 uppercase tracking-wide mb-0.5">Vergleichsangebot</p>
+                        <p className="text-[10px] text-primary uppercase tracking-wide mb-0.5">Vergleichsangebot</p>
                         <p className="font-medium text-xs">Neo Digital — {label}</p>
                         {home && (
                           <div className="flex flex-wrap gap-1 mt-1.5">
@@ -138,12 +138,12 @@ export default function VersicherungenTile() {
                         <p className="text-xs text-muted-foreground mt-1.5">{sollPrice}</p>
                         {sollPriceComfort && <p className="text-[10px] text-muted-foreground">{sollPriceComfort}</p>}
                         {contract?.monthly_cost && (
-                          <Badge className="mt-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-0 text-[10px]">
+                          <Badge className="mt-1.5 bg-primary/10 text-primary border-0 text-[10px]">
                             Einsparung möglich
                           </Badge>
                         )}
                         <div className="flex gap-1.5 mt-2">
-                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] h-7">Angebot anfordern</Button>
+                          <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] h-7">Angebot anfordern</Button>
                           <Button size="sm" variant="ghost" className="text-[10px] h-7">Mehr erfahren</Button>
                         </div>
                       </div>

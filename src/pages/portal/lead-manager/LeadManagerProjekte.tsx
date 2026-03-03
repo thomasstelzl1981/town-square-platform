@@ -53,7 +53,7 @@ export default function LeadManagerProjekte() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map(p => (
             <Card key={p.id} className="overflow-hidden hover:border-primary/30 transition-colors">
-              <div className="h-[100px] bg-gradient-to-br from-[hsl(270,60%,50%)] to-[hsl(280,50%,60%)] flex items-end p-4">
+              <div className="h-[100px] bg-gradient-to-br from-primary/25 via-primary/15 to-transparent flex items-end p-4">
                 <FolderKanban className="h-6 w-6 text-white/70" />
               </div>
               <CardContent className="p-4 space-y-3">
