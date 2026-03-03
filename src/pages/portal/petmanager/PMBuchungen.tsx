@@ -1,7 +1,7 @@
 /**
  * PMBuchungen — Buchungsverwaltung via PLC-Engine (pet_service_cases SSOT)
  */
-import { Calendar, Check, X, Clock, PawPrint, AlertTriangle, LogIn, LogOut, CreditCard } from 'lucide-react';
+import { Calendar, Check, X, Clock, PawPrint, AlertTriangle, LogIn, LogOut, CreditCard, Hourglass, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,6 +19,8 @@ import { Progress } from '@/components/ui/progress';
 
 const PHASE_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   provider_selected: 'outline',
+  deposit_requested: 'outline',
+  deposit_paid: 'outline',
   provider_confirmed: 'default',
   checked_in: 'default',
   checked_out: 'secondary',
@@ -26,6 +28,16 @@ const PHASE_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'destructive
   closed_completed: 'secondary',
   closed_cancelled: 'destructive',
   provider_declined: 'destructive',
+};
+
+const PHASE_HINT: Partial<Record<string, string>> = {
+  provider_selected: 'Kunde wartet auf Ihre Bestätigung.',
+  deposit_requested: 'Kunde muss Anzahlung zahlen (7,5%).',
+  deposit_paid: 'Anzahlung eingegangen — bitte bestätigen oder ablehnen.',
+  provider_confirmed: 'Bestätigt — warte auf Check-In.',
+  checked_in: 'Tier ist eingecheckt.',
+  checked_out: 'Tier abgeholt — bitte abrechnen.',
+  settlement: 'Abrechnung abschließen.',
 };
 
 function CaseRow({ c, onTransition, isPending }: {
@@ -66,6 +78,12 @@ function CaseRow({ c, onTransition, isPending }: {
           )}
         </div>
         {c.customer_notes && <p className="text-xs text-muted-foreground mt-1 italic">„{c.customer_notes}"</p>}
+        {/* Phase hint */}
+        {PHASE_HINT[phase] && (
+          <p className="text-xs mt-1.5 flex items-center gap-1 text-muted-foreground">
+            <Info className="h-3 w-3 shrink-0" /> Nächster Schritt: {PHASE_HINT[phase]}
+          </p>
+        )}
         {/* PLC Progress */}
         <div className="mt-2 flex items-center gap-2">
           <Progress value={c.computed.progressPercent} className="h-1.5 flex-1" />
@@ -77,6 +95,21 @@ function CaseRow({ c, onTransition, isPending }: {
           <>
             <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => onTransition(c.id, 'provider.confirmed')} disabled={isPending}>
               <Check className="h-3 w-3" /> Annehmen
+            </Button>
+            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs text-destructive" onClick={() => onTransition(c.id, 'provider.declined')} disabled={isPending}>
+              <X className="h-3 w-3" /> Ablehnen
+            </Button>
+          </>
+        )}
+        {phase === 'deposit_requested' && (
+          <Badge variant="outline" className="h-7 gap-1 text-xs px-3 flex items-center">
+            <Hourglass className="h-3 w-3" /> Anzahlung ausstehend
+          </Badge>
+        )}
+        {phase === 'deposit_paid' && (
+          <>
+            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => onTransition(c.id, 'provider.confirmed')} disabled={isPending}>
+              <Check className="h-3 w-3" /> Bestätigen
             </Button>
             <Button size="sm" variant="outline" className="h-7 gap-1 text-xs text-destructive" onClick={() => onTransition(c.id, 'provider.declined')} disabled={isPending}>
               <X className="h-3 w-3" /> Ablehnen
@@ -127,7 +160,7 @@ export default function PMBuchungen() {
     });
   };
 
-  const pending = cases.filter(c => c.current_phase === 'provider_selected');
+  const pending = cases.filter(c => ['provider_selected', 'deposit_requested', 'deposit_paid'].includes(c.current_phase));
   const active = cases.filter(c => ['provider_confirmed', 'checked_in', 'checked_out', 'settlement'].includes(c.current_phase));
   const past = cases.filter(c => ['closed_completed', 'closed_cancelled', 'provider_declined'].includes(c.current_phase));
 
