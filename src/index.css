@@ -905,3 +905,37 @@
     background: hsl(var(--muted) / 0.4);
   }
 }
+
+/* =============================================================================
+   DENSITY: COMPACT OVERRIDES
+   Activated via data-density="compact" on <html>.
+   Reduces padding/gaps by ~15-20% — no font or color changes.
+   ============================================================================= */
+
+html[data-density="compact"] .page-shell {
+  padding: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  html[data-density="compact"] .page-shell {
+    padding: 1rem;
+  }
+}
+
+html[data-density="compact"] .page-shell > * + * {
+  margin-top: 1rem;
+}
+
+html[data-density="compact"] .glass-card {
+  padding: 0.75rem;
+}
+
+html[data-density="compact"] table td,
+html[data-density="compact"] table th {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+html[data-density="compact"] .widget-grid {
+  gap: 1rem;
+}
