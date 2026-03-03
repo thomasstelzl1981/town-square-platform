@@ -174,8 +174,8 @@ export default function LennoxLennox() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-2xl overflow-hidden shadow-md aspect-[3/4]">
-              <img src={gruenderinSee} alt="Robyn am See" className="w-full h-full object-cover" />
+            <div className="rounded-2xl overflow-hidden shadow-md aspect-[4/5]">
+              <img src={gruenderinSee} alt="Robyn am See" className="w-full h-full object-cover object-top" />
             </div>
             <div className="rounded-2xl overflow-hidden shadow-md aspect-[3/4]">
               <img src={gruenderinPferd} alt="Robyn mit Pferd" className="w-full h-full object-cover" />
