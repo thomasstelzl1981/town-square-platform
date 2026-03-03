@@ -1,53 +1,77 @@
 
 
-# Tiefenanalyse: Google Drive Integration (sot-cloud-sync)
+# Plan: Pet Manager Navigation korrigieren — Reihenfolge und Benennung
 
-## Kritischer Fehler gefunden
+## Ist-Zustand (10 Tiles)
 
-### Bug: Veraltete Supabase-JS Version bricht Authentifizierung
-
-Die Edge Function `sot-cloud-sync/index.ts` importiert `@supabase/supabase-js@2.39.3` (Zeile 1). Sie verwendet jedoch die Methode `sbUser.auth.getClaims(token)` (Zeile 173), die erst ab Version ~2.49+ verfuegbar ist.
-
-**Auswirkung:** Jede authentifizierte Aktion (init, folders, sync, disconnect) schlaegt mit einem Runtime-Error fehl:
+```text
+dashboard  → PMDashboard   "Dashboard"
+profil     → PMProfil      "Profil"
+pension    → PMPension     "Pension"
+services   → PMServices    "Services"       ← irrefuehrender Name
+leistungen → PMLeistungen  "Leistungen"
+mitarbeiter→ PMPersonal    "Mitarbeiter"
+buchungen  → PMBuchungen   "Buchungen"
+kalender   → PMKalender    "Kalender"
+kunden     → PMKunden      "Kunden"
+finanzen   → PMFinanzen    "Finanzen"
 ```
-TypeError: sbUser.auth.getClaims is not a function
+
+## Soll-Zustand (10 Tiles, gleiche Komponenten, neue Reihenfolge + Umbenennung)
+
+```text
+dashboard   → PMDashboard   "Dashboard"
+profil      → PMProfil      "Profil"
+leistungen  → PMLeistungen  "Leistungen"
+buchungen   → PMBuchungen   "Buchungen"
+pension     → PMPension     "Pension"
+kalender    → PMKalender    "Pensions-Kalender"
+mitarbeiter → PMPersonal    "Mitarbeiter"
+dienstplan  → PMServices    "Dienstplan"        ← umbenannt von "Services"
+kunden      → PMKunden      "Kunden"
+finanzen    → PMFinanzen    "Finanzen"
 ```
 
-Nur die `status`-Action funktioniert im nicht-authentifizierten Fallback (Zeile 163: gibt leere Liste zurueck). Der `callback`-Flow (nach Google OAuth) braucht keine Auth und funktioniert ebenfalls. Aber der **gesamte interaktive Flow** — Verbinden, Ordner waehlen, Synchronisieren, Trennen — ist kaputt.
+## Aenderungen
 
-### Warum ist das bisher nicht aufgefallen?
+### 1. Manifest aktualisieren (`src/manifests/routesManifest.ts`, Zeilen 595-606)
 
-Die Datenbank-Tabelle `cloud_sync_connectors` ist leer — kein einziger Nutzer hat je erfolgreich Google Drive verbunden. Der `status`-Call gibt immer `{ connectors: [] }` zurueck (ohne Auth-Check), daher kein sichtbarer Fehler in der UI. Der Fehler tritt erst auf, wenn man den "Verbinden"-Button klickt.
-
-## Weitere Befunde
-
-| # | Befund | Schwere |
-|---|--------|---------|
-| 1 | **supabase-js@2.39.3 → getClaims fehlt** | KRITISCH — blockiert gesamten Flow |
-| 2 | Secrets vorhanden (GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET) | OK |
-| 3 | CORS-Konfiguration mit Origin-Allowlist | OK |
-| 4 | config.toml: verify_jwt = false | OK (Auth wird manuell im Code geprueft) |
-| 5 | OAuth Popup-Flow mit postMessage | OK — gut implementiert |
-| 6 | Token-Refresh (ensureFreshToken) | OK — 1-Minute Buffer, Refresh-Token-Flow |
-| 7 | Delta-Sync via modifiedTime | OK |
-
-## Plan: Fix
-
-### Aenderung 1: supabase-js Version aktualisieren (Zeile 1)
+Tiles-Array in neuer Reihenfolge, "Services" wird zu "Dienstplan" mit Pfad `dienstplan`:
 
 ```typescript
-// Vorher:
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
-// Nachher:
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+tiles: [
+  { path: "dashboard", component: "PMDashboard", title: "Dashboard", default: true },
+  { path: "profil", component: "PMProfil", title: "Profil" },
+  { path: "leistungen", component: "PMLeistungen", title: "Leistungen" },
+  { path: "buchungen", component: "PMBuchungen", title: "Buchungen" },
+  { path: "pension", component: "PMPension", title: "Pension" },
+  { path: "kalender", component: "PMKalender", title: "Pensions-Kalender" },
+  { path: "mitarbeiter", component: "PMPersonal", title: "Mitarbeiter" },
+  { path: "dienstplan", component: "PMServices", title: "Dienstplan" },
+  { path: "kunden", component: "PMKunden", title: "Kunden" },
+  { path: "finanzen", component: "PMFinanzen", title: "Finanzen" },
+],
 ```
 
-Dies macht `getClaims()` verfuegbar und behebt den gesamten Authentifizierungs-Flow.
+### 2. Routing aktualisieren (`src/pages/portal/PetManagerPage.tsx`)
+
+- Route `services` durch `dienstplan` ersetzen (zeigt weiterhin `PMServices`)
+- Alte Route `services` als Redirect auf `dienstplan` behalten (Abwaertskompatibilitaet)
+
+```typescript
+<Route path="dienstplan" element={<Suspense ...><PMServices /></Suspense>} />
+<Route path="services" element={<Navigate to="../dienstplan" replace />} />
+```
+
+### Was sich NICHT aendert
+
+- Keine Backend-Aenderungen, keine neuen Tabellen
+- Keine Komponenten-Dateien werden geloescht oder umgeschrieben
+- `PMServices.tsx` bleibt unveraendert (nur der Menuepunkt-Name und Pfad aendern sich)
+- `PMKalender.tsx` bleibt unveraendert (nur der angezeigte Titel aendert sich)
 
 | Datei | Aenderung |
 |---|---|
-| `supabase/functions/sot-cloud-sync/index.ts` Zeile 1 | Version 2.39.3 → 2.49.1 |
-
-Nach der Aenderung wird die Edge Function automatisch neu deployed. Dann kann der Google-Drive-Verbindungsflow getestet werden.
+| `src/manifests/routesManifest.ts` | Tiles-Array: Reihenfolge + "Services"→"Dienstplan" + "Kalender"→"Pensions-Kalender" |
+| `src/pages/portal/PetManagerPage.tsx` | Route `dienstplan` hinzufuegen, `services` als Redirect |
 
