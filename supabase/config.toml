@@ -298,3 +298,6 @@ verify_jwt = false
 
 [functions.sot-pet-deposit-webhook]
 verify_jwt = false
+
+[functions.sot-europace-proxy]
+verify_jwt = false
