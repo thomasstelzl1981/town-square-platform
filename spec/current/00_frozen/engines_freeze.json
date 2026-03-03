@@ -1,6 +1,6 @@
 {
-  "version": "2.0",
-  "updated_at": "2026-03-03T12:00:00.000Z",
+  "version": "3.0",
+  "updated_at": "2026-03-03T18:00:00.000Z",
   "description": "SSOT for engine freeze states. AI MUST check this file before modifying any file in src/engines/*. If an engine is frozen, changes are NOT ALLOWED without explicit unfreeze.",
   "engines": {
     "ENG-AKQUISE": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/akquiseCalc/*", "reason": "Production freeze" },
@@ -17,6 +17,6 @@
     "ENG-MKTDIR": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/marketDirectory/*", "reason": "Production freeze" },
     "ENG-SLC": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/engines/slc/*", "reason": "Full freeze — PLC Audit wave" },
     "ENG-FDC": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/engines/fdc/*", "reason": "Full freeze — PLC Audit wave" },
-    "ENG-PLC": { "frozen": false, "frozen_at": null, "path": "src/engines/plc/*", "reason": "Open for PLC Audit Wave A-F fixes" }
+    "ENG-PLC": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "path": "src/engines/plc/*", "reason": "Full freeze — all engines locked" }
   }
 }

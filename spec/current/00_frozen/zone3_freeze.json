@@ -1,13 +1,13 @@
 {
-  "version": "2.0",
-  "updated_at": "2026-03-03T12:00:00.000Z",
+  "version": "3.0",
+  "updated_at": "2026-03-03T18:00:00.000Z",
   "description": "SSOT for Zone 3 website freeze states. AI MUST check this file before modifying any file in src/pages/zone3/*. If a site is frozen, changes are NOT ALLOWED without explicit unfreeze.",
   "sites": {
     "KAUFY": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/pages/zone3/kaufy2026/*", "reason": "Full freeze — PLC Audit wave" },
     "SOT": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/pages/zone3/sot/*", "reason": "Full freeze — PLC Audit wave" },
     "FUTUREROOM": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/pages/zone3/futureroom/*", "reason": "Full freeze — PLC Audit wave" },
     "ACQUIARY": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/pages/zone3/acquiary/*", "reason": "Full freeze — PLC Audit wave" },
-    "LENNOX": { "frozen": false, "frozen_at": null, "path": "src/pages/zone3/lennox/*", "reason": "Open for PLC Audit Wave A-F fixes" },
+    "LENNOX": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "path": "src/pages/zone3/lennox/*", "reason": "Full freeze — all sites locked" },
     "MIETY": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "path": "src/pages/zone3/miety/*", "reason": "Production freeze" },
     "ZLWOHNBAU": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/pages/zone3/zlwohnbau/*", "reason": "Full freeze — PLC Audit wave" }
   }
