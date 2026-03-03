@@ -1,18 +1,29 @@
 /**
  * usePetDossier — Central data hook for the universal pet dossier
  * Handles loading, saving, and photo uploads for all zones
+ * Z3 context uses edge function proxies (no direct Supabase auth)
  */
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { PetData, PetOwnerData, PetDossierContext } from './types';
 
-export function usePetDossier(petId: string, context: PetDossierContext) {
+const FUNC_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+interface UsePetDossierOptions {
+  /** Z3 session token — required when context is 'z3' */
+  z3SessionToken?: string | null;
+}
+
+export function usePetDossier(petId: string, context: PetDossierContext, options?: UsePetDossierOptions) {
   const [pet, setPet] = useState<PetData | null>(null);
   const [owner, setOwner] = useState<PetOwnerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
+
+  const z3Token = options?.z3SessionToken;
 
   // Load pet data
   useEffect(() => {
@@ -47,6 +58,7 @@ export function usePetDossier(petId: string, context: PetDossierContext) {
               .maybeSingle();
             if (prof) setOwner(prof as PetOwnerData);
           }
+          // z3: owner comes from externalOwner prop
 
           // Load gallery photos
           await loadGallery(data.tenant_id, petId);
@@ -82,6 +94,29 @@ export function usePetDossier(petId: string, context: PetDossierContext) {
 
   const updatePet = useCallback(async (updates: Partial<PetData>) => {
     if (!pet) return;
+
+    // Z3: use edge function proxy
+    if (context === 'z3' && z3Token) {
+      setSaving(true);
+      try {
+        const res = await fetch(`${FUNC_BASE}/sot-pslc-z3-upsert-pet`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: ANON_KEY },
+          body: JSON.stringify({ session_token: z3Token, pet_id: pet.id, pet_data: { ...pet, ...updates } }),
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Fehler');
+        setPet(prev => prev ? { ...prev, ...updates } : prev);
+        toast.success('Gespeichert');
+      } catch (err) {
+        console.error('updatePet z3 error:', err);
+        toast.error('Speichern fehlgeschlagen');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    // Z2/Z1: direct Supabase
     setSaving(true);
     try {
       const { error } = await supabase
@@ -98,7 +133,7 @@ export function usePetDossier(petId: string, context: PetDossierContext) {
     } finally {
       setSaving(false);
     }
-  }, [pet]);
+  }, [pet, context, z3Token]);
 
   const updateOwner = useCallback(async (updates: Partial<PetOwnerData>) => {
     if (!owner) return;
@@ -117,6 +152,7 @@ export function usePetDossier(petId: string, context: PetDossierContext) {
           .eq('id', owner.id);
         if (error) throw error;
       }
+      // z3: owner updates not supported from dossier (profile managed separately)
       setOwner(prev => prev ? { ...prev, ...updates } : prev);
       toast.success('Besitzer aktualisiert');
     } catch (err) {
@@ -129,6 +165,33 @@ export function usePetDossier(petId: string, context: PetDossierContext) {
 
   const uploadProfilePhoto = useCallback(async (file: File) => {
     if (!pet) return;
+
+    // Z3: use edge function proxy
+    if (context === 'z3' && z3Token) {
+      try {
+        const formData = new FormData();
+        formData.append('session_token', z3Token);
+        formData.append('pet_id', pet.id);
+        formData.append('photo_type', 'profile');
+        formData.append('file', file);
+
+        const res = await fetch(`${FUNC_BASE}/sot-pslc-z3-upload-photo`, {
+          method: 'POST',
+          headers: { apikey: ANON_KEY },
+          body: formData,
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Upload-Fehler');
+        const { url } = await res.json();
+        setPet(prev => prev ? { ...prev, photo_url: url } : prev);
+        toast.success('Profilfoto aktualisiert');
+      } catch (err) {
+        console.error('uploadProfilePhoto z3 error:', err);
+        toast.error('Foto-Upload fehlgeschlagen');
+      }
+      return;
+    }
+
+    // Z2/Z1: direct storage
     const path = `${pet.tenant_id}/${pet.id}/profile.jpg`;
     try {
       const { error: upErr } = await supabase.storage
@@ -143,10 +206,37 @@ export function usePetDossier(petId: string, context: PetDossierContext) {
       console.error('uploadProfilePhoto error:', err);
       toast.error('Foto-Upload fehlgeschlagen');
     }
-  }, [pet, updatePet]);
+  }, [pet, updatePet, context, z3Token]);
 
   const uploadGalleryPhoto = useCallback(async (file: File) => {
     if (!pet) return;
+
+    // Z3: use edge function proxy
+    if (context === 'z3' && z3Token) {
+      try {
+        const formData = new FormData();
+        formData.append('session_token', z3Token);
+        formData.append('pet_id', pet.id);
+        formData.append('photo_type', 'gallery');
+        formData.append('file', file);
+
+        const res = await fetch(`${FUNC_BASE}/sot-pslc-z3-upload-photo`, {
+          method: 'POST',
+          headers: { apikey: ANON_KEY },
+          body: formData,
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Upload-Fehler');
+        const { url } = await res.json();
+        setGalleryUrls(prev => [...prev, url]);
+        toast.success('Foto hinzugefügt');
+      } catch (err) {
+        console.error('uploadGalleryPhoto z3 error:', err);
+        toast.error('Foto-Upload fehlgeschlagen');
+      }
+      return;
+    }
+
+    // Z2/Z1: direct storage
     const name = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
     const path = `${pet.tenant_id}/${pet.id}/gallery/${name}`;
     try {
@@ -162,7 +252,7 @@ export function usePetDossier(petId: string, context: PetDossierContext) {
       console.error('uploadGalleryPhoto error:', err);
       toast.error('Foto-Upload fehlgeschlagen');
     }
-  }, [pet]);
+  }, [pet, context, z3Token]);
 
   return {
     pet,

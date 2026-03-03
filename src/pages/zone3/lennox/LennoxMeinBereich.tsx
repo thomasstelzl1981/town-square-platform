@@ -2,12 +2,12 @@
  * LennoxMeinBereich — Zone 3 "Mein Bereich"
  * Two full-width inline sections:
  *   1. Buchungsanfrage + Status list (via pet_service_cases / PLC)
- *   2. Hundeakte (inline CRUD for pet_z1_pets)
+ *   2. Hundeakte (SSOT via PetDossier + edge proxies)
  */
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
-  PawPrint, Calendar, Plus, ArrowLeft, Send, Save, X, Trash2, Check, XCircle, Clock,
+  PawPrint, Calendar, Plus, ArrowLeft, Send, X, Trash2, Check, XCircle, Clock, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,14 +15,18 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
 import { useCasesForZ3Customer, useCreateZ3Case, type CaseWithComputed } from '@/hooks/usePetServiceCases';
 import { PLC_PHASE_LABELS, type PLCPhase } from '@/engines/plc/spec';
+import { PetDossier } from '@/components/shared/pet-dossier';
 import { z } from 'zod';
+import { supabase } from '@/integrations/supabase/client';
 import { LENNOX as C, SPECIES_LABELS, GENDER_LABELS } from './lennoxTheme';
+
+const FUNC_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 /* ── Pet form schema & helpers ───────────────────────── */
 const petSchema = z.object({
@@ -55,10 +59,51 @@ const phaseStatusConfig: Record<string, { label: string; color: string; icon: ty
 
 const selectCls = `w-full h-10 rounded-md border px-3 text-sm`;
 
+/** Fetch pets via edge proxy (SSOT) */
+async function fetchZ3Pets(sessionToken: string): Promise<any[]> {
+  const res = await fetch(`${FUNC_BASE}/sot-pslc-z3-list-pets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: ANON_KEY },
+    body: JSON.stringify({ session_token: sessionToken }),
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.pets || [];
+}
+
+/** Upsert pet via edge proxy (SSOT) */
+async function upsertZ3Pet(sessionToken: string, petId: string | null, petData: Record<string, unknown>): Promise<any> {
+  const res = await fetch(`${FUNC_BASE}/sot-pslc-z3-upsert-pet`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: ANON_KEY },
+    body: JSON.stringify({
+      session_token: sessionToken,
+      ...(petId ? { pet_id: petId } : {}),
+      pet_data: petData,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Fehler');
+  return data.pet;
+}
+
+/** Delete pet via edge proxy (SSOT) */
+async function deleteZ3Pet(sessionToken: string, petId: string): Promise<void> {
+  const res = await fetch(`${FUNC_BASE}/sot-pslc-z3-upsert-pet`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: ANON_KEY },
+    body: JSON.stringify({ session_token: sessionToken, action: 'delete', pet_id: petId }),
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || 'Fehler');
+  }
+}
+
 export default function LennoxMeinBereich() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { z3User, z3Loading, z3Logout } = useZ3Auth();
+  const { z3User, z3Loading, z3Logout, z3SessionToken } = useZ3Auth();
 
   // ─── Auth guard ────────────────────────────────────
   useEffect(() => {
@@ -67,17 +112,11 @@ export default function LennoxMeinBereich() {
     }
   }, [z3Loading, z3User, navigate]);
 
-  // ─── Tenant ID from provider (for new bookings) ────
-  // We'll get it from the selected provider when submitting
-
-  // ─── Pets ──────────────────────────────────────────
+  // ─── Pets via SSOT edge proxy ─────────────────────
   const { data: pets = [], refetch: refetchPets } = useQuery({
-    queryKey: ['z3_pets', z3User?.id],
-    queryFn: async () => {
-      const { data } = await (supabase.from('pet_z1_pets' as any) as any).select('*').eq('z1_customer_id', z3User!.id).order('created_at', { ascending: true });
-      return data || [];
-    },
-    enabled: !!z3User?.id,
+    queryKey: ['z3_pets_ssot', z3User?.id],
+    queryFn: () => fetchZ3Pets(z3SessionToken!),
+    enabled: !!z3User?.id && !!z3SessionToken,
   });
 
   // ─── Published providers ──────────────────────────
@@ -101,7 +140,6 @@ export default function LennoxMeinBereich() {
   });
 
   // ─── Cases (PLC) — via Edge Function proxy (P0 security) ──
-  const { z3SessionToken } = useZ3Auth();
   const { data: cases = [] } = useCasesForZ3Customer(z3User?.id, z3SessionToken);
 
   // ─── Create Case mutation (Z3 proxy) ──────────────
@@ -115,10 +153,13 @@ export default function LennoxMeinBereich() {
   const [bookingNotes, setBookingNotes] = useState('');
 
   // ─── Pet form state ────────────────────────────────
-  const [petEditId, setPetEditId] = useState<string | null>(null);
   const [showPetForm, setShowPetForm] = useState(false);
+  const [petEditId, setPetEditId] = useState<string | null>(null);
   const [petForm, setPetForm] = useState<PetForm>(emptyPet);
   const [petSaving, setPetSaving] = useState(false);
+
+  // ─── Expanded pet dossier state ────────────────────
+  const [expandedPetId, setExpandedPetId] = useState<string | null>(null);
 
   // ── Set default provider if only one ───────────────
   useEffect(() => {
@@ -140,7 +181,6 @@ export default function LennoxMeinBereich() {
     if (!selectedProviderId) { toast.error('Bitte Anbieter wählen'); return; }
     if (!z3User || !z3SessionToken) return;
 
-    // Find the selected service's ID for pricing SSOT
     const selectedSvc = services.find((s: any) => s.title === bookingService);
 
     createCase.mutate({
@@ -165,50 +205,46 @@ export default function LennoxMeinBereich() {
   const handlePetSave = async () => {
     const parsed = petSchema.safeParse(petForm);
     if (!parsed.success) { toast.error(parsed.error.errors[0]?.message); return; }
-    if (!z3User) return;
-
-    // Get tenant from first provider (Z3 pets need a tenant_id)
-    const firstProvider = providers[0];
-    if (!firstProvider?.tenant_id) { toast.error('Konfiguration fehlt'); return; }
+    if (!z3SessionToken) return;
 
     setPetSaving(true);
-    const payload: any = {
-      name: parsed.data.name,
-      species: parsed.data.species,
-      breed: parsed.data.breed || null,
-      gender: parsed.data.gender,
-      birth_date: parsed.data.birth_date || null,
-      weight_kg: parsed.data.weight_kg || null,
-      chip_number: parsed.data.chip_number || null,
-      neutered: parsed.data.neutered,
-      vet_name: parsed.data.vet_name || null,
-      allergies: parsed.data.allergies?.length ? parsed.data.allergies : null,
-      notes: parsed.data.notes || null,
-    };
-
-    if (petEditId) {
-      const { error } = await (supabase.from('pet_z1_pets' as any) as any).update(payload).eq('id', petEditId);
-      if (error) toast.error('Fehler beim Aktualisieren');
-      else toast.success('Tier aktualisiert');
-    } else {
-      payload.z1_customer_id = z3User.id;
-      payload.tenant_id = firstProvider.tenant_id;
-      const { error } = await (supabase.from('pet_z1_pets' as any) as any).insert(payload);
-      if (error) toast.error('Fehler beim Anlegen');
-      else toast.success('Tier angelegt');
+    try {
+      await upsertZ3Pet(z3SessionToken, petEditId, {
+        name: parsed.data.name,
+        species: parsed.data.species,
+        breed: parsed.data.breed || null,
+        gender: parsed.data.gender,
+        birth_date: parsed.data.birth_date || null,
+        weight_kg: parsed.data.weight_kg || null,
+        chip_number: parsed.data.chip_number || null,
+        neutered: parsed.data.neutered,
+        vet_name: parsed.data.vet_name || null,
+        allergies: parsed.data.allergies?.length ? parsed.data.allergies : null,
+        notes: parsed.data.notes || null,
+      });
+      toast.success(petEditId ? 'Tier aktualisiert' : 'Tier angelegt');
+      setPetEditId(null);
+      setShowPetForm(false);
+      setPetForm(emptyPet);
+      refetchPets();
+    } catch (err: any) {
+      toast.error(err.message || 'Fehler beim Speichern');
+    } finally {
+      setPetSaving(false);
     }
-    setPetSaving(false);
-    setPetEditId(null);
-    setShowPetForm(false);
-    setPetForm(emptyPet);
-    refetchPets();
   };
 
   const handlePetDelete = async (id: string) => {
     if (!confirm('Tier wirklich löschen?')) return;
-    const { error } = await (supabase.from('pet_z1_pets' as any) as any).delete().eq('id', id);
-    if (error) toast.error('Fehler beim Löschen');
-    else { toast.success('Tier entfernt'); refetchPets(); }
+    if (!z3SessionToken) return;
+    try {
+      await deleteZ3Pet(z3SessionToken, id);
+      toast.success('Tier entfernt');
+      if (expandedPetId === id) setExpandedPetId(null);
+      refetchPets();
+    } catch (err: any) {
+      toast.error(err.message || 'Fehler beim Löschen');
+    }
   };
 
   const startPetEdit = (pet: any) => {
@@ -229,6 +265,10 @@ export default function LennoxMeinBereich() {
     });
   };
 
+  const toggleDossier = (petId: string) => {
+    setExpandedPetId(prev => prev === petId ? null : petId);
+  };
+
   // ── Loading / guard ────────────────────────────────
   if (z3Loading) {
     return (
@@ -242,6 +282,18 @@ export default function LennoxMeinBereich() {
   const displayName = z3User.first_name
     ? `${z3User.first_name} ${z3User.last_name || ''}`
     : z3User.email;
+
+  // Owner data for PetDossier (from Z3 session)
+  const ownerData = {
+    id: z3User.id,
+    first_name: z3User.first_name,
+    last_name: z3User.last_name,
+    email: z3User.email,
+    phone: z3User.phone,
+    address: z3User.address,
+    city: z3User.city,
+    postal_code: z3User.postal_code,
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-5 py-8 space-y-8" style={{ background: C.cream, minHeight: '60vh' }}>
@@ -372,7 +424,7 @@ export default function LennoxMeinBereich() {
       </Card>
 
       {/* ══════════════════════════════════════════════════
-          KACHEL 2: HUNDEAKTE
+          KACHEL 2: HUNDEAKTE (SSOT via PetDossier)
           ══════════════════════════════════════════════════ */}
       <Card className="border shadow-sm" style={{ borderColor: C.sandLight, background: C.white }}>
         <CardHeader className="pb-3">
@@ -465,12 +517,12 @@ export default function LennoxMeinBereich() {
               </div>
 
               <Button onClick={handlePetSave} disabled={petSaving} className="rounded-full text-white" style={{ background: C.coral }}>
-                <Save className="h-4 w-4 mr-1" /> {petSaving ? 'Speichern...' : petEditId ? 'Aktualisieren' : 'Anlegen'}
+                {petSaving ? 'Speichern...' : petEditId ? 'Aktualisieren' : 'Anlegen'}
               </Button>
             </div>
           )}
 
-          {/* ── Pet List ─────────────────────────────── */}
+          {/* ── Pet List with expandable PetDossier ───── */}
           {pets.length === 0 && !showPetForm ? (
             <div className="text-center py-8">
               <PawPrint className="h-10 w-10 mx-auto mb-3" style={{ color: C.sand }} />
@@ -479,34 +531,54 @@ export default function LennoxMeinBereich() {
           ) : (
             <div className="space-y-3">
               {pets.map((pet: any) => (
-                <div key={pet.id} className="p-4 rounded-lg space-y-2" style={{ background: C.sandLight }}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <PawPrint className="h-4 w-4" style={{ color: C.forest }} />
-                      <span className="font-semibold text-sm" style={{ color: C.bark }}>{pet.name}</span>
-                      <Badge variant="outline" className="text-[10px]" style={{ borderColor: C.sand, color: C.barkMuted }}>
-                        {SPECIES_LABELS[pet.species] || pet.species}
-                      </Badge>
-                      {pet.breed && <span className="text-xs" style={{ color: C.barkMuted }}>{pet.breed}</span>}
+                <div key={pet.id}>
+                  <div className="p-4 rounded-lg space-y-2" style={{ background: C.sandLight }}>
+                    <div className="flex items-center justify-between">
+                      <div
+                        className="flex items-center gap-2 cursor-pointer flex-1"
+                        onClick={() => toggleDossier(pet.id)}
+                      >
+                        <PawPrint className="h-4 w-4" style={{ color: C.forest }} />
+                        <span className="font-semibold text-sm" style={{ color: C.bark }}>{pet.name}</span>
+                        <Badge variant="outline" className="text-[10px]" style={{ borderColor: C.sand, color: C.barkMuted }}>
+                          {SPECIES_LABELS[pet.species] || pet.species}
+                        </Badge>
+                        {pet.breed && <span className="text-xs" style={{ color: C.barkMuted }}>{pet.breed}</span>}
+                        {expandedPetId === pet.id
+                          ? <ChevronUp className="h-4 w-4 ml-auto" style={{ color: C.barkMuted }} />
+                          : <ChevronDown className="h-4 w-4 ml-auto" style={{ color: C.barkMuted }} />
+                        }
+                      </div>
+                      <div className="flex items-center gap-1 ml-2">
+                        <Button variant="ghost" size="sm" onClick={() => startPetEdit(pet)} className="text-xs" style={{ color: C.coral }}>Bearbeiten</Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePetDelete(pet.id)}>
+                          <Trash2 className="h-3.5 w-3.5" style={{ color: 'hsl(0,60%,50%)' }} />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => startPetEdit(pet)} className="text-xs" style={{ color: C.coral }}>Bearbeiten</Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePetDelete(pet.id)}>
-                        <Trash2 className="h-3.5 w-3.5" style={{ color: 'hsl(0,60%,50%)' }} />
-                      </Button>
+                    {/* Collapsed summary */}
+                    {expandedPetId !== pet.id && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs" style={{ color: C.barkMuted }}>
+                        <span>Geschlecht: <strong style={{ color: C.bark }}>{GENDER_LABELS[pet.gender] || '—'}</strong></span>
+                        <span>Geb.: <strong style={{ color: C.bark }}>{pet.birth_date ? new Date(pet.birth_date).toLocaleDateString('de-DE') : '—'}</strong></span>
+                        <span>Gewicht: <strong style={{ color: C.bark }}>{pet.weight_kg ? `${pet.weight_kg} kg` : '—'}</strong></span>
+                        <span>Chip: <strong style={{ color: C.bark }}>{pet.chip_number || '—'}</strong></span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Expanded: Full PetDossier (SSOT) */}
+                  {expandedPetId === pet.id && (
+                    <div className="mt-2 rounded-lg border p-4" style={{ borderColor: C.sandLight, background: C.white }}>
+                      <PetDossier
+                        petId={pet.id}
+                        context="z3"
+                        readOnly={false}
+                        showOwner={false}
+                        externalOwner={ownerData}
+                        z3SessionToken={z3SessionToken}
+                      />
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs" style={{ color: C.barkMuted }}>
-                    <span>Geschlecht: <strong style={{ color: C.bark }}>{GENDER_LABELS[pet.gender] || '—'}</strong></span>
-                    <span>Geb.: <strong style={{ color: C.bark }}>{pet.birth_date ? new Date(pet.birth_date).toLocaleDateString('de-DE') : '—'}</strong></span>
-                    <span>Gewicht: <strong style={{ color: C.bark }}>{pet.weight_kg ? `${pet.weight_kg} kg` : '—'}</strong></span>
-                    <span>Chip: <strong style={{ color: C.bark }}>{pet.chip_number || '—'}</strong></span>
-                    <span>Kastriert: <strong style={{ color: C.bark }}>{pet.neutered ? 'Ja' : 'Nein'}</strong></span>
-                    <span>Tierarzt: <strong style={{ color: C.bark }}>{pet.vet_name || '—'}</strong></span>
-                    <span className="col-span-2">Allergien: <strong style={{ color: C.bark }}>{pet.allergies?.length ? pet.allergies.join(', ') : '—'}</strong></span>
-                  </div>
-                  {pet.notes && (
-                    <p className="text-xs italic" style={{ color: C.barkMuted }}>{pet.notes}</p>
                   )}
                 </div>
               ))}
