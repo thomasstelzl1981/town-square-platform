@@ -14,7 +14,7 @@ import PortalDashboard from '@/pages/portal/PortalDashboard';
 // =============================================================================
 // Loading Fallback
 // =============================================================================
-const LoadingFallback = () => (
+const loadingFallbackJSX = (
   <div className="flex items-center justify-center p-8">
     <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
   </div>
@@ -86,14 +86,14 @@ export default function Zone2Router() {
 
         {/* Area Overview Pages */}
         <Route path="area/:areaKey" element={
-          <React.Suspense fallback={<LoadingFallback />}>
+          <React.Suspense fallback={loadingFallbackJSX}>
             <AreaOverviewPage />
           </React.Suspense>
         } />
 
         {/* Armstrong Info Page */}
         <Route path="armstrong" element={
-          <React.Suspense fallback={<LoadingFallback />}>
+          <React.Suspense fallback={loadingFallbackJSX}>
             <ArmstrongInfoPage />
           </React.Suspense>
         } />
@@ -111,7 +111,7 @@ export default function Zone2Router() {
               key={code} 
               path={`${module.base}/*`}
               element={
-                <React.Suspense fallback={<LoadingFallback />}>
+                <React.Suspense fallback={loadingFallbackJSX}>
                   <ModulePage />
                 </React.Suspense>
               } 
@@ -121,7 +121,7 @@ export default function Zone2Router() {
 
         {/* Repair page */}
         <Route path="repair-sort-containers" element={
-          <React.Suspense fallback={<LoadingFallback />}>
+          <React.Suspense fallback={loadingFallbackJSX}>
             <RepairSortContainersPage />
           </React.Suspense>
         } />

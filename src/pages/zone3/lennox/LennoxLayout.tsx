@@ -3,7 +3,7 @@
  */
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Menu, X, User, LogIn, ShoppingBag, Handshake, MapPin, Stethoscope, PawPrint } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
 import { LENNOX as C } from './lennoxTheme';
 import { SEOHead } from '@/components/zone3/shared/SEOHead';
@@ -28,9 +28,18 @@ export default function LennoxLayout() {
   const { data: pinGateValue, isLoading: pinGateLoading } = useZone3Setting('pin_gate_enabled');
   const pinGateEnabled = pinGateValue === 'true';
 
+  // Non-blocking: skip spinner after 3s to prevent permanent hang
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+  useEffect(() => {
+    if (pinGateLoading) {
+      const t = setTimeout(() => setLoadingTimedOut(true), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [pinGateLoading]);
+
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
-  if (pinGateLoading) {
+  if (pinGateLoading && !loadingTimedOut) {
     return <div className="min-h-screen flex items-center justify-center"><div className="h-6 w-6 border-2 border-current border-t-transparent rounded-full animate-spin" /></div>;
   }
 

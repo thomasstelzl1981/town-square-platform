@@ -13,7 +13,7 @@ import { getDomainEntry } from '@/hooks/useDomainRouter';
 // =============================================================================
 // Loading Fallback
 // =============================================================================
-const LoadingFallback = () => (
+const loadingFallbackJSX = (
   <div className="flex items-center justify-center p-8">
     <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
   </div>
@@ -257,7 +257,7 @@ export default function Zone3Router() {
 
         return (
           <Route key={siteKey} path={site.base.replace('/website', '')} element={
-            <React.Suspense fallback={<LoadingFallback />}>
+            <React.Suspense fallback={loadingFallbackJSX}>
               <Layout />
             </React.Suspense>
           }>
@@ -273,7 +273,7 @@ export default function Zone3Router() {
                   index={route.path === ''}
                   path={route.path || undefined}
                   element={
-                    <React.Suspense fallback={<LoadingFallback />}>
+                    <React.Suspense fallback={loadingFallbackJSX}>
                       <Component />
                     </React.Suspense>
                   }
@@ -297,7 +297,7 @@ export default function Zone3Router() {
 
         return (
           <Route path="/" element={
-            <React.Suspense fallback={<LoadingFallback />}>
+            <React.Suspense fallback={loadingFallbackJSX}>
               <Layout />
             </React.Suspense>
           }>
@@ -310,7 +310,7 @@ export default function Zone3Router() {
                   index={route.path === ''}
                   path={route.path || undefined}
                   element={
-                    <React.Suspense fallback={<LoadingFallback />}>
+                    <React.Suspense fallback={loadingFallbackJSX}>
                       <Component />
                     </React.Suspense>
                   }

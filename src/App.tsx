@@ -69,8 +69,9 @@ const queryClient = new QueryClient({
   },
 });
 
-// ZBC Step 9: DEV-only validators on app start
-if (import.meta.env.DEV) {
+// ZBC Step 9: DEV-only validators on app start — skip in Preview to reduce HMR pressure
+const isPreview = typeof window !== 'undefined' && window.location.hostname.includes('preview');
+if (import.meta.env.DEV && !isPreview) {
   import('./goldenpath/devValidator').then(({ validateGoldenPaths }) => {
     validateGoldenPaths();
   });

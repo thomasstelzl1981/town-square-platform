@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrgContext, getOrgTypeBadgeColor, getOrgTypeLabel } from '@/hooks/useOrgContext';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -63,9 +63,9 @@ export function AdminLayout() {
   );
 
   // P0-ZONE1-GUARD: In production (non-dev mode), redirect non-admins to portal
+  // Uses <Navigate> instead of navigate() to avoid render-phase state updates
   if (!isDevelopmentMode && !hasAdminAccess && memberships.length > 0) {
-    navigate('/portal');
-    return null;
+    return <Navigate to="/portal" replace />;
   }
 
   if (!hasAdminAccess && memberships.length > 0 && isDevelopmentMode) {
