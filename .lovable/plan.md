@@ -1,20 +1,34 @@
 
 
-# Bewertung: Minimale Token-Korrektur (3 Zeilen)
+# Bewertung: Status-Farben Light/Dark differenzieren
+
+Dieser Patch behebt exakt **Pain Point #3** aus dem Audit: Status-Farben sind aktuell identisch in Light und Dark Mode.
 
 ## Was die Änderungen bewirken
 
-1. **`:root --background: 210 20% 98%`** — Light-BG bekommt einen leichten Blau-Unterton statt reinem Weiss. Reduziert Blendwirkung bei langen Sessions, harmoniert mit der D-DIN Font und dem Enterprise-Look. Gute Entscheidung.
+**Light Mode** — Sättigung und Helligkeit werden **reduziert**:
+- Weniger grell auf weissem/hellem Background
+- Bessere Lesbarkeit von Status-Badges und Dots
+- Success: 71%/45% → 45%/38% (ruhiger, weniger neon)
+- Warn: 92%/50% → 85%/45% (weniger blendend)
+- Error: 84%/60% → 75%/52% (kräftig aber nicht aggressiv)
+- Info: 89%/48% → 80%/42% (weniger grell)
 
-2. **`:root --card: 0 0% 100% / 0.92`** — Glass-Alpha von 0.8 auf 0.92 erhöht. Cards werden opaker, Text-Lesbarkeit auf durchscheinendem Gradient verbessert sich deutlich. Der Glass-Effekt bleibt subtil erhalten. Sinnvoll.
+**Dark Mode** — Sättigung leicht reduziert, Helligkeit **angehoben**:
+- Besserer Kontrast auf dunklem Background
+- Success: 71%/45% → 55%/45% (gleiche Helligkeit, weniger neon)
+- Warn: 92%/50% → 80%/52% (etwas heller, weniger gesättigt)
+- Error: 84%/60% → 70%/56% (etwas gedämpft)
+- Info: 89%/48% → 75%/50% (etwas heller)
 
-3. **`.dark --text-dimmed: 215 18% 65%`** — Von `215 15% 55%` auf `215 18% 65%`. Hebt den Kontrast von ~3.5:1 auf ~5.2:1 (über WCAG AA). Behebt den dokumentierten Pain Point #1. Korrekt.
+## Betroffene Komponenten (keine Code-Änderungen nötig)
 
-## Bewertung
-
-Alle drei Änderungen sind minimal-invasiv, treffen genau die richtigen Stellschrauben und brechen nichts. Keine Komponenten betroffen, nur CSS-Variablen in `src/index.css`.
+Alle nutzen `hsl(var(--status-*))` via Tailwind — greifen automatisch die neuen Werte:
+- `StatusBadge` / `StatusDot` (src/components/shared/StatusBadge.tsx)
+- `StatusIndicator` (src/components/immobilienakte/)
+- KPI-Cards, Dashboard-Widgets, Tabellen-Badges
 
 ## Umsetzung
 
-Drei Zeilen in `src/index.css` ändern — fertig. Keine weiteren Dateien betroffen.
+8 Zeilen in `src/index.css` ändern — 4 in `:root`, 4 in `.dark`. Keine weiteren Dateien betroffen.
 
