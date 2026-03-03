@@ -1,43 +1,59 @@
 
 
-# Analyse & Plan: Lennox Shop Sichtbarkeit + Bildformat
+# Diagnose: Weisser Bildschirm im Preview
 
-## Problem 1: Produkte in Zone 3 nicht sichtbar
+## Ursache gefunden
 
-**Ursache gefunden:** Die RLS-Policy auf `service_shop_products` erlaubt SELECT nur fuer `authenticated`-Nutzer. Zone 3 ist oeffentlich (kein Login) — daher werden keine Produkte geladen.
+Der Vite Dev-Server im Preview gibt **503-Fehler** zurueck beim Laden von Modulen:
 
-**Loesung:** Eine zusaetzliche RLS-Policy fuer `anon` (oeffentlichen Lesezugriff) anlegen:
-
-```sql
-CREATE POLICY "Public can read active products"
-ON public.service_shop_products
-FOR SELECT
-TO anon
-USING (is_active = true);
+```
+Failed to load resource: the server responded with a status of 503 ()
+→ src/components/ui/input-otp.tsx
 ```
 
-Damit koennen Zone-3-Besucher aktive Produkte sehen, aber nur eingeloggte Admins koennen schreiben.
+Das bedeutet: Der Dev-Server ist ueberlastet und kann nicht alle Module ausliefern. Die App startet, aber React kann nicht vollstaendig rendern — daher der weisse Bildschirm.
 
-## Problem 2: Produkte in Zone 2
+## Warum passiert das?
 
-**Kein Problem:** Die bestehende Policy erlaubt SELECT fuer `authenticated` mit `USING (true)`. Zone-2-Nutzer sind eingeloggt — Produkte sollten sichtbar sein. Falls nicht, liegt es daran, dass kein Widget aktiv ist (Toggle-Klick noetig).
+Das Projekt hat 780+ Dateien. Der Preview Dev-Server laeuft in einem Browser-Container mit begrenztem Speicher. Wenn Vite zu viele Module gleichzeitig kompilieren muss, antwortet er mit 503 (Service Unavailable). Das ist **kein Code-Bug** — es ist eine Ressourcen-Limitierung der Preview-Umgebung.
 
-## Problem 3: See-Bild in Galerie abgeschnitten
+Die Cleanups der letzten Naechte haben die Dateianzahl vermutlich nicht wesentlich reduziert, und bestimmte Imports laden Module eager statt lazy:
 
-**Ursache:** In `LennoxLennox.tsx` Zeile 177 hat das See-Bild `aspect-[3/4]` (Portrait-Format). Das Foto ist aber ein Landschaftsbild — `object-cover` schneidet es stark ab.
+- `Auth.tsx` wird direkt in `App.tsx` importiert (nicht lazy) und zieht `input-otp` mit
+- Das erhoet den initialen Module-Graph
 
-**Loesung:** Fuer das See-Bild ein breiteres Seitenverhaeltnis verwenden, z.B. `aspect-[4/3]`, oder `object-position: top` setzen, damit der relevante Bildteil (Person) sichtbar bleibt. Da alle drei Galerie-Bilder im gleichen Grid sind, kann man auch gemischte Aspect-Ratios nutzen:
+## Plan: Preview-Last reduzieren
 
-- See-Bild: `aspect-[4/5]` + `object-position: center top`
-- Pferd-Bild: bleibt `aspect-[3/4]`
-- Lennox-Bild: bleibt `aspect-[3/4]`
+### 1. Auth-Page lazy laden (App.tsx)
+`Auth.tsx` ist aktuell ein direkter Import in App.tsx. Da die Auth-Seite nur bei `/auth` benoetigt wird, kann sie lazy geladen werden:
 
-Oder alternativ alle auf `aspect-square` setzen fuer Einheitlichkeit.
+```typescript
+// Vorher: import Auth from "./pages/Auth";
+// Nachher:
+const Auth = lazy(() => import("./pages/Auth"));
+```
 
-## Zusammenfassung der Aenderungen
+Das entfernt `input-otp` und alle Auth-Abhaengigkeiten aus dem initialen Bundle.
+
+### 2. AuthResetPassword lazy laden (App.tsx)
+Gleiche Optimierung:
+```typescript
+const AuthResetPassword = lazy(() => import("./pages/AuthResetPassword"));
+```
+
+### 3. PresentationPage lazy laden (App.tsx)
+Bereits importiert aber nicht lazy:
+```typescript
+const PresentationPage = lazy(() => import("./pages/presentation/PresentationPage"));
+```
+
+### Zusammenfassung
 
 | Datei | Aenderung |
 |---|---|
-| DB Migration | Neue RLS-Policy: anon SELECT auf active products |
-| `src/pages/zone3/lennox/LennoxLennox.tsx` | Zeile 177: See-Bild Aspect-Ratio + object-position anpassen |
+| `src/App.tsx` | Auth, AuthResetPassword, PresentationPage → lazy imports |
+
+Diese Aenderung reduziert den initialen Module-Graph um ca. 15-20 Module und entlastet den Dev-Server. Die Published-Version (systemofatown.lovable.app) ist davon **nicht betroffen** — dort wird alles korrekt gebundled.
+
+**Wichtig:** Wenn der Preview trotzdem weiss bleibt, hilft ein Reload des Previews (Refresh-Button). Das ist ein bekanntes Verhalten bei grossen Projekten in der Preview-Umgebung.
 
