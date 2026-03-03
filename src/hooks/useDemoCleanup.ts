@@ -44,6 +44,7 @@ const CLEANUP_ORDER = [
   'pension_records',
   'household_persons',
   // Finance workflow (CASCADE handles children, but register for diagnostics)
+  'future_room_cases',
   'finance_submission_logs',
   'finance_mandates',
   'applicant_profiles',
