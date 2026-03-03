@@ -15364,6 +15364,7 @@ export type Database = {
           stripe_payment_intent_id: string | null
           tenant_id: string
           total_price_cents: number
+          z3_customer_id: string | null
         }
         Insert: {
           closed_at?: string | null
@@ -15387,6 +15388,7 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           tenant_id: string
           total_price_cents?: number
+          z3_customer_id?: string | null
         }
         Update: {
           closed_at?: string | null
@@ -15410,6 +15412,7 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           tenant_id?: string
           total_price_cents?: number
+          z3_customer_id?: string | null
         }
         Relationships: [
           {

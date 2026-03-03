@@ -36,6 +36,8 @@ export interface CreateCaseInput {
   scheduled_end?: string | null;
   total_price_cents?: number;
   tenant_id: string;
+  /** For Zone 3 customers (non-Supabase-auth) */
+  z3_customer_id?: string | null;
 }
 
 export interface TransitionInput {
@@ -56,6 +58,7 @@ const CASE_KEYS = {
   all: ['pet-service-cases'] as const,
   forProvider: (providerId: string) => [...CASE_KEYS.all, 'provider', providerId] as const,
   forCustomer: (userId: string) => [...CASE_KEYS.all, 'customer', userId] as const,
+  forZ3Customer: (z3Id: string) => [...CASE_KEYS.all, 'z3customer', z3Id] as const,
   single: (caseId: string) => [...CASE_KEYS.all, 'single', caseId] as const,
   events: (caseId: string) => [...CASE_KEYS.all, 'events', caseId] as const,
 };
@@ -138,6 +141,26 @@ export function useCasesForCustomer(userId: string | null | undefined) {
 }
 
 /**
+ * Load all cases for a Zone 3 customer (by z3_customer_id).
+ */
+export function useCasesForZ3Customer(z3CustomerId: string | null | undefined) {
+  return useQuery({
+    queryKey: CASE_KEYS.forZ3Customer(z3CustomerId ?? ''),
+    enabled: !!z3CustomerId,
+    queryFn: async (): Promise<CaseWithComputed[]> => {
+      const { data, error } = await (supabase
+        .from('pet_service_cases') as any)
+        .select('*')
+        .eq('z3_customer_id', z3CustomerId!)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data ?? []).map((r) => enrichWithComputed(rowToCase(r)));
+    },
+  });
+}
+
+/**
  * Load a single case by ID.
  */
 export function useCase(caseId: string | null | undefined) {
@@ -190,9 +213,16 @@ export function useCreateCase() {
 
   return useMutation({
     mutationFn: async (input: CreateCaseInput) => {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Nicht angemeldet');
+      const isZ3 = !!input.z3_customer_id;
+      let actorId: string | null = null;
+
+      if (!isZ3) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Nicht angemeldet');
+        actorId = user.id;
+      } else {
+        actorId = input.z3_customer_id!;
+      }
 
       const initialPhase: PLCPhase = 'provider_selected';
 
@@ -200,8 +230,9 @@ export function useCreateCase() {
       const { data: newCase, error: caseError } = await supabase
         .from('pet_service_cases')
         .insert({
-          customer_user_id: user.id,
-          customer_email: input.customer_email ?? user.email ?? null,
+          customer_user_id: isZ3 ? null : actorId,
+          z3_customer_id: isZ3 ? input.z3_customer_id : null,
+          customer_email: input.customer_email ?? null,
           customer_name: input.customer_name ?? null,
           provider_id: input.provider_id,
           service_type: input.service_type,
@@ -209,12 +240,12 @@ export function useCreateCase() {
           current_phase: initialPhase,
           phase_entered_at: new Date().toISOString(),
           total_price_cents: input.total_price_cents ?? 0,
-          deposit_cents: 0, // Stripe zurückgestellt
+          deposit_cents: 0,
           scheduled_start: input.scheduled_start ?? null,
           scheduled_end: input.scheduled_end ?? null,
           customer_notes: input.customer_notes ?? null,
           tenant_id: input.tenant_id,
-        })
+        } as any)
         .select()
         .single();
 
@@ -228,18 +259,18 @@ export function useCreateCase() {
           event_type: 'provider.selected' as string,
           phase_before: null as string | null,
           phase_after: initialPhase as string,
-          actor_id: user.id,
+          actor_id: actorId,
           actor_type: 'customer' as string,
           payload: {
             service_type: input.service_type,
             scheduled_start: input.scheduled_start,
             scheduled_end: input.scheduled_end,
+            z3: isZ3,
           } as unknown as Json,
         }]);
 
       if (eventError) {
         console.error('Event logging failed:', eventError);
-        // Non-fatal — case was created successfully
       }
 
       return enrichWithComputed(rowToCase(newCase));

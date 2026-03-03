@@ -1,6 +1,7 @@
 /**
  * LennoxPartnerProfil — Dynamisches Partnerprofil mit Service-Kacheln + Inline-Booking
  * Verwendet eigenständiges Z3-Auth (getrennt vom Portal)
+ * Buchung schreibt in pet_service_cases (PLC-Engine)
  */
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Star, Shield, Phone, Clock, Calendar, ChevronRight } from 'lucide-react';
@@ -16,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
+import { useCreateCase } from '@/hooks/usePetServiceCases';
 import { LENNOX as C, SERVICE_TAG_LABELS } from './lennoxTheme';
 import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
@@ -176,8 +178,9 @@ export default function LennoxPartnerProfil() {
         <BookingBlock
           providerId={provider.id}
           providerName={provider.company_name}
+          providerTenantId={provider.tenant_id}
           serviceId={selectedService}
-          customerId={z3User.id}
+          z3User={z3User}
           onClose={() => setShowBooking(false)}
         />
       )}
@@ -202,42 +205,38 @@ export default function LennoxPartnerProfil() {
   );
 }
 
-/** Inline Booking Block — real DB insert to pet_z1_booking_requests */
-function BookingBlock({ providerId, providerName, serviceId, customerId, onClose }: {
-  providerId: string; providerName: string; serviceId: string | null; customerId: string; onClose: () => void;
+/** Inline Booking Block — writes to pet_service_cases via PLC hook */
+function BookingBlock({ providerId, providerName, providerTenantId, serviceId, z3User, onClose }: {
+  providerId: string; providerName: string; providerTenantId: string; serviceId: string | null;
+  z3User: { id: string; email: string | null; first_name: string | null; last_name: string | null };
+  onClose: () => void;
 }) {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [notes, setNotes] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const createCase = useCreateCase();
 
   const handleSubmit = async () => {
     if (!dateFrom) { toast.error('Bitte Datum auswählen'); return; }
-    setSubmitting(true);
-    try {
-      // Get tenant_id from customer record
-      const { data: customer } = await supabase.from('pet_z1_customers').select('tenant_id').eq('id', customerId).maybeSingle();
-      if (!customer?.tenant_id) throw new Error('Tenant nicht gefunden');
 
-      const { error } = await (supabase.from('pet_z1_booking_requests' as any) as any).insert({
-        tenant_id: customer.tenant_id,
-        z1_customer_id: customerId,
-        provider_id: providerId,
-        service_title: serviceId || 'Buchung',
-        preferred_date: dateFrom,
-        preferred_time: null,
-        client_notes: [dateTo ? `Bis: ${dateTo}` : '', notes].filter(Boolean).join(' — ') || null,
-        status: 'pending',
-        payment_status: 'none',
-      });
-      if (error) throw error;
-      toast.success(`Buchungsanfrage an ${providerName} gesendet!`);
-      onClose();
-    } catch (err: unknown) {
-      toast.error('Fehler: ' + ((err instanceof Error ? err.message : String(err)) || 'Unbekannt'));
-    } finally {
-      setSubmitting(false);
-    }
+    const customerName = [z3User.first_name, z3User.last_name].filter(Boolean).join(' ') || null;
+
+    createCase.mutate({
+      provider_id: providerId,
+      service_type: 'pension',
+      customer_name: customerName,
+      customer_email: z3User.email,
+      customer_notes: [dateTo ? `Bis: ${dateTo}` : '', notes].filter(Boolean).join(' — ') || null,
+      scheduled_start: dateFrom,
+      scheduled_end: dateTo || null,
+      tenant_id: providerTenantId,
+      z3_customer_id: z3User.id,
+    }, {
+      onSuccess: () => {
+        toast.success(`Buchungsanfrage an ${providerName} gesendet!`);
+        onClose();
+      },
+    });
   };
 
   return (
@@ -267,12 +266,9 @@ function BookingBlock({ providerId, providerName, serviceId, customerId, onClose
           <Textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Besondere Wünsche…"
             maxLength={500} style={{ borderColor: C.sand }} />
         </div>
-        <p className="text-xs" style={{ color: C.barkMuted }}>
-          💡 5 € Anzahlung online — wird auf den Gesamtpreis angerechnet.
-        </p>
         <Button className="w-full rounded-full text-white font-semibold" style={{ background: C.forest }}
-          onClick={handleSubmit} disabled={submitting}>
-          {submitting ? 'Wird gesendet…' : 'Buchung anfragen'}
+          onClick={handleSubmit} disabled={createCase.isPending}>
+          {createCase.isPending ? 'Wird gesendet…' : 'Buchung anfragen'}
         </Button>
       </CardContent>
     </Card>
