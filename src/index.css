@@ -114,6 +114,10 @@
 
     /* Input Surface */
     --input-bg: 210 20% 97%;
+
+    /* Table Surface */
+    --table-header-bg: 210 20% 95%;
+    --table-row-hover: 210 20% 96%;
   }
 
   /* =========================================================================
@@ -173,6 +177,9 @@
     /* Input Surface */
     --input-bg: 215 15% 18%;
 
+    /* Table Surface */
+    --table-header-bg: 222 25% 14%;
+    --table-row-hover: 222 25% 12%;
     /* Surface Layers - Dark enterprise (original) */
     --surface: 222 30% 10%;
     --surface-2: 222 35% 8%;
