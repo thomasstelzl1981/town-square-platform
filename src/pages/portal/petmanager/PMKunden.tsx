@@ -2,6 +2,7 @@
  * PMKunden — Kunden & Tiere (Pet Manager)
  * Eigene Kundenverwaltung mit manueller Anlage (Einstieg A).
  * Source-Badges zeigen Herkunft: Manual, Lead, MOD-05.
+ * Expanded: Universelle PetDossier-Tierakte pro Tier.
  */
 import { Users, PawPrint, Plus, Mail, Phone, MapPin, ChevronDown, ChevronUp, Hash, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { DESIGN } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { PetDossier } from '@/components/shared/pet-dossier';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useState } from 'react';
@@ -172,8 +174,8 @@ export default function PMKunden() {
                       </div>
                     </div>
 
-                    {/* Expanded dossier */}
-                    {isExpanded && <CustomerDossier customer={c} />}
+                    {/* Expanded: Pet Dossiers */}
+                    {isExpanded && <CustomerPetDossiers customer={c} />}
                   </CardContent>
                 </Card>
               );
@@ -240,41 +242,46 @@ export default function PMKunden() {
   );
 }
 
-/** Inline dossier for an expanded customer */
-function CustomerDossier({ customer }: { customer: { id: string; address: string | null; postal_code?: string | null; city?: string | null; notes: string | null; source: string } }) {
+/** Inline pet dossiers for an expanded customer */
+function CustomerPetDossiers({ customer }: { customer: { id: string; first_name: string; last_name: string; email: string | null; phone: string | null; address: string | null; postal_code?: string | null; city?: string | null; notes: string | null; source: string } }) {
   const { data: pets = [], isLoading } = usePetsForCustomer(customer.id);
 
-  return (
-    <div className="mt-4 border-t pt-3 space-y-3">
-      {/* Address & Notes */}
-      {(customer.address || customer.postal_code || customer.city) && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <MapPin className="h-3 w-3 shrink-0" />
-          {[customer.address, [customer.postal_code, customer.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
-        </div>
-      )}
-      {customer.notes && (
-        <p className="text-xs text-muted-foreground italic">{customer.notes}</p>
-      )}
+  const ownerData = {
+    id: customer.id,
+    first_name: customer.first_name,
+    last_name: customer.last_name,
+    email: customer.email,
+    phone: customer.phone,
+    address: customer.address,
+    city: customer.city ?? null,
+    postal_code: customer.postal_code ?? null,
+  };
 
-      {/* Pets */}
-      <div>
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Tiere</p>
-        {isLoading ? (
-          <p className="text-xs text-muted-foreground">Laden…</p>
-        ) : pets.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Noch keine Tiere zugeordnet.</p>
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {pets.map(p => (
-              <Badge key={p.id} variant="secondary" className="text-[10px] gap-1">
-                <PawPrint className="h-2.5 w-2.5" />
-                {p.name} {p.breed ? `(${p.breed})` : ''}
-              </Badge>
-            ))}
+  return (
+    <div className="mt-4 border-t pt-4 space-y-6">
+      {isLoading ? (
+        <div className="flex items-center justify-center p-4">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      ) : pets.length === 0 ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground p-4">
+          <PawPrint className="h-4 w-4" />
+          Noch keine Tiere zugeordnet.
+        </div>
+      ) : (
+        pets.map((p, idx) => (
+          <div key={p.id}>
+            {idx > 0 && <div className="border-t border-border/30 my-4" />}
+            <PetDossier
+              petId={p.id}
+              context="z2-provider"
+              readOnly={false}
+              showOwner={idx === 0}
+              externalOwner={idx === 0 ? ownerData : null}
+            />
           </div>
-        )}
-      </div>
+        ))
+      )}
     </div>
   );
 }
