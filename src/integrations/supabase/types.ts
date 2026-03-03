@@ -16016,15 +16016,34 @@ export type Database = {
       pets: {
         Row: {
           allergies: string[] | null
+          behavior_notes: string | null
           birth_date: string | null
           breed: string | null
           chip_number: string | null
+          color: string | null
+          compatible_cats: boolean | null
+          compatible_children: boolean | null
+          compatible_dogs: boolean | null
           created_at: string
           customer_id: string | null
+          fears: string[] | null
+          food_amount: string | null
+          food_brand: string | null
+          food_frequency: string | null
+          food_notes: string | null
           gender: Database["public"]["Enums"]["pet_gender"] | null
+          grooming_notes: string | null
+          height_cm: number | null
           id: string
+          insurance_deductible: number | null
           insurance_policy_no: string | null
+          insurance_premium_monthly: number | null
           insurance_provider: string | null
+          insurance_type: string | null
+          insurance_valid_until: string | null
+          intolerances: string[] | null
+          leash_required: boolean | null
+          muzzle_required: boolean | null
           name: string
           neutered: boolean | null
           notes: string | null
@@ -16032,22 +16051,44 @@ export type Database = {
           photo_url: string | null
           species: Database["public"]["Enums"]["pet_species"]
           tenant_id: string
+          training_level: string | null
           updated_at: string
           vet_name: string | null
+          vet_phone: string | null
+          vet_practice: string | null
           weight_kg: number | null
           z3_owner_id: string | null
         }
         Insert: {
           allergies?: string[] | null
+          behavior_notes?: string | null
           birth_date?: string | null
           breed?: string | null
           chip_number?: string | null
+          color?: string | null
+          compatible_cats?: boolean | null
+          compatible_children?: boolean | null
+          compatible_dogs?: boolean | null
           created_at?: string
           customer_id?: string | null
+          fears?: string[] | null
+          food_amount?: string | null
+          food_brand?: string | null
+          food_frequency?: string | null
+          food_notes?: string | null
           gender?: Database["public"]["Enums"]["pet_gender"] | null
+          grooming_notes?: string | null
+          height_cm?: number | null
           id?: string
+          insurance_deductible?: number | null
           insurance_policy_no?: string | null
+          insurance_premium_monthly?: number | null
           insurance_provider?: string | null
+          insurance_type?: string | null
+          insurance_valid_until?: string | null
+          intolerances?: string[] | null
+          leash_required?: boolean | null
+          muzzle_required?: boolean | null
           name: string
           neutered?: boolean | null
           notes?: string | null
@@ -16055,22 +16096,44 @@ export type Database = {
           photo_url?: string | null
           species?: Database["public"]["Enums"]["pet_species"]
           tenant_id: string
+          training_level?: string | null
           updated_at?: string
           vet_name?: string | null
+          vet_phone?: string | null
+          vet_practice?: string | null
           weight_kg?: number | null
           z3_owner_id?: string | null
         }
         Update: {
           allergies?: string[] | null
+          behavior_notes?: string | null
           birth_date?: string | null
           breed?: string | null
           chip_number?: string | null
+          color?: string | null
+          compatible_cats?: boolean | null
+          compatible_children?: boolean | null
+          compatible_dogs?: boolean | null
           created_at?: string
           customer_id?: string | null
+          fears?: string[] | null
+          food_amount?: string | null
+          food_brand?: string | null
+          food_frequency?: string | null
+          food_notes?: string | null
           gender?: Database["public"]["Enums"]["pet_gender"] | null
+          grooming_notes?: string | null
+          height_cm?: number | null
           id?: string
+          insurance_deductible?: number | null
           insurance_policy_no?: string | null
+          insurance_premium_monthly?: number | null
           insurance_provider?: string | null
+          insurance_type?: string | null
+          insurance_valid_until?: string | null
+          intolerances?: string[] | null
+          leash_required?: boolean | null
+          muzzle_required?: boolean | null
           name?: string
           neutered?: boolean | null
           notes?: string | null
@@ -16078,8 +16141,11 @@ export type Database = {
           photo_url?: string | null
           species?: Database["public"]["Enums"]["pet_species"]
           tenant_id?: string
+          training_level?: string | null
           updated_at?: string
           vet_name?: string | null
+          vet_phone?: string | null
+          vet_practice?: string | null
           weight_kg?: number | null
           z3_owner_id?: string | null
         }
