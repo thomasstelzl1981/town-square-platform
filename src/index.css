@@ -148,7 +148,7 @@
     --secondary-foreground: 210 40% 98%;
 
     --muted: 222 25% 16%;
-    --muted-foreground: 215 20% 75%;
+    --muted-foreground: 215 20% 70%;
 
     --accent: 222 30% 14%;
     --accent-foreground: 210 40% 98%;
@@ -195,7 +195,7 @@
 
     /* Text Hierarchy */
     --text-primary: 210 35% 96%;
-    --text-secondary: 215 20% 75%;
+    --text-secondary: 215 20% 72%;
     --text-dimmed: 215 18% 65%;
 
     /* Accent (CI Primary - konfigurierbar) */
