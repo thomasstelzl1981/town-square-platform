@@ -90,6 +90,8 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          {/* Ambient Aurora Background Layer — behind all content */}
+          <div className="sot-ambient-layer" />
           <BrowserRouter>
             <Routes>
               {/* Root redirect: Auth-aware for brand domains */}
