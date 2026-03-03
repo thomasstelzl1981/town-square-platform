@@ -92,10 +92,10 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
 
     /* Status Colors */
-    --status-success: 142 71% 45%;
-    --status-warn: 38 92% 50%;
-    --status-error: 0 84% 60%;
-    --status-info: 199 89% 48%;
+    --status-success: 142 45% 38%;
+    --status-warn: 38 85% 45%;
+    --status-error: 0 75% 52%;
+    --status-info: 199 80% 42%;
 
     /* Surface Layers */
     --surface: 0 0% 98%;
@@ -162,10 +162,10 @@
     --sidebar-ring: 217 91% 60%;
 
     /* Status Colors */
-    --status-success: 142 71% 45%;
-    --status-warn: 38 92% 50%;
-    --status-error: 0 84% 60%;
-    --status-info: 199 89% 48%;
+    --status-success: 142 55% 45%;
+    --status-warn: 38 80% 52%;
+    --status-error: 0 70% 56%;
+    --status-info: 199 75% 50%;
 
     /* Surface Layers - Dark enterprise (original) */
     --surface: 222 30% 10%;
