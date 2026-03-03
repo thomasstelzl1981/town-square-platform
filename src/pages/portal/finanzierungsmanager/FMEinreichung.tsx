@@ -2,10 +2,10 @@
  * FM Einreichung — 4 eigenständige Kacheln:
  * 1. Exposé  2. Bankauswahl + E-Mail  3. Status & Ergebnis  4. Europace API
  */
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2, FileText, Building2, Mail, Check, Globe,
-  Send, AlertTriangle, Archive, Download, X, Plus, Sparkles, Search } from 'lucide-react';
+  Send, AlertTriangle, Archive, Download, X, Plus, Sparkles, Search, RefreshCw, Bookmark, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +33,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { FutureRoomCase } from '@/types/finance';
+import {
+  europace_request_vorschlaege,
+  europace_poll_vorschlaege,
+  type EuropaceVorschlag,
+  type EuropaceLeadRating,
+  type EuropaceCaseData,
+} from '@/services/europace/consumerLoanAdapter';
 
 const eurFormat = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
@@ -98,6 +105,14 @@ export default function FMEinreichung({ cases, isLoading }: Props) {
   const [bankSearchQuery, setBankSearchQuery] = useState('');
   const [manualBankName, setManualBankName] = useState('');
   const [manualBankEmail, setManualBankEmail] = useState('');
+
+  // ─── Europace State ──────────────────────────────────────────────
+  const [epLoading, setEpLoading] = useState(false);
+  const [epAnfrageId, setEpAnfrageId] = useState<string | null>(null);
+  const [epVorschlaege, setEpVorschlaege] = useState<EuropaceVorschlag[]>([]);
+  const [epLeadRating, setEpLeadRating] = useState<EuropaceLeadRating | null>(null);
+  const [epError, setEpError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── KI-Bankensuche via useResearchEngine ────────────────────────
   const researchEngine = useResearchEngine();
@@ -298,6 +313,77 @@ Mit freundlichen Grüßen`;
     await supabase.from('finance_requests').update({ status: 'submitted_to_bank' }).eq('id', selectedId);
     toast.success(`Fall an ${externalSoftwareName} übergeben`);
   };
+
+  // ─── Europace: Konditionen ermitteln ─────────────────────────────
+  const handleEuropaceRequest = async () => {
+    if (!selectedId || !request) return;
+    setEpLoading(true);
+    setEpError(null);
+    setEpVorschlaege([]);
+    setEpLeadRating(null);
+    setEpAnfrageId(null);
+
+    try {
+      const caseData: EuropaceCaseData = {
+        caseId: selectedId,
+        applicant: {
+          net_income_monthly: applicant?.net_income_monthly ?? undefined,
+          birth_date: applicant?.birth_date ?? undefined,
+          equity_amount: applicant?.equity_amount ?? undefined,
+          purchase_price: applicant?.purchase_price ?? undefined,
+          object_type: applicant?.object_type ?? undefined,
+          address_postal_code: applicant?.address_postal_code ?? undefined,
+          address_city: applicant?.address_city ?? undefined,
+          employment_type: applicant?.employment_type ?? undefined,
+          employed_since: applicant?.employed_since ?? undefined,
+          contract_type: applicant?.contract_type ?? undefined,
+          other_regular_income_monthly: applicant?.other_regular_income_monthly ?? undefined,
+          max_monthly_rate: applicant?.max_monthly_rate ?? undefined,
+        },
+        property: {
+          purchase_price: property?.purchase_price ?? undefined,
+          object_type: (property as any)?.object_type ?? undefined,
+          postal_code: property?.postal_code ?? undefined,
+          city: property?.city ?? undefined,
+        },
+      };
+
+      const anfrageId = await europace_request_vorschlaege(caseData);
+      setEpAnfrageId(anfrageId);
+      toast.info('Europace: Konditionen werden ermittelt…');
+
+      // Start polling
+      pollEuropace(anfrageId);
+    } catch (err: any) {
+      setEpError(err.message || 'Fehler bei Europace-Anfrage');
+      setEpLoading(false);
+    }
+  };
+
+  const pollEuropace = async (anfrageId: string) => {
+    try {
+      const result = await europace_poll_vorschlaege(anfrageId);
+      if (result === null) {
+        // Still processing — retry in 2s
+        pollRef.current = setTimeout(() => pollEuropace(anfrageId), 2000);
+        return;
+      }
+      setEpVorschlaege(result.vorschlaege || []);
+      setEpLeadRating(result.leadRating || null);
+      setEpLoading(false);
+      toast.success(`${result.vorschlaege?.length || 0} Vorschläge ermittelt`);
+    } catch (err: any) {
+      setEpError(err.message || 'Polling fehlgeschlagen');
+      setEpLoading(false);
+    }
+  };
+
+  // Cleanup polling on unmount or case change
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearTimeout(pollRef.current);
+    };
+  }, [selectedId]);
 
   const handleUpdateLogStatus = async (logId: string, newStatus: string) => {
     await updateLog.mutateAsync({
@@ -819,39 +905,131 @@ Mit freundlichen Grüßen`;
       {/* ── KACHEL 4: API-Übergabe (Europace) ── */}
       <Card className="glass-card overflow-hidden">
         <CardContent className="p-0">
-          <div className="px-4 py-2 border-b bg-muted/20">
+          <div className="px-4 py-2 border-b bg-muted/20 flex items-center justify-between">
             <h3 className="text-base font-semibold flex items-center gap-2">
-              <Globe className="h-4 w-4" /> 4. API-Übergabe (Europace)
+              <Globe className="h-4 w-4" /> 4. Europace — Konditionen & Übergabe
             </h3>
+            {epLeadRating?.successRating && (
+              <Badge variant={epLeadRating.successRating <= 'B' ? 'default' : 'secondary'} className="text-xs">
+                Lead: {epLeadRating.successRating} · Machbarkeit {epLeadRating.feasibilityRating ?? '–'}%
+              </Badge>
+            )}
           </div>
-          <div className="p-4">
-            <div className="border border-dashed rounded-md p-4 space-y-3">
-              <div className="flex items-start gap-2">
+          <div className="p-4 space-y-4">
+            {/* ── Aktion: Konditionen ermitteln ── */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                size="sm"
+                onClick={handleEuropaceRequest}
+                disabled={epLoading || !selectedId || !request}
+                className="h-8 text-xs"
+              >
+                {epLoading ? (
+                  <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Ermittle Konditionen…</>
+                ) : (
+                  <><TrendingUp className="h-3.5 w-3.5 mr-1" /> Konditionen ermitteln</>
+                )}
+              </Button>
+              {!selectedId && (
+                <span className="text-[10px] text-muted-foreground">Bitte wählen Sie oben eine Akte aus.</span>
+              )}
+              {epAnfrageId && (
+                <span className="text-[10px] text-muted-foreground font-mono">ID: {epAnfrageId.slice(0, 20)}…</span>
+              )}
+            </div>
+
+            {/* ── Fehler ── */}
+            {epError && (
+              <div className="flex items-start gap-2 p-3 rounded-md border border-destructive/30 bg-destructive/5">
                 <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-                <p className="text-xs text-muted-foreground">
-                  Die Übergabe an eine externe Software (z. B. Europace) erfolgt unabhängig vom E-Mail-Einreichungsweg. Der Fall wird als „übergeben" markiert — keine Rückspielung.
-                </p>
+                <p className="text-xs text-destructive">{epError}</p>
               </div>
+            )}
+
+            {/* ── Vorschläge als Karten ── */}
+            {epVorschlaege.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {epVorschlaege.map((v, idx) => (
+                  <div key={v.finanzierungsVorschlagId} className="border rounded-lg p-3 space-y-2 bg-card hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-muted-foreground">Vorschlag {idx + 1}</span>
+                      {v.kennung && <Badge variant="outline" className="text-[9px]">{v.kennung}</Badge>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                      <div>
+                        <span className="text-muted-foreground">Sollzins</span>
+                        <p className="font-semibold text-sm">{v.sollZins?.toFixed(2)}%</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Effektivzins</span>
+                        <p className="font-semibold text-sm">{v.effektivZins?.toFixed(2)}%</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Rate / Monat</span>
+                        <p className="font-semibold text-sm">{eurFormat.format(v.gesamtRateProMonat)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Darlehenssumme</span>
+                        <p className="font-semibold text-sm">{eurFormat.format(v.darlehensSumme)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Zinsbindung</span>
+                        <p className="font-semibold text-sm">{v.zinsbindungInJahrenMinMax || '–'} Jahre</p>
+                      </div>
+                      {v.finanzierungsbausteine?.[0]?.produktAnbieter && (
+                        <div>
+                          <span className="text-muted-foreground">Bank</span>
+                          <p className="font-semibold text-sm">{v.finanzierungsbausteine[0].produktAnbieter}</p>
+                        </div>
+                      )}
+                    </div>
+                    {v.annahmeFrist && (
+                      <p className="text-[10px] text-muted-foreground">Gültig bis: {v.annahmeFrist}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ── LeadRating ── */}
+            {epLeadRating && (
+              <div className="flex items-center gap-4 text-xs border-t pt-3">
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Lead-Score:</span>
+                  <Badge variant={epLeadRating.successRating && epLeadRating.successRating <= 'B' ? 'default' : 'outline'}
+                    className="text-xs font-bold">
+                    {epLeadRating.successRating || '–'}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Machbarkeit:</span>
+                  <span className="font-semibold">{epLeadRating.feasibilityRating ?? '–'}%</span>
+                </div>
+              </div>
+            )}
+
+            <Separator />
+
+            {/* ── Manuelle Übergabe (bestehende Funktion) ── */}
+            <div className="border border-dashed rounded-md p-3 space-y-2">
+              <p className="text-[10px] text-muted-foreground">Oder: Fall manuell als „übergeben" markieren (ohne API)</p>
               <div className="flex items-center gap-2">
                 <Input
                   value={externalSoftwareName}
                   onChange={(e) => setExternalSoftwareName(e.target.value)}
                   placeholder="Software-Name"
-                  className="h-8 text-sm max-w-[200px]"
+                  className="h-7 text-xs max-w-[180px]"
                 />
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={handleExternalHandoff}
                   disabled={createLog.isPending || !selectedId}
-                  className="h-8 text-xs"
+                  className="h-7 text-xs"
                 >
                   <Globe className="h-3 w-3 mr-1" /> Fall übergeben
                 </Button>
               </div>
-              {!selectedId && (
-                <p className="text-[10px] text-muted-foreground">Bitte wählen Sie oben eine Akte aus.</p>
-              )}
             </div>
           </div>
         </CardContent>
