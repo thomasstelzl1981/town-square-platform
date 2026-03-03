@@ -75,9 +75,9 @@ export default function LennoxDoc() {
       const { data, error } = await supabase.functions.invoke('sot-research-engine', {
         body: {
           intent: 'find_contacts',
-          query: `Tierarzt Notdienst ${vetSearch}`,
-          filters: { category: 'veterinary', radius_km: 25 },
-          limit: 8,
+          query: 'Tierarzt Notdienst',
+          location: vetSearch.trim(),
+          max_results: 4,
         },
       });
       if (error) throw error;
