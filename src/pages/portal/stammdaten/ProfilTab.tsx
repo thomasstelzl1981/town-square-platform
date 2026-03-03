@@ -21,7 +21,7 @@ import { BrandLinkWidget } from '@/components/dashboard/widgets/BrandLinkWidget'
 import { toast } from 'sonner';
 import { OutboundIdentityWidget } from '@/components/portal/OutboundIdentityWidget';
 import { cn } from '@/lib/utils';
-import defaultLetterheadLogo from '@/assets/logos/armstrong_logo_light.jpg';
+// defaultLetterheadLogo removed — no automatic logo inheritance from Golden Tenant
 
 interface ProfileFormData {
   display_name: string;
@@ -582,8 +582,14 @@ export function ProfilTab() {
           <div>
             <p className={RECORD_CARD.SECTION_TITLE}>Briefkopf-Daten</p>
             <div className="flex items-start gap-4 mb-4">
-              <img src={logoDisplayUrl || defaultLetterheadLogo} alt="Logo"
-                className="h-12 w-auto object-contain border rounded-lg p-1 bg-background" />
+              {logoDisplayUrl ? (
+                <img src={logoDisplayUrl} alt="Logo"
+                  className="h-12 w-auto object-contain border rounded-lg p-1 bg-background" />
+              ) : (
+                <div className="h-12 w-20 border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center bg-muted/20">
+                  <span className="text-[10px] text-muted-foreground">Kein Logo</span>
+                </div>
+              )}
               <div className="flex-1">
                 <ImageSlotGrid
                   slots={LOGO_SLOTS}

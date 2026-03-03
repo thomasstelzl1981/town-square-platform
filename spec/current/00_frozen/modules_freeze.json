@@ -4,8 +4,8 @@
   "description": "SSOT for module freeze states. Lovable and all AI assistants MUST check this file before modifying any module code. If a module is frozen, changes to its paths are NOT ALLOWED without explicit unfreeze.",
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
-    "MOD-00": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
-    "MOD-01": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
+    "MOD-00": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for greeting fix (Mr. removal)" },
+    "MOD-01": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for logo fallback fix" },
     "MOD-02": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-04": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },

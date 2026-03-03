@@ -39,7 +39,7 @@ const eveningGreetings = [
 
 function getRandomGreeting(name: string): string {
   const hour = new Date().getHours();
-  const formattedName = name ? `Mr. ${name}` : 'Freund';
+  const formattedName = name || 'Freund';
   
   let greetings;
   if (hour < 12) {
