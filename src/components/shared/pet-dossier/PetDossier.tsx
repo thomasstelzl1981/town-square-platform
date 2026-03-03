@@ -1,6 +1,6 @@
 /**
  * PetDossier — Universal pet dossier component
- * 1 component, 9 sections, 3 zones, 0 collapsibles
+ * 1 component, 8 sections, 3 zones, 0 collapsibles
  */
 import { memo } from 'react';
 import { DESIGN } from '@/config/designManifest';
@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { usePetDossier } from './usePetDossier';
 import { PetOwnerSection } from './PetOwnerSection';
 import { PetProfileSection } from './PetProfileSection';
-import { PetGallerySection } from './PetGallerySection';
+// PetGallerySection removed — profile photo in Steckbrief is sufficient (CI: like Fahrzeuge)
 import { PetHealthSection } from './PetHealthSection';
 import { PetNutritionSection } from './PetNutritionSection';
 import { PetInsuranceSection } from './PetInsuranceSection';
@@ -42,11 +42,9 @@ export const PetDossier = memo(function PetDossier({
     pet,
     owner: hookOwner,
     loading,
-    galleryUrls,
     updatePet,
     updateOwner,
     uploadProfilePhoto,
-    uploadGalleryPhoto,
   } = usePetDossier(petId, context, { z3SessionToken });
 
   const owner = externalOwner ?? hookOwner;
@@ -80,32 +78,24 @@ export const PetDossier = memo(function PetDossier({
       {/* 2. Steckbrief */}
       <PetProfileSection pet={pet} readOnly={readOnly} onUpdate={updatePet} onPhotoUpload={uploadProfilePhoto} />
 
-      {/* 3. Fotogalerie */}
-      <PetGallerySection
-        galleryUrls={galleryUrls}
-        readOnly={readOnly}
-        onUpload={uploadGalleryPhoto}
-        petName={pet.name}
-      />
-
-      {/* 4. Gesundheit */}
+      {/* 3. Gesundheit */}
       <PetHealthSection pet={pet} readOnly={readOnly} onUpdate={updatePet} />
 
-      {/* 5. Ernährung & Pflege */}
+      {/* 4. Ernährung & Pflege */}
       <PetNutritionSection pet={pet} readOnly={readOnly} onUpdate={updatePet} />
 
-      {/* 6. Versicherung (nur MOD-05 Client) */}
+      {/* 5. Versicherung (nur MOD-05 Client) */}
       {showInsurance && (
         <PetInsuranceSection pet={pet} readOnly={readOnly} onUpdate={updatePet} />
       )}
 
-      {/* 7. Verhalten & Training */}
+      {/* 6. Verhalten & Training */}
       <PetBehaviorSection pet={pet} readOnly={readOnly} onUpdate={updatePet} />
 
-      {/* 8. Dokumente */}
+      {/* 7. Dokumente */}
       <PetDocumentsSection petId={pet.id} readOnly={readOnly} />
 
-      {/* 9. Notizen */}
+      {/* 8. Notizen */}
       <PetNotesSection pet={pet} readOnly={readOnly} onUpdate={updatePet} />
     </div>
   );

@@ -2,7 +2,7 @@
  * Pets — Meine Tiere Tab
  * RecordCard-Grid mit universeller PetDossier-Tierakte (shared component)
  */
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { PawPrint, Plus, Dog, Cat, Bird, Rabbit } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -17,6 +17,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePets, useCreatePet } from '@/hooks/usePets';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { differenceInYears, differenceInMonths, parseISO } from 'date-fns';
 
 const SPECIES_ICONS: Record<string, typeof PawPrint> = { dog: Dog, cat: Cat, bird: Bird, rabbit: Rabbit };
@@ -41,6 +44,7 @@ export default function PetsMeineTiere() {
   const demoEnabled = isEnabled('GP-PETS');
   const pets = demoEnabled ? allPets : allPets.filter(p => !isDemoId(p.id));
   const createPet = useCreatePet();
+  const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openPetId, setOpenPetId] = useState<string | null>(null);
   const [newPet, setNewPet] = useState({ name: '', species: 'dog' as string, breed: '' });
@@ -51,6 +55,32 @@ export default function PetsMeineTiere() {
     setNewPet({ name: '', species: 'dog', breed: '' });
     setDialogOpen(false);
   };
+
+  /** Upload photo directly from RecordCard drag-and-drop (like Fahrzeuge) */
+  const handlePhotoDrop = useCallback(async (petId: string, tenantId: string, file: File) => {
+    const path = `${tenantId}/${petId}/profile.jpg`;
+    try {
+      const { error: upErr } = await supabase.storage
+        .from('pet-photos')
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+
+      const { data } = supabase.storage.from('pet-photos').getPublicUrl(path);
+      const photoUrl = `${data.publicUrl}?t=${Date.now()}`;
+
+      const { error: dbErr } = await supabase
+        .from('pets')
+        .update({ photo_url: photoUrl } as Record<string, unknown>)
+        .eq('id', petId);
+      if (dbErr) throw dbErr;
+
+      queryClient.invalidateQueries({ queryKey: ['pets'] });
+      toast.success('Foto aktualisiert');
+    } catch (err) {
+      console.error('handlePhotoDrop error:', err);
+      toast.error('Foto-Upload fehlgeschlagen');
+    }
+  }, [queryClient]);
 
   return (
     <PageShell>
@@ -116,6 +146,7 @@ export default function PetsMeineTiere() {
                   isOpen={false}
                   onToggle={() => setOpenPetId(prev => prev === pet.id ? null : pet.id)}
                   thumbnailUrl={pet.photo_url || undefined}
+                  onPhotoDrop={(file) => handlePhotoDrop(pet.id, pet.tenant_id, file)}
                   title={pet.name}
                   subtitle={SPECIES_LABELS[pet.species] || pet.species}
                   summary={summaryItems}
