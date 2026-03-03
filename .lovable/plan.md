@@ -1,59 +1,50 @@
 
 
-# Diagnose: Weisser Bildschirm im Preview
+# Plan: Armstrong-Begruessung + Pet-Kachel Bilderrahmen
 
-## Ursache gefunden
+## Befund 1: Armstrong sagt "Mister Gebhard"
 
-Der Vite Dev-Server im Preview gibt **503-Fehler** zurueck beim Laden von Modulen:
+**Ursache:** In `src/pages/portal/PortalDashboard.tsx` Zeile 138 wird `profile?.last_name` als `displayName` an die ArmstrongGreetingCard uebergeben. Fuer Robyn Gebhard ergibt das "Gebhard" als Name. Die Begruessungen lauten dann "Guten Tag, Gebhard!" — und wenn der Armstrong-Advisor-Chat aktiv wird, interpretiert das KI-Modell den Nachnamen als formelle Anrede und generiert "Mr. Gebhard".
 
-```
-Failed to load resource: the server responded with a status of 503 ()
-→ src/components/ui/input-otp.tsx
-```
-
-Das bedeutet: Der Dev-Server ist ueberlastet und kann nicht alle Module ausliefern. Die App startet, aber React kann nicht vollstaendig rendern — daher der weisse Bildschirm.
-
-## Warum passiert das?
-
-Das Projekt hat 780+ Dateien. Der Preview Dev-Server laeuft in einem Browser-Container mit begrenztem Speicher. Wenn Vite zu viele Module gleichzeitig kompilieren muss, antwortet er mit 503 (Service Unavailable). Das ist **kein Code-Bug** — es ist eine Ressourcen-Limitierung der Preview-Umgebung.
-
-Die Cleanups der letzten Naechte haben die Dateianzahl vermutlich nicht wesentlich reduziert, und bestimmte Imports laden Module eager statt lazy:
-
-- `Auth.tsx` wird direkt in `App.tsx` importiert (nicht lazy) und zieht `input-otp` mit
-- Das erhoet den initialen Module-Graph
-
-## Plan: Preview-Last reduzieren
-
-### 1. Auth-Page lazy laden (App.tsx)
-`Auth.tsx` ist aktuell ein direkter Import in App.tsx. Da die Auth-Seite nur bei `/auth` benoetigt wird, kann sie lazy geladen werden:
+**Loesung:** Die Priorisierung in Zeile 138 aendern — `first_name` zuerst, dann `display_name`, dann Fallback "Freund":
 
 ```typescript
-// Vorher: import Auth from "./pages/Auth";
+// Vorher:
+displayName={profile?.last_name || profile?.display_name || ''}
+
 // Nachher:
-const Auth = lazy(() => import("./pages/Auth"));
+displayName={profile?.first_name || profile?.display_name?.split(' ')[0] || ''}
 ```
 
-Das entfernt `input-otp` und alle Auth-Abhaengigkeiten aus dem initialen Bundle.
-
-### 2. AuthResetPassword lazy laden (App.tsx)
-Gleiche Optimierung:
-```typescript
-const AuthResetPassword = lazy(() => import("./pages/AuthResetPassword"));
-```
-
-### 3. PresentationPage lazy laden (App.tsx)
-Bereits importiert aber nicht lazy:
-```typescript
-const PresentationPage = lazy(() => import("./pages/presentation/PresentationPage"));
-```
-
-### Zusammenfassung
+Das entspricht der bestehenden Governance-Regel: "Begruessung nur mit Vorname, Fallback: Freund".
 
 | Datei | Aenderung |
 |---|---|
-| `src/App.tsx` | Auth, AuthResetPassword, PresentationPage → lazy imports |
+| `src/pages/portal/PortalDashboard.tsx` Zeile 138 | `last_name` → `first_name` |
 
-Diese Aenderung reduziert den initialen Module-Graph um ca. 15-20 Module und entlastet den Dev-Server. Die Published-Version (systemofatown.lovable.app) ist davon **nicht betroffen** — dort wird alles korrekt gebundled.
+---
 
-**Wichtig:** Wenn der Preview trotzdem weiss bleibt, hilft ein Reload des Previews (Refresh-Button). Das ist ein bekanntes Verhalten bei grossen Projekten in der Preview-Umgebung.
+## Befund 2: Pet-Kachel zeigt Foto nur als Mini-Kreis
+
+**Ursache:** In `RecordCard.tsx` entscheidet Zeile 95 `const hasDetailedSummary = summary.length > 2` ob die grosse Foto-Ansicht (portrait mit Bilderrahmen) oder die klassische Avatar-Kreis-Ansicht genutzt wird. Der Hund "Lennox" hat nur 2 Summary-Items (Tierart + Rasse), daher faellt er in den klassischen Modus mit winzigem Avatar-Kreis.
+
+**Loesung:** In `PetsMeineTiere.tsx` sicherstellen, dass Pet-Karten immer mindestens 3 Summary-Items haben, damit der Bilderrahmen-Modus greift. Dazu das Alter oder einen Platzhalter-Eintrag ergaenzen:
+
+```typescript
+// In PetsMeineTiere.tsx, summaryItems-Aufbau ergaenzen:
+const summaryItems = [
+  { label: '', value: SPECIES_LABELS[pet.species] || pet.species },
+  ...(pet.breed ? [{ label: '', value: pet.breed }] : []),
+  { label: '', value: age || 'Alter unbekannt' },
+  ...(pet.weight_kg ? [{ label: '', value: `${pet.weight_kg} kg` }] : []),
+  ...(pet.chip_number ? [{ label: '', value: `Chip: ${pet.chip_number}` }] : []),
+];
+```
+
+Damit hat jede Pet-Karte mindestens 3 Items (Tierart, Rasse/leer, Alter) und der grosse Bilderrahmen-Modus mit `aspect-[4/5]` wird aktiv. Das Foto fuellt die Kachel als Bilderrahmen.
+
+| Datei | Aenderung |
+|---|---|
+| `src/pages/portal/pets/PetsMeineTiere.tsx` Zeile 134-138 | Summary-Items so aufbauen, dass immer >= 3 vorhanden sind |
+| `src/pages/portal/PortalDashboard.tsx` Zeile 138 | `last_name` → `first_name` |
 
