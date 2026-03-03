@@ -1,21 +1,21 @@
 {
-  "version": "7.0",
-  "updated_at": "2026-03-03T12:00:00.000Z",
+  "version": "8.0",
+  "updated_at": "2026-03-03T18:00:00.000Z",
   "description": "SSOT for module freeze states. Lovable and all AI assistants MUST check this file before modifying any module code. If a module is frozen, changes to its paths are NOT ALLOWED without explicit unfreeze.",
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
-    "MOD-00": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for greeting fix (Mr. removal)" },
-    "MOD-01": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for logo fallback fix" },
+    "MOD-00": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "reason": "Full freeze — all modules locked except MOD-11" },
+    "MOD-01": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "reason": "Full freeze — all modules locked except MOD-11" },
     "MOD-02": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-04": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
-    "MOD-05": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for PetDossier SSOT integration" },
+    "MOD-05": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "reason": "Full freeze — all modules locked except MOD-11" },
     "MOD-06": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-07": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-08": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-09": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-10": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
-    "MOD-11": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
+    "MOD-11": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for Europace API integration" },
     "MOD-12": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-13": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-14": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
@@ -26,6 +26,6 @@
     "MOD-19": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-20": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-21": { "frozen": true, "frozen_at": "2026-03-02T11:00:00.000Z", "reason": "REMOVED — Module deactivated and all artifacts deleted" },
-    "MOD-22": { "frozen": false, "frozen_at": null, "reason": "Open for PLC Audit Wave A-F fixes" }
+    "MOD-22": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "reason": "Full freeze — all modules locked except MOD-11" }
   }
 }
