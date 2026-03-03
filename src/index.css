@@ -126,12 +126,25 @@
     --overlay-scrim: 222 84% 4.9% / 0.35;
     --overlay-surface: 0 0% 100% / 0.96;
 
-    /* Ambient Aurora Background */
-    --ambient-warm: 25 90% 60%;
-    --ambient-cool: 205 90% 60%;
-    --ambient-purple: 265 85% 65%;
+    /* Ambient Aurora Background — Enterprise Space */
+    --ambient-warm: 300 85% 62%;
+    --ambient-cool: 215 95% 62%;
+    --ambient-purple: 270 85% 68%;
     --ambient-opacity: 0.10;
-    --ambient-vignette: 0.08;
+    --ambient-vignette: 0.06;
+    --ambient-structure:
+      repeating-linear-gradient(
+        90deg,
+        hsl(220 30% 30% / 0.03) 0px,
+        transparent 1px,
+        transparent 120px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        hsl(220 30% 30% / 0.02) 0px,
+        transparent 1px,
+        transparent 120px
+      );
   }
 
   /* =========================================================================
@@ -217,12 +230,13 @@
     --overlay-scrim: 222 47% 6% / 0.62;
     --overlay-surface: 222 28% 14% / 0.92;
 
-    /* Ambient Aurora Background */
-    --ambient-warm: 28 95% 62%;
-    --ambient-cool: 210 95% 62%;
+    /* Ambient Aurora Background — Enterprise Space */
+    --ambient-warm: 295 85% 62%;
+    --ambient-cool: 215 95% 62%;
     --ambient-purple: 270 85% 68%;
     --ambient-opacity: 0.16;
-    --ambient-vignette: 0.10;
+    --ambient-vignette: 0.08;
+    --ambient-structure: none;
   }
 }
 
@@ -236,18 +250,19 @@
   pointer-events: none;
 
   background-image:
-    radial-gradient(min(1200px, 85vw) min(700px, 55vh) at 15% 10%,
+    radial-gradient(min(1200px, 85vw) min(700px, 55vh) at 45% 12%,
       hsl(var(--ambient-warm) / var(--ambient-opacity)),
       transparent 60%),
-    radial-gradient(min(1100px, 80vw) min(650px, 50vh) at 85% 15%,
+    radial-gradient(min(1100px, 80vw) min(650px, 50vh) at 85% 18%,
       hsl(var(--ambient-cool) / calc(var(--ambient-opacity) * 0.85)),
       transparent 60%),
-    radial-gradient(min(900px, 70vw) min(600px, 55vh) at 70% 90%,
+    radial-gradient(min(900px, 70vw) min(600px, 55vh) at 70% 92%,
       hsl(var(--ambient-purple) / calc(var(--ambient-opacity) * 0.70)),
       transparent 65%),
     radial-gradient(min(1400px, 100vw) min(900px, 85vh) at 50% 50%,
       transparent 58%,
-      hsl(0 0% 0% / var(--ambient-vignette)) 100%);
+      hsl(0 0% 0% / var(--ambient-vignette)) 100%),
+    var(--ambient-structure);
 }
 
 /* ===========================================================================
