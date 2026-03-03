@@ -1,81 +1,60 @@
 
 
-# Plan: CI-Update auf "Graphite + Electric Blue" (Option A)
+# Plan: Graphite + Electric Blue — Finalisierungs-Patchset
 
-Ziel: Violett/Lila komplett aus globalen Flaechen entfernen. Electric Blue als einziger Akzent. Graphite/Ink als Basis.
+## Scope
 
-## Aenderungen in `src/index.css`
+3 Bereiche in **einer einzigen Datei** (`src/index.css`) plus ein Hinweis zu den Leak Points.
 
-### 1. Light-Mode Tokens (Zeilen 42-146) — Neue Werte
+---
 
-| Token | Alt | Neu |
-|---|---|---|
-| `--background` | `210 20% 98%` | `220 25% 98%` |
-| `--foreground` | `222.2 84% 4.9%` | `222 35% 10%` |
-| `--card` | `0 0% 100% / 0.92` | `0 0% 100% / 0.96` |
-| `--card-foreground` | `222.2 84% 4.9%` | `222 35% 10%` |
-| `--popover` | `0 0% 100%` | `0 0% 100% / 0.98` |
-| `--popover-foreground` | `222.2 84% 4.9%` | `222 35% 10%` |
-| `--primary` | `222.2 47.4% 11.2%` | `217 91% 56%` |
-| `--primary-foreground` | `210 40% 98%` | `0 0% 100%` |
-| `--secondary` | `210 40% 96.1%` | `220 18% 92%` |
-| `--secondary-foreground` | `222.2 47.4% 11.2%` | `222 35% 10%` |
-| `--muted` | `210 40% 96.1%` | `220 20% 96%` |
-| `--muted-foreground` | `215 14% 45%` | `220 12% 38%` |
-| `--accent` | `210 40% 96.1%` | `220 18% 92%` |
-| `--accent-foreground` | `222.2 47.4% 11.2%` | `222 35% 10%` |
-| `--border` | `214 25% 88%` | `220 18% 86%` |
-| `--input` | `214 25% 88%` | `220 18% 86%` |
-| `--surface` | `0 0% 98%` | `220 20% 96%` |
-| `--surface-2` | `0 0% 96%` | `220 18% 94%` |
-| `--text-primary` | `222 84% 5%` | `222 35% 10%` |
-| `--text-secondary` | `215 18% 40%` | `220 10% 36%` |
-| `--text-dimmed` | `215 12% 55%` | `220 9% 52%` |
+## A) Light Atmosphere neutralisieren (Zeilen 334-342)
 
-### 2. Dark-Mode Tokens (Zeilen 151-236) — Neue Werte
-
-| Token | Alt | Neu |
-|---|---|---|
-| `--background` | `222 47% 6%` | `222 20% 8%` |
-| `--foreground` | `210 35% 96%` | `210 20% 96%` |
-| `--card` | `222 30% 10% / 0.85` | `222 18% 12% / 0.92` |
-| `--card-foreground` | `210 40% 98%` | `210 20% 96%` |
-| `--popover` | `222 35% 9%` | `222 18% 13% / 0.94` |
-| `--popover-foreground` | `210 40% 98%` | `210 20% 96%` |
-| `--primary-foreground` | `222 47% 6%` | `222 20% 8%` |
-| `--secondary` | `222 30% 14%` | `222 14% 16%` |
-| `--muted` | `222 25% 16%` | `222 14% 16%` |
-| `--muted-foreground` | `215 20% 70%` | `220 10% 70%` |
-| `--accent` | `222 30% 14%` | `222 14% 16%` |
-| `--border` | `222 20% 22%` | `222 14% 22%` |
-| `--input` | `222 25% 16%` | `222 14% 22%` |
-| `--surface` | `222 30% 11%` | `222 18% 12%` |
-| `--surface-2` | `222 35% 8%` | `222 16% 10%` |
-| `--text-primary` | `210 35% 96%` | `210 20% 96%` |
-| `--text-secondary` | `215 20% 72%` | `220 9% 72%` |
-| `--text-dimmed` | `215 18% 65%` | `220 8% 62%` |
-
-### 3. Dark Atmospheric Background (Zeilen 345-389) — Violett entfernen
-
-Die zwei violetten Nebel-Layer (Layer 3: `hsl(275...)` und Layer 4: `hsl(250...)`) werden durch neutrale Graphite-Gradients ersetzt:
+Layer 5 ("Intensiver Himmelsblau-Gradient") ersetzen durch neutralen Frost-Verlauf:
 
 ```css
-/* Layer 3: VORHER violetter Nebel → NACHHER neutral graphite */
-hsl(220 25% 12%) → transparent
-
-/* Layer 4: VORHER sekundaerer violetter Nebel → NACHHER neutral graphite */  
-hsl(222 20% 10%) → transparent
+/* Layer 5: Neutraler Frost-Gradient (kein Himmelsblau) */
+radial-gradient(
+  ellipse 160% 120% at 50% -40%,
+  hsl(210 12% 96%) 0%,
+  hsl(210 10% 97%) 35%,
+  hsl(210 8% 98%) 70%,
+  hsl(210 6% 99%) 100%
+)
 ```
 
-### 4. Ambient Layer deaktivieren (Zeile 242-260)
+## B) Dark: 47%-Saettigung auf 20% reduzieren
 
-`opacity: 0` setzen oder `background-image: none`, damit keine Farbwolken durch Glass-Surfaces scheinen.
+| Variable | Zeile | Alt | Neu |
+|---|---|---|---|
+| `--card-glass` | 159 | `222 47% 6% / 0.7` | `222 20% 6% / 0.7` |
+| `--surface-glass` | 160 | `222 47% 5% / 0.6` | `222 20% 5% / 0.6` |
+| `--sidebar-background` | 187 | `222 47% 5%` | `222 20% 5%` |
 
-## Betroffene Dateien
+## C) Light: Feintuning (2 Werte)
+
+| Variable | Zeile | Alt | Neu |
+|---|---|---|---|
+| `--ambient-horizon` | 132 | `220 40% 75%` | `220 15% 80%` |
+| `--ring` | 75 | `var(--accent-primary)` | `217 91% 56%` |
+
+## D) Leak Points — FROZEN
+
+Die 3 Komponenten-Dateien mit hardcoded Violett/Blau sind alle in **eingefrorenen Modulen**:
+
+- `LeadManagerProjekte.tsx` → **MOD-10 (frozen)**
+- `VersicherungenTile.tsx` → **MOD-20 (frozen)**
+- `Wissensbasis.tsx` → **MOD-14 (frozen)**
+
+Diese koennen erst bearbeitet werden, wenn du explizit `UNFREEZE MOD-10`, `UNFREEZE MOD-20`, `UNFREEZE MOD-14` sagst. Der CSS-Patch (A-C) wirkt trotzdem sofort auf 95% der UI.
+
+---
+
+## Zusammenfassung
 
 | Datei | Aenderung |
 |---|---|
-| `src/index.css` | Light + Dark Tokens, Atmosphere-Gradients, Ambient-Layer |
+| `src/index.css` | 6 Zeilen-Aenderungen: Atmosphere Layer 5, 3× Dark Glass/Sidebar, ambient-horizon, ring |
 
-Keine weiteren Dateien betroffen. Reine CSS-Token-Aenderung.
+Keine Backend-Aenderungen. Keine neuen Dateien. Reine CSS-Korrektur.
 
