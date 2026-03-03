@@ -1,7 +1,8 @@
 /**
  * LennoxPartnerProfil — Dynamisches Partnerprofil mit Service-Kacheln + Inline-Booking
  * Verwendet eigenständiges Z3-Auth (getrennt vom Portal)
- * Buchung schreibt in pet_service_cases (PLC-Engine)
+ * Buchung schreibt via Edge Proxy in pet_service_cases (PLC-Engine)
+ * P0 FIX: Uses useCreateZ3Case instead of useCreateCase (no Supabase Auth needed)
  */
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Star, Shield, Phone, Clock, Calendar, ChevronRight } from 'lucide-react';
@@ -17,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
-import { useCreateCase } from '@/hooks/usePetServiceCases';
+import { useCreateZ3Case } from '@/hooks/usePetServiceCases';
 import { LENNOX as C, SERVICE_TAG_LABELS } from './lennoxTheme';
 import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
@@ -25,7 +26,7 @@ export default function LennoxPartnerProfil() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { data: provider, isLoading } = useProviderDetail(slug);
-  const { z3User } = useZ3Auth();
+  const { z3User, z3SessionToken } = useZ3Auth();
   const [showBooking, setShowBooking] = useState(false);
   const [selectedService, setSelectedService] = useState<string | null>(null);
 
@@ -174,13 +175,13 @@ export default function LennoxPartnerProfil() {
       </section>
 
       {/* ═══ BOOKING BLOCK (inline) ═══ */}
-      {showBooking && z3User && (
+      {showBooking && z3User && z3SessionToken && (
         <BookingBlock
           providerId={provider.id}
           providerName={provider.company_name}
-          providerTenantId={provider.tenant_id}
           serviceId={selectedService}
           z3User={z3User}
+          z3SessionToken={z3SessionToken}
           onClose={() => setShowBooking(false)}
         />
       )}
@@ -205,32 +206,29 @@ export default function LennoxPartnerProfil() {
   );
 }
 
-/** Inline Booking Block — writes to pet_service_cases via PLC hook */
-function BookingBlock({ providerId, providerName, providerTenantId, serviceId, z3User, onClose }: {
-  providerId: string; providerName: string; providerTenantId: string; serviceId: string | null;
+/** Inline Booking Block — writes to pet_service_cases via Z3 Edge Proxy (P0 fix) */
+function BookingBlock({ providerId, providerName, serviceId, z3User, z3SessionToken, onClose }: {
+  providerId: string; providerName: string; serviceId: string | null;
   z3User: { id: string; email: string | null; first_name: string | null; last_name: string | null };
+  z3SessionToken: string;
   onClose: () => void;
 }) {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [notes, setNotes] = useState('');
-  const createCase = useCreateCase();
+  const createCase = useCreateZ3Case();
 
   const handleSubmit = async () => {
     if (!dateFrom) { toast.error('Bitte Datum auswählen'); return; }
-
-    const customerName = [z3User.first_name, z3User.last_name].filter(Boolean).join(' ') || null;
+    if (!serviceId) { toast.error('Bitte Service auswählen'); return; }
 
     createCase.mutate({
+      session_token: z3SessionToken,
       provider_id: providerId,
-      service_type: 'pension',
-      customer_name: customerName,
-      customer_email: z3User.email,
-      customer_notes: [dateTo ? `Bis: ${dateTo}` : '', notes].filter(Boolean).join(' — ') || null,
+      service_id: serviceId,
       scheduled_start: dateFrom,
       scheduled_end: dateTo || null,
-      tenant_id: providerTenantId,
-      z3_customer_id: z3User.id,
+      customer_notes: notes || null,
     }, {
       onSuccess: () => {
         toast.success(`Buchungsanfrage an ${providerName} gesendet!`);

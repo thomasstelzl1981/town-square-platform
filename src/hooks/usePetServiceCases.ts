@@ -3,7 +3,7 @@
  * 
  * Wave A: Z3 flows use Edge Function proxies (no direct DB access)
  * Wave B: Idempotency + event_source on all events
- * Wave C: service_id, platform_fee_pct, pricing_snapshot fields
+ * Wave C: service_id MANDATORY, pricing_snapshot always set (Z3 + Z2)
  * 
  * @see src/engines/plc/spec.ts
  * @see src/engines/plc/engine.ts
@@ -27,18 +27,15 @@ import { computePLCState, isValidPLCTransition } from '@/engines/plc/engine';
 
 export interface CreateCaseInput {
   provider_id: string;
-  service_type: PLCServiceType;
-  service_id?: string | null;
+  service_id: string;
+  service_type?: PLCServiceType;
   pet_id?: string | null;
   customer_name?: string | null;
   customer_email?: string | null;
   customer_notes?: string | null;
   scheduled_start?: string | null;
   scheduled_end?: string | null;
-  total_price_cents?: number;
   tenant_id: string;
-  /** For Zone 3 customers (non-Supabase-auth) */
-  z3_customer_id?: string | null;
 }
 
 export interface TransitionInput {
@@ -107,9 +104,6 @@ function enrichWithComputed(plcCase: PLCCase): CaseWithComputed {
 
 // ─── Queries ──────────────────────────────────────────────────
 
-/**
- * Load all cases for a given provider.
- */
 export function useCasesForProvider(providerId: string | null | undefined) {
   return useQuery({
     queryKey: CASE_KEYS.forProvider(providerId ?? ''),
@@ -127,9 +121,6 @@ export function useCasesForProvider(providerId: string | null | undefined) {
   });
 }
 
-/**
- * Load all cases for the current customer (auth.uid()).
- */
 export function useCasesForCustomer(userId: string | null | undefined) {
   return useQuery({
     queryKey: CASE_KEYS.forCustomer(userId ?? ''),
@@ -167,9 +158,6 @@ export function useCasesForZ3Customer(z3CustomerId: string | null | undefined, s
   });
 }
 
-/**
- * Load a single case by ID.
- */
 export function useCase(caseId: string | null | undefined) {
   return useQuery({
     queryKey: CASE_KEYS.single(caseId ?? ''),
@@ -188,9 +176,6 @@ export function useCase(caseId: string | null | undefined) {
   });
 }
 
-/**
- * Load lifecycle events for a case.
- */
 export function useCaseEvents(caseId: string | null | undefined) {
   return useQuery({
     queryKey: CASE_KEYS.events(caseId ?? ''),
@@ -213,6 +198,8 @@ export function useCaseEvents(caseId: string | null | undefined) {
 /**
  * Create a new pet service case (for authenticated Z2 users only).
  * Z3 uses Edge Function proxy (sot-pslc-z3-create-case).
+ * 
+ * WAVE C: Looks up pet_services for pricing SSOT + creates pricing_snapshot.
  */
 export function useCreateCase() {
   const queryClient = useQueryClient();
@@ -222,8 +209,41 @@ export function useCreateCase() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Nicht angemeldet');
 
+      // ─── PRICING SSOT: Lookup service for price calculation ───
+      const { data: service, error: svcErr } = await supabase
+        .from('pet_services')
+        .select('id, title, price_cents, price_type, category, provider_id')
+        .eq('id', input.service_id)
+        .eq('provider_id', input.provider_id)
+        .eq('is_active', true)
+        .single();
+
+      if (svcErr || !service) {
+        throw new Error('Service nicht gefunden oder inaktiv');
+      }
+
+      // Calculate total price from service × days
+      let days = 1;
+      if (input.scheduled_start && input.scheduled_end) {
+        const start = new Date(input.scheduled_start);
+        const end = new Date(input.scheduled_end);
+        days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+      }
+      const totalPriceCents = (service.price_cents || 0) * days;
+
       const now = new Date().toISOString();
       const initialPhase: PLCPhase = 'provider_selected';
+
+      // Build pricing snapshot
+      const pricingSnapshot = {
+        service_id: service.id,
+        price_cents: service.price_cents,
+        price_type: service.price_type,
+        category: service.category,
+        title: service.title,
+        computed_days: days,
+        computed_total: totalPriceCents,
+      };
 
       // 1. Insert case
       const { data: newCase, error: caseError } = await supabase
@@ -233,15 +253,16 @@ export function useCreateCase() {
           customer_email: input.customer_email ?? null,
           customer_name: input.customer_name ?? null,
           provider_id: input.provider_id,
-          service_type: input.service_type,
-          service_id: input.service_id ?? null,
+          service_type: input.service_type ?? service.category ?? 'pension',
+          service_id: service.id,
           pet_id: input.pet_id ?? null,
           current_phase: initialPhase,
           phase_entered_at: now,
-          total_price_cents: input.total_price_cents ?? 0,
+          total_price_cents: totalPriceCents,
           deposit_cents: 0,
           platform_fee_pct: 7.5,
           pricing_snapshot_at: now,
+          pricing_snapshot: pricingSnapshot as unknown as Json,
           scheduled_start: input.scheduled_start ?? null,
           scheduled_end: input.scheduled_end ?? null,
           customer_notes: input.customer_notes ?? null,
@@ -267,15 +288,22 @@ export function useCreateCase() {
           idempotency_key: idempotencyKey,
           correlation_key: newCase.id,
           payload: {
-            service_type: input.service_type,
-            service_id: input.service_id,
+            service_type: service.category,
+            service_id: service.id,
+            service_title: service.title,
+            total_price_cents: totalPriceCents,
             scheduled_start: input.scheduled_start,
             scheduled_end: input.scheduled_end,
           } as unknown as Json,
         }]);
 
       if (eventError) {
-        console.error('Event logging failed:', eventError);
+        // Idempotent skip on duplicate
+        if (eventError.code === '23505') {
+          console.log('Idempotent skip: initial event already exists');
+        } else {
+          console.error('Event logging failed:', eventError);
+        }
       }
 
       return enrichWithComputed(rowToCase(newCase));
@@ -286,7 +314,7 @@ export function useCreateCase() {
     },
     onError: (error) => {
       console.error('Create case failed:', error);
-      toast.error('Buchungsanfrage fehlgeschlagen');
+      toast.error(error.message || 'Buchungsanfrage fehlgeschlagen');
     },
   });
 }
@@ -323,6 +351,43 @@ export function useCreateZ3Case() {
     onError: (error: Error) => {
       console.error('Z3 create case failed:', error);
       toast.error(error.message || 'Buchungsanfrage fehlgeschlagen');
+    },
+  });
+}
+
+/**
+ * Trigger deposit checkout for an existing case.
+ * Calls sot-pet-deposit-checkout edge function.
+ * Returns { mode: 'stripe'|'stub', checkout_url?, deposit_cents }
+ */
+export function useDepositCheckout() {
+  return useMutation({
+    mutationFn: async (input: { case_id: string; session_token?: string }) => {
+      const { data, error } = await supabase.functions.invoke('sot-pet-deposit-checkout', {
+        body: { case_id: input.case_id },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      return data as {
+        mode: 'stripe' | 'stub';
+        checkout_url?: string;
+        case_id: string;
+        deposit_cents: number;
+        message?: string;
+      };
+    },
+    onSuccess: (result) => {
+      if (result.mode === 'stripe' && result.checkout_url) {
+        window.location.href = result.checkout_url;
+      } else if (result.mode === 'stub') {
+        toast.info(result.message || 'Payment aktuell deaktiviert');
+      }
+    },
+    onError: (error: Error) => {
+      console.error('Deposit checkout failed:', error);
+      toast.error(error.message || 'Checkout fehlgeschlagen');
     },
   });
 }
