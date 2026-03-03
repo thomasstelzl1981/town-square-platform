@@ -121,6 +121,10 @@
 
     /* Reading Surface */
     --reading-surface: 0 0% 100% / 0.96;
+
+    /* Overlay / Modal */
+    --overlay-scrim: 222 84% 4.9% / 0.35;
+    --overlay-surface: 0 0% 100% / 0.96;
   }
 
   /* =========================================================================
@@ -201,6 +205,10 @@
     /* Accent (CI Primary - konfigurierbar) */
     --accent-primary: 217 91% 60%;
     --accent-primary-hover: 217 91% 70%;
+
+    /* Overlay / Modal */
+    --overlay-scrim: 222 47% 6% / 0.62;
+    --overlay-surface: 222 28% 14% / 0.92;
   }
 }
 
