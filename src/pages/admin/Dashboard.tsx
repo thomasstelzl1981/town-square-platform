@@ -211,14 +211,24 @@ export default function Dashboard() {
           {/* Portal Super User Entry */}
           <div>
             <p className="text-sm font-medium mb-2">Zone 2 – Portal</p>
-            <Button 
-              variant="default" 
-              onClick={() => window.location.href = '/portal'}
-              className="gap-2"
-            >
-              <Users className="h-4 w-4" />
-              Portal Super User öffnen
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button 
+                variant="default" 
+                onClick={() => window.location.href = '/portal'}
+                className="gap-2"
+              >
+                <Users className="h-4 w-4" />
+                Portal Super User öffnen
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => window.open('https://systemofatown.lovable.app/portal?mode=demo', '_blank')}
+                className="gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Demo-Account öffnen
+              </Button>
+            </div>
           </div>
 
           {/* Zone 3 Websites */}
