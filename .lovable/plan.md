@@ -1,53 +1,40 @@
 
 
-# Lennox & Friends — "Doc" bereinigen + neuer Menuepunkt "Lennox" (Founders)
+# Fix: Tierarzt-Suche auf der Doc-Seite
 
-## Blocker
+## Problem
 
-**`src/manifests/routesManifest.ts` ist FROZEN (INFRA-manifests)**. Die neue Route `lennox` (Founders-Seite) muss dort registriert werden. Bitte sage **"UNFREEZE INFRA-manifests"**, damit ich starten kann.
+Die Suchmaschine funktioniert grundsaetzlich — der direkte Test zeigt **4 Ergebnisse von Google Places** fuer "Tierarzt Notdienst Muenchen". Das Problem liegt in der **falschen Parameteruebergabe** im LennoxDoc.tsx:
 
-## Aenderungen
+| Parameter | Aktuell (falsch) | Edge Function erwartet |
+|---|---|---|
+| Standort | In `query` eingebettet: `"Tierarzt Notdienst 85521"` | Separates Feld `location: "85521"` |
+| Max Ergebnisse | `limit: 8` | `max_results: 4` |
+| Filter | `filters: { category: 'veterinary' }` | Nicht unterstuetzt (ignoriert) |
 
-### 1. Zahnzusatzversicherung entfernen (LennoxDoc.tsx)
-- `INSURANCE_PRODUCTS` Array: 4. Eintrag (`Zahnzusatzversicherung`) loeschen
-- Grid aendert sich von `lg:grid-cols-4` zu `lg:grid-cols-3`
+Dadurch bekommt Google Places keine saubere Location-Trennung und die Ergebnisse werden nicht korrekt zurueckgegeben.
 
-### 2. "Unser Team" + "Gruenderin & Lennox" Sektionen aus Doc entfernen (LennoxDoc.tsx)
-- Komplette Sektion "Pet Manager Vorstellung" (Zeilen 436-508) loeschen
-- Komplette Sektion "Gruenderin & Lennox" (Zeilen 510-573) loeschen
-- Doc behaelt nur: Hero → Tierarztsuche → Versicherungen (3 Kacheln) → CTA
+## Loesung
 
-### 3. Neue Seite `LennoxLennox.tsx` erstellen (Founders-Seite)
-- Neuer Menuepunkt "Lennox" mit der Founders-Story
-- Hero-Section im gleichen Format wie die anderen Lennox-Seiten
-- **Sektion "Founders"**: Robyn + Lennox als Gruender praesentiert
-- Robyn-Profilkarte (aus Doc uebernommen, angepasst als "Founder")
-- Lennox-Profilkarte (als Co-Founder / Namensgeber)
-- Foto-Galerie: 3 Bilder (See-Bild nur einmal, NICHT abgeschnitten — als grosses Hero oder Einzelbild)
-  - `gruenderin_lennox.jpeg` (Robyn mit Lennox)
-  - `gruenderin_pferd.jpeg` (Robyn mit Pferd)
-  - `lennox_portrait.jpeg` (Lennox Portrait)
-- `gruenderin_see.jpeg` wird als Hero-Bild der Seite verwendet (nicht im 3er-Grid, wo es abgeschnitten war)
-- Story-Text (aus Doc uebernommen)
+**Datei**: `src/pages/zone3/lennox/LennoxDoc.tsx` — `handleVetSearch` Funktion (Zeilen 69-104)
 
-### 4. Navigation anpassen (LennoxLayout.tsx)
-Neue Reihenfolge:
-```text
-Partner finden | Shop | Doc | Lennox | Partner werden | Login
+Aenderungen:
+1. `query` auf reinen Suchbegriff reduzieren: `"Tierarzt Notdienst"`
+2. `location` als separates Feld senden: `location: vetSearch.trim()`
+3. `limit` ersetzen durch `max_results: 4` (Kosten + Geschwindigkeit)
+4. `filters.category` entfernen (nicht unterstuetzt)
+5. Fallback-Daten ebenfalls auf max 4 reduzieren
+
+```typescript
+const { data, error } = await supabase.functions.invoke('sot-research-engine', {
+  body: {
+    intent: 'find_contacts',
+    query: 'Tierarzt Notdienst',
+    location: vetSearch.trim(),
+    max_results: 4,
+  },
+});
 ```
-- Neuer Link: `{ path: '/website/tierservice/lennox', label: 'Lennox', icon: PawPrint }`
 
-### 5. Route registrieren (routesManifest.ts + Zone3Router.tsx)
-- `routesManifest.ts`: Neue Route `{ path: "lennox", component: "LennoxLennox", title: "Lennox — Founders" }`
-- `Zone3Router.tsx`: `LennoxLennox` lazy import + in `zone3ComponentMaps.lennox` registrieren
-
-## Datei-Matrix
-
-| Datei | Aenderung |
-|---|---|
-| `src/pages/zone3/lennox/LennoxDoc.tsx` | Zahnzusatz loeschen, Team+Gruenderin Sektionen entfernen |
-| `src/pages/zone3/lennox/LennoxLennox.tsx` | NEU — Founders-Seite |
-| `src/pages/zone3/lennox/LennoxLayout.tsx` | Nav um "Lennox" erweitern |
-| `src/manifests/routesManifest.ts` | Route hinzufuegen (NEEDS UNFREEZE) |
-| `src/router/Zone3Router.tsx` | Lazy import + component map |
+Keine weiteren Dateien betroffen. Reine Bugfix-Aenderung in einer Datei.
 
