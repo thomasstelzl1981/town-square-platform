@@ -1,152 +1,234 @@
 
 
-# Lennox & Friends — Vollständiger Projekt-Plan
+# Haustierakte — Einheitliche SSOT-Komponente (Universal Pet Dossier)
 
-## IST-Analyse
+## Kernprinzip: EINE Komponente, DREI Kontexte
 
-### Was existiert bereits
-
-**Engine (ENG-PLC)**
-- `src/engines/plc/spec.ts` — 11 Phasen, Event-Types, SLA-Thresholds, Deposit-Berechnung (7,5%), Interfaces komplett
-- `src/engines/plc/engine.ts` — Reine Funktionen: `calculatePLCDeposit`, `computePLCPhase`, `isPLCStuck`, `computePLCState`, `getNextActions`
-
-**Datenbank**
-- `pet_service_cases` + `pet_lifecycle_events` — PLC-Backbone-Tabellen existieren
-- Legacy-Tabellen parallel aktiv: `pet_z1_booking_requests`, `pet_bookings`, `pet_z1_customers`, `pet_z1_pets`
-- Provider-Infrastruktur: `pet_providers`, `pet_services`, `pet_provider_availability`, `pet_provider_blocked_dates`, `pet_rooms`, `pet_staff`
-- Kunden-Infrastruktur: `pet_customers`, `pets`, `pet_invoices`
-
-**Edge Functions**
-- `sot-pet-deposit-checkout` — Stripe Checkout Session erstellen (fertig, wartet auf Webhook-Secret)
-- `sot-pet-deposit-webhook` — Stripe Webhook Handler (fertig, wartet auf Secret)
-- `sot-pet-profile-init` — Provider-Profil initialisieren
-
-**Zone 3 (Lennox Website)**
-- `LennoxStartseite` — Landing Page
-- `LennoxPartnerProfil` — Provider-Profil + Booking (schreibt noch in `pet_z1_booking_requests` Legacy-Tabelle)
-- `LennoxMeinBereich` — Kundenbereich mit Tiere + Buchungsstatus (liest aus `pet_z1_booking_requests`)
-- `LennoxShop`, `LennoxKontakt`, `LennoxFAQ`, `LennoxRatgeber` etc.
-
-**Zone 2 — MOD-22 (Pet Manager / Provider-Sicht)**
-- `PMDashboard` — KPIs, Kapazität, eingehende Anfragen (liest aus `pet_z1_booking_requests`)
-- `PMProfil`, `PMPension`, `PMServices`, `PMPersonal`, `PMKalender`, `PMLeistungen`, `PMKunden`, `PMFinanzen`, `PMBuchungen`
-
-**Zone 2 — MOD-05 (Caring / Kunden-Sicht)**
-- `CaringProviderDetail` — Provider-Dossier mit Kalender + Buchung (schreibt in `pet_bookings`)
-
-### Was fehlt / Problem
-
-1. **Zwei parallele Buchungssysteme**: Z3 schreibt in `pet_z1_booking_requests`, Z2/MOD-05 schreibt in `pet_bookings` — keins nutzt `pet_service_cases`
-2. **PLC-Engine nicht verdrahtet**: Engine existiert nur als pure Functions, wird nirgends im UI verwendet
-3. **Stripe zurückgestellt**: Deposit-Flow parkt, 7,5%-Anzahlung wird vorerst nicht erzwungen
-4. **Z1 Pet Desk** nutzt Legacy-Tabellen (`pet_z1_booking_requests`)
+Es gibt **eine einzige** `PetDossier`-Komponente in `src/components/shared/`. Sie wird in allen drei Zonen identisch gerendert — Inline, kein Collapsible, großzügig mit Fotos.
 
 ---
 
-## Zielbild
+## Layout (Inline-Scroll, keine Tabs/Collapsibles)
 
-```text
-┌────────────────────────────────────────────────────────┐
-│                  PET SERVICE CASE                      │
-│           (pet_service_cases = SSOT)                   │
-├────────────────────────────────────────────────────────┤
-│                                                        │
-│  Z3 Lennox Website                                     │
-│  └─ LennoxPartnerProfil → INSERT pet_service_cases     │
-│  └─ LennoxMeinBereich   → SELECT pet_service_cases     │
-│                                                        │
-│  Z2 MOD-05 (Caring/Kunden-Portal)                      │
-│  └─ CaringProviderDetail → INSERT pet_service_cases    │
-│  └─ PetsMeinBereich      → SELECT pet_service_cases    │
-│                                                        │
-│  Z2 MOD-22 (Pet Manager/Provider-Portal)               │
-│  └─ PMDashboard          → SELECT pet_service_cases    │
-│  └─ PMBuchungen          → UPDATE pet_service_cases    │
-│     (confirm/decline/check-in/check-out/settle)        │
-│                                                        │
-│  Z1 Pet Desk (Admin/Monitoring)                        │
-│  └─ PetDeskVorgaenge     → SELECT pet_service_cases    │
-│     (passive SLA-Überwachung, stuck-detection)         │
-│                                                        │
-│  pet_lifecycle_events = Eventlog zu jedem Case         │
-│                                                        │
-│  Stripe: zurückgestellt (Phase deposit_requested →     │
-│          deposit_paid wird vorerst übersprungen)       │
-└────────────────────────────────────────────────────────┘
+```
+┌─────────────────────────────────────────────────────┐
+│                                                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  BESITZER                             [✏️]    │  │
+│  │                                               │  │
+│  │  👤 Sabine Berger                             │  │
+│  │  📧 sabine.berger@demo.de                     │  │
+│  │  📱 +49 171 2223344                           │  │
+│  │  📍 Lindenstraße 12, 10969 Berlin             │  │
+│  │                                               │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  STECKBRIEF                           [✏️]    │  │
+│  │                                               │  │
+│  │  ┌──────────────┐                             │  │
+│  │  │              │  Name: Rocky                │  │
+│  │  │  🐕 FOTO     │  Rasse: Labrador Retriever  │  │
+│  │  │  (großzügig) │  Geschlecht: Rüde           │  │
+│  │  │  256x256     │  Geb.: 15.03.2020 (5 J.)    │  │
+│  │  │              │  Gewicht: 32 kg              │  │
+│  │  │  [📷 Ändern] │  Farbe: Golden              │  │
+│  │  └──────────────┘  Chip-Nr: 276098106...      │  │
+│  │                    Kastriert: Ja               │  │
+│  │                    Größe: 58 cm                │  │
+│  │                                               │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  FOTOGALERIE                    [📷 Hinzufügen]│  │
+│  │                                               │  │
+│  │  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐          │  │
+│  │  │    │ │    │ │    │ │    │ │    │          │  │
+│  │  │ 📸 │ │ 📸 │ │ 📸 │ │ 📸 │ │ +  │          │  │
+│  │  │    │ │    │ │    │ │    │ │    │          │  │
+│  │  └────┘ └────┘ └────┘ └────┘ └────┘          │  │
+│  │                                               │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  GESUNDHEIT                           [✏️]    │  │
+│  │                                               │  │
+│  │  Tierarzt: Dr. Maria Weber                    │  │
+│  │  Praxis: Tierarztpraxis Am Park               │  │
+│  │  Tel: +49 30 12345678                         │  │
+│  │                                               │  │
+│  │  Allergien: Huhn, Weizen                      │  │
+│  │  Unverträglichkeiten: Laktose                 │  │
+│  │                                               │  │
+│  │  ── Impfungen ──                              │  │
+│  │  Tollwut       | 15.06.2025 | Dr. Weber       │  │
+│  │  Staupe/Parvo  | 15.06.2025 | Dr. Weber       │  │
+│  │  Leptospirose  | 20.01.2025 | Dr. Klein       │  │
+│  │                                               │  │
+│  │  ── Behandlungen ──                           │  │
+│  │  Zahnreinigung | 03.03.2025 | Dr. Weber       │  │
+│  │  Blutbild      | 15.06.2025 | alle Werte ok   │  │
+│  │                                               │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  ERNÄHRUNG & PFLEGE                   [✏️]    │  │
+│  │                                               │  │
+│  │  Futter: Royal Canin Labrador Adult            │  │
+│  │  Menge: 350g / Tag (2x)                       │  │
+│  │  Leckerli: Ja, aber kein Huhn                 │  │
+│  │  Besonderheiten: Muss langsam fressen          │  │
+│  │                                               │  │
+│  │  Fellpflege: Bürsten 2x/Woche                 │  │
+│  │  Baden: Alle 6 Wochen                         │  │
+│  │  Krallen: Monatlich kürzen                    │  │
+│  │                                               │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  VERSICHERUNG                         [✏️]    │  │
+│  │                                               │  │
+│  │  Anbieter: PetProtect Plus                    │  │
+│  │  Policen-Nr: PP-2024-12345                    │  │
+│  │  Typ: OP + Kranken                            │  │
+│  │  Beitrag: 45,90 € / Monat                    │  │
+│  │  SB: 250 € / Jahr                            │  │
+│  │  Gültig bis: 31.12.2026                       │  │
+│  │                                               │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  VERHALTEN & TRAINING                 [✏️]    │  │
+│  │                                               │  │
+│  │  Verträglich mit Hunden: Ja                   │  │
+│  │  Verträglich mit Katzen: Nein                 │  │
+│  │  Verträglich mit Kindern: Ja                  │  │
+│  │  Leinenpflicht: Nein                          │  │
+│  │  Maulkorb: Nein                               │  │
+│  │                                               │  │
+│  │  Training: Grundgehorsam, Abruf gut           │  │
+│  │  Ängste: Gewitter, Feuerwerk                  │  │
+│  │  Besonderheiten: Zieht an der Leine           │  │
+│  │                                               │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  DOKUMENTE (DMS)                    [📎 Neu]  │  │
+│  │                                               │  │
+│  │  📄 Impfpass_Rocky.pdf        | 15.06.2025    │  │
+│  │  📄 EU-Heimtierausweis.pdf    | 20.01.2024    │  │
+│  │  📄 OP-Bericht_Zahn.pdf      | 03.03.2025    │  │
+│  │  📄 Versicherungspolice.pdf   | 01.01.2024    │  │
+│  │                                               │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  NOTIZEN                              [✏️]    │  │
+│  │                                               │  │
+│  │  "Rocky mag keine Katzen. Bei Gewitter        │  │
+│  │   braucht er seine Decke. Frisst zu           │  │
+│  │   schnell → Anti-Schling-Napf nutzen."        │  │
+│  │                                               │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+└─────────────────────────────────────────────────────┘
 ```
 
-**Vereinfachter Flow ohne Stripe:**
-`provider_selected → provider_confirmed → checked_in → checked_out → settlement → closed_completed`
+---
+
+## Kontext-Steuerung über Props
+
+```tsx
+<PetDossier
+  petId="..."
+  context="z2-client"    // | "z2-provider" | "z3"
+  readOnly={false}
+  showOwner={true}       // Besitzer-Sektion immer sichtbar
+  onSave={handleSave}    // Z3: Edge Proxy | Z2: Supabase SDK
+/>
+```
+
+| Sektion | Z2 MOD-05 (Client) | Z2 MOD-22 (Provider) | Z3 (Lennox) |
+|---|---|---|---|
+| Besitzer | ✅ (eigenes Profil) | ✅ (CRM-Kunde) | ✅ (Z3-Profil) |
+| Steckbrief | ✅ editierbar | ✅ editierbar | ✅ editierbar |
+| Fotogalerie | ✅ upload | ✅ read-only | ✅ upload |
+| Gesundheit | ✅ voll | ✅ voll | ✅ voll |
+| Ernährung & Pflege | ✅ voll | ✅ read-only | ✅ voll |
+| Versicherung | ✅ voll | ⬜ ausgeblendet | ⬜ ausgeblendet |
+| Verhalten & Training | ✅ voll | ✅ wichtig für Pension! | ✅ voll |
+| Dokumente | ✅ DMS | ✅ read-only | ✅ upload |
+| Notizen | ✅ privat | ✅ Provider-Notizen | ✅ eigene Notizen |
 
 ---
 
-## Phasenplan
+## Datenbank-Erweiterung `pets` Tabelle
 
-### Phase 1 — Hook + Case-Erstellung (Foundation)
+Fehlende Felder (Migration nötig):
 
-**Ziel:** Zentraler `usePetServiceCases` Hook, der CRUD auf `pet_service_cases` kapselt und PLC-Events loggt.
-
-- Neuen Hook `src/hooks/usePetServiceCases.ts` erstellen
-  - `useCreateCase()` — Insert in `pet_service_cases` + Event `provider.selected` in `pet_lifecycle_events`
-  - `useCasesForProvider(providerId)` — Cases für Provider laden
-  - `useCasesForCustomer(userId)` — Cases für Kunden laden
-  - `useTransitionCase(caseId, eventType)` — Phase-Transition mit Validierung via `isValidPLCTransition`
-- Hook nutzt `computePLCState` aus Engine für UI-ready State
-
-### Phase 2 — Zone 3 Umstellung (Lennox Website)
-
-**Ziel:** Buchung über `pet_service_cases` statt `pet_z1_booking_requests`.
-
-- `LennoxPartnerProfil.tsx` — BookingBlock schreibt in `pet_service_cases` via `useCreateCase`
-  - Deposit-Felder werden mit 0 befüllt (Stripe zurückgestellt)
-  - Phase startet bei `provider_selected` (kein Deposit-Gate)
-- `LennoxMeinBereich.tsx` — Buchungsstatus liest aus `pet_service_cases` statt `pet_z1_booking_requests`
-  - PLC-Phasen-Labels aus Engine anzeigen
-
-### Phase 3 — Zone 2 MOD-22 Umstellung (Provider-Sicht)
-
-**Ziel:** Provider verwaltet Cases über PLC-Lifecycle.
-
-- `PMDashboard.tsx` — Eingehende Anfragen aus `pet_service_cases` (Phase `provider_selected`) statt `pet_z1_booking_requests`
-  - Confirm → Phase `provider_confirmed`, Decline → Phase `provider_declined`
-  - KPIs aus Cases berechnen
-- `PMBuchungen.tsx` — Alle Cases mit Lifecycle-Aktionen:
-  - Check-in, Check-out, Settlement-Buttons je nach Phase
-  - PLC-Phasen-Progress-Anzeige via `computePLCState`
-
-### Phase 4 — Zone 2 MOD-05 Umstellung (Kunden-Sicht)
-
-**Ziel:** Kunden-Buchung im Portal nutzt `pet_service_cases`.
-
-- `CaringProviderDetail.tsx` — Booking-Submit schreibt in `pet_service_cases` via `useCreateCase` statt `pet_bookings`
-- Buchungsstatus-Anzeige mit PLC-Phasen
-
-### Phase 5 — Zone 1 Pet Desk Umstellung (Admin)
-
-**Ziel:** Monitoring-Dashboard liest aus Cases.
-
-- `PetDeskVorgaenge.tsx` — Cases mit stuck-detection anzeigen
-- SLA-Ampeln basierend auf `isPLCStuck` aus Engine
-
-### Phase 6 — Cleanup
-
-- Legacy-Queries auf `pet_z1_booking_requests` entfernen
-- Golden Path `GP_PET.ts` auf `pet_service_cases` umstellen
-- Demo-Daten für `pet_service_cases` in Seed Engine aufnehmen
+```
+color TEXT
+height_cm NUMERIC
+vet_practice TEXT
+vet_phone TEXT
+intolerances TEXT[]
+food_brand TEXT
+food_amount TEXT
+food_frequency TEXT
+food_notes TEXT
+grooming_notes TEXT
+insurance_type TEXT
+insurance_premium_monthly NUMERIC
+insurance_deductible NUMERIC
+insurance_valid_until DATE
+compatible_dogs BOOLEAN
+compatible_cats BOOLEAN
+compatible_children BOOLEAN
+leash_required BOOLEAN
+muzzle_required BOOLEAN
+training_level TEXT
+fears TEXT[]
+behavior_notes TEXT
+```
 
 ---
 
-## Technische Details
+## Foto-System (Storage Bucket)
 
-**Stripe-Handling (zurückgestellt):**
-Der PLC-Flow überspringt vorerst die Phasen `deposit_requested` und `deposit_paid`. Cases starten direkt in `provider_selected`. Die Engine-Spec bleibt unverändert — wenn Stripe nachgeliefert wird, werden diese Phasen einfach wieder aktiviert.
+```
+Bucket: pet-photos
+Pfad:   {tenant_id}/{pet_id}/profile.jpg    ← Profilbild
+        {tenant_id}/{pet_id}/gallery/001.jpg ← Galerie
+        {tenant_id}/{pet_id}/gallery/002.jpg
+```
 
-**RLS-Policy für `pet_service_cases`:**
-- Provider sehen Cases mit `provider_id` = eigener Provider
-- Kunden sehen Cases mit `customer_user_id` = `auth.uid()`
-- Admins sehen alle (via `has_role`)
+- Upload via Supabase Storage SDK (Z2) oder Edge Proxy (Z3)
+- Profilbild: 1:1 Crop, max 2MB
+- Galerie: max 10 Bilder, max 5MB je Bild
 
-**Freeze-Status:** MOD-22 ist `frozen: false`, alle Änderungen sind erlaubt.
+---
 
-**Keine Engine-Änderungen nötig:** `src/engines/plc/spec.ts` und `engine.ts` bleiben unverändert — sie sind bereits vollständig.
+## Datei-Struktur
+
+```
+src/components/shared/
+├── pet-dossier/
+│   ├── PetDossier.tsx          ← Haupt-Orchestrator
+│   ├── PetOwnerSection.tsx     ← Besitzer-Block
+│   ├── PetProfileSection.tsx   ← Steckbrief + Profilbild
+│   ├── PetGallerySection.tsx   ← Fotogalerie
+│   ├── PetHealthSection.tsx    ← Gesundheit
+│   ├── PetNutritionSection.tsx ← Ernährung & Pflege
+│   ├── PetInsuranceSection.tsx ← Versicherung
+│   ├── PetBehaviorSection.tsx  ← Verhalten & Training
+│   ├── PetDocumentsSection.tsx ← DMS-Verknüpfung
+│   ├── PetNotesSection.tsx     ← Notizen
+│   └── usePetDossier.ts        ← Daten-Hook (lädt/speichert)
+```
+
+---
+
+## Zusammenfassung
+
+**1 Komponente. 9 Sektionen. 3 Zonen. 0 Collapsibles.**
 
