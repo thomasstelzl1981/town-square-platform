@@ -362,6 +362,28 @@ export const DEMO_DATA_SOURCES: readonly DemoDataSource[] = [
     entities: ['manifest_entries'],
     exports: ['DEMO_DATA_MANIFEST', 'getDemoEntry', 'DEMO_MANIFEST_STATS'],
   },
+  // ─── PSLC (Pet Service Lifecycle) CSV-Dateien ──────────────
+  {
+    path: 'public/demo-data/demo_pets.csv',
+    module: 'MOD-22',
+    type: 'seed_rpc',
+    entities: ['pets'],
+    exports: ['demo_pets.csv'],
+  },
+  {
+    path: 'public/demo-data/demo_pet_customers.csv',
+    module: 'MOD-22',
+    type: 'seed_rpc',
+    entities: ['pet_customers'],
+    exports: ['demo_pet_customers.csv'],
+  },
+  {
+    path: 'public/demo-data/demo_pet_service_cases.csv',
+    module: 'MOD-22',
+    type: 'seed_rpc',
+    entities: ['pet_service_cases'],
+    exports: ['demo_pet_service_cases.csv'],
+  },
 ] as const;
 
 /** Total count of registered demo data sources */

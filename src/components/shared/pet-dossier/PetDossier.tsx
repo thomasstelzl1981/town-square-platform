@@ -25,6 +25,8 @@ interface PetDossierProps {
   /** External owner override (for Z3 where owner comes from session) */
   externalOwner?: PetOwnerData | null;
   onOwnerUpdate?: (data: Partial<PetOwnerData>) => void;
+  /** Z3 session token — required when context is 'z3' */
+  z3SessionToken?: string | null;
 }
 
 export const PetDossier = memo(function PetDossier({
@@ -34,6 +36,7 @@ export const PetDossier = memo(function PetDossier({
   showOwner = true,
   externalOwner,
   onOwnerUpdate,
+  z3SessionToken,
 }: PetDossierProps) {
   const {
     pet,
@@ -44,7 +47,7 @@ export const PetDossier = memo(function PetDossier({
     updateOwner,
     uploadProfilePhoto,
     uploadGalleryPhoto,
-  } = usePetDossier(petId, context);
+  } = usePetDossier(petId, context, { z3SessionToken });
 
   const owner = externalOwner ?? hookOwner;
   const handleOwnerUpdate = onOwnerUpdate ?? updateOwner;
