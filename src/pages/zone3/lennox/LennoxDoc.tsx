@@ -78,6 +78,7 @@ export default function LennoxDoc() {
           query: 'Tierarzt Notdienst',
           location: vetSearch.trim(),
           max_results: 4,
+          context: { module: 'lennox_doc' },
         },
       });
       if (error) throw error;

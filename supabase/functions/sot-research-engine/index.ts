@@ -785,6 +785,43 @@ serve(async (req) => {
       `Research complete: ${finalResults.length} results in ${durationMs}ms`
     );
 
+    // ── Auto-Save: Vet contacts to Pet Desk when called from LennoxDoc ──
+    if (context?.module === 'lennox_doc' && finalResults.length > 0) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+        const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+        const DEV_TENANT = 'a0000000-0000-4000-a000-000000000001';
+
+        const rows = finalResults.map((r) => ({
+          tenant_id: DEV_TENANT,
+          source: 'z3_doc_search',
+          company_name: r.name || null,
+          phone: r.phone || null,
+          email: r.email || null,
+          website_url: r.website || null,
+          service_area: (r.address || '').split(',').pop()?.trim() || null,
+          desk: 'pet',
+          category: 'veterinary',
+          dedupe_key: 'vet_' + (r.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+          quality_score: r.confidence || 0,
+          enrichment_data: { rating: r.rating, reviews_count: r.reviews_count, sources: r.sources },
+        }));
+
+        // Fire-and-forget — don't slow down the response
+        supabaseAdmin
+          .from('contact_staging')
+          .upsert(rows, { onConflict: 'dedupe_key', ignoreDuplicates: true })
+          .then(({ error: upsErr }: { error: any }) => {
+            if (upsErr) console.error('Auto-save vet contacts failed:', upsErr.message);
+            else console.log(`Auto-saved ${rows.length} vet contacts to Pet Desk`);
+          });
+      } catch (saveErr) {
+        console.error('Auto-save setup error:', saveErr);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
