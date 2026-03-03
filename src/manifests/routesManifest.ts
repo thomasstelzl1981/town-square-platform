@@ -707,6 +707,7 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "partner/:slug", component: "LennoxPartnerProfil", title: "Partner-Profil", dynamic: true },
       { path: "shop", component: "LennoxShop", title: "Lennox Shop" },
       { path: "doc", component: "LennoxDoc", title: "Doc — Lennox & Friends" },
+      { path: "lennox", component: "LennoxLennox", title: "Lennox — Founders" },
       { path: "partner-werden", component: "LennoxPartnerWerden", title: "Partner werden" },
       { path: "login", component: "LennoxAuth", title: "Anmelden" },
       { path: "mein-bereich", component: "LennoxMeinBereich", title: "Mein Bereich" },
