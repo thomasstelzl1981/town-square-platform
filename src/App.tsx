@@ -20,10 +20,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ThemeProvider";
-// Special routes (not in manifest)
-import Auth from "./pages/Auth";
-import AuthResetPassword from "./pages/AuthResetPassword";
-import PresentationPage from "./pages/presentation/PresentationPage";
+// Special routes (not in manifest) — lazy loaded to reduce initial module graph
+const Auth = lazy(() => import("./pages/Auth"));
+const AuthResetPassword = lazy(() => import("./pages/AuthResetPassword"));
+const PresentationPage = lazy(() => import("./pages/presentation/PresentationPage"));
 import { lazy, Suspense } from "react";
 import { getDomainEntry } from "./hooks/useDomainRouter";
 import { useAuth } from "./contexts/AuthContext";
@@ -99,11 +99,11 @@ const App = () => (
               <Route path="/" element={<RootRedirect />} />
               
               {/* Special: Authentication (public) */}
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/auth/reset-password" element={<AuthResetPassword />} />
+              <Route path="/auth" element={<Suspense fallback={null}><Auth /></Suspense>} />
+              <Route path="/auth/reset-password" element={<Suspense fallback={null}><AuthResetPassword /></Suspense>} />
               
               {/* Special: Presentation (hidden, non-guessable URL) */}
-              <Route path="/presentation-sot-k7m3x9p2" element={<PresentationPage />} />
+              <Route path="/presentation-sot-k7m3x9p2" element={<Suspense fallback={null}><PresentationPage /></Suspense>} />
               
               {/* Special: Public Videocall Join (no auth required) */}
               <Route path="/portal/office/videocalls/join/:inviteId" element={
