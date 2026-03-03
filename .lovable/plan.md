@@ -1,234 +1,124 @@
 
 
-# Haustierakte — Einheitliche SSOT-Komponente (Universal Pet Dossier)
+# PSLC (Pet Service Lifecycle) — Gesamtstatus
 
-## Kernprinzip: EINE Komponente, DREI Kontexte
+## Was existiert
 
-Es gibt **eine einzige** `PetDossier`-Komponente in `src/components/shared/`. Sie wird in allen drei Zonen identisch gerendert — Inline, kein Collapsible, großzügig mit Fotos.
+### Engine (ENG-PLC) -- DONE
+- `src/engines/plc/spec.ts` -- 11 Phasen, 22 Event-Types, SLA-Thresholds, Valid Transitions
+- `src/engines/plc/engine.ts` -- Pure Functions (Computed State, Transition Validation)
 
----
+### Datenbank-Tabellen -- DONE
+| Tabelle | Status | Zweck |
+|---|---|---|
+| `pets` | DONE (42 Spalten inkl. Dossier-Erweiterung) | Tier-SSOT |
+| `pet_customers` | DONE | Kunden-CRM |
+| `pet_services` | DONE | Leistungskatalog |
+| `pet_service_cases` | DONE (27 Spalten inkl. PSLC-Phasen) | Case/Buchung-Lifecycle |
+| `pet_lifecycle_events` | DONE (12 Spalten, Audit-Trail) | Event-Ledger |
+| `pet_bookings` | DONE | Kalender-Buchungen |
+| `pet_rooms` | DONE | Raumverwaltung |
+| `pet_room_assignments` | DONE | Raumbelegung |
+| `pet_staff` | DONE | Personalverwaltung |
+| `pet_invoices` / `pet_invoice_items` | DONE | Abrechnung |
+| `pet_vaccinations` | DONE | Impfhistorie |
+| `pet_medical_records` | DONE | Behandlungen |
+| `pet_caring_events` | DONE | Betreuungs-Events |
+| `pet_provider_availability` | DONE | Verfuegbarkeit |
+| `pet_provider_blocked_dates` | DONE | Blockierte Tage |
+| `pet_providers` | DONE | Provider-Profile |
+| `pet_shop_products` | DONE | Shop-Artikel |
+| `pet_z1_customers` / `pet_z1_pets` / `pet_z1_booking_requests` | DONE | Z1 Legacy-Brücke |
+| `pet_z3_sessions` | DONE | Z3 Kunden-Auth |
+| `pet-photos` Storage Bucket | DONE | Foto-Upload |
 
-## Layout (Inline-Scroll, keine Tabs/Collapsibles)
+### Edge Functions -- DONE
+| Function | Status | Zweck |
+|---|---|---|
+| `sot-pslc-lifecycle-patrol` | DONE | CRON: Stuck-Detection mit SLA-Thresholds |
+| `sot-pslc-z3-create-case` | DONE | Z3: Buchung erstellen |
+| `sot-pslc-z3-list-cases` | DONE | Z3: Meine Buchungen |
+| `sot-pslc-z3-list-events` | DONE | Z3: Event-Historie |
+| `sot-pslc-z3-list-pets` | DONE | Z3: Meine Tiere |
+| `sot-pslc-z3-upsert-pet` | DONE | Z3: Tier anlegen/bearbeiten |
+| `sot-pet-deposit-checkout` | DONE | Stripe Checkout (7.5% Anzahlung) |
+| `sot-pet-deposit-webhook` | DONE | Stripe Webhook (Zahlung bestaetigt) |
+| `sot-pet-profile-init` | DONE | Tier-Profil initialisieren |
 
-```
-┌─────────────────────────────────────────────────────┐
-│                                                     │
-│  ┌───────────────────────────────────────────────┐  │
-│  │  BESITZER                             [✏️]    │  │
-│  │                                               │  │
-│  │  👤 Sabine Berger                             │  │
-│  │  📧 sabine.berger@demo.de                     │  │
-│  │  📱 +49 171 2223344                           │  │
-│  │  📍 Lindenstraße 12, 10969 Berlin             │  │
-│  │                                               │  │
-│  └───────────────────────────────────────────────┘  │
-│                                                     │
-│  ┌───────────────────────────────────────────────┐  │
-│  │  STECKBRIEF                           [✏️]    │  │
-│  │                                               │  │
-│  │  ┌──────────────┐                             │  │
-│  │  │              │  Name: Rocky                │  │
-│  │  │  🐕 FOTO     │  Rasse: Labrador Retriever  │  │
-│  │  │  (großzügig) │  Geschlecht: Rüde           │  │
-│  │  │  256x256     │  Geb.: 15.03.2020 (5 J.)    │  │
-│  │  │              │  Gewicht: 32 kg              │  │
-│  │  │  [📷 Ändern] │  Farbe: Golden              │  │
-│  │  └──────────────┘  Chip-Nr: 276098106...      │  │
-│  │                    Kastriert: Ja               │  │
-│  │                    Größe: 58 cm                │  │
-│  │                                               │  │
-│  └───────────────────────────────────────────────┘  │
-│                                                     │
-│  ┌───────────────────────────────────────────────┐  │
-│  │  FOTOGALERIE                    [📷 Hinzufügen]│  │
-│  │                                               │  │
-│  │  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐          │  │
-│  │  │    │ │    │ │    │ │    │ │    │          │  │
-│  │  │ 📸 │ │ 📸 │ │ 📸 │ │ 📸 │ │ +  │          │  │
-│  │  │    │ │    │ │    │ │    │ │    │          │  │
-│  │  └────┘ └────┘ └────┘ └────┘ └────┘          │  │
-│  │                                               │  │
-│  └───────────────────────────────────────────────┘  │
-│                                                     │
-│  ┌───────────────────────────────────────────────┐  │
-│  │  GESUNDHEIT                           [✏️]    │  │
-│  │                                               │  │
-│  │  Tierarzt: Dr. Maria Weber                    │  │
-│  │  Praxis: Tierarztpraxis Am Park               │  │
-│  │  Tel: +49 30 12345678                         │  │
-│  │                                               │  │
-│  │  Allergien: Huhn, Weizen                      │  │
-│  │  Unverträglichkeiten: Laktose                 │  │
-│  │                                               │  │
-│  │  ── Impfungen ──                              │  │
-│  │  Tollwut       | 15.06.2025 | Dr. Weber       │  │
-│  │  Staupe/Parvo  | 15.06.2025 | Dr. Weber       │  │
-│  │  Leptospirose  | 20.01.2025 | Dr. Klein       │  │
-│  │                                               │  │
-│  │  ── Behandlungen ──                           │  │
-│  │  Zahnreinigung | 03.03.2025 | Dr. Weber       │  │
-│  │  Blutbild      | 15.06.2025 | alle Werte ok   │  │
-│  │                                               │  │
-│  └───────────────────────────────────────────────┘  │
-│                                                     │
-│  ┌───────────────────────────────────────────────┐  │
-│  │  ERNÄHRUNG & PFLEGE                   [✏️]    │  │
-│  │                                               │  │
-│  │  Futter: Royal Canin Labrador Adult            │  │
-│  │  Menge: 350g / Tag (2x)                       │  │
-│  │  Leckerli: Ja, aber kein Huhn                 │  │
-│  │  Besonderheiten: Muss langsam fressen          │  │
-│  │                                               │  │
-│  │  Fellpflege: Bürsten 2x/Woche                 │  │
-│  │  Baden: Alle 6 Wochen                         │  │
-│  │  Krallen: Monatlich kürzen                    │  │
-│  │                                               │  │
-│  └───────────────────────────────────────────────┘  │
-│                                                     │
-│  ┌───────────────────────────────────────────────┐  │
-│  │  VERSICHERUNG                         [✏️]    │  │
-│  │                                               │  │
-│  │  Anbieter: PetProtect Plus                    │  │
-│  │  Policen-Nr: PP-2024-12345                    │  │
-│  │  Typ: OP + Kranken                            │  │
-│  │  Beitrag: 45,90 € / Monat                    │  │
-│  │  SB: 250 € / Jahr                            │  │
-│  │  Gültig bis: 31.12.2026                       │  │
-│  │                                               │  │
-│  └───────────────────────────────────────────────┘  │
-│                                                     │
-│  ┌───────────────────────────────────────────────┐  │
-│  │  VERHALTEN & TRAINING                 [✏️]    │  │
-│  │                                               │  │
-│  │  Verträglich mit Hunden: Ja                   │  │
-│  │  Verträglich mit Katzen: Nein                 │  │
-│  │  Verträglich mit Kindern: Ja                  │  │
-│  │  Leinenpflicht: Nein                          │  │
-│  │  Maulkorb: Nein                               │  │
-│  │                                               │  │
-│  │  Training: Grundgehorsam, Abruf gut           │  │
-│  │  Ängste: Gewitter, Feuerwerk                  │  │
-│  │  Besonderheiten: Zieht an der Leine           │  │
-│  │                                               │  │
-│  └───────────────────────────────────────────────┘  │
-│                                                     │
-│  ┌───────────────────────────────────────────────┐  │
-│  │  DOKUMENTE (DMS)                    [📎 Neu]  │  │
-│  │                                               │  │
-│  │  📄 Impfpass_Rocky.pdf        | 15.06.2025    │  │
-│  │  📄 EU-Heimtierausweis.pdf    | 20.01.2024    │  │
-│  │  📄 OP-Bericht_Zahn.pdf      | 03.03.2025    │  │
-│  │  📄 Versicherungspolice.pdf   | 01.01.2024    │  │
-│  │                                               │  │
-│  └───────────────────────────────────────────────┘  │
-│                                                     │
-│  ┌───────────────────────────────────────────────┐  │
-│  │  NOTIZEN                              [✏️]    │  │
-│  │                                               │  │
-│  │  "Rocky mag keine Katzen. Bei Gewitter        │  │
-│  │   braucht er seine Decke. Frisst zu           │  │
-│  │   schnell → Anti-Schling-Napf nutzen."        │  │
-│  │                                               │  │
-│  └───────────────────────────────────────────────┘  │
-│                                                     │
-└─────────────────────────────────────────────────────┘
-```
+### Shared Component: PetDossier -- DONE
+| Datei | Status |
+|---|---|
+| `PetDossier.tsx` (Orchestrator) | DONE |
+| `PetOwnerSection.tsx` | DONE |
+| `PetProfileSection.tsx` | DONE |
+| `PetGallerySection.tsx` | DONE |
+| `PetHealthSection.tsx` | DONE |
+| `PetNutritionSection.tsx` | DONE |
+| `PetInsuranceSection.tsx` | DONE |
+| `PetBehaviorSection.tsx` | DONE |
+| `PetDocumentsSection.tsx` | DONE |
+| `PetNotesSection.tsx` | DONE |
+| `usePetDossier.ts` | DONE |
+
+### Zonen-Integration -- TEILWEISE
+| Zone | Seite | PetDossier integriert? |
+|---|---|---|
+| Z2 MOD-05 (Client) | `PetsMeineTiere.tsx` | DONE |
+| Z2 MOD-22 (Provider) | `PMKunden.tsx` | DONE |
+| Z1 (Admin Pet Desk) | `PetDeskKunden.tsx` | DONE |
+| Z3 (Lennox Website) | MeinBereich | OFFEN -- nutzt noch Legacy `pet_z1_*` Tabellen |
+
+### MOD-22 Seiten (Provider Portal) -- DONE
+| Seite | Status |
+|---|---|
+| PMDashboard | DONE |
+| PMKunden | DONE (mit PetDossier) |
+| PMBuchungen | DONE |
+| PMKalender | DONE |
+| PMLeistungen | DONE |
+| PMFinanzen | DONE |
+| PMPension | DONE |
+| PMRaeume | DONE |
+| PMPersonal | DONE |
+| PMProfil | DONE |
+| PMServices | DONE |
 
 ---
 
-## Kontext-Steuerung über Props
+## Was OFFEN ist
 
-```tsx
-<PetDossier
-  petId="..."
-  context="z2-client"    // | "z2-provider" | "z3"
-  readOnly={false}
-  showOwner={true}       // Besitzer-Sektion immer sichtbar
-  onSave={handleSave}    // Z3: Edge Proxy | Z2: Supabase SDK
-/>
-```
-
-| Sektion | Z2 MOD-05 (Client) | Z2 MOD-22 (Provider) | Z3 (Lennox) |
-|---|---|---|---|
-| Besitzer | ✅ (eigenes Profil) | ✅ (CRM-Kunde) | ✅ (Z3-Profil) |
-| Steckbrief | ✅ editierbar | ✅ editierbar | ✅ editierbar |
-| Fotogalerie | ✅ upload | ✅ read-only | ✅ upload |
-| Gesundheit | ✅ voll | ✅ voll | ✅ voll |
-| Ernährung & Pflege | ✅ voll | ✅ read-only | ✅ voll |
-| Versicherung | ✅ voll | ⬜ ausgeblendet | ⬜ ausgeblendet |
-| Verhalten & Training | ✅ voll | ✅ wichtig für Pension! | ✅ voll |
-| Dokumente | ✅ DMS | ✅ read-only | ✅ upload |
-| Notizen | ✅ privat | ✅ Provider-Notizen | ✅ eigene Notizen |
+| Prio | Bereich | Beschreibung |
+|---|---|---|
+| P0 | **Z3 MeinBereich: PetDossier-Integration** | Z3 nutzt noch Legacy-Komponenten statt der Shared PetDossier. Migration auf Edge-Proxy-gestütztes PetDossier. |
+| P0 | **Foto-Upload funktioniert nicht (Z3 + MOD-05)** | Storage-Bucket existiert, aber Upload-Logik in `usePetDossier.ts` muss getestet/repariert werden. |
+| P1 | **Demo-Daten CSVs fuer PSLC** | Keine Demo-Daten fuer TLC-artige PSLC-Entitaeten (Backlog B-090..B-092 Aequivalent). |
+| P1 | **Engine Unit-Tests (ENG-PLC)** | `engine.ts` existiert, aber keine Tests (`__tests__/plc.*`). |
+| P1 | **Golden Path GP-PET** | Kein Golden Path Context Resolver fuer MOD-22 registriert. |
+| P2 | **Z3 Buchungs-Flow E2E** | Stripe Checkout (Deposit) → Provider Confirm → Check-in → Check-out → Settlement Flow nicht E2E getestet. |
+| P2 | **PSLC-Widget (Dashboard)** | Kein Aggregations-Widget fuer MOD-22 Dashboard (wie TLCWidget fuer MOD-04). |
+| P2 | **Kommunikation (Templates)** | Kein Template-basiertes Messaging zwischen Kunde und Provider (wie TenancyCommunication). |
+| P3 | **Review-System** | `case.review_submitted` Event definiert, aber keine UI. |
+| P3 | **spec/current/06_engines/ENGINE_REGISTRY.md** | Datei fehlt komplett -- ENG-PLC nicht registriert. |
 
 ---
 
-## Datenbank-Erweiterung `pets` Tabelle
-
-Fehlende Felder (Migration nötig):
+## Fortschritt zusammengefasst
 
 ```
-color TEXT
-height_cm NUMERIC
-vet_practice TEXT
-vet_phone TEXT
-intolerances TEXT[]
-food_brand TEXT
-food_amount TEXT
-food_frequency TEXT
-food_notes TEXT
-grooming_notes TEXT
-insurance_type TEXT
-insurance_premium_monthly NUMERIC
-insurance_deductible NUMERIC
-insurance_valid_until DATE
-compatible_dogs BOOLEAN
-compatible_cats BOOLEAN
-compatible_children BOOLEAN
-leash_required BOOLEAN
-muzzle_required BOOLEAN
-training_level TEXT
-fears TEXT[]
-behavior_notes TEXT
+Engine + Spec:         ████████████████████ 100%
+Datenbank-Schema:      ████████████████████ 100%
+Edge Functions:        ████████████████████ 100%
+PetDossier Shared:     ████████████████████ 100%
+Z2 MOD-22 UI:         ████████████████████ 100%
+Z2 MOD-05 Integration: ████████████████████ 100%
+Z1 Admin Integration:  ████████████████████ 100%
+Z3 Integration:        ██████░░░░░░░░░░░░░░  30%
+Foto-Upload:           ████░░░░░░░░░░░░░░░░  20%
+Tests & Demo-Daten:    ░░░░░░░░░░░░░░░░░░░░   0%
+Golden Path:           ░░░░░░░░░░░░░░░░░░░░   0%
+──────────────────────────────────────────────────
+GESAMT:                ██████████████░░░░░░  ~70%
 ```
 
----
-
-## Foto-System (Storage Bucket)
-
-```
-Bucket: pet-photos
-Pfad:   {tenant_id}/{pet_id}/profile.jpg    ← Profilbild
-        {tenant_id}/{pet_id}/gallery/001.jpg ← Galerie
-        {tenant_id}/{pet_id}/gallery/002.jpg
-```
-
-- Upload via Supabase Storage SDK (Z2) oder Edge Proxy (Z3)
-- Profilbild: 1:1 Crop, max 2MB
-- Galerie: max 10 Bilder, max 5MB je Bild
-
----
-
-## Datei-Struktur
-
-```
-src/components/shared/
-├── pet-dossier/
-│   ├── PetDossier.tsx          ← Haupt-Orchestrator
-│   ├── PetOwnerSection.tsx     ← Besitzer-Block
-│   ├── PetProfileSection.tsx   ← Steckbrief + Profilbild
-│   ├── PetGallerySection.tsx   ← Fotogalerie
-│   ├── PetHealthSection.tsx    ← Gesundheit
-│   ├── PetNutritionSection.tsx ← Ernährung & Pflege
-│   ├── PetInsuranceSection.tsx ← Versicherung
-│   ├── PetBehaviorSection.tsx  ← Verhalten & Training
-│   ├── PetDocumentsSection.tsx ← DMS-Verknüpfung
-│   ├── PetNotesSection.tsx     ← Notizen
-│   └── usePetDossier.ts        ← Daten-Hook (lädt/speichert)
-```
-
----
-
-## Zusammenfassung
-
-**1 Komponente. 9 Sektionen. 3 Zonen. 0 Collapsibles.**
+Die Kernsysteme (Engine, DB, Edge Functions, UI-Komponenten) sind fertig. Die groessten Luecken sind: Z3-Integration auf die neue SSOT-Komponente migrieren, Foto-Upload reparieren, und Tests/Demo-Daten nachholen.
 
