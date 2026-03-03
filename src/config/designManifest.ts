@@ -87,11 +87,11 @@ export const TABLE = {
   /** Body-Zelle */
   BODY_CELL: 'px-4 py-3 text-sm',
   /** Zeilen-Hover */
-  ROW_HOVER: 'hover:bg-muted/30 transition-colors',
+  ROW_HOVER: 'hover:bg-[hsl(var(--table-row-hover))] transition-colors',
   /** Zeilen-Trenner */
   ROW_BORDER: 'border-b border-border/30',
   /** Header-Hintergrund */
-  HEADER_BG: 'bg-muted/30',
+  HEADER_BG: 'bg-[hsl(var(--table-header-bg))]',
 } as const;
 
 // ─── TABULAR_FORM (NEU V4.0) ──────────────────────────────
