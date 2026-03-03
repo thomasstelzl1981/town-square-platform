@@ -1,33 +1,47 @@
 
 
-# Bewertung: Table-Token für Header & Row-Hover
+# Density-Schalter: Bewertung & Plan
 
-## Einschätzung: Sinnvoll und konsistent
+## Einschätzung: Guter CRM-Move, aber pragmatischer umsetzen
 
-Der Vorschlag folgt exakt dem Muster von `--input-bg` — zentraler Token statt verstreuter `bg-muted/30`. Gut.
+Der Vorschlag ist sinnvoll — weniger Scroll bei langen Listen ist ein echter Produktivitätsgewinn. Allerdings würde ich die Umsetzung **schlanker** halten als vorgeschlagen:
 
-**Ein Detail:** Der `DESIGN.TABLE` wird aktuell nur von 2 Komponenten direkt referenziert (`LoanCalculator`, `BankExamplesCard`), aber das Shadcn `table.tsx` nutzt eigene Klassen (`hover:bg-muted/50` für Row, kein Header-BG). Für maximalen Effekt sollte auch `table.tsx` umgestellt werden.
+**Gegen `--density-scale` als CSS-Variable:** Tailwind-Klassen wie `py-3`, `p-4`, `space-y-6` lassen sich nicht mit einer CSS-Variable skalieren — Tailwind generiert feste Utility-Klassen. Ein `calc()`-basierter Ansatz würde das gesamte System verkomplizieren.
 
-## Umsetzung (3 Dateien)
+**Stattdessen: CSS-Override auf `data-density="compact"`** — überschreibt gezielt die SSOT-relevanten Spacing-Werte über kompakte Klassen, die vom Attribut abhängen.
 
-### 1. `src/index.css` — Tokens einfügen
+## Umsetzung (4 Dateien, keine Module betroffen)
+
+### 1. `src/index.css` — Compact-Overrides via `data-density`
 ```css
-/* :root */
---table-header-bg: 210 20% 95%;
---table-row-hover: 210 20% 96%;
-
-/* .dark */
---table-header-bg: 222 25% 14%;
---table-row-hover: 222 25% 12%;
+html[data-density="compact"] .page-shell { ... }  /* reduzierte Paddings */
+html[data-density="compact"] .glass-card { ... }   /* p-3 statt p-4 */
 ```
+Gezielte Overrides für: PageShell-Spacing, Card-Padding, Table-Cell-Padding, Section-Gaps.
 
-### 2. `src/config/designManifest.ts` — DESIGN.TABLE umstellen
-- `HEADER_BG`: `bg-muted/30` → `bg-[hsl(var(--table-header-bg))]`
-- `ROW_HOVER`: `hover:bg-muted/30` → `hover:bg-[hsl(var(--table-row-hover))]`
+### 2. `src/hooks/useDensity.ts` — Neuer Hook
+- Liest/schreibt `localStorage("sot-density")`
+- Setzt `document.documentElement.dataset.density`
+- Returns `{ density, setDensity, isCompact }`
 
-### 3. `src/components/ui/table.tsx` — Shadcn-Basis anpassen
-- `TableHeader`: Header-BG-Token hinzufügen
-- `TableRow`: `hover:bg-muted/50` → `hover:bg-[hsl(var(--table-row-hover))]`
+### 3. `src/components/shared/PageShell.tsx` — Klassen-Marker
+- Fügt eine CSS-Klasse `page-shell` hinzu, damit die CSS-Overrides greifen
 
-Rein kosmetisch, keine Logik betroffen. Alle Stellen, die `DESIGN.TABLE.HEADER_BG` oder `DESIGN.TABLE.ROW_HOVER` nutzen, erben automatisch.
+### 4. `src/pages/portal/stammdaten/ProfilTab.tsx` (oder Settings-Bereich)
+- Toggle-UI: "Kompakte Ansicht" Switch
+- Nutzt `useDensity()` Hook
+
+### Was sich ändert (Compact aktiv)
+| Element | Comfortable | Compact |
+|---------|------------|---------|
+| PageShell padding | `p-6` | `p-4` |
+| Card padding | `p-4` | `p-3` |
+| Table cell | `py-3` | `py-2` |
+| Section gaps | `space-y-6` | `space-y-4` |
+| Widget grid gap | `gap-6` | `gap-4` |
+
+### Was sich NICHT ändert
+- Fonts, Farben, Border-Radii, Icons
+- Keine Änderungen an den 23 Modulen
+- Keine Änderungen am designManifest (die Werte bleiben als Default)
 
