@@ -1,124 +1,151 @@
 
 
-## Diagnose (Screenshot-basiert)
+## Plan: Light Graphite Chrome — Dunkle Kopfleiste (Medium Graphite 45%)
 
-Ich habe beide Modi live gesehen. Der Light Mode hat folgende Probleme:
+### Konzept
 
-1. **Chrome und Canvas sind zu aehnlich** — Header (92%) und Canvas (96%) liegen nur 4% auseinander. Kein sichtbarer "Rahmen".
-2. **Content Well ist zu schwach** — `border-opacity 0.35` und `shadow-sm` sind unsichtbar auf hellem Hintergrund. Wirkt wie ein Geist-Container.
-3. **Alles innen ist gleich weiss** — Info-Box, Search-Row, Tabelle, alles auf einer Ebene. Keine innere Hierarchie.
-4. **Table Header verschwindet** — `215 14% 94%` ist auf weissem Well kaum sichtbar.
-5. **Nav-Stack hat keine "Unterkante"** — Chrome-Bereich endet ohne klare Trennung zum Canvas.
-6. **`glass-card` hat im Light Mode `backdrop-filter: blur(12px)`** — voellig sinnlos auf weissem Hintergrund, erzeugt subtile Rendering-Artefakte.
+Header + AreaTabs + SubTabs werden im Light Mode zu einem dunklen Graphit-Block (Lightness ~45%). Text und Icons werden hell. Active Pills bleiben weiss. Dark Mode bleibt 100% unveraendert.
 
-## Plan: Light Mode v3.1 — CRM Structure Polish
+### Aenderung 1: `src/index.css` — Chrome-Tokens auf Graphite
 
-Nur `src/index.css` und `src/components/shared/PageShell.tsx`. Keine neuen Dateien, keine Modul-Aenderungen.
+Bestehende Light-Chrome-Tokens ersetzen (Zeile 106-110):
 
----
-
-### Aenderung 1: `src/index.css` — Token-Tuning + Glass-Cleanup
-
-**A) Canvas dunkler machen (sichtbare Hierarchie)**
-
-```
---background: 215 18% 94%;     /* war 96% — 2% dunkler = Canvas wird sichtbar */
-```
-
-Das erzeugt eine klare 3-Stufen-Hierarchie:
-- Chrome: 92% (Topbar/Nav)
-- Canvas: 94% (Hintergrund)  
-- Well/Cards: 100% (Arbeitsflaeche)
-
-**B) Table Header kraeftiger**
-
-```
---table-header-bg: 215 14% 92%;   /* war 94% — jetzt sichtbar auf weissem Well */
---table-row-hover: 215 14% 96%;   /* war gleich — passt */
-```
-
-**C) Light-Mode glass-card: kein Blur**
-
-Neuer Override (nach dem bestehenden `.glass-card` Block):
 ```css
-:root .glass-card {
+/* Chrome Frame — Light Graphite */
+--chrome-bg: 220 14% 32%;
+--chrome-bg-2: 220 12% 38%;
+--chrome-border: 220 10% 26%;
+--chrome-shadow: 0 6px 18px -14px rgb(0 0 0 / 0.30);
+
+/* Chrome Text (NEU) */
+--chrome-foreground: 0 0% 95%;
+--chrome-foreground-muted: 0 0% 65%;
+```
+
+Light `.nav-tab-glass` Override anpassen (Zeile 700-710) — muss auf dunklem BG funktionieren:
+```css
+:root .nav-tab-glass {
   backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  background: hsl(220 12% 38% / 0.8);
+  border: 1px solid hsl(220 10% 45% / 0.5);
+  box-shadow: none;
+  color: hsl(0 0% 85%);
+}
+:root .nav-tab-glass:hover {
+  background: hsl(220 12% 44% / 0.9);
+  border-color: hsl(220 10% 50% / 0.6);
+  color: hsl(0 0% 95%);
 }
 ```
-Im Light Mode braucht kein Card Blur. Dark Mode bleibt (ueber `.dark .glass-card` unberuehrt).
 
-**D) Nav-Stack Frame-Kante**
-
-Am `TopNavigation.tsx` Container eine Shadow-Kante hinzufuegen (nur Light):
-- Bereits in `PortalHeader` als `shadow-[var(--chrome-shadow)]` vorhanden
-- `TopNavigation` Container bekommt zusaetzlich `shadow-[0_2px_8px_-4px_rgb(0_0_0/0.1)]` im Light
-
----
-
-### Aenderung 2: `src/components/shared/PageShell.tsx` — Content Well staerker
-
-Von:
-```
-border border-[hsl(var(--chrome-border)/0.35)] dark:border-0 shadow-sm dark:shadow-none
+Light `.btn-glass` Override anpassen (Zeile 606-617) — Header-Buttons auf Graphit:
+```css
+:root .btn-glass {
+  background: hsl(220 12% 40% / 0.6);
+  border: 1px solid hsl(220 10% 50% / 0.3);
+  color: hsl(0 0% 90%);
+}
+:root .btn-glass:hover {
+  background: hsl(220 12% 46% / 0.8);
+}
 ```
 
-Zu:
-```
-border border-[hsl(var(--chrome-border)/0.5)] dark:border-0 shadow-md dark:shadow-none
-```
-
-Plus Padding erhoehen: `md:p-6` wird `md:p-8 md:pb-10` (mehr "Raum" im Well, Seite wirkt "fertig").
-
----
-
-### Aenderung 3: `src/components/portal/TopNavigation.tsx` — Frame-Kante
-
-Von:
-```
-border-b bg-[hsl(var(--chrome-bg)/0.98)] dark:bg-card/60 dark:backdrop-blur-md
+Light `.glass-nav` Override anpassen (Zeile 588-594):
+```css
+:root .glass-nav {
+  background: hsl(var(--chrome-bg) / 0.98);
+  backdrop-filter: none;
+  border: 1px solid hsl(var(--chrome-border) / 0.5);
+  box-shadow: var(--chrome-shadow);
+}
 ```
 
-Zu:
+### Aenderung 2: `src/components/portal/PortalHeader.tsx`
+
+Zeile 53 — Header Container:
 ```
-border-b bg-[hsl(var(--chrome-bg)/0.98)] shadow-[0_2px_8px_-4px_rgb(0_0_0/0.08)] dark:bg-card/60 dark:backdrop-blur-md dark:shadow-none
+bg-[hsl(var(--chrome-bg))] text-[hsl(var(--chrome-foreground))]
+shadow-[var(--chrome-shadow)]
+dark:bg-background/95 dark:backdrop-blur dark:supports-[backdrop-filter]:bg-background/60 dark:shadow-none dark:text-foreground
 ```
 
-Das gibt dem gesamten Nav-Stack eine sichtbare Unterkante im Light Mode.
+Zeile 88 — Logo Icon: `text-primary` → `text-primary dark:text-primary` (bleibt, kontrastiert gut auf Graphit)
 
----
+Zeile 89 — Logo Text "Portal": Erbt `text-[hsl(var(--chrome-foreground))]` vom Container — passt.
+
+Zeile 114 — Armstrong Toggle Active-State: `bg-white/40` → `bg-white/20` (auf dunklem BG)
+
+### Aenderung 3: `src/components/portal/TopNavigation.tsx`
+
+Zeile 49 — Nav Container:
+```
+border-b border-[hsl(var(--chrome-border)/0.5)]
+bg-[hsl(var(--chrome-bg))]
+shadow-[0_2px_8px_-4px_rgb(0_0_0/0.15)]
+dark:bg-card/60 dark:backdrop-blur-md dark:shadow-none dark:border-b
+```
+
+### Aenderung 4: `src/components/portal/AreaTabs.tsx`
+
+Zeile 54 — Pill-Container: Text-Farbe erbt vom Chrome-Container, aber explizit setzen fuer inactive:
+```
+'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium uppercase tracking-wide transition-colors'
+```
+
+Zeile 56 — Active Pill (bleibt weiss — maximaler Kontrast auf Graphit):
+```
+'bg-white text-foreground shadow-md border border-white/20 dark:bg-primary/90 dark:text-primary-foreground dark:shadow-lg dark:border-0'
+```
+
+Zeile 57 — Inactive: statt `text-muted-foreground`:
+```
+'nav-tab-glass text-[hsl(var(--chrome-foreground-muted))] hover:text-[hsl(var(--chrome-foreground))] dark:text-muted-foreground dark:hover:text-foreground'
+```
+
+### Aenderung 5: `src/components/portal/SubTabs.tsx`
+
+Zeile 37 — Container BG:
+```
+bg-[hsl(var(--chrome-bg-2))] dark:bg-background/50
+```
+
+Zeile 49 — Active SubTab (weiss):
+```
+'bg-white text-foreground font-medium shadow-sm border border-white/20 dark:bg-primary/90 dark:text-primary-foreground dark:border-0'
+```
+
+Zeile 50 — Inactive: gleiche Chrome-Foreground-Logik wie AreaTabs:
+```
+'nav-tab-glass text-[hsl(var(--chrome-foreground-muted))] hover:text-[hsl(var(--chrome-foreground))] dark:text-muted-foreground dark:hover:text-foreground'
+```
 
 ### Was NICHT geaendert wird
 
-- Dark Mode: alle Aenderungen mit `:root` / `dark:` geschuetzt
-- Hue bleibt 215 (warm-gray funktioniert — das Problem war Kontrast, nicht Farbe)
-- Active Pills bleiben weiss (macOS Pattern — korrekt)
-- Keine Modul-Dateien betroffen
-- AreaTabs, SubTabs, PortalHeader — unveraendert
+- Dark Mode: alle Aenderungen mit `dark:` geschuetzt
+- Canvas + Content Well: bleiben bei 94% + weiss
+- Primary/Status-Farben: unveraendert
+- Mobile Navigation: nicht betroffen
+- Popovers/Dropdowns: oeffnen sich nach unten ins helle Gebiet — kein Anpassungsbedarf
 
 ### Erwartetes Ergebnis
 
 ```text
-+==[ Header: 92%, shadow ]====================+
-|  Logo  [CLIENT] [MANAGER] [SERVICE] [BASE]  |
-+--[ SubTabs: 90% ]---------------------------+
-|  shadow-Kante ↓↓↓                           |
-+----------------------------------------------+
++==[ GRAPHIT 32% — dunkel, shadow ]============+
+|  Logo (weiss)  🔍  👤  ⚙️  (helle Icons)    |
++--[ GRAPHIT 32% — AreaTabs ]------------------+
+|  [BASE] [MISSIONS] [OPS] [SERVICES]          |
+|   ^^^^^ weisse Pill auf Graphit = pop!        |
+|   andere = helles Grau/65% auf Graphit        |
++--[ GRAPHIT 38% — SubTabs ]-------------------+
+|  Tab1 | Tab2 | Tab3 | Tab4                    |
++~~~ shadow-Kante ~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
 |                                              |
-|    Canvas: 94% (sichtbar grauer)             |
+|    Canvas: 94% warm-gray (hell)              |
 |  +========================================+  |
-|  | Content Well: 100% weiss               |  |
-|  | border 0.5 opacity, shadow-md          |  |
-|  | padding p-8, pb-10                     |  |
-|  |                                        |  |
-|  |  [Info-Box]  ← glass-card, kein blur   |  |
-|  |  [Search + Button]                     |  |
-|  |  [Table: Header 92% = sichtbar]        |  |
-|  |                                        |  |
+|  | Content Well: 100% weiss, shadow-md    |  |
 |  +========================================+  |
-|                                              |
 +----------------------------------------------+
 ```
 
-3 Dateien, 5 CSS-Zeilen, sofortiger CRM-Effekt.
+5 Dateien, sofortiger Enterprise-Frame-Effekt. Weisse Pills auf Graphit sind das staerkste CRM-Pattern.
 
