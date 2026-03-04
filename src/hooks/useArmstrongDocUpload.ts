@@ -4,8 +4,7 @@
  * Architecture (v2 — Storage-First):
  *   File → Storage upload → sot-document-parser (storagePath) → extracted_text → Armstrong advisor
  * 
- * This avoids the Edge Function body-size limit by uploading to Storage first,
- * then passing only the storagePath to the parser. Supports files up to 20MB.
+ * v3: Expanded format support — accepts virtually all common file types up to 50MB.
  */
 
 import { useState, useCallback } from 'react';
@@ -40,19 +39,68 @@ interface UseArmstrongDocUploadReturn {
   attachedFile: { name: string; size: number; type: string } | null;
 }
 
+// Expanded supported MIME types — maximum coverage
 const SUPPORTED_TYPES = [
+  // Documents
   'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  'application/msword', // .doc
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
+  'application/vnd.ms-powerpoint', // .ppt
+  'application/rtf',
+  'application/vnd.oasis.opendocument.text', // .odt
+  'application/vnd.oasis.opendocument.spreadsheet', // .ods
+  'application/vnd.oasis.opendocument.presentation', // .odp
+  
+  // Spreadsheets
+  'text/csv',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+  'application/vnd.ms-excel', // .xls
+  
+  // Images
   'image/jpeg',
   'image/png',
   'image/webp',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/msword',
-  'text/csv',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-excel',
+  'image/gif',
+  'image/bmp',
+  'image/tiff',
+  'image/svg+xml',
+  
+  // Text
+  'text/plain',
+  'text/markdown',
+  'text/html',
+  'text/xml',
+  'application/json',
+  'application/xml',
+  'text/yaml',
+  
+  // Audio (for transcription)
+  'audio/mpeg', // .mp3
+  'audio/wav',
+  'audio/x-wav',
+  'audio/mp4', // .m4a
+  'audio/ogg',
+  'audio/webm',
+  
+  // Archives (pass-through, no parsing)
+  'application/zip',
+  'application/x-rar-compressed',
+  'application/x-7z-compressed',
 ];
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+// Fallback: allow by file extension if MIME type detection fails
+const SUPPORTED_EXTENSIONS = [
+  '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.rtf', '.odt', '.ods', '.odp',
+  '.csv', '.xlsx', '.xls',
+  '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.tiff', '.tif', '.svg',
+  '.txt', '.md', '.json', '.xml', '.yaml', '.yml', '.html', '.htm',
+  '.mp3', '.wav', '.m4a', '.ogg',
+  '.zip', '.rar', '.7z',
+  '.mp4', '.mov', '.avi', '.mkv',
+];
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB — maximum allowed
 
 // =============================================================================
 // DOCUMENT INTENT DETECTION — proactive Magic Intake suggestion
@@ -122,13 +170,12 @@ function detectDocumentIntent(
   filename: string,
   extractedText: string
 ): DocumentContext['suggestedIntake'] | null {
-  const textSample = extractedText.slice(0, 3000); // check first 3000 chars
+  const textSample = extractedText.slice(0, 3000);
 
   for (const rule of INTAKE_RULES) {
     const fnMatch = rule.filenamePatterns.some(p => p.test(filename));
     const txtMatch = rule.textPatterns.filter(p => p.test(textSample)).length;
 
-    // filename match alone or 2+ text pattern matches
     if (fnMatch || txtMatch >= 2) {
       return {
         action_code: rule.action_code,
@@ -141,6 +188,14 @@ function detectDocumentIntent(
   return null;
 }
 
+function isFileSupported(file: File): boolean {
+  // Check MIME type
+  if (SUPPORTED_TYPES.includes(file.type)) return true;
+  // Fallback: check extension
+  const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+  return SUPPORTED_EXTENSIONS.includes(ext);
+}
+
 export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
   const { activeTenantId } = useAuth();
   const [documentContext, setDocumentContext] = useState<DocumentContext | null>(null);
@@ -150,14 +205,14 @@ export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
 
   const uploadAndParse = useCallback(async (file: File): Promise<DocumentContext | null> => {
     // Validate file type
-    if (!SUPPORTED_TYPES.includes(file.type)) {
-      setParseError(`Dateityp "${file.type}" wird nicht unterstützt. Erlaubt: PDF, Bilder, DOCX, Excel, CSV.`);
+    if (!isFileSupported(file)) {
+      setParseError(`Dateityp "${file.type || file.name.split('.').pop()}" wird nicht unterstützt.`);
       return null;
     }
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      setParseError('Datei ist zu groß (max. 20 MB).');
+      setParseError(`Datei ist zu groß (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum: 50 MB.`);
       return null;
     }
 

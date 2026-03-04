@@ -2,6 +2,8 @@
  * ArmstrongWorkspace — 3-Column Workspace for Dashboard Section 2
  * Left: Projects & Threads | Center: Chat | Right: Context & Sources
  * Mobile: Chat only, sidebars as drawers
+ * 
+ * v2: Project-chat isolation, data_mode toggle, multi-file upload, fixed onboarding
  */
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -35,7 +37,6 @@ import {
   Database,
   Globe,
 } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function ArmstrongWorkspace() {
@@ -51,7 +52,11 @@ export function ArmstrongWorkspace() {
   const [showSlashPicker, setShowSlashPicker] = useState(false);
   const [slashQuery, setSlashQuery] = useState('');
 
-  const advisor = useArmstrongAdvisor();
+  // Pass projectId + dataMode to advisor for isolation + data mode
+  const advisor = useArmstrongAdvisor({
+    projectId: activeProject?.id ?? null,
+    dataMode: useMyData,
+  });
   const voice = useArmstrongVoice();
   const docUpload = useArmstrongDocUpload();
   const { activeProjects } = useArmstrongProjects();
@@ -75,7 +80,6 @@ export function ArmstrongWorkspace() {
 
   const handleInputChange = useCallback((value: string) => {
     setInput(value);
-    // Slash command detection
     if (value.startsWith('/')) {
       setShowSlashPicker(true);
       setSlashQuery(value.slice(1));
@@ -103,7 +107,7 @@ export function ArmstrongWorkspace() {
   }, [advisor]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (showSlashPicker) return; // Let picker handle keyboard
+    if (showSlashPicker) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -123,10 +127,13 @@ export function ArmstrongWorkspace() {
     voice.isSpeaking ? voice.stopSpeaking() : voice.speakResponse(text);
   }, [voice]);
 
+  // Multi-file upload handler
   const handleDocChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    await docUpload.uploadAndParse(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    // Upload first file (sequential parsing, first file becomes context)
+    // Future: queue all files
+    await docUpload.uploadAndParse(files[0]);
     e.target.value = '';
   };
 
@@ -152,7 +159,8 @@ export function ArmstrongWorkspace() {
   };
 
   const hasMessages = advisor.messages.length > 0;
-  const showOnboarding = !hasMessages && activeProjects.length === 0;
+  // Fixed: Show onboarding when no messages AND no active project selected (not based on project count)
+  const showOnboarding = !hasMessages && !activeProject;
 
   const orbState: OrbState = (() => {
     if (voice.isSpeaking) return 'speaking';
@@ -170,13 +178,15 @@ export function ArmstrongWorkspace() {
     return undefined;
   })();
 
+  // Expanded file accept list — maximum coverage
+  const FILE_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.gif,.bmp,.tiff,.tif,.docx,.doc,.csv,.xlsx,.xls,.pptx,.ppt,.txt,.md,.json,.xml,.yaml,.yml,.rtf,.odt,.ods,.odp,.html,.htm,.svg,.mp3,.wav,.m4a,.ogg,.mp4,.mov,.avi,.mkv,.zip,.rar,.7z';
+
   // ── Chat Column (Center) ──
   const chatColumn = (
     <div className="flex flex-col h-full min-w-0">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/30 shrink-0">
         <div className="flex items-center gap-3">
-          {/* Mobile: toggle left panel */}
           {isMobile ? (
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setMobileLeftOpen(true)}>
               <PanelLeftOpen className="h-4 w-4" />
@@ -296,7 +306,8 @@ export function ArmstrongWorkspace() {
       <input
         ref={docInputRef}
         type="file"
-        accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.doc,.csv,.xlsx,.xls"
+        accept={FILE_ACCEPT}
+        multiple
         className="hidden"
         onChange={handleDocChange}
       />
@@ -422,7 +433,6 @@ export function ArmstrongWorkspace() {
       <Card className="flex flex-col h-[calc(100dvh-10rem)] overflow-hidden bg-card/80 backdrop-blur-sm border-border/40">
         {chatColumn}
 
-        {/* Left drawer */}
         <Sheet open={mobileLeftOpen} onOpenChange={setMobileLeftOpen}>
           <SheetContent side="left" className="w-[280px] p-0">
             <ProjectsSidebar
@@ -433,7 +443,6 @@ export function ArmstrongWorkspace() {
           </SheetContent>
         </Sheet>
 
-        {/* Right drawer */}
         <Sheet open={mobileRightOpen} onOpenChange={setMobileRightOpen}>
           <SheetContent side="right" className="w-[280px] p-0">
             <ContextPanel activeProject={activeProject} />
@@ -446,7 +455,6 @@ export function ArmstrongWorkspace() {
   // ── Desktop: 3-Column ──
   return (
     <Card className="flex h-[calc(100dvh-10rem)] overflow-hidden bg-card/80 backdrop-blur-sm border-border/40">
-      {/* Left: Projects */}
       {showLeftPanel && (
         <div className="w-[260px] shrink-0">
           <ProjectsSidebar
@@ -457,12 +465,10 @@ export function ArmstrongWorkspace() {
         </div>
       )}
 
-      {/* Center: Chat */}
       <div className="flex-1 min-w-0">
         {chatColumn}
       </div>
 
-      {/* Right: Context */}
       {showRightPanel && (
         <div className="w-[280px] shrink-0">
           <ContextPanel activeProject={activeProject} />

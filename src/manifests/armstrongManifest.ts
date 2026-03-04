@@ -250,6 +250,32 @@ export function getPersonaPack(route: string): Zone3ActionCode[] | null {
 
 export const armstrongActions: ArmstrongActionV2[] = [
   // ===========================================================================
+  // BILLING: Chat General (metered per-message)
+  // ===========================================================================
+  {
+    action_code: 'ARM.CHAT.GENERAL',
+    title_de: 'Chat-Nachricht (allgemein)',
+    description_de: 'Jede Nachricht an Armstrong im freien Chat oder Projekt-Chat',
+    zones: ['Z2'],
+    module: null,
+    risk_level: 'low',
+    execution_mode: 'readonly',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['conversation'],
+    data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
+    cost_model: 'metered',
+    cost_unit: 'per_call',
+    cost_hint_cents: 1,
+    api_contract: { type: 'internal', endpoint: null },
+    ui_entrypoints: ['/portal'],
+    audit_event_type: 'ARM_CHAT_GENERAL',
+    status: 'active',
+  },
+
+  // ===========================================================================
   // GLOBAL ACTIONS (Available in Z2 and Z3)
   // ===========================================================================
   {

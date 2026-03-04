@@ -1,15 +1,17 @@
 /**
- * ContextPanel — Right column: Active entity, sources, memory (editable), recent actions
- * Phase 3: Memory snippets are now add/edit/delete capable
+ * ContextPanel — Right column: Active entity, sources, memory (editable), tasks, entity linker
+ * v2: Task list UI, EntityLinker, dashboard fallback content
  */
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useArmstrongContext } from '@/hooks/useArmstrongContext';
-import { useArmstrongProjects, type ArmstrongProject, type MemorySnippet } from '@/hooks/useArmstrongProjects';
+import { useArmstrongProjects, type ArmstrongProject, type MemorySnippet, type ProjectTask } from '@/hooks/useArmstrongProjects';
+import { EntityLinker } from '@/components/dashboard/workspace/EntityLinker';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -30,6 +32,10 @@ import {
   Plus,
   Trash2,
   X,
+  ListChecks,
+  BarChart3,
+  FolderOpen,
+  Zap,
 } from 'lucide-react';
 
 interface ContextPanelProps {
@@ -45,19 +51,20 @@ const SNIPPET_TYPE_LABELS: Record<string, string> = {
 
 export function ContextPanel({ activeProject }: ContextPanelProps) {
   const armstrongContext = useArmstrongContext();
-  const { updateProject } = useArmstrongProjects();
+  const { updateProject, activeProjects } = useArmstrongProjects();
   const [isAdding, setIsAdding] = useState(false);
   const [newContent, setNewContent] = useState('');
   const [newType, setNewType] = useState<MemorySnippet['type']>('note');
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
 
   const context = useMemo(() => {
     if (armstrongContext.zone === 'Z2') return armstrongContext;
     return null;
   }, [armstrongContext]);
 
-  const linkedEntities = activeProject?.linked_entities || {};
   const memorySnippets = (activeProject?.memory_snippets || []) as MemorySnippet[];
-  const hasLinkedEntities = Object.values(linkedEntities).some(arr => Array.isArray(arr) && arr.length > 0);
+  const taskList = (activeProject?.task_list || []) as ProjectTask[];
 
   const snippetIcon = (type: string) => {
     switch (type) {
@@ -68,6 +75,7 @@ export function ContextPanel({ activeProject }: ContextPanelProps) {
     }
   };
 
+  // ── Memory Snippets CRUD ──
   const handleAddSnippet = () => {
     if (!activeProject || !newContent.trim()) return;
     const snippet: MemorySnippet = {
@@ -91,6 +99,53 @@ export function ContextPanel({ activeProject }: ContextPanelProps) {
       memory_snippets: memorySnippets.filter(s => s.id !== snippetId),
     });
   };
+
+  // ── Task List CRUD ──
+  const handleAddTask = () => {
+    if (!activeProject || !newTaskTitle.trim()) return;
+    const task: ProjectTask = {
+      id: crypto.randomUUID(),
+      title: newTaskTitle.trim(),
+      done: false,
+      created_at: new Date().toISOString(),
+    };
+    updateProject.mutate({
+      id: activeProject.id,
+      task_list: [...taskList, task],
+    });
+    setNewTaskTitle('');
+    setIsAddingTask(false);
+  };
+
+  const handleToggleTask = (taskId: string) => {
+    if (!activeProject) return;
+    updateProject.mutate({
+      id: activeProject.id,
+      task_list: taskList.map(t => t.id === taskId ? { ...t, done: !t.done } : t),
+    });
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    if (!activeProject) return;
+    updateProject.mutate({
+      id: activeProject.id,
+      task_list: taskList.filter(t => t.id !== taskId),
+    });
+  };
+
+  // ── Entity linking ──
+  const handleEntitiesChange = (entities: Record<string, string[]>) => {
+    if (!activeProject) return;
+    updateProject.mutate({
+      id: activeProject.id,
+      linked_entities: entities,
+    });
+  };
+
+  // ── Dashboard stats ──
+  const totalTasks = activeProjects.reduce((sum, p) => sum + ((p.task_list as ProjectTask[]) || []).length, 0);
+  const openTasks = activeProjects.reduce((sum, p) => sum + ((p.task_list as ProjectTask[]) || []).filter(t => !t.done).length, 0);
+  const totalMemory = activeProjects.reduce((sum, p) => sum + ((p.memory_snippets as MemorySnippet[]) || []).length, 0);
 
   return (
     <div className="flex flex-col h-full border-l border-border/30 bg-muted/10">
@@ -147,27 +202,74 @@ export function ContextPanel({ activeProject }: ContextPanelProps) {
             </div>
           )}
 
-          {/* Linked Entities */}
-          {hasLinkedEntities && (
+          {/* Entity Linker */}
+          {activeProject && (
+            <EntityLinker
+              linkedEntities={activeProject.linked_entities || {}}
+              onEntitiesChange={handleEntitiesChange}
+            />
+          )}
+
+          {/* Task List */}
+          {activeProject && (
             <div>
-              <div className="flex items-center gap-1.5 mb-2">
-                <Building2 className="h-3 w-3 text-primary" />
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Verknüpfte Objekte</span>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <ListChecks className="h-3 w-3 text-primary" />
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Aufgaben</span>
+                  {taskList.length > 0 && (
+                    <Badge variant="secondary" className="text-[9px] px-1 py-0 ml-1">
+                      {taskList.filter(t => !t.done).length}/{taskList.length}
+                    </Badge>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0"
+                  onClick={() => setIsAddingTask(!isAddingTask)}
+                >
+                  {isAddingTask ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                </Button>
               </div>
-              <div className="space-y-1">
-                {Object.entries(linkedEntities).map(([type, ids]) => {
-                  if (!Array.isArray(ids) || ids.length === 0) return null;
-                  return (
-                    <div key={type} className="px-2 py-1.5 rounded-md bg-muted/30 text-xs flex items-center gap-2">
-                      {type === 'properties' ? <Building2 className="h-3 w-3" /> :
-                       type === 'contacts' ? <Users className="h-3 w-3" /> :
-                       <FileText className="h-3 w-3" />}
-                      <span className="capitalize">{type}</span>
-                      <Badge variant="secondary" className="text-[10px] ml-auto">{ids.length}</Badge>
+
+              {isAddingTask && (
+                <div className="mb-2">
+                  <Input
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddTask(); }}
+                    placeholder="Neue Aufgabe..."
+                    className="h-7 text-xs"
+                    autoFocus
+                  />
+                </div>
+              )}
+
+              {taskList.length === 0 && !isAddingTask ? (
+                <p className="text-[11px] text-muted-foreground px-2">Keine Aufgaben. Nutze + zum Erstellen.</p>
+              ) : (
+                <div className="space-y-0.5">
+                  {taskList.map(task => (
+                    <div key={task.id} className="group flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted/30 text-xs">
+                      <Checkbox
+                        checked={task.done}
+                        onCheckedChange={() => handleToggleTask(task.id)}
+                        className="h-3.5 w-3.5"
+                      />
+                      <span className={cn('flex-1 text-[11px] leading-relaxed', task.done && 'line-through text-muted-foreground')}>
+                        {task.title}
+                      </span>
+                      <button
+                        className="opacity-0 group-hover:opacity-100 shrink-0 p-0.5 text-muted-foreground hover:text-destructive transition-opacity"
+                        onClick={() => handleDeleteTask(task.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -189,7 +291,6 @@ export function ContextPanel({ activeProject }: ContextPanelProps) {
                 </Button>
               </div>
 
-              {/* Add snippet form */}
               {isAdding && (
                 <div className="mb-2 p-2 rounded-md bg-primary/5 border border-primary/10 space-y-1.5">
                   <Select value={newType} onValueChange={(v) => setNewType(v as MemorySnippet['type'])}>
@@ -242,13 +343,48 @@ export function ContextPanel({ activeProject }: ContextPanelProps) {
             </div>
           )}
 
-          {/* Empty state */}
+          {/* Dashboard Fallback — when no project selected */}
           {!activeProject && !context?.entity_id && (
-            <div className="text-center py-8">
-              <Brain className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">
-                Kontext wird automatisch erkannt oder durch Projektwahl aktiviert.
-              </p>
+            <div className="space-y-4">
+              {/* Quick Stats */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <BarChart3 className="h-3 w-3 text-primary" />
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Übersicht</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div className="px-2 py-2 rounded-md bg-muted/30 text-center">
+                    <p className="text-lg font-bold text-foreground">{activeProjects.length}</p>
+                    <p className="text-[9px] text-muted-foreground">Projekte</p>
+                  </div>
+                  <div className="px-2 py-2 rounded-md bg-muted/30 text-center">
+                    <p className="text-lg font-bold text-foreground">{openTasks}</p>
+                    <p className="text-[9px] text-muted-foreground">Offene Tasks</p>
+                  </div>
+                  <div className="px-2 py-2 rounded-md bg-muted/30 text-center">
+                    <p className="text-lg font-bold text-foreground">{totalMemory}</p>
+                    <p className="text-[9px] text-muted-foreground">Memory</p>
+                  </div>
+                  <div className="px-2 py-2 rounded-md bg-muted/30 text-center">
+                    <p className="text-lg font-bold text-foreground">{totalTasks}</p>
+                    <p className="text-[9px] text-muted-foreground">Gesamt-Tasks</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Links */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Zap className="h-3 w-3 text-primary" />
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Schnellzugriff</span>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/30 cursor-default">
+                    <FolderOpen className="h-3 w-3 text-muted-foreground" />
+                    <span>Wähle ein Projekt links, um den Kontext zu laden</span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

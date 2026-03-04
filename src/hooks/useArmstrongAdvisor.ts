@@ -3,6 +3,8 @@
  * 
  * Connects ChatPanel to sot-armstrong-advisor Edge Function.
  * Handles message sending, action confirmation, and state management.
+ * 
+ * v2: Project-based chat isolation + data_mode support
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -108,6 +110,10 @@ interface AdvisorRequest {
     content_type: string;
     confidence: number;
   } | null;
+  /** Data mode: 'tenant' = use user's DB data, 'general' = general knowledge only */
+  data_mode?: 'tenant' | 'general';
+  /** Project ID for chat isolation */
+  project_id?: string | null;
 }
 
 interface AdvisorResponse {
@@ -135,8 +141,16 @@ interface AdvisorResponse {
 
 const MVP_MODULES = ['MOD-00', 'MOD-01', 'MOD-03', 'MOD-04', 'MOD-05', 'MOD-06', 'MOD-07', 'MOD-08', 'MOD-09', 'MOD-10', 'MOD-11', 'MOD-12', 'MOD-13', 'MOD-14', 'MOD-15', 'MOD-17', 'MOD-18', 'MOD-19', 'MOD-20', 'MOD-22'];
 
-// Global Assist: Armstrong helps everywhere, but module-specific actions
-// are only available in MVP modules
+// =============================================================================
+// HOOK OPTIONS
+// =============================================================================
+
+export interface UseArmstrongAdvisorOptions {
+  /** Project ID for chat isolation. null = free chat. */
+  projectId?: string | null;
+  /** Data mode toggle: true = tenant data, false = general */
+  dataMode?: boolean;
+}
 
 // =============================================================================
 // HOOK
@@ -307,25 +321,82 @@ Jede Projekteinheit hat folgende Kernfelder:
 Wähle eine Einheit in der Tabelle aus, um alle Details zu sehen.`,
 };
 
-export function useArmstrongAdvisor() {
+// =============================================================================
+// CHAT CACHE KEY
+// =============================================================================
+
+function cacheKey(projectId: string | null | undefined): string {
+  return projectId || '__free__';
+}
+
+export function useArmstrongAdvisor(options?: UseArmstrongAdvisorOptions) {
   const context = useArmstrongContext();
   const intakeState = useIntakeListener();
-  const [messages, setMessages] = useState<ChatMessage[]>([getWelcomeMessage('MOD-00')]);
+  
+  const projectId = options?.projectId ?? null;
+  const dataMode = options?.dataMode ?? true;
+
+  // ── Per-project message cache ──
+  const messageCacheRef = useRef<Map<string, ChatMessage[]>>(new Map());
+  const conversationCacheRef = useRef<Map<string, Array<{ role: string; content: string }>>>(new Map());
+
+  const getMessagesForProject = useCallback((pid: string | null): ChatMessage[] => {
+    const key = cacheKey(pid);
+    if (!messageCacheRef.current.has(key)) {
+      messageCacheRef.current.set(key, [getWelcomeMessage('MOD-00')]);
+    }
+    return messageCacheRef.current.get(key)!;
+  }, []);
+
+  const getConversationForProject = useCallback((pid: string | null): Array<{ role: string; content: string }> => {
+    const key = cacheKey(pid);
+    if (!conversationCacheRef.current.has(key)) {
+      conversationCacheRef.current.set(key, []);
+    }
+    return conversationCacheRef.current.get(key)!;
+  }, []);
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => getMessagesForProject(projectId));
   const [isLoading, setIsLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [activeFlow, setActiveFlow] = useState<FlowState | null>(null);
-  const conversationRef = useRef<Array<{ role: string; content: string }>>([]);
   const lastModuleRef = useRef<string>('MOD-00');
   const lastIntakeStepRef = useRef<IntakeState['step']>(null);
+  const prevProjectIdRef = useRef<string | null>(projectId);
+
+  // ── Switch project: save current, load new ──
+  useEffect(() => {
+    const prevKey = cacheKey(prevProjectIdRef.current);
+    const newKey = cacheKey(projectId);
+    
+    if (prevKey !== newKey) {
+      // Save current messages to cache
+      messageCacheRef.current.set(prevKey, messages);
+      
+      // Load messages for new project
+      const newMessages = getMessagesForProject(projectId);
+      setMessages(newMessages);
+      setPendingAction(null);
+      setActiveFlow(null);
+      
+      prevProjectIdRef.current = projectId;
+    }
+  }, [projectId]);
+
+  // Keep cache in sync with messages state
+  useEffect(() => {
+    messageCacheRef.current.set(cacheKey(projectId), messages);
+  }, [messages, projectId]);
 
   // Update welcome message when module changes
   useEffect(() => {
     const mod = context.zone === 'Z2' ? (context as Zone2Context).current_module || 'MOD-00' : 'MOD-00';
     if (mod !== lastModuleRef.current && messages.length <= 1) {
       lastModuleRef.current = mod;
-      setMessages([getWelcomeMessage(mod)]);
-      conversationRef.current = [];
+      const welcome = [getWelcomeMessage(mod)];
+      setMessages(welcome);
+      conversationCacheRef.current.set(cacheKey(projectId), []);
     }
   }, [context]);
 
@@ -358,7 +429,6 @@ export function useArmstrongAdvisor() {
       if (intakeState.projectType === 'aufteilung') {
         parts.push('Projekttyp: **Aufteilungsobjekt**.');
       }
-      // Warnings
       const warnCount = intakeState.warnings.filter(w => w.type === 'warning').length;
       const errCount = intakeState.warnings.filter(w => w.type === 'error').length;
       if (errCount > 0) {
@@ -383,7 +453,8 @@ export function useArmstrongAdvisor() {
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, msg]);
-      conversationRef.current.push({ role: 'assistant', content: proactiveContent });
+      const conv = getConversationForProject(projectId);
+      conv.push({ role: 'assistant', content: proactiveContent });
     }
   }, [intakeState.step]);
 
@@ -415,6 +486,7 @@ export function useArmstrongAdvisor() {
     documentContext?: AdvisorRequest['document_context']
   ): AdvisorRequest => {
     const z2ctx = context as Zone2Context;
+    const conv = getConversationForProject(projectId);
     
     return {
       zone: 'Z2',
@@ -426,21 +498,24 @@ export function useArmstrongAdvisor() {
       },
       message,
       conversation: {
-        last_messages: conversationRef.current.slice(-10),
+        last_messages: conv.slice(-10),
       },
       action_request: actionRequest || null,
       flow: flow || (activeFlow ? { flow_type: activeFlow.flow_type, flow_state: { step: activeFlow.step } } : null),
       document_context: documentContext || null,
+      data_mode: dataMode ? 'tenant' : 'general',
+      project_id: projectId,
     };
-  }, [context, getCurrentModule, activeFlow]);
+  }, [context, getCurrentModule, activeFlow, projectId, dataMode, getConversationForProject]);
 
   /**
    * Add message to state
    */
   const addMessage = useCallback((msg: ChatMessage) => {
     setMessages(prev => [...prev, msg]);
-    conversationRef.current.push({ role: msg.role, content: msg.content });
-  }, []);
+    const conv = getConversationForProject(projectId);
+    conv.push({ role: msg.role, content: msg.content });
+  }, [projectId, getConversationForProject]);
 
   /**
    * Add a proactive message (from external hints) without triggering AI
@@ -448,8 +523,9 @@ export function useArmstrongAdvisor() {
   const addProactiveMessage = useCallback((msg: { id: string; role: 'assistant'; content: string; timestamp: Date }) => {
     const chatMsg: ChatMessage = { ...msg, role: 'assistant' };
     setMessages(prev => [...prev, chatMsg]);
-    conversationRef.current.push({ role: 'assistant', content: msg.content });
-  }, []);
+    const conv = getConversationForProject(projectId);
+    conv.push({ role: 'assistant', content: msg.content });
+  }, [projectId, getConversationForProject]);
 
   /**
    * Process advisor response
@@ -464,7 +540,6 @@ export function useArmstrongAdvisor() {
         status: response.flow_state.status,
         result: response.flow_state.result,
       });
-      // If flow completed, clear active flow after a moment
       if (response.flow_state.status === 'completed') {
         setTimeout(() => setActiveFlow(null), 500);
       }
@@ -538,10 +613,8 @@ export function useArmstrongAdvisor() {
   const sendMessage = useCallback(async (text: string, documentContext?: AdvisorRequest['document_context']) => {
     if (!text.trim()) return;
 
-    // Clear any pending action when new message is sent
     setPendingAction(null);
 
-    // Add user message
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
       role: 'user',
@@ -564,7 +637,6 @@ export function useArmstrongAdvisor() {
       const assistantMessage = processResponse(data);
       addMessage(assistantMessage);
 
-      // Show toast for results
       if (data.type === 'RESULT') {
         toast({
           title: data.status === 'completed' ? 'Aktion abgeschlossen' : 'Aktion fehlgeschlagen',
@@ -623,7 +695,6 @@ export function useArmstrongAdvisor() {
       const resultMessage = processResponse(data);
       addMessage(resultMessage);
 
-      // Clear pending action after execution
       setPendingAction(null);
 
       toast({
@@ -664,7 +735,6 @@ export function useArmstrongAdvisor() {
    * Handle clicking a suggested action
    */
   const selectAction = useCallback(async (action: SuggestedAction) => {
-    // Add user selection as message
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
       role: 'user',
@@ -673,7 +743,6 @@ export function useArmstrongAdvisor() {
     };
     addMessage(userMessage);
 
-    // ── Static response shortcut (no AI call needed) ──
     const staticResponse = STATIC_ACTION_RESPONSES[action.action_code];
     if (staticResponse) {
       const staticMsg: ChatMessage = {
@@ -690,7 +759,6 @@ export function useArmstrongAdvisor() {
     setIsLoading(true);
 
     try {
-      // If action requires confirmation, request it
       if (action.execution_mode === 'execute_with_confirmation') {
         const request = buildRequest('', {
           action_code: action.action_code,
@@ -706,7 +774,6 @@ export function useArmstrongAdvisor() {
         const assistantMessage = processResponse(data);
         addMessage(assistantMessage);
       } else {
-        // For readonly or draft_only, execute directly
         const request = buildRequest('', {
           action_code: action.action_code,
           confirmed: true,
@@ -743,21 +810,21 @@ export function useArmstrongAdvisor() {
   }, [addMessage, buildRequest, processResponse]);
 
   /**
-   * Clear conversation
+   * Clear conversation for current project
    */
   const clearConversation = useCallback(() => {
-    setMessages([getWelcomeMessage(getCurrentModule())]);
-    conversationRef.current = [];
+    const welcome = [getWelcomeMessage(getCurrentModule())];
+    setMessages(welcome);
+    messageCacheRef.current.set(cacheKey(projectId), welcome);
+    conversationCacheRef.current.set(cacheKey(projectId), []);
     setPendingAction(null);
     setActiveFlow(null);
-  }, []);
+  }, [projectId, getCurrentModule]);
 
   /**
-   * Start a guided flow (e.g., Social Audit)
-   * Opens Armstrong with a special context that triggers the flow handler
+   * Start a guided flow
    */
   const startFlow = useCallback(async (flowType: string, flowConfig?: Record<string, unknown>) => {
-    // Set flow state
     setActiveFlow({
       flow_type: flowType,
       step: 0,
@@ -765,9 +832,9 @@ export function useArmstrongAdvisor() {
       status: 'active',
     });
 
-    // Clear conversation for fresh flow
-    setMessages([getWelcomeMessage(getCurrentModule())]);
-    conversationRef.current = [];
+    const welcome = [getWelcomeMessage(getCurrentModule())];
+    setMessages(welcome);
+    conversationCacheRef.current.set(cacheKey(projectId), []);
     setPendingAction(null);
     setIsLoading(true);
 
@@ -801,7 +868,7 @@ export function useArmstrongAdvisor() {
     } finally {
       setIsLoading(false);
     }
-  }, [buildRequest, processResponse, addMessage]);
+  }, [buildRequest, processResponse, addMessage, projectId, getCurrentModule]);
 
   /**
    * Cancel active flow
