@@ -1,7 +1,7 @@
 /**
- * ARMSTRONG INFO PAGE — Werbeseite + Billing Hub
+ * ARMSTRONG INFO PAGE — Feature-Übersicht & Aktionskatalog
  * Route: /portal/armstrong
- * Zeigt: Was Armstrong kann, wie er funktioniert, Preise, Verbrauch, Add-Ons
+ * Zeigt: Was Armstrong kann, wie er funktioniert, Aktionen & Preise, Add-Ons
  */
 
 import { useState } from 'react';
@@ -13,7 +13,6 @@ import {
   Bot, Zap, Shield, CreditCard, ArrowRight, ChevronDown, Package, ListChecks
 } from 'lucide-react';
 
-import { KostenDashboard } from '@/pages/portal/communication-pro/agenten/KostenDashboard';
 import { SystemPreisliste } from '@/components/shared/SystemPreisliste';
 import { EmailEnrichmentCard } from '@/components/shared/EmailEnrichmentCard';
 import { WhatsAppArmstrongCard } from '@/components/shared/WhatsAppArmstrongCard';
@@ -125,13 +124,6 @@ export default function ArmstrongInfoPage() {
             </div>
           </CardContent>
         </Card>
-      </CollapsibleSection>
-
-      <Separator />
-
-      {/* ─── VERBRAUCH & KOSTEN — Collapsible, default offen ─── */}
-      <CollapsibleSection title="Verbrauch & Kosten" icon={CreditCard} defaultOpen>
-        <KostenDashboard />
       </CollapsibleSection>
 
       <Separator />
