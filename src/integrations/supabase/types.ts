@@ -2237,6 +2237,7 @@ export type Database = {
           last_active_at: string
           messages: Json
           module: string | null
+          project_id: string | null
           session_id: string
           tenant_id: string | null
           user_id: string | null
@@ -2251,6 +2252,7 @@ export type Database = {
           last_active_at?: string
           messages?: Json
           module?: string | null
+          project_id?: string | null
           session_id: string
           tenant_id?: string | null
           user_id?: string | null
@@ -2265,6 +2267,7 @@ export type Database = {
           last_active_at?: string
           messages?: Json
           module?: string | null
+          project_id?: string | null
           session_id?: string
           tenant_id?: string | null
           user_id?: string | null
@@ -2272,6 +2275,13 @@ export type Database = {
           zone?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "armstrong_chat_sessions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "armstrong_projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "armstrong_chat_sessions_tenant_id_fkey"
             columns: ["tenant_id"]
