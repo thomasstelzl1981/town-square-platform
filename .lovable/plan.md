@@ -1,151 +1,91 @@
 
 
-## Plan: Light Graphite Chrome — Dunkle Kopfleiste (Medium Graphite 45%)
+## Diagnose
 
-### Konzept
+Aus dem Screenshot ist das Problem klar:
 
-Header + AreaTabs + SubTabs werden im Light Mode zu einem dunklen Graphit-Block (Lightness ~45%). Text und Icons werden hell. Active Pills bleiben weiss. Dark Mode bleibt 100% unveraendert.
+1. **SystemBar (Row 1 — "SYSTEM OF A TOWN")** wurde NICHT auf Graphit umgestellt. Sie nutzt noch `bg-card/70 backdrop-blur-lg` — ein helles, transparentes Grau. Die Glass-Buttons verwenden `bg-white/30`, was auf hellem Hintergrund verwaschen wirkt.
+2. **AreaTabs + SubTabs (Row 2+3)** sind auf Graphit — aber der Uebergang von der hellen SystemBar zum dunklen Graphit-Block sieht gebrochen aus.
+3. Die Glass-Buttons in der SystemBar (`GLASS_BUTTON` Konstante) verwenden `text-foreground` — das ist Schwarz im Light Mode, muss aber Hell werden auf Graphit.
 
-### Aenderung 1: `src/index.css` — Chrome-Tokens auf Graphite
+## Plan: SystemBar auf Graphit angleichen
 
-Bestehende Light-Chrome-Tokens ersetzen (Zeile 106-110):
+Nur 1 Datei: `src/components/portal/SystemBar.tsx`
 
-```css
-/* Chrome Frame — Light Graphite */
---chrome-bg: 220 14% 32%;
---chrome-bg-2: 220 12% 38%;
---chrome-border: 220 10% 26%;
---chrome-shadow: 0 6px 18px -14px rgb(0 0 0 / 0.30);
+### Aenderung 1: Desktop Header-Container (Zeile 207)
 
-/* Chrome Text (NEU) */
---chrome-foreground: 0 0% 95%;
---chrome-foreground-muted: 0 0% 65%;
+Von:
+```
+bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60
 ```
 
-Light `.nav-tab-glass` Override anpassen (Zeile 700-710) — muss auf dunklem BG funktionieren:
-```css
-:root .nav-tab-glass {
-  backdrop-filter: none;
-  background: hsl(220 12% 38% / 0.8);
-  border: 1px solid hsl(220 10% 45% / 0.5);
-  box-shadow: none;
-  color: hsl(0 0% 85%);
-}
-:root .nav-tab-glass:hover {
-  background: hsl(220 12% 44% / 0.9);
-  border-color: hsl(220 10% 50% / 0.6);
-  color: hsl(0 0% 95%);
-}
+Zu:
+```
+bg-[hsl(var(--chrome-bg))] text-[hsl(var(--chrome-foreground))] shadow-[var(--chrome-shadow)] dark:bg-card/70 dark:backdrop-blur-lg dark:supports-[backdrop-filter]:bg-card/60 dark:text-foreground
 ```
 
-Light `.btn-glass` Override anpassen (Zeile 606-617) — Header-Buttons auf Graphit:
-```css
-:root .btn-glass {
-  background: hsl(220 12% 40% / 0.6);
-  border: 1px solid hsl(220 10% 50% / 0.3);
-  color: hsl(0 0% 90%);
-}
-:root .btn-glass:hover {
-  background: hsl(220 12% 46% / 0.8);
-}
+Gleiche Graphit-Basis wie PortalHeader/TopNavigation. Dark Mode bleibt unveraendert.
+
+### Aenderung 2: GLASS_BUTTON Konstante (Zeile 38-47)
+
+Von:
+```
+bg-white/30 dark:bg-white/10
+backdrop-blur-md
+border border-white/20 dark:border-white/10
+shadow-[inset_0_1px_0_hsla(0,0%,100%,0.15)]
+hover:bg-white/45 dark:hover:bg-white/15
+text-foreground
 ```
 
-Light `.glass-nav` Override anpassen (Zeile 588-594):
-```css
-:root .glass-nav {
-  background: hsl(var(--chrome-bg) / 0.98);
-  backdrop-filter: none;
-  border: 1px solid hsl(var(--chrome-border) / 0.5);
-  box-shadow: var(--chrome-shadow);
-}
+Zu:
+```
+bg-white/15 dark:bg-white/10
+border border-white/15 dark:border-white/10
+shadow-[inset_0_1px_0_hsla(0,0%,100%,0.08)]
+hover:bg-white/25 dark:hover:bg-white/15
+text-[hsl(var(--chrome-foreground))] dark:text-foreground
 ```
 
-### Aenderung 2: `src/components/portal/PortalHeader.tsx`
+Auf dunklem Graphit: dezentere weisse Transparenz, helle Icons/Text. `backdrop-blur-md` entfernt (sinnlos auf solidem Graphit im Light Mode — bleibt im Dark ueber den Container).
 
-Zeile 53 — Header Container:
+### Aenderung 3: "SYSTEM OF A TOWN" Wordmark (Zeile 231)
+
+Von:
 ```
-bg-[hsl(var(--chrome-bg))] text-[hsl(var(--chrome-foreground))]
-shadow-[var(--chrome-shadow)]
-dark:bg-background/95 dark:backdrop-blur dark:supports-[backdrop-filter]:bg-background/60 dark:shadow-none dark:text-foreground
-```
-
-Zeile 88 — Logo Icon: `text-primary` → `text-primary dark:text-primary` (bleibt, kontrastiert gut auf Graphit)
-
-Zeile 89 — Logo Text "Portal": Erbt `text-[hsl(var(--chrome-foreground))]` vom Container — passt.
-
-Zeile 114 — Armstrong Toggle Active-State: `bg-white/40` → `bg-white/20` (auf dunklem BG)
-
-### Aenderung 3: `src/components/portal/TopNavigation.tsx`
-
-Zeile 49 — Nav Container:
-```
-border-b border-[hsl(var(--chrome-border)/0.5)]
-bg-[hsl(var(--chrome-bg))]
-shadow-[0_2px_8px_-4px_rgb(0_0_0/0.15)]
-dark:bg-card/60 dark:backdrop-blur-md dark:shadow-none dark:border-b
+text-foreground
 ```
 
-### Aenderung 4: `src/components/portal/AreaTabs.tsx`
-
-Zeile 54 — Pill-Container: Text-Farbe erbt vom Chrome-Container, aber explizit setzen fuer inactive:
+Zu:
 ```
-'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium uppercase tracking-wide transition-colors'
+text-[hsl(var(--chrome-foreground))] dark:text-foreground
 ```
 
-Zeile 56 — Active Pill (bleibt weiss — maximaler Kontrast auf Graphit):
+### Aenderung 4: Armstrong Active-State (Zeile 250)
+
+Von:
 ```
-'bg-white text-foreground shadow-md border border-white/20 dark:bg-primary/90 dark:text-primary-foreground dark:shadow-lg dark:border-0'
+bg-white/40 dark:bg-white/15
 ```
 
-Zeile 57 — Inactive: statt `text-muted-foreground`:
+Zu:
 ```
-'nav-tab-glass text-[hsl(var(--chrome-foreground-muted))] hover:text-[hsl(var(--chrome-foreground))] dark:text-muted-foreground dark:hover:text-foreground'
+bg-white/25 dark:bg-white/15
 ```
-
-### Aenderung 5: `src/components/portal/SubTabs.tsx`
-
-Zeile 37 — Container BG:
-```
-bg-[hsl(var(--chrome-bg-2))] dark:bg-background/50
-```
-
-Zeile 49 — Active SubTab (weiss):
-```
-'bg-white text-foreground font-medium shadow-sm border border-white/20 dark:bg-primary/90 dark:text-primary-foreground dark:border-0'
-```
-
-Zeile 50 — Inactive: gleiche Chrome-Foreground-Logik wie AreaTabs:
-```
-'nav-tab-glass text-[hsl(var(--chrome-foreground-muted))] hover:text-[hsl(var(--chrome-foreground))] dark:text-muted-foreground dark:hover:text-foreground'
-```
-
-### Was NICHT geaendert wird
-
-- Dark Mode: alle Aenderungen mit `dark:` geschuetzt
-- Canvas + Content Well: bleiben bei 94% + weiss
-- Primary/Status-Farben: unveraendert
-- Mobile Navigation: nicht betroffen
-- Popovers/Dropdowns: oeffnen sich nach unten ins helle Gebiet — kein Anpassungsbedarf
 
 ### Erwartetes Ergebnis
 
 ```text
-+==[ GRAPHIT 32% — dunkel, shadow ]============+
-|  Logo (weiss)  🔍  👤  ⚙️  (helle Icons)    |
-+--[ GRAPHIT 32% — AreaTabs ]------------------+
-|  [BASE] [MISSIONS] [OPS] [SERVICES]          |
-|   ^^^^^ weisse Pill auf Graphit = pop!        |
-|   andere = helles Grau/65% auf Graphit        |
-+--[ GRAPHIT 38% — SubTabs ]-------------------+
-|  Tab1 | Tab2 | Tab3 | Tab4                    |
-+~~~ shadow-Kante ~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-|                                              |
-|    Canvas: 94% warm-gray (hell)              |
-|  +========================================+  |
-|  | Content Well: 100% weiss, shadow-md    |  |
-|  +========================================+  |
-+----------------------------------------------+
++==[ GRAPHIT 32% — SystemBar ]==================+
+|  🏠 ☀️ 12°  SYSTEM OF A TOWN  🕐 🚀 👤     |
+|  (alle Icons + Text = weiss/95%)               |
++--[ GRAPHIT 32% — AreaTabs ]-------------------+
+|  [CLIENT] [MANAGER] [SERVICE] [BASE]           |
++--[ GRAPHIT 38% — SubTabs ]--------------------+
+|  HOME | PORTFOLIO | STEUER | SANIERUNG         |
++~~~ shadow ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+|  Canvas: 94%                                   |
 ```
 
-5 Dateien, sofortiger Enterprise-Frame-Effekt. Weisse Pills auf Graphit sind das staerkste CRM-Pattern.
+Alle 3 Leisten bilden einen einheitlichen dunklen Graphit-Block. 1 Datei, 4 Aenderungen.
 
