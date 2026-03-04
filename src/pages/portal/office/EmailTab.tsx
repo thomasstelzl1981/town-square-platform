@@ -63,6 +63,8 @@ import {
   MessageSquare,
   Filter,
   X,
+  Users,
+  Calendar,
 } from 'lucide-react';
 
 // Email Account Types
@@ -558,6 +560,62 @@ export function EmailTab() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // ─── Handle Gmail OAuth redirect (popup redirects back here with ?gmail_auth=success) ───
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const gmailAuth = params.get('gmail_auth');
+    if (gmailAuth) {
+      // Clean URL
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+
+      if (gmailAuth === 'success') {
+        toast.success('Gmail erfolgreich verbunden!');
+        refetchAccounts();
+        setShowConnectionDialog(false);
+      } else {
+        const errorMsg = params.get('gmail_error') || 'Unbekannt';
+        toast.error('Gmail-Verbindung fehlgeschlagen: ' + errorMsg);
+      }
+      setIsConnecting(false);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Manual sync mutations (Contacts & Calendar) ───
+  const syncContactsMutation = useMutation({
+    mutationFn: async (accountId: string) => {
+      const { data, error } = await supabase.functions.invoke('sot-contacts-sync', {
+        body: { accountId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`${data?.syncedContacts || 0} Kontakte synchronisiert`);
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    },
+    onError: (error: any) => {
+      toast.error('Kontakte-Sync fehlgeschlagen: ' + error.message);
+    },
+  });
+
+  const syncCalendarMutation = useMutation({
+    mutationFn: async (accountId: string) => {
+      const { data, error } = await supabase.functions.invoke('sot-calendar-sync', {
+        body: { accountId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`${data?.syncedEvents || 0} Termine synchronisiert`);
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+    onError: (error: any) => {
+      toast.error('Kalender-Sync fehlgeschlagen: ' + error.message);
+    },
+  });
+
   const openCompose = (to = '', subject = '', body = '') => {
     setComposeInitialTo(to);
     setComposeInitialSubject(subject);
@@ -952,52 +1010,8 @@ export function EmailTab() {
       if (data?.error) throw new Error(data.error);
       if (!data?.authUrl) throw new Error('Keine Auth-URL erhalten');
 
-      const popup = window.open(data.authUrl, 'gmail-auth', 'width=600,height=700,menubar=no,toolbar=no,location=yes');
-
-      const handleResult = (msg: any) => {
-        cleanup();
-        if (msg.success) {
-          toast.success('Gmail erfolgreich verbunden!');
-          refetchAccounts();
-          setShowConnectionDialog(false);
-        } else {
-          toast.error('Gmail-Verbindung fehlgeschlagen: ' + (msg.error || 'Unbekannt'));
-        }
-        setIsConnecting(false);
-      };
-
-      const cleanup = () => {
-        window.removeEventListener('message', handleMessage);
-        window.removeEventListener('storage', handleStorage);
-        clearInterval(pollTimer);
-      };
-
-      const handleMessage = (event: MessageEvent) => {
-        try {
-          const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-          if (msg?.type === 'gmail_auth_result') handleResult(msg);
-        } catch { /* ignore */ }
-      };
-
-      const handleStorage = (e: StorageEvent) => {
-        if (e.key === 'gmail_auth_result' && e.newValue) {
-          try {
-            const msg = JSON.parse(e.newValue);
-            localStorage.removeItem('gmail_auth_result');
-            handleResult(msg);
-          } catch { /* ignore */ }
-        }
-      };
-
-      window.addEventListener('message', handleMessage);
-      window.addEventListener('storage', handleStorage);
-
-      const pollTimer = setInterval(() => {
-        if (popup && popup.closed) {
-          cleanup();
-          setTimeout(() => { refetchAccounts(); setIsConnecting(false); }, 1500);
-        }
-      }, 1000);
+      // Redirect in same window — the callback will redirect back to /portal/office/email?gmail_auth=success
+      window.location.href = data.authUrl;
     } catch (error: any) {
       toast.error('Google-Verbindung fehlgeschlagen: ' + error.message);
       setIsConnecting(false);
@@ -1179,6 +1193,47 @@ export function EmailTab() {
                 ))}
               </div>
             </ScrollArea>
+
+            {/* Manual Sync Triggers */}
+            {hasConnectedAccount && (
+              <div className="p-3 border-t space-y-1.5 shrink-0">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Synchronisieren</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start gap-2 h-8 text-xs"
+                  disabled={syncContactsMutation.isPending}
+                  onClick={() => {
+                    const acc = activeAccount || accounts[0];
+                    if (acc) syncContactsMutation.mutate(acc.id);
+                  }}
+                >
+                  {syncContactsMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Users className="h-3.5 w-3.5" />
+                  )}
+                  Kontakte importieren
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start gap-2 h-8 text-xs"
+                  disabled={syncCalendarMutation.isPending}
+                  onClick={() => {
+                    const acc = activeAccount || accounts[0];
+                    if (acc) syncCalendarMutation.mutate(acc.id);
+                  }}
+                >
+                  {syncCalendarMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Calendar className="h-3.5 w-3.5" />
+                  )}
+                  Kalender synchronisieren
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Middle - Thread/Message List */}
