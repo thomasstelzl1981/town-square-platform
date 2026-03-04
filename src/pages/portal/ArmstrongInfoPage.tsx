@@ -4,11 +4,13 @@
  * Zeigt: Was Armstrong kann, wie er funktioniert, Preise, Verbrauch, Add-Ons
  */
 
+import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
-  Bot, Zap, Shield, CreditCard, ArrowRight
+  Bot, Zap, Shield, CreditCard, ArrowRight, ChevronDown, Package, ListChecks
 } from 'lucide-react';
 
 import { KostenDashboard } from '@/pages/portal/communication-pro/agenten/KostenDashboard';
@@ -17,6 +19,7 @@ import { EmailEnrichmentCard } from '@/components/shared/EmailEnrichmentCard';
 import { WhatsAppArmstrongCard } from '@/components/shared/WhatsAppArmstrongCard';
 import { RegistryImportCard } from '@/components/shared/RegistryImportCard';
 import { AktionsKatalog } from '@/pages/portal/communication-pro/agenten/AktionsKatalog';
+import { cn } from '@/lib/utils';
 
 const steps = [
   { num: '1', title: 'Frage stellen', desc: 'Beschreiben Sie, was Sie brauchen — in Ihren Worten.' },
@@ -29,6 +32,39 @@ const usps = [
   { icon: Zap, title: 'Multi-Modul', desc: 'Ein Co-Pilot für alles: DMS, Immobilien, Finanzierung, Office, Verkauf und mehr.' },
   { icon: Shield, title: 'Datenschutz', desc: 'Ihre Daten bleiben in Ihrem Tenant. Kein Training, kein Weitergeben, keine Drittnutzung.' },
 ];
+
+interface CollapsibleSectionProps {
+  title: string;
+  icon: React.ElementType;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}
+
+function CollapsibleSection({ title, icon: Icon, defaultOpen = false, children }: CollapsibleSectionProps) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button className="w-full flex items-center justify-between py-3 px-1 group cursor-pointer hover:bg-muted/30 rounded-lg transition-colors">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Icon className="h-4 w-4 text-primary" />
+            </div>
+            <h2 className="text-base font-semibold">{title}</h2>
+          </div>
+          <ChevronDown className={cn(
+            "h-4 w-4 text-muted-foreground transition-transform duration-200",
+            open && "rotate-180"
+          )} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pt-2 pb-4">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 export default function ArmstrongInfoPage() {
   return (
@@ -65,71 +101,60 @@ export default function ArmstrongInfoPage() {
         ))}
       </div>
 
-      {/* ─── WIE ARMSTRONG ARBEITET ─── */}
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle className="text-lg">Wie Armstrong arbeitet</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            {steps.map((step, i) => (
-              <div key={step.num} className="flex gap-3">
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-sm font-bold text-primary">
-                  {step.num}
+      <Separator />
+
+      {/* ─── WIE ARMSTRONG ARBEITET — Collapsible, default geschlossen ─── */}
+      <CollapsibleSection title="Wie Armstrong arbeitet" icon={Bot}>
+        <Card className="glass-card">
+          <CardContent className="pt-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              {steps.map((step, i) => (
+                <div key={step.num} className="flex gap-3">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-sm font-bold text-primary">
+                    {step.num}
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm">{step.title}</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">{step.desc}</p>
+                  </div>
+                  {i < steps.length - 1 && (
+                    <ArrowRight className="hidden md:block h-4 w-4 text-muted-foreground/40 self-center ml-auto" />
+                  )}
                 </div>
-                <div>
-                  <h4 className="font-medium text-sm">{step.title}</h4>
-                  <p className="text-xs text-muted-foreground mt-0.5">{step.desc}</p>
-                </div>
-                {i < steps.length - 1 && (
-                  <ArrowRight className="hidden md:block h-4 w-4 text-muted-foreground/40 self-center ml-auto" />
-                )}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </CollapsibleSection>
 
-      {/* ─── CREDIT-SALDO & VERBRAUCH ─── */}
-      <Separator className="my-2" />
+      <Separator />
 
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <CreditCard className="h-5 w-5 text-primary" />
-          Verbrauch & Kosten
-        </h2>
-        <p className="text-sm text-muted-foreground">Ihr aktueller Credit-Verbrauch und Transaktionen.</p>
-      </div>
+      {/* ─── VERBRAUCH & KOSTEN — Collapsible, default offen ─── */}
+      <CollapsibleSection title="Verbrauch & Kosten" icon={CreditCard} defaultOpen>
+        <KostenDashboard />
+      </CollapsibleSection>
 
-      <KostenDashboard />
+      <Separator />
 
-      {/* ─── SYSTEM-PREISLISTE ─── */}
-      <SystemPreisliste />
+      {/* ─── AKTIONEN & PREISE — Konsolidiert, Collapsible ─── */}
+      <CollapsibleSection title="Aktionen & Preise" icon={ListChecks}>
+        <div className="space-y-6">
+          <AktionsKatalog />
+          <Separator />
+          <SystemPreisliste />
+        </div>
+      </CollapsibleSection>
 
-      {/* ─── ADD-ONS & SERVICES ─── */}
-      <Separator className="my-2" />
+      <Separator />
 
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold">Services & Add-Ons</h2>
-        <p className="text-sm text-muted-foreground">Zusätzliche Dienste aktivieren und konfigurieren.</p>
-      </div>
-
-      <EmailEnrichmentCard />
-      <WhatsAppArmstrongCard />
-      <RegistryImportCard />
-
-      {/* ─── AKTIONSKATALOG ─── */}
-      <Separator className="my-2" />
-
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Bot className="h-5 w-5 text-primary" />
-          Aktionskatalog
-        </h2>
-        <p className="text-sm text-muted-foreground">Alle verfügbaren Armstrong-Aktionen durchsuchen.</p>
-      </div>
-
-      <AktionsKatalog />
+      {/* ─── SERVICES & ADD-ONS — Collapsible ─── */}
+      <CollapsibleSection title="Services & Add-Ons" icon={Package}>
+        <div className="space-y-4">
+          <EmailEnrichmentCard />
+          <WhatsAppArmstrongCard />
+          <RegistryImportCard />
+        </div>
+      </CollapsibleSection>
 
       {/* ─── CTA ─── */}
       <Card className="glass-card border-primary/20">

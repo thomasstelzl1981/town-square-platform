@@ -24,8 +24,41 @@ const ZONE_LABELS: Record<string, string> = {
   Z3: 'Website',
 };
 
+/** Mapping von internen MOD-XX Codes auf lesbare Modulnamen */
+const MODULE_DISPLAY_NAMES: Record<string, string> = {
+  'MOD-00': 'Dashboard',
+  'MOD-01': 'Stammdaten',
+  'MOD-02': 'Office',
+  'MOD-03': 'DMS',
+  'MOD-04': 'Immobilien',
+  'MOD-05': 'MSV',
+  'MOD-06': 'Verkauf',
+  'MOD-07': 'Finanzierung',
+  'MOD-08': 'Investments',
+  'MOD-09': 'Vertriebspartner',
+  'MOD-10': 'Leads',
+  'MOD-11': 'Finanzierungsmanager',
+  'MOD-12': 'Akquise',
+  'MOD-13': 'Projekte',
+  'MOD-14': 'Communication Pro',
+  'MOD-15': 'Fortbildung',
+  'MOD-16': 'Services',
+  'MOD-17': 'Cars',
+  'MOD-18': 'Finanzanalyse',
+  'MOD-19': 'Photovoltaik',
+  'MOD-20': 'Miety',
+  'MOD-22': 'Pet Manager',
+};
+
+function centsToCredits(cents: number | null | undefined): string {
+  if (!cents) return '—';
+  const credits = cents / 25;
+  if (credits < 1) return '< 1 Cr';
+  return `${credits} Cr`;
+}
+
 export function AktionsKatalog() {
-  const { actions, stats, isLoading } = useArmstrongActions();
+  const { actions, isLoading } = useArmstrongActions();
   const [search, setSearch] = useState('');
   const [zoneFilter, setZoneFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -47,53 +80,8 @@ export function AktionsKatalog() {
     });
   }, [actions, search, zoneFilter, statusFilter]);
 
-  const totalActions = stats.total;
-  const activeActions = stats.active;
-
-  const zoneStats = useMemo(() => {
-    const z2Only = actions.filter(a => a.zones.length === 1 && a.zones[0] === 'Z2').length;
-    const z3Only = actions.filter(a => a.zones.length === 1 && a.zones[0] === 'Z3').length;
-    const both = actions.filter(a => a.zones.includes('Z2') && a.zones.includes('Z3')).length;
-    return { z2Only, z3Only, both };
-  }, [actions]);
-
   return (
     <div className="space-y-4">
-      {/* KPI Summary */}
-      <div className={DESIGN.KPI_GRID.FULL}>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-2xl font-bold text-foreground">{totalActions}</p>
-            <p className="text-xs text-muted-foreground">Aktionen gesamt</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-2xl font-bold text-primary">{activeActions}</p>
-            <p className="text-xs text-muted-foreground">Aktiv</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-2xl font-bold text-amber-500">{stats.restricted}</p>
-            <p className="text-xs text-muted-foreground">Eingeschränkt</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-2xl font-bold text-muted-foreground">{stats.disabled}</p>
-            <p className="text-xs text-muted-foreground">Deaktiviert</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Zone Distribution */}
-      <div className="flex gap-2 flex-wrap text-xs">
-        <Badge variant="outline" className="border-primary/50 text-primary gap-1">🔵 Nur Portal: {zoneStats.z2Only}</Badge>
-        <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 dark:text-emerald-400 gap-1">🟢 Nur Website: {zoneStats.z3Only}</Badge>
-        <Badge variant="outline" className="gap-1">🔵🟢 Beide: {zoneStats.both}</Badge>
-      </div>
-
       {/* Filter Bar */}
       <div className="flex gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
@@ -107,12 +95,12 @@ export function AktionsKatalog() {
         </div>
         <Select value={zoneFilter} onValueChange={setZoneFilter}>
           <SelectTrigger className="w-[160px] h-8 text-sm">
-            <SelectValue placeholder="Zone" />
+            <SelectValue placeholder="Bereich" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Alle Zonen</SelectItem>
-            <SelectItem value="Z2_only">Nur Portal (Z2)</SelectItem>
-            <SelectItem value="Z3_only">Nur Website (Z3)</SelectItem>
+            <SelectItem value="all">Alle Bereiche</SelectItem>
+            <SelectItem value="Z2_only">Nur Portal</SelectItem>
+            <SelectItem value="Z3_only">Nur Website</SelectItem>
             <SelectItem value="Z2_Z3">Portal + Website</SelectItem>
           </SelectContent>
         </Select>
@@ -134,6 +122,7 @@ export function AktionsKatalog() {
         {filtered.map(action => {
           const mode = EXECUTION_MODE_LABELS[action.execution_mode] || EXECUTION_MODE_LABELS.readonly;
           const ModeIcon = mode.icon;
+          const moduleName = action.module ? MODULE_DISPLAY_NAMES[action.module] : null;
           
           return (
             <Card key={action.action_code} className={`hover:border-primary/30 transition-colors ${action.effective_status === 'disabled' ? 'opacity-50' : ''}`}>
@@ -149,9 +138,6 @@ export function AktionsKatalog() {
                     {action.effective_status === 'active' ? 'Aktiv' : action.effective_status === 'restricted' ? 'Eingeschränkt' : 'Deaktiviert'}
                   </Badge>
                 </div>
-                <code className="text-[10px] text-muted-foreground font-mono">
-                  {action.action_code}
-                </code>
               </CardHeader>
               <CardContent className="p-3 pt-0 space-y-2">
                 <p className="text-xs text-muted-foreground line-clamp-2">
@@ -164,17 +150,19 @@ export function AktionsKatalog() {
                   </Badge>
                   {action.zones.map(z => (
                     <Badge key={z} variant="outline" className={`text-[10px] ${z === 'Z2' ? 'border-primary/50 text-primary' : z === 'Z3' ? 'border-emerald-500/50 text-emerald-600 dark:text-emerald-400' : ''}`}>
-                      {z === 'Z2' ? '🔵 Portal' : z === 'Z3' ? '🟢 Website' : ZONE_LABELS[z] || z}
+                      {ZONE_LABELS[z] || z}
                     </Badge>
                   ))}
-                  {action.module && (
+                  {moduleName && (
                     <Badge variant="outline" className="text-[10px]">
-                      {action.module}
+                      {moduleName}
                     </Badge>
                   )}
-                  {action.cost_model !== 'free' && (
-                    <Badge variant="destructive" className="text-[10px]">
-                      💰 {action.cost_model}
+                  {action.cost_model === 'free' ? (
+                    <Badge variant="secondary" className="text-[10px]">Frei</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] font-mono">
+                      {centsToCredits(action.cost_hint_cents)}
                     </Badge>
                   )}
                 </div>
