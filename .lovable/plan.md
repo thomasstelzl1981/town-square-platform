@@ -1,91 +1,56 @@
 
 
-## Diagnose
+## Plan: Kamera-Migration Golden Tenant → Privater Account + Formular-Check
 
-Aus dem Screenshot ist das Problem klar:
+### Analyse
 
-1. **SystemBar (Row 1 — "SYSTEM OF A TOWN")** wurde NICHT auf Graphit umgestellt. Sie nutzt noch `bg-card/70 backdrop-blur-lg` — ein helles, transparentes Grau. Die Glass-Buttons verwenden `bg-white/30`, was auf hellem Hintergrund verwaschen wirkt.
-2. **AreaTabs + SubTabs (Row 2+3)** sind auf Graphit — aber der Uebergang von der hellen SystemBar zum dunklen Graphit-Block sieht gebrochen aus.
-3. Die Glass-Buttons in der SystemBar (`GLASS_BUTTON` Konstante) verwenden `text-foreground` — das ist Schwarz im Light Mode, muss aber Hell werden auf Graphit.
+**Bestehende Kamera im Golden Tenant:**
+- ID: `96dcd30f-2414-458b-a3ac-97afb75781fc`
+- Name: "Oberhaching"
+- URL: `http://woo1vh3focn8wepf.myfritz.net:8080/cgi-bin/snapshot.cgi?channel=1`
+- Auth: user=`admin`
+- Tenant: `a0000000-0000-4000-a000-000000000001` (Golden Tenant)
 
-## Plan: SystemBar auf Graphit angleichen
+**Dein privater Account:**
+- User-ID: `b0d2bf55-887f-4678-878b-863af63c06b9`
+- Tenant-ID: `66175861-db5b-4997-8a13-9994c17136b3`
+- Email: thomas.stelzl@ncore.online
 
-Nur 1 Datei: `src/components/portal/SystemBar.tsx`
+### Formular-Check
 
-### Aenderung 1: Desktop Header-Container (Zeile 207)
+Der Code des `CameraInlineForm` sieht technisch korrekt aus:
+- Alle Input-Felder haben `value` + `onChange` — sollten editierbar sein.
+- Default-Name "Kamera 1" ist vorausgefuellt, aber ueberschreibbar.
+- Snapshot-URL startet leer mit Placeholder.
 
-Von:
-```
-bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60
-```
+**Moegliches Problem:** Das Formular zeigt nur 5 Felder (Name, URL, User, Pass, Refresh), aber `CameraFormData` hat 7 weitere Felder (`vendor`, `model`, `connection_type`, `local_ip`, `internal_port`, `external_domain`, `external_port`), die im `useCameras.addCamera` mit Defaults befuellt werden. Das ist kein Blocker, aber koennte bei bestimmten Kameras relevant sein.
 
-Zu:
-```
-bg-[hsl(var(--chrome-bg))] text-[hsl(var(--chrome-foreground))] shadow-[var(--chrome-shadow)] dark:bg-card/70 dark:backdrop-blur-lg dark:supports-[backdrop-filter]:bg-card/60 dark:text-foreground
-```
+**Wahrscheinlichste Ursache deines Problems:** Eventuell war die Kamera schon angelegt (im Edit-Modus) und die vorausgefuellte URL wurde nicht erkannt, oder ein Browser-Autofill hat das Feld ueberlagert.
 
-Gleiche Graphit-Basis wie PortalHeader/TopNavigation. Dark Mode bleibt unveraendert.
+### Schritt 1: DB-Migration (2 Queries)
 
-### Aenderung 2: GLASS_BUTTON Konstante (Zeile 38-47)
-
-Von:
-```
-bg-white/30 dark:bg-white/10
-backdrop-blur-md
-border border-white/20 dark:border-white/10
-shadow-[inset_0_1px_0_hsla(0,0%,100%,0.15)]
-hover:bg-white/45 dark:hover:bg-white/15
-text-foreground
-```
-
-Zu:
-```
-bg-white/15 dark:bg-white/10
-border border-white/15 dark:border-white/10
-shadow-[inset_0_1px_0_hsla(0,0%,100%,0.08)]
-hover:bg-white/25 dark:hover:bg-white/15
-text-[hsl(var(--chrome-foreground))] dark:text-foreground
+**Query A — Kamera in deinen Tenant verschieben:**
+```sql
+UPDATE cameras
+SET tenant_id = '66175861-db5b-4997-8a13-9994c17136b3',
+    user_id = 'b0d2bf55-887f-4678-878b-863af63c06b9'
+WHERE id = '96dcd30f-2414-458b-a3ac-97afb75781fc';
 ```
 
-Auf dunklem Graphit: dezentere weisse Transparenz, helle Icons/Text. `backdrop-blur-md` entfernt (sinnlos auf solidem Graphit im Light Mode — bleibt im Dark ueber den Container).
+Das ist sauberer als Loeschen + Neu-Anlegen, weil die ID, Credentials und Config erhalten bleiben. Der Golden Tenant hat danach 0 Kameras.
 
-### Aenderung 3: "SYSTEM OF A TOWN" Wordmark (Zeile 231)
+### Schritt 2: Formular-Verbesserung (optional)
 
-Von:
-```
-text-foreground
-```
+Falls gewuenscht, koennte ich das Formular um folgende Felder erweitern:
+- Hersteller (Dropdown: Amcrest, Reolink, Sonstige)
+- Lokale IP
+- Externer Domain/Port
 
-Zu:
-```
-text-[hsl(var(--chrome-foreground))] dark:text-foreground
-```
+Das ist aber kein Blocker — die Kernfelder (Name, URL, Auth) reichen fuer den Betrieb.
 
-### Aenderung 4: Armstrong Active-State (Zeile 250)
+### Zusammenfassung
 
-Von:
-```
-bg-white/40 dark:bg-white/15
-```
-
-Zu:
-```
-bg-white/25 dark:bg-white/15
-```
-
-### Erwartetes Ergebnis
-
-```text
-+==[ GRAPHIT 32% — SystemBar ]==================+
-|  🏠 ☀️ 12°  SYSTEM OF A TOWN  🕐 🚀 👤     |
-|  (alle Icons + Text = weiss/95%)               |
-+--[ GRAPHIT 32% — AreaTabs ]-------------------+
-|  [CLIENT] [MANAGER] [SERVICE] [BASE]           |
-+--[ GRAPHIT 38% — SubTabs ]--------------------+
-|  HOME | PORTFOLIO | STEUER | SANIERUNG         |
-+~~~ shadow ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-|  Canvas: 94%                                   |
-```
-
-Alle 3 Leisten bilden einen einheitlichen dunklen Graphit-Block. 1 Datei, 4 Aenderungen.
+- 1 SQL-Migration: Kamera vom Golden Tenant auf deinen privaten Tenant umziehen
+- Kein Code-Change noetig fuer die Grundfunktion
+- Formular ist technisch funktional — falls du das Problem reproduzieren kannst, kann ich gezielt debuggen
 
