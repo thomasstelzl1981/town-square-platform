@@ -34,7 +34,7 @@ export function SubTabs({ module, moduleBase }: SubTabsProps) {
   }
 
   return (
-    <div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none bg-[hsl(var(--chrome-bg-2)/0.98)] dark:bg-background/50">
+    <div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none bg-[hsl(var(--chrome-bg-2))] dark:bg-background/50">
       {visibleTiles.map((tile) => {
         const route = getTileFullPath(moduleBase, tile.path);
         const isActive = location.pathname === route;
@@ -44,10 +44,10 @@ export function SubTabs({ module, moduleBase }: SubTabsProps) {
             key={tile.path}
             to={route}
             className={cn(
-              'px-3 py-1.5 rounded-xl text-sm uppercase tracking-wide whitespace-nowrap',
+              'px-3 py-1.5 rounded-xl text-sm uppercase tracking-wide whitespace-nowrap transition-colors',
               isActive
-                ? 'bg-white text-foreground font-medium shadow-sm border border-[hsl(var(--chrome-border)/0.5)] dark:bg-primary/90 dark:text-primary-foreground dark:border-0'
-                : 'nav-tab-glass text-muted-foreground hover:text-foreground',
+                ? 'bg-white text-foreground font-medium shadow-sm border border-white/20 dark:bg-primary/90 dark:text-primary-foreground dark:border-0'
+                : 'nav-tab-glass text-[hsl(var(--chrome-foreground-muted))] hover:text-[hsl(var(--chrome-foreground))] dark:text-muted-foreground dark:hover:text-foreground',
               tile.premium && 'border border-warning/30'
             )}
           >

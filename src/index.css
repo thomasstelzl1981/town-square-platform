@@ -103,11 +103,15 @@
     --border-subtle: 215 10% 86%;
     --border-glow: 217 91% 60%;
 
-    /* Chrome Frame (Light-only solid nav) */
-    --chrome-bg: 215 16% 92%;
-    --chrome-bg-2: 215 14% 90%;
-    --chrome-border: 215 12% 78%;
-    --chrome-shadow: 0 6px 18px -14px rgb(0 0 0 / 0.18);
+    /* Chrome Frame — Light Graphite */
+    --chrome-bg: 220 14% 32%;
+    --chrome-bg-2: 220 12% 38%;
+    --chrome-border: 220 10% 26%;
+    --chrome-shadow: 0 6px 18px -14px rgb(0 0 0 / 0.30);
+
+    /* Chrome Text on Graphite */
+    --chrome-foreground: 0 0% 95%;
+    --chrome-foreground-muted: 0 0% 65%;
 
     /* Text Hierarchy */
     --text-primary: 222 35% 10%;
@@ -603,18 +607,14 @@
      iOS GLASS BUTTON STYLE
      =========================================================================== */
   .btn-glass {
-    background: hsl(215 14% 98% / 0.5);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid hsl(215 12% 78% / 0.3);
-    box-shadow: 
-      inset 0 1px 0 hsla(0 0% 100% / 0.2),
-      0 1px 3px hsla(0 0% 0% / 0.1);
+    background: hsl(220 12% 40% / 0.6);
+    border: 1px solid hsl(220 10% 50% / 0.3);
+    color: hsl(0 0% 90%);
     transition: background 0.2s ease;
   }
 
   .btn-glass:hover {
-    background: hsl(var(--chrome-bg-2) / 0.8);
+    background: hsl(220 12% 46% / 0.8);
   }
 
   .dark .btn-glass {
@@ -700,13 +700,15 @@
   :root .nav-tab-glass {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    background: hsl(var(--chrome-bg-2) / 1);
-    border: 1px solid hsl(var(--chrome-border) / 0.6);
+    background: hsl(220 12% 38% / 0.8);
+    border: 1px solid hsl(220 10% 45% / 0.5);
     box-shadow: none;
+    color: hsl(0 0% 85%);
   }
   :root .nav-tab-glass:hover {
-    background: hsl(var(--chrome-bg-2) / 0.85);
-    border-color: hsl(var(--chrome-border) / 0.8);
+    background: hsl(220 12% 44% / 0.9);
+    border-color: hsl(220 10% 50% / 0.6);
+    color: hsl(0 0% 95%);
   }
 
   .dark .nav-tab-glass {
