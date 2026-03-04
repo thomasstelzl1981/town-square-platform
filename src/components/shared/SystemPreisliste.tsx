@@ -1,15 +1,14 @@
 /**
  * SYSTEM-PREISLISTE — Konsolidierte Preisliste aller System-Services
- * Sektion A: KI-Aktionen (aus ArmstrongCreditPreisliste)
+ * Sektion A: KI-Aktionen (aus armstrongManifest)
  * Sektion B: Infrastruktur-Services (aus billingConstants.ts)
+ * Credit-Governance: Credits only, no EUR secondary display
  */
 import { useMemo, useState } from 'react';
 import { armstrongActions } from '@/manifests/armstrongManifest';
 import {
   SYSTEM_PRICES,
   BILLING_CATEGORIES,
-  CREDIT_VALUE_EUR,
-  formatEurCents,
   type BillingCategory,
 } from '@/config/billingConstants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,13 +30,14 @@ const groupMeta: Record<CostGroup, { label: string; icon: typeof Bot; color: str
 function centsToCredits(cents: number | null | undefined): string {
   if (!cents) return '—';
   const credits = cents / 25;
-  if (credits < 1) return `${cents} Ct`;
+  if (credits < 1) return '< 1 Cr';
   return `${credits} Cr`;
 }
 
-function formatCents(cents: number | null | undefined): string {
-  if (!cents) return '—';
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(cents / 100);
+function creditsDisplay(credits: number | null): string {
+  if (credits === null) return '—';
+  if (credits === 0) return 'Frei';
+  return `${credits} Cr`;
 }
 
 export function SystemPreisliste() {
@@ -76,7 +76,7 @@ export function SystemPreisliste() {
           Preisliste
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Alle Kosten im Überblick — KI-Aktionen und System-Services. 1 Credit = 0,25 €.
+          Alle Kosten im Überblick — KI-Aktionen und System-Services.
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -119,7 +119,6 @@ export function SystemPreisliste() {
                         <TableRow>
                           <TableHead>Aktion</TableHead>
                           <TableHead className="w-[80px] text-right">Credits</TableHead>
-                          <TableHead className="w-[80px] text-right">EUR</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -130,9 +129,6 @@ export function SystemPreisliste() {
                             </TableCell>
                             <TableCell className="text-right font-mono text-sm">
                               {group === 'free' ? <Badge variant="secondary" className="text-[10px]">Frei</Badge> : centsToCredits(action.cost_hint_cents)}
-                            </TableCell>
-                            <TableCell className="text-right font-mono text-sm">
-                              {group === 'free' ? '—' : formatCents(action.cost_hint_cents)}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -182,7 +178,6 @@ export function SystemPreisliste() {
                         <TableRow>
                           <TableHead>Service</TableHead>
                           <TableHead className="w-[80px] text-right">Credits</TableHead>
-                          <TableHead className="w-[100px] text-right">Preis</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -195,10 +190,7 @@ export function SystemPreisliste() {
                               )}
                             </TableCell>
                             <TableCell className="text-right font-mono text-sm">
-                              {item.credits !== null ? `${item.credits} Cr` : '—'}
-                            </TableCell>
-                            <TableCell className="text-right font-mono text-sm">
-                              {formatEurCents(item.eur_cents)}
+                              {creditsDisplay(item.credits)}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -212,7 +204,7 @@ export function SystemPreisliste() {
         </div>
 
         <p className="text-xs text-muted-foreground text-center pt-2">
-          1 Credit = 0,25 € · Kosten werden immer vorab angezeigt · Sie entscheiden vor jeder Ausführung
+          Kosten werden immer vorab angezeigt · Sie entscheiden vor jeder Ausführung
         </p>
       </CardContent>
     </Card>

@@ -1,7 +1,7 @@
 /**
  * ARMSTRONG CREDIT PREISLISTE — Reads directly from armstrongManifest (SSOT)
  * Groups actions by cost_model: Free → Metered → Premium
- * Displays credits and EUR prices (1 Credit = 0,25 EUR)
+ * Displays credits only (Credit-Governance: no EUR secondary display)
  */
 
 import { useMemo, useState } from 'react';
@@ -14,8 +14,6 @@ import {
 } from '@/components/ui/table';
 import { Bot, Zap, CreditCard, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 
-const CREDIT_VALUE_EUR = 0.25; // 1 Credit = 0,25 EUR
-
 type CostGroup = 'free' | 'metered' | 'premium';
 
 const groupMeta: Record<CostGroup, { label: string; icon: typeof Bot; color: string; desc: string }> = {
@@ -24,15 +22,10 @@ const groupMeta: Record<CostGroup, { label: string; icon: typeof Bot; color: str
   premium: { label: 'Premium', icon: Sparkles, color: 'text-violet-500', desc: 'Erweiterte KI-Aktionen mit höherem Aufwand' },
 };
 
-function formatCents(cents: number | null | undefined): string {
-  if (!cents) return '—';
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(cents / 100);
-}
-
 function centsToCredits(cents: number | null | undefined): string {
   if (!cents) return '—';
-  const credits = cents / 25; // 25 Cent = 1 Credit
-  if (credits < 1) return `${cents} Ct`;
+  const credits = cents / 25;
+  if (credits < 1) return `< 1 Cr`;
   return `${credits} Cr`;
 }
 
@@ -68,7 +61,6 @@ export function ArmstrongCreditPreisliste() {
         </CardTitle>
         <p className="text-sm text-muted-foreground">
           Alle verfügbaren KI-Aktionen — direkt aus dem Armstrong Manifest.
-          1 Credit = 0,25 €.
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -110,7 +102,6 @@ export function ArmstrongCreditPreisliste() {
                         <TableHead>Aktion</TableHead>
                         <TableHead className="w-[100px]">Modul</TableHead>
                         <TableHead className="w-[100px] text-right">Credits</TableHead>
-                        <TableHead className="w-[100px] text-right">EUR</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -140,9 +131,6 @@ export function ArmstrongCreditPreisliste() {
                               centsToCredits(action.cost_hint_cents)
                             )}
                           </TableCell>
-                          <TableCell className="text-right font-mono text-sm">
-                            {group === 'free' ? '—' : formatCents(action.cost_hint_cents)}
-                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -154,7 +142,7 @@ export function ArmstrongCreditPreisliste() {
         })}
 
         <p className="text-xs text-muted-foreground text-center pt-2">
-          1 Credit = 0,25 € · Kosten werden immer vorab angezeigt · Sie entscheiden vor jeder Ausführung
+          Kosten werden immer vorab angezeigt · Sie entscheiden vor jeder Ausführung
         </p>
       </CardContent>
     </Card>
