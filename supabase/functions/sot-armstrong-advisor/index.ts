@@ -225,7 +225,8 @@ async function persistChatMessage(
   module: string,
   role: string,
   content: string,
-  website?: string
+  website?: string,
+  projectId?: string | null
 ) {
   try {
     // Try to update existing session
@@ -253,6 +254,7 @@ async function persistChatMessage(
           zone,
           module,
           website: website || null,
+          project_id: projectId || null,
           messages: [newMsg],
         });
     }
@@ -3281,7 +3283,7 @@ async function generateDraftResponse(
   message: string,
   module: Module,
   supabase: ReturnType<typeof createClient>
-): Promise<string> {
+): Promise<string | Response> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
   if (!LOVABLE_API_KEY) {
@@ -3316,6 +3318,7 @@ REGELN:
           { role: "user", content: `Erstelle folgenden Entwurf: ${message}` },
         ],
         max_tokens: 4000,
+        stream: true,
       }),
     });
     
@@ -3324,6 +3327,12 @@ REGELN:
       return `Entwurf für: "${message}"\n\n[Konnte keinen automatischen Entwurf erstellen. Bitte manuell verfassen.]`;
     }
     
+    // Return the streaming response directly so caller can pipe SSE to client
+    if (response.body) {
+      return response;
+    }
+
+    // Fallback: non-streaming
     const data = await response.json();
     return data.choices?.[0]?.message?.content || `Entwurf basierend auf: "${message}"`;
   } catch (err) {
@@ -4140,9 +4149,9 @@ serve(async (req) => {
       );
     }
 
-    // Persist incoming user message
+    // Persist incoming user message (with project_id for session isolation)
     const sessionId = project_id || (body as any).session_id || crypto.randomUUID();
-    persistChatMessage(supabase, sessionId, userContext, zone, module, 'user', message);
+    persistChatMessage(supabase, sessionId, userContext, zone, module, 'user', message, undefined, project_id);
 
     // Classify intent FIRST to enable Global Assist Mode
     const intent = classifyIntent(message, action_request);
@@ -4421,18 +4430,54 @@ serve(async (req) => {
     if (intent === "DRAFT") {
       // Use AI to generate the actual draft content
       const isGlobalAssist = !isInMvpModule;
-      const draftContent = await generateDraftResponse(message, module, supabase);
+      const draftResult = await generateDraftResponse(message, module, supabase);
+      const suggestions = suggestActionsForMessage(message, availableActions);
       
+      // If we got a streaming Response back, pipe it with DRAFT metadata
+      if (draftResult instanceof Response && draftResult.body) {
+        const metaPayload = JSON.stringify({
+          type: "DRAFT",
+          suggested_actions: suggestions,
+          next_steps: ["Entwurf überprüfen und anpassen", "Kopieren und verwenden"],
+        });
+
+        const reader = draftResult.body.getReader();
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+
+        const stream = new ReadableStream({
+          async pull(controller) {
+            const { done, value } = await reader.read();
+            if (done) {
+              controller.enqueue(encoder.encode(`data: [META]${metaPayload}\n\n`));
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+              controller.close();
+              return;
+            }
+            const chunk = decoder.decode(value, { stream: true });
+            const filtered = chunk.replace(/data: \[DONE\]\s*\n?\n?/g, '');
+            if (filtered) {
+              controller.enqueue(encoder.encode(filtered));
+            }
+          },
+        });
+
+        return new Response(stream, {
+          headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+        });
+      }
+      
+      // Fallback: non-streaming string response
       return new Response(
         JSON.stringify({
           type: "DRAFT",
           draft: {
             title: "Entwurf",
-            content: draftContent,
+            content: draftResult,
             format: "markdown",
           },
           message: "Hier ist mein Entwurf. Sie können ihn kopieren und anpassen:",
-          suggested_actions: suggestActionsForMessage(message, availableActions),
+          suggested_actions: suggestions,
           next_steps: ["Entwurf überprüfen und anpassen", "Kopieren und verwenden"],
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
