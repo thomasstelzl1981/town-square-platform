@@ -16,6 +16,7 @@ import { ArmstrongOrb, type OrbState } from '@/components/chat/ArmstrongOrb';
 import { VoiceButton } from '@/components/shared/VoiceButton';
 import { ProjectsSidebar } from '@/components/dashboard/workspace/ProjectsSidebar';
 import { ContextPanel } from '@/components/dashboard/workspace/ContextPanel';
+import { WorkspaceOnboarding } from '@/components/dashboard/workspace/WorkspaceOnboarding';
 import { SlashCommandPicker } from '@/components/dashboard/workspace/SlashCommandPicker';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,7 @@ export function ArmstrongWorkspace() {
   const advisor = useArmstrongAdvisor();
   const voice = useArmstrongVoice();
   const docUpload = useArmstrongDocUpload();
+  const { activeProjects } = useArmstrongProjects();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -139,6 +141,19 @@ export function ArmstrongWorkspace() {
     if (isMobile) setMobileLeftOpen(false);
   };
 
+  const handleOnboardingChat = (message: string) => {
+    setInput('');
+    advisor.sendMessage(message);
+  };
+
+  const handleOnboardingNewProject = () => {
+    if (isMobile) setMobileLeftOpen(true);
+    else setShowLeftPanel(true);
+  };
+
+  const hasMessages = advisor.messages.length > 0;
+  const showOnboarding = !hasMessages && activeProjects.length === 0;
+
   const orbState: OrbState = (() => {
     if (voice.isSpeaking) return 'speaking';
     if (advisor.isLoading && docUpload.isParsing) return 'working';
@@ -154,8 +169,6 @@ export function ArmstrongWorkspace() {
     if (voice.isSpeaking) return 'Vorlesen...';
     return undefined;
   })();
-
-  const hasMessages = advisor.messages.length > 0;
 
   // ── Chat Column (Center) ──
   const chatColumn = (
@@ -226,7 +239,14 @@ export function ArmstrongWorkspace() {
       {/* Messages */}
       <ScrollArea className="flex-1">
         <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
-          {!hasMessages && (
+          {!hasMessages && showOnboarding && (
+            <WorkspaceOnboarding
+              onNewProject={handleOnboardingNewProject}
+              onStartChat={handleOnboardingChat}
+            />
+          )}
+
+          {!hasMessages && !showOnboarding && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <ArmstrongOrb state="idle" size={48} />
               <h3 className="mt-4 text-lg font-semibold">Wie kann ich helfen?</h3>
