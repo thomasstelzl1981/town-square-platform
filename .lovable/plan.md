@@ -1,80 +1,141 @@
 
 
-## Plan: Light Mode Refactoring — Warm-Neutral Light-Graphite
+## Plan: Light Mode CRM Chrome — Solid Frame Spec
 
-### Konzept
-Der Light Mode wechselt von kaltem `210°`-Blaugrau zu warmem `35°`-Graphit. Kein Weiß, kein Beige — sondern ein warmer, neutraler App-Canvas wie macOS/ChatGPT Light. Die Topbar wird im Light Mode solid (kein Glass).
+### Problem (Screenshot-bestätigt)
 
-### Änderungen in einer Datei: `src/index.css`
+Die Token-Umstellung auf Hue 35 hat gewirkt, aber die Komponenten umgehen die Tokens komplett:
 
-**1) `:root` Token-Austausch (Zeilen 42–146)**
+- `PortalHeader`: `bg-background/95 backdrop-blur` -- fast unsichtbar
+- `TopNavigation`: `bg-card/60 backdrop-blur-md` -- transparent auf hellem Canvas
+- `SubTabs`: `bg-background/50` -- halb-transparent
+- `nav-tab-glass`: `hsla(0,0%,100%,0.15)` -- weiss-auf-weiss im Light
+- `.glass-nav` Override existiert, wird aber von keiner Komponente genutzt (inline Tailwind)
 
-Alle Light-Mode-Tokens von Hue `210` auf Hue `35` (warm-neutral) umstellen:
+**Ergebnis:** Alles schwebt, nichts hat Rahmen. Kein "App Chrome".
 
-| Token | Alt (kalt) | Neu (warm-neutral) |
-|-------|-----------|-------------------|
-| `--background` | `210 14% 94%` | `35 18% 95%` |
-| `--surface` | `210 12% 92%` | `35 16% 93%` |
-| `--surface-2` | `210 10% 90%` | `35 14% 91%` |
-| `--card` | `210 10% 97% / 0.98` | `35 14% 98% / 0.98` |
-| `--card-glass` | `210 10% 97% / 0.7` | `35 14% 97% / 0.7` |
-| `--surface-glass` | `210 10% 95% / 0.6` | `35 14% 95% / 0.6` |
-| `--popover` | `210 10% 97% / 0.98` | `35 14% 98% / 0.98` |
-| `--reading-surface` | `0 0% 100% / 0.96` | `35 14% 98% / 0.98` |
-| `--border` | `210 10% 80%` | `35 10% 80%` |
-| `--input` | `210 10% 80%` | `35 10% 80%` |
-| `--input-bg` | `210 20% 97%` | `35 16% 96%` |
-| `--muted` | `210 12% 92%` | `35 14% 92%` |
-| `--secondary` | `220 18% 92%` | `35 16% 92%` |
-| `--accent` | `220 18% 92%` | `35 16% 92%` |
-| `--table-header-bg` | `210 20% 95%` | `35 16% 94%` |
-| `--table-row-hover` | `210 20% 96%` | `35 16% 95%` |
-| `--sidebar-background` | `0 0% 98%` | `35 14% 96%` |
-| `--sidebar-accent` | `240 4.8% 95.9%` | `35 12% 94%` |
-| `--sidebar-border` | `220 13% 91%` | `35 10% 88%` |
-| `--border-subtle` | `214 32% 91%` | `35 12% 88%` |
-| `--overlay-surface` | `0 0% 100% / 0.96` | `35 14% 98% / 0.96` |
+### Loesung: 2-Ebenen-Ansatz
 
-Ambient-Struktur auf warm-neutral anpassen:
-- `--ambient-horizon: 35 10% 88%`
-- Grid-Lines von `220 30%` auf `35 10%` umstellen
+**Ebene 1: CSS Tokens + Utility-Klassen** (src/index.css)
+**Ebene 2: Komponenten-Klassen anpassen** (4 Dateien)
 
-**2) Glass-Nav Light-Override (nach Zeile ~573)**
+---
 
-Neue Regel einfügen, damit die Topbar im Light Mode solid wird:
+### Aenderung 1: src/index.css — Chrome-Tokens + Light Overrides
 
+**Neue Tokens in `:root`** (nach Zeile ~103):
 ```css
-:root .glass-nav {
-  background: hsl(var(--surface) / 0.98);
+--chrome-bg: 35 16% 93%;
+--chrome-bg-2: 35 14% 91%;
+--chrome-border: 35 10% 80%;
+--chrome-shadow: 0 4px 14px -10px rgb(0 0 0 / 0.12);
+```
+
+**Light `nav-tab-glass` Override** (Zeile 663-684 erweitern):
+```css
+:root .nav-tab-glass {
   backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  border-bottom: 1px solid hsl(var(--border) / 0.6);
+  background: hsl(var(--chrome-bg-2) / 0.7);
+  border: 1px solid hsl(var(--chrome-border) / 0.4);
+  box-shadow: none;
+}
+:root .nav-tab-glass:hover {
+  background: hsl(var(--chrome-bg-2) / 0.9);
+  border-color: hsl(var(--chrome-border) / 0.6);
 }
 ```
 
-Dark Mode `.glass-nav` bleibt unverändert (Glass + blur).
-
-**3) Btn-Glass Light anpassen (Zeile ~585)**
-
-Light `.btn-glass` von `hsla(0 0% 100%)` auf warm-neutral:
+**Light `nav-ios-floating` Override** (Zeile 634-650 erweitern):
 ```css
-.btn-glass {
-  background: hsl(35 14% 98% / 0.5);
-  border: 1px solid hsl(35 10% 80% / 0.3);
+:root .nav-ios-floating {
+  background: hsl(var(--chrome-bg) / 0.98);
+  backdrop-filter: none;
+  border: 1px solid hsl(var(--chrome-border) / 0.5);
+  box-shadow: var(--chrome-shadow);
 }
 ```
 
-### Was NICHT geändert wird
+**Light `btn-glass` hover** anpassen (Zeile 603-604):
+```css
+:root .btn-glass:hover {
+  background: hsl(var(--chrome-bg-2) / 0.8);
+}
+```
 
-- Dark Mode Tokens → bleiben komplett unverändert
-- Primary/Ring/Destructive → bleiben bei Electric Blue / Red
-- Text-Hierarchie → `--text-primary/secondary/dimmed` bleiben (sind farbunabhängig)
-- Keine Komponenten-Dateien betroffen — alles über CSS Custom Properties
+---
 
-### Ergebnis
+### Aenderung 2: src/components/portal/PortalHeader.tsx — Solid Chrome Header
 
-- Light = warmes App-Graphit, kein Weiß-Blitz
-- Topbar = solid Chrome-Frame (wie macOS Finder Light)
-- Cards/Tabellen = helle Panels auf Canvas, nicht Sticker auf Papier
-- Dark Mode = 100% unverändert
+Zeile 53 aendern von:
+```
+bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60
+```
+zu:
+```
+bg-[hsl(var(--chrome-bg)/0.98)] dark:bg-background/95 dark:backdrop-blur dark:supports-[backdrop-filter]:bg-background/60 shadow-[var(--chrome-shadow)] dark:shadow-none
+```
+
+Das macht den Header im Light Mode opaque mit warmem Graphit, im Dark Mode bleibt Glass.
+
+---
+
+### Aenderung 3: src/components/portal/TopNavigation.tsx — Solid Nav Container
+
+Zeile 49 aendern von:
+```
+border-b bg-card/60 backdrop-blur-md
+```
+zu:
+```
+border-b bg-[hsl(var(--chrome-bg)/0.98)] dark:bg-card/60 dark:backdrop-blur-md
+```
+
+---
+
+### Aenderung 4: src/components/portal/SubTabs.tsx — Solid Subtab Row
+
+Zeile 37 aendern von:
+```
+bg-background/50
+```
+zu:
+```
+bg-[hsl(var(--chrome-bg-2)/0.98)] dark:bg-background/50
+```
+
+---
+
+### Aenderung 5: src/components/portal/AreaTabs.tsx — keine Aenderung noetig
+
+Die Pills nutzen `nav-tab-glass` (wird ueber CSS Override geloest) und `bg-primary/90` fuer Active (bleibt).
+
+---
+
+### Was NICHT geaendert wird
+
+- Dark Mode: alle Aenderungen sind mit `dark:` prefix geschuetzt
+- Primary/Ring/Status-Farben: bleiben
+- Keine neuen Komponenten-Dateien
+- Mobile Navigation: nicht betroffen (eigene Komponenten)
+
+### Erwartetes Ergebnis
+
+```text
++--[ Header: solid warm-graphite, shadow ]-----+
+|  Logo  [CLIENT] [MANAGER] [SERVICE] [BASE]   |
++--[ AreaTabs: solid chrome-bg-2 track ]--------+
++--[ SubTabs: solid chrome-bg-2 row ]-----------+
+|                                               |
+|         Canvas: warm-neutral 95%              |
+|     +------+  +------+  +------+             |
+|     | Card |  | Card |  | Card |   98%        |
+|     +------+  +------+  +------+             |
++-----------------------------------------------+
+```
+
+- Header = sichtbarer Rahmen mit Shadow (wie macOS Finder)
+- Nav Pills = solide Graphit-Tracks, kein Glass
+- SubTabs = klare Trennlinie, nicht schwebend
+- Cards = helle Panels auf Canvas (nicht Sticker)
+- Dark Mode = 100% unveraendert
 
