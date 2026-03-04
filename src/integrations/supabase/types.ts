@@ -2562,6 +2562,56 @@ export type Database = {
           },
         ]
       }
+      armstrong_projects: {
+        Row: {
+          created_at: string
+          goal: string | null
+          id: string
+          linked_entities: Json | null
+          memory_snippets: Json | null
+          status: string
+          task_list: Json | null
+          tenant_id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          goal?: string | null
+          id?: string
+          linked_entities?: Json | null
+          memory_snippets?: Json | null
+          status?: string
+          task_list?: Json | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          goal?: string | null
+          id?: string
+          linked_entities?: Json | null
+          memory_snippets?: Json | null
+          status?: string
+          task_list?: Json | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "armstrong_projects_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_events: {
         Row: {
           actor_user_id: string

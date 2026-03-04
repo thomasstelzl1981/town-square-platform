@@ -30,6 +30,7 @@ import { BrandLinkWidget } from '@/components/dashboard/widgets/BrandLinkWidget'
 import { MeetingRecorderWidget } from '@/components/dashboard/MeetingRecorderWidget';
 import { TLCWidget } from '@/components/dashboard/widgets/TLCWidget';
 import { NotesWidget } from '@/components/dashboard/widgets/NotesWidget';
+import { ArmstrongWorkspace } from '@/components/dashboard/ArmstrongWorkspace';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Settings2, Inbox, ChevronDown, Globe, Radio, Zap } from 'lucide-react';
@@ -246,35 +247,10 @@ export default function PortalDashboard() {
         </div>
       </section>
 
-      {/* ===== Section 2: Armstrong ===== */}
+      {/* ===== Section 2: Armstrong Workspace ===== */}
       <section className="min-h-[calc(100dvh-4rem)] snap-start flex flex-col">
-        <div className="max-w-7xl mx-auto w-full px-2 py-3 md:p-6 lg:p-8 flex-1">
-          <h2 className="text-lg md:text-h1 text-center mb-2 md:mb-4 text-foreground tracking-widest">
-            ARMSTRONG
-          </h2>
-          <p className="text-sm text-muted-foreground text-center mb-6">
-            Deine Arbeitsoberfläche — Armstrong erstellt hier automatisch Widgets
-          </p>
-
-          <DashboardGrid
-            widgetIds={['notes_widget', ...visibleTaskIds]}
-            onReorder={updateOrder}
-          >
-            {/* Notes Widget — always first */}
-            <SortableWidget key="notes_widget" id="notes_widget">
-              <NotesWidget />
-            </SortableWidget>
-
-            {visibleTaskIds.map(widgetId => {
-              const widget = renderWidget(widgetId);
-              if (!widget) return null;
-              return (
-                <SortableWidget key={widgetId} id={widgetId}>
-                  {widget}
-                </SortableWidget>
-              );
-            })}
-          </DashboardGrid>
+        <div className="max-w-7xl mx-auto w-full px-2 py-3 md:p-6 lg:p-8 flex-1 flex flex-col">
+          <ArmstrongWorkspace />
         </div>
       </section>
     </div>
