@@ -1,141 +1,124 @@
 
 
-## Plan: Light Mode CRM Chrome — Solid Frame Spec
+## Diagnose (Screenshot-basiert)
 
-### Problem (Screenshot-bestätigt)
+Ich habe beide Modi live gesehen. Der Light Mode hat folgende Probleme:
 
-Die Token-Umstellung auf Hue 35 hat gewirkt, aber die Komponenten umgehen die Tokens komplett:
+1. **Chrome und Canvas sind zu aehnlich** — Header (92%) und Canvas (96%) liegen nur 4% auseinander. Kein sichtbarer "Rahmen".
+2. **Content Well ist zu schwach** — `border-opacity 0.35` und `shadow-sm` sind unsichtbar auf hellem Hintergrund. Wirkt wie ein Geist-Container.
+3. **Alles innen ist gleich weiss** — Info-Box, Search-Row, Tabelle, alles auf einer Ebene. Keine innere Hierarchie.
+4. **Table Header verschwindet** — `215 14% 94%` ist auf weissem Well kaum sichtbar.
+5. **Nav-Stack hat keine "Unterkante"** — Chrome-Bereich endet ohne klare Trennung zum Canvas.
+6. **`glass-card` hat im Light Mode `backdrop-filter: blur(12px)`** — voellig sinnlos auf weissem Hintergrund, erzeugt subtile Rendering-Artefakte.
 
-- `PortalHeader`: `bg-background/95 backdrop-blur` -- fast unsichtbar
-- `TopNavigation`: `bg-card/60 backdrop-blur-md` -- transparent auf hellem Canvas
-- `SubTabs`: `bg-background/50` -- halb-transparent
-- `nav-tab-glass`: `hsla(0,0%,100%,0.15)` -- weiss-auf-weiss im Light
-- `.glass-nav` Override existiert, wird aber von keiner Komponente genutzt (inline Tailwind)
+## Plan: Light Mode v3.1 — CRM Structure Polish
 
-**Ergebnis:** Alles schwebt, nichts hat Rahmen. Kein "App Chrome".
-
-### Loesung: 2-Ebenen-Ansatz
-
-**Ebene 1: CSS Tokens + Utility-Klassen** (src/index.css)
-**Ebene 2: Komponenten-Klassen anpassen** (4 Dateien)
+Nur `src/index.css` und `src/components/shared/PageShell.tsx`. Keine neuen Dateien, keine Modul-Aenderungen.
 
 ---
 
-### Aenderung 1: src/index.css — Chrome-Tokens + Light Overrides
+### Aenderung 1: `src/index.css` — Token-Tuning + Glass-Cleanup
 
-**Neue Tokens in `:root`** (nach Zeile ~103):
-```css
---chrome-bg: 35 16% 93%;
---chrome-bg-2: 35 14% 91%;
---chrome-border: 35 10% 80%;
---chrome-shadow: 0 4px 14px -10px rgb(0 0 0 / 0.12);
+**A) Canvas dunkler machen (sichtbare Hierarchie)**
+
+```
+--background: 215 18% 94%;     /* war 96% — 2% dunkler = Canvas wird sichtbar */
 ```
 
-**Light `nav-tab-glass` Override** (Zeile 663-684 erweitern):
+Das erzeugt eine klare 3-Stufen-Hierarchie:
+- Chrome: 92% (Topbar/Nav)
+- Canvas: 94% (Hintergrund)  
+- Well/Cards: 100% (Arbeitsflaeche)
+
+**B) Table Header kraeftiger**
+
+```
+--table-header-bg: 215 14% 92%;   /* war 94% — jetzt sichtbar auf weissem Well */
+--table-row-hover: 215 14% 96%;   /* war gleich — passt */
+```
+
+**C) Light-Mode glass-card: kein Blur**
+
+Neuer Override (nach dem bestehenden `.glass-card` Block):
 ```css
-:root .nav-tab-glass {
+:root .glass-card {
   backdrop-filter: none;
-  background: hsl(var(--chrome-bg-2) / 0.7);
-  border: 1px solid hsl(var(--chrome-border) / 0.4);
-  box-shadow: none;
-}
-:root .nav-tab-glass:hover {
-  background: hsl(var(--chrome-bg-2) / 0.9);
-  border-color: hsl(var(--chrome-border) / 0.6);
+  -webkit-backdrop-filter: none;
 }
 ```
+Im Light Mode braucht kein Card Blur. Dark Mode bleibt (ueber `.dark .glass-card` unberuehrt).
 
-**Light `nav-ios-floating` Override** (Zeile 634-650 erweitern):
-```css
-:root .nav-ios-floating {
-  background: hsl(var(--chrome-bg) / 0.98);
-  backdrop-filter: none;
-  border: 1px solid hsl(var(--chrome-border) / 0.5);
-  box-shadow: var(--chrome-shadow);
-}
-```
+**D) Nav-Stack Frame-Kante**
 
-**Light `btn-glass` hover** anpassen (Zeile 603-604):
-```css
-:root .btn-glass:hover {
-  background: hsl(var(--chrome-bg-2) / 0.8);
-}
-```
+Am `TopNavigation.tsx` Container eine Shadow-Kante hinzufuegen (nur Light):
+- Bereits in `PortalHeader` als `shadow-[var(--chrome-shadow)]` vorhanden
+- `TopNavigation` Container bekommt zusaetzlich `shadow-[0_2px_8px_-4px_rgb(0_0_0/0.1)]` im Light
 
 ---
 
-### Aenderung 2: src/components/portal/PortalHeader.tsx — Solid Chrome Header
+### Aenderung 2: `src/components/shared/PageShell.tsx` — Content Well staerker
 
-Zeile 53 aendern von:
+Von:
 ```
-bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60
-```
-zu:
-```
-bg-[hsl(var(--chrome-bg)/0.98)] dark:bg-background/95 dark:backdrop-blur dark:supports-[backdrop-filter]:bg-background/60 shadow-[var(--chrome-shadow)] dark:shadow-none
+border border-[hsl(var(--chrome-border)/0.35)] dark:border-0 shadow-sm dark:shadow-none
 ```
 
-Das macht den Header im Light Mode opaque mit warmem Graphit, im Dark Mode bleibt Glass.
+Zu:
+```
+border border-[hsl(var(--chrome-border)/0.5)] dark:border-0 shadow-md dark:shadow-none
+```
+
+Plus Padding erhoehen: `md:p-6` wird `md:p-8 md:pb-10` (mehr "Raum" im Well, Seite wirkt "fertig").
 
 ---
 
-### Aenderung 3: src/components/portal/TopNavigation.tsx — Solid Nav Container
+### Aenderung 3: `src/components/portal/TopNavigation.tsx` — Frame-Kante
 
-Zeile 49 aendern von:
-```
-border-b bg-card/60 backdrop-blur-md
-```
-zu:
+Von:
 ```
 border-b bg-[hsl(var(--chrome-bg)/0.98)] dark:bg-card/60 dark:backdrop-blur-md
 ```
 
----
-
-### Aenderung 4: src/components/portal/SubTabs.tsx — Solid Subtab Row
-
-Zeile 37 aendern von:
+Zu:
 ```
-bg-background/50
-```
-zu:
-```
-bg-[hsl(var(--chrome-bg-2)/0.98)] dark:bg-background/50
+border-b bg-[hsl(var(--chrome-bg)/0.98)] shadow-[0_2px_8px_-4px_rgb(0_0_0/0.08)] dark:bg-card/60 dark:backdrop-blur-md dark:shadow-none
 ```
 
----
-
-### Aenderung 5: src/components/portal/AreaTabs.tsx — keine Aenderung noetig
-
-Die Pills nutzen `nav-tab-glass` (wird ueber CSS Override geloest) und `bg-primary/90` fuer Active (bleibt).
+Das gibt dem gesamten Nav-Stack eine sichtbare Unterkante im Light Mode.
 
 ---
 
 ### Was NICHT geaendert wird
 
-- Dark Mode: alle Aenderungen sind mit `dark:` prefix geschuetzt
-- Primary/Ring/Status-Farben: bleiben
-- Keine neuen Komponenten-Dateien
-- Mobile Navigation: nicht betroffen (eigene Komponenten)
+- Dark Mode: alle Aenderungen mit `:root` / `dark:` geschuetzt
+- Hue bleibt 215 (warm-gray funktioniert — das Problem war Kontrast, nicht Farbe)
+- Active Pills bleiben weiss (macOS Pattern — korrekt)
+- Keine Modul-Dateien betroffen
+- AreaTabs, SubTabs, PortalHeader — unveraendert
 
 ### Erwartetes Ergebnis
 
 ```text
-+--[ Header: solid warm-graphite, shadow ]-----+
-|  Logo  [CLIENT] [MANAGER] [SERVICE] [BASE]   |
-+--[ AreaTabs: solid chrome-bg-2 track ]--------+
-+--[ SubTabs: solid chrome-bg-2 row ]-----------+
-|                                               |
-|         Canvas: warm-neutral 95%              |
-|     +------+  +------+  +------+             |
-|     | Card |  | Card |  | Card |   98%        |
-|     +------+  +------+  +------+             |
-+-----------------------------------------------+
++==[ Header: 92%, shadow ]====================+
+|  Logo  [CLIENT] [MANAGER] [SERVICE] [BASE]  |
++--[ SubTabs: 90% ]---------------------------+
+|  shadow-Kante ↓↓↓                           |
++----------------------------------------------+
+|                                              |
+|    Canvas: 94% (sichtbar grauer)             |
+|  +========================================+  |
+|  | Content Well: 100% weiss               |  |
+|  | border 0.5 opacity, shadow-md          |  |
+|  | padding p-8, pb-10                     |  |
+|  |                                        |  |
+|  |  [Info-Box]  ← glass-card, kein blur   |  |
+|  |  [Search + Button]                     |  |
+|  |  [Table: Header 92% = sichtbar]        |  |
+|  |                                        |  |
+|  +========================================+  |
+|                                              |
++----------------------------------------------+
 ```
 
-- Header = sichtbarer Rahmen mit Shadow (wie macOS Finder)
-- Nav Pills = solide Graphit-Tracks, kein Glass
-- SubTabs = klare Trennlinie, nicht schwebend
-- Cards = helle Panels auf Canvas (nicht Sticker)
-- Dark Mode = 100% unveraendert
+3 Dateien, 5 CSS-Zeilen, sofortiger CRM-Effekt.
 
