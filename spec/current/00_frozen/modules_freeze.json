@@ -5,7 +5,7 @@
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
     "MOD-00": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "reason": "Full freeze — all modules locked except MOD-11" },
-    "MOD-01": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "reason": "Full freeze — all modules locked except MOD-11" },
+    "MOD-01": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for Rechtliches layout fix and Stammdaten sections" },
     "MOD-02": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for Gmail OAuth popup fix and manual sync triggers" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-04": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
@@ -24,7 +24,7 @@
     "MOD-17": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-18": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-19": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
-    "MOD-20": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
+    "MOD-20": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for Versorgung fields, camera edit dialog fix" },
     "MOD-21": { "frozen": true, "frozen_at": "2026-03-02T11:00:00.000Z", "reason": "REMOVED — Module deactivated and all artifacts deleted" },
     "MOD-22": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "reason": "Full freeze — all modules locked except MOD-11" }
   }
