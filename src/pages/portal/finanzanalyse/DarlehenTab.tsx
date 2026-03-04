@@ -43,6 +43,7 @@ function fmtPercent(v: number) {
 const PURPOSE_OPTIONS = [
   { value: 'autokredit', label: 'Autokredit' },
   { value: 'konsumkredit', label: 'Konsumkredit' },
+  { value: 'leasing', label: 'Leasing' },
   { value: 'moebel', label: 'Möbelfinanzierung' },
   { value: 'bildung', label: 'Bildungskredit' },
   { value: 'umschuldung', label: 'Umschuldung' },

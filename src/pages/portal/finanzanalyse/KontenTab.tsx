@@ -21,7 +21,7 @@ import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { KontoAkteInline } from '@/components/finanzanalyse/KontoAkteInline';
-import { AddBankAccountDialog } from '@/components/shared/AddBankAccountDialog';
+import { BankAccountInlineForm } from '@/components/finanzanalyse/BankAccountInlineForm';
 import { Landmark, ScanSearch, Plus, CreditCard, RefreshCw, Building2, Loader2, FileSpreadsheet, Trash2 } from 'lucide-react';
 import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 import { cn } from '@/lib/utils';
@@ -42,7 +42,7 @@ export default function KontenTab() {
   const { isEnabled } = useDemoToggles();
   const readiness = useDataReadiness();
   const [openKontoId, setOpenKontoId] = useState<string | null>(null);
-  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showAddInline, setShowAddInline] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -256,7 +256,7 @@ export default function KontenTab() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setShowAddDialog(true)}>
+              <DropdownMenuItem onClick={() => setShowAddInline(true)}>
                 <CreditCard className="h-4 w-4 mr-2" />
                 Konto manuell anlegen
               </DropdownMenuItem>
@@ -460,7 +460,9 @@ export default function KontenTab() {
         </CardContent>
       </Card>
 
-      <AddBankAccountDialog open={showAddDialog} onOpenChange={setShowAddDialog} />
+      {showAddInline && (
+        <BankAccountInlineForm onClose={() => setShowAddInline(false)} />
+      )}
       <DataReadinessModal
         open={readiness.showReadinessModal}
         onOpenChange={readiness.setShowReadinessModal}
