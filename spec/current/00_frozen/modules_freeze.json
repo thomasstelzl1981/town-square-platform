@@ -6,7 +6,7 @@
   "modules": {
     "MOD-00": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "reason": "Full freeze — all modules locked except MOD-11" },
     "MOD-01": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "reason": "Full freeze — all modules locked except MOD-11" },
-    "MOD-02": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
+    "MOD-02": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for Gmail OAuth popup fix and manual sync triggers" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-04": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-05": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "reason": "Full freeze — all modules locked except MOD-11" },

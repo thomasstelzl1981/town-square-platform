@@ -47,43 +47,21 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
-  /** HTML page that posts a message to the opener and closes the popup. */
-  const popupResultHtml = (success: boolean, errorMsg?: string) => {
-    const messageObj = success
-      ? { type: "gmail_auth_result", success: true }
-      : { type: "gmail_auth_result", success: false, error: errorMsg || "unknown" };
-    const messageJson = JSON.stringify(messageObj);
-    const bodyText = success
-      ? "Verbunden! Dieses Fenster schliesst sich automatisch..."
-      : `Fehler: ${errorMsg || "Unbekannt"}`;
-    return new Response(
-      `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Gmail Auth</title></head><body>
-<p id="status">${bodyText}</p>
-<script>
-(function() {
-  var result = ${JSON.stringify(messageJson)};
-  // 1. localStorage fallback (works even without window.opener)
-  try { localStorage.setItem('gmail_auth_result', result); } catch(e) {}
-  // 2. postMessage if opener exists
-  if (window.opener) {
-    try { window.opener.postMessage(result, "*"); } catch(e) {}
-  }
-  // 3. Try closing with retry
-  function tryClose(attempts) {
-    if (attempts <= 0) {
-      document.getElementById('status').textContent = 
-        'Verbindung erfolgreich! Sie koennen dieses Fenster jetzt schliessen.';
-      return;
-    }
-    try { window.close(); } catch(e) {}
-    setTimeout(function() { tryClose(attempts - 1); }, 500);
-  }
-  tryClose(5);
-})();
-</script>
-</body></html>`,
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" } }
-    );
+  /** Redirect back to app origin with result as URL params — this ensures the popup closes reliably. */
+  const popupResultRedirect = (success: boolean, errorMsg?: string) => {
+    // Determine the app origin — use SITE_URL or fallback
+    const siteUrl = Deno.env.get("SITE_URL") || Deno.env.get("PUBLIC_SITE_URL") || "https://systemofatown.lovable.app";
+    const redirectUrl = new URL("/portal/office/email", siteUrl);
+    redirectUrl.searchParams.set("gmail_auth", success ? "success" : "error");
+    if (errorMsg) redirectUrl.searchParams.set("gmail_error", errorMsg);
+
+    return new Response(null, {
+      status: 302,
+      headers: {
+        ...corsHeaders,
+        Location: redirectUrl.toString(),
+      },
+    });
   };
 
   try {
@@ -111,11 +89,11 @@ Deno.serve(async (req) => {
 
       if (error) {
         console.error("[gmail-auth] OAuth error:", error);
-        return popupResultHtml(false, error);
+        return popupResultRedirect(false, error);
       }
 
       if (!code || !state || !clientId || !clientSecret) {
-        return popupResultHtml(false, "missing_params");
+        return popupResultRedirect(false, "missing_params");
       }
 
       // Decode state
@@ -123,7 +101,7 @@ Deno.serve(async (req) => {
       try {
         stateData = JSON.parse(atob(state));
       } catch {
-        return popupResultHtml(false, "invalid_state");
+        return popupResultRedirect(false, "invalid_state");
       }
 
       // Exchange code for tokens
@@ -142,7 +120,7 @@ Deno.serve(async (req) => {
       const tokenData = await tokenRes.json();
       if (!tokenRes.ok || !tokenData.access_token) {
         console.error("[gmail-auth] Token exchange failed:", tokenData);
-        return popupResultHtml(false, "token_exchange_failed");
+        return popupResultRedirect(false, "token_exchange_failed");
       }
 
       // Get user info
@@ -182,7 +160,7 @@ Deno.serve(async (req) => {
 
         if (updateErr) {
           console.error("[gmail-auth] Update error:", updateErr);
-          return popupResultHtml(false, "db_error");
+          return popupResultRedirect(false, "db_error");
         }
       } else {
         // Insert new
@@ -202,12 +180,12 @@ Deno.serve(async (req) => {
 
         if (insertErr) {
           console.error("[gmail-auth] Insert error:", insertErr);
-          return popupResultHtml(false, "db_error");
+          return popupResultRedirect(false, "db_error");
         }
       }
 
       console.log(`[gmail-auth] Successfully connected Gmail for ${userInfo.email}`);
-      return popupResultHtml(true);
+      return popupResultRedirect(true);
     }
 
     // ── All other actions require auth ──
