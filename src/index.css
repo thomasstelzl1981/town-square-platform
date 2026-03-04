@@ -41,16 +41,16 @@
      ========================================================================= */
   :root {
     /* Core Backgrounds */
-    --background: 220 25% 98%;
+    --background: 210 14% 94%;
     --foreground: 222 35% 10%;
 
     /* Glass-enabled surfaces with alpha channel */
-    --card: 0 0% 100% / 0.96;
+    --card: 210 10% 97% / 0.98;
     --card-foreground: 222 35% 10%;
-    --card-glass: 0 0% 100% / 0.7;
-    --surface-glass: 0 0% 98% / 0.6;
+    --card-glass: 210 10% 97% / 0.7;
+    --surface-glass: 210 10% 95% / 0.6;
 
-    --popover: 0 0% 100% / 0.98;
+    --popover: 210 10% 97% / 0.98;
     --popover-foreground: 222 35% 10%;
 
     /* Primary Colors */
@@ -60,8 +60,8 @@
     --secondary: 220 18% 92%;
     --secondary-foreground: 222 35% 10%;
 
-    --muted: 220 20% 96%;
-    --muted-foreground: 220 12% 38%;
+    --muted: 210 12% 92%;
+    --muted-foreground: 220 10% 34%;
 
     --accent: 220 18% 92%;
     --accent-foreground: 222 35% 10%;
@@ -70,8 +70,8 @@
     --destructive-foreground: 210 40% 98%;
 
     /* Borders & Inputs */
-    --border: 220 18% 86%;
-    --input: 220 18% 86%;
+    --border: 210 10% 80%;
+    --input: 210 10% 80%;
     --ring: 217 91% 56%;
 
     /* Radius System — iOS-style larger radii */
@@ -98,8 +98,8 @@
     --status-info: 199 80% 42%;
 
     /* Surface Layers */
-    --surface: 220 20% 96%;
-    --surface-2: 220 18% 94%;
+    --surface: 210 12% 92%;
+    --surface-2: 210 10% 90%;
     --border-subtle: 214 32% 91%;
     --border-glow: 217 91% 60%;
 
@@ -127,9 +127,9 @@
     --overlay-surface: 0 0% 100% / 0.96;
 
     /* Ambient Background — Enterprise Clean */
-    --ambient-opacity: 0.06;
-    --ambient-vignette: 0.06;
-    --ambient-horizon: 220 15% 80%;
+    --ambient-opacity: 0.03;
+    --ambient-vignette: 0.03;
+    --ambient-horizon: 195 12% 85%;
     --ambient-structure:
       repeating-linear-gradient(
         90deg,
@@ -150,14 +150,14 @@
      ========================================================================= */
   .dark {
     /* Core Backgrounds - Dark enterprise UI */
-    --background: 222 20% 8%;
+    --background: 220 10% 7%;
     --foreground: 210 20% 96%;
 
     /* Glass-enabled surfaces with alpha channel */
     --card: 222 18% 12% / 0.92;
     --card-foreground: 210 20% 96%;
-    --card-glass: 222 20% 6% / 0.7;
-    --surface-glass: 222 20% 5% / 0.6;
+    --card-glass: 220 10% 7% / 0.74;
+    --surface-glass: 220 10% 6% / 0.64;
 
     --popover: 222 18% 13% / 0.94;
     --popover-foreground: 210 20% 96%;
@@ -169,7 +169,7 @@
     --secondary: 222 14% 16%;
     --secondary-foreground: 210 20% 96%;
 
-    --muted: 222 14% 16%;
+    --muted: 220 8% 15%;
     --muted-foreground: 220 10% 70%;
 
     --accent: 222 14% 16%;
@@ -179,12 +179,12 @@
     --destructive-foreground: 210 40% 98%;
 
     /* Borders & Inputs */
-    --border: 222 14% 22%;
-    --input: 222 14% 22%;
+    --border: 220 8% 20%;
+    --input: 220 8% 20%;
     --ring: 217 91% 60%;
 
     /* Sidebar - Dark (Menu bleibt dunkel) */
-    --sidebar-background: 222 20% 5%;
+    --sidebar-background: 220 10% 6%;
     --sidebar-foreground: 210 30% 85%;
     --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
@@ -210,8 +210,8 @@
     --reading-surface: 222 28% 12% / 0.92;
 
     /* Surface Layers - Dark enterprise (original) */
-    --surface: 222 18% 12%;
-    --surface-2: 222 16% 10%;
+    --surface: 220 10% 11%;
+    --surface-2: 220 10% 9%;
     --border-subtle: 222 20% 18%;
     --border-glow: 217 50% 35%;
 
@@ -229,9 +229,9 @@
     --overlay-surface: 222 28% 14% / 0.92;
 
     /* Ambient Background — Enterprise Clean */
-    --ambient-opacity: 0.12;
-    --ambient-vignette: 0.14;
-    --ambient-horizon: 225 35% 35%;
+    --ambient-opacity: 0.06;
+    --ambient-vignette: 0.10;
+    --ambient-horizon: 195 12% 28%;
     --ambient-structure: none;
   }
 }
@@ -305,85 +305,39 @@
    =========================================================================== */
 :root {
   --bg-atmosphere: 
-    /* Layer 1: Dichte Hauptwolke links-oben */
-    radial-gradient(
-      ellipse 100% 50% at 20% 20%,
-      hsla(0 0% 100% / 0.7) 0%,
-      hsla(0 0% 100% / 0.3) 30%,
-      transparent 60%
-    ),
-    /* Layer 2: Zweite Wolkenformation rechts */
-    radial-gradient(
-      ellipse 70% 45% at 75% 25%,
-      hsla(0 0% 100% / 0.6) 0%,
-      hsla(0 0% 100% / 0.2) 35%,
-      transparent 55%
-    ),
-    /* Layer 3: Weiche Wolkenschicht Mitte-unten */
-    radial-gradient(
-      ellipse 120% 40% at 50% 60%,
-      hsla(0 0% 100% / 0.4) 0%,
-      transparent 50%
-    ),
-    /* Layer 4: Sonnenschein-Glow von oben (warm) */
-    radial-gradient(
-      ellipse 80% 60% at 50% -10%,
-      hsla(40 70% 90% / 0.3) 0%,
-      transparent 50%
-    ),
-    /* Layer 5: Neutraler Frost-Gradient (kein Himmelsblau) */
-    radial-gradient(
-      ellipse 160% 120% at 50% -40%,
-      hsl(210 12% 96%) 0%,
-      hsl(210 10% 97%) 35%,
-      hsl(210 8% 98%) 70%,
-      hsl(210 6% 99%) 100%
+    /* Neutraler Frost-Gradient — kein Himmelsblau, keine Wolken */
+    linear-gradient(
+      180deg,
+      hsl(210 12% 92%) 0%,
+      hsl(210 10% 94%) 35%,
+      hsl(210 8% 96%) 70%,
+      hsl(210 6% 97%) 100%
     );
 }
 
 .dark {
   --bg-atmosphere: 
-    /* Layer 1: Große Galaxie-Glow oben-rechts (intensiver) */
+    /* Layer 1: Subtiler Graphite-Glow oben-rechts */
     radial-gradient(
       ellipse 80% 70% at 90% 0%,
-      hsl(220 60% 18%) 0%,
-      hsl(225 50% 12%) 25%,
-      hsl(225 40% 6%) 50%,
+      hsl(220 15% 12%) 0%,
+      hsl(220 12% 8%) 25%,
+      hsl(220 10% 5%) 50%,
       transparent 70%
     ),
-    /* Layer 2: Blauer Nebel-Akzent oben-links */
+    /* Layer 2: Neutraler Nebel oben-links */
     radial-gradient(
       ellipse 50% 40% at 10% 15%,
-      hsl(210 50% 14%) 0%,
-      hsl(215 40% 8%) 30%,
+      hsl(220 12% 10%) 0%,
+      hsl(220 10% 7%) 30%,
       transparent 55%
     ),
-    /* Layer 3: Neutraler Graphite-Nebel unten-links */
-    radial-gradient(
-      ellipse 60% 50% at 5% 100%,
-      hsl(220 25% 12%) 0%,
-      hsl(222 20% 8%) 30%,
-      transparent 60%
-    ),
-    /* Layer 4: Neutraler Graphite-Nebel unten-rechts */
-    radial-gradient(
-      ellipse 45% 35% at 85% 90%,
-      hsl(222 20% 10%) 0%,
-      hsl(222 18% 6%) 25%,
-      transparent 50%
-    ),
-    /* Layer 5: Zentraler Sternenstaub-Schimmer */
-    radial-gradient(
-      ellipse 100% 80% at 50% 40%,
-      hsla(220 40% 15% / 0.25) 0%,
-      transparent 60%
-    ),
-    /* Layer 6: Tiefes Weltraum-Schwarz */
+    /* Layer 3: Graphite-Basis */
     linear-gradient(
       180deg,
-      hsl(222 70% 3%) 0%,
-      hsl(222 75% 2%) 50%,
-      hsl(222 80% 1%) 100%
+      hsl(220 12% 3%) 0%,
+      hsl(220 10% 2%) 50%,
+      hsl(220 8% 1%) 100%
     );
 }
 
