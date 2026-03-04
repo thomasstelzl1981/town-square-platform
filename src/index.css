@@ -40,38 +40,38 @@
      LIGHT MODE (Optional fallback - Dark is default)
      ========================================================================= */
   :root {
-    /* Core Backgrounds */
-    --background: 210 14% 94%;
+    /* Core Backgrounds — Warm-Neutral Light-Graphite */
+    --background: 35 18% 95%;
     --foreground: 222 35% 10%;
 
     /* Glass-enabled surfaces with alpha channel */
-    --card: 210 10% 97% / 0.98;
+    --card: 35 14% 98% / 0.98;
     --card-foreground: 222 35% 10%;
-    --card-glass: 210 10% 97% / 0.7;
-    --surface-glass: 210 10% 95% / 0.6;
+    --card-glass: 35 14% 97% / 0.7;
+    --surface-glass: 35 14% 95% / 0.6;
 
-    --popover: 210 10% 97% / 0.98;
+    --popover: 35 14% 98% / 0.98;
     --popover-foreground: 222 35% 10%;
 
     /* Primary Colors */
     --primary: 217 91% 56%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 18% 92%;
+    --secondary: 35 16% 92%;
     --secondary-foreground: 222 35% 10%;
 
-    --muted: 210 12% 92%;
+    --muted: 35 14% 92%;
     --muted-foreground: 220 10% 34%;
 
-    --accent: 220 18% 92%;
+    --accent: 35 16% 92%;
     --accent-foreground: 222 35% 10%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     /* Borders & Inputs */
-    --border: 210 10% 80%;
-    --input: 210 10% 80%;
+    --border: 35 10% 80%;
+    --input: 35 10% 80%;
     --ring: 217 91% 56%;
 
     /* Radius System — iOS-style larger radii */
@@ -82,13 +82,13 @@
     --radius-full: 9999px;
 
     /* Sidebar */
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 35 14% 96%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent: 35 12% 94%;
     --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
+    --sidebar-border: 35 10% 88%;
     --sidebar-ring: 217.2 91.2% 59.8%;
 
     /* Status Colors */
@@ -98,9 +98,9 @@
     --status-info: 199 80% 42%;
 
     /* Surface Layers */
-    --surface: 210 12% 92%;
-    --surface-2: 210 10% 90%;
-    --border-subtle: 214 32% 91%;
+    --surface: 35 16% 93%;
+    --surface-2: 35 14% 91%;
+    --border-subtle: 35 12% 88%;
     --border-glow: 217 91% 60%;
 
     /* Text Hierarchy */
@@ -113,33 +113,33 @@
     --accent-primary-hover: 217 91% 70%;
 
     /* Input Surface */
-    --input-bg: 210 20% 97%;
+    --input-bg: 35 16% 96%;
 
     /* Table Surface */
-    --table-header-bg: 210 20% 95%;
-    --table-row-hover: 210 20% 96%;
+    --table-header-bg: 35 16% 94%;
+    --table-row-hover: 35 16% 95%;
 
     /* Reading Surface */
-    --reading-surface: 0 0% 100% / 0.96;
+    --reading-surface: 35 14% 98% / 0.98;
 
     /* Overlay / Modal */
     --overlay-scrim: 222 84% 4.9% / 0.35;
-    --overlay-surface: 0 0% 100% / 0.96;
+    --overlay-surface: 35 14% 98% / 0.96;
 
-    /* Ambient Background — Enterprise Clean */
+    /* Ambient Background — Warm-Neutral Enterprise */
     --ambient-opacity: 0.03;
     --ambient-vignette: 0.03;
-    --ambient-horizon: 195 12% 85%;
+    --ambient-horizon: 35 10% 88%;
     --ambient-structure:
       repeating-linear-gradient(
         90deg,
-        hsl(220 30% 30% / 0.03) 0px,
+        hsl(35 10% 30% / 0.03) 0px,
         transparent 1px,
         transparent 120px
       ),
       repeating-linear-gradient(
         0deg,
-        hsl(220 30% 30% / 0.02) 0px,
+        hsl(35 10% 30% / 0.02) 0px,
         transparent 1px,
         transparent 120px
       );
@@ -572,6 +572,14 @@
     -webkit-backdrop-filter: blur(20px);
   }
 
+  /* Light Mode: solid chrome frame (no glass) */
+  :root .glass-nav {
+    background: hsl(var(--surface) / 0.98);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: 1px solid hsl(var(--border) / 0.6);
+  }
+
   .reading-surface {
     background-color: hsl(var(--reading-surface));
     backdrop-filter: blur(10px);
@@ -582,10 +590,10 @@
      iOS GLASS BUTTON STYLE
      =========================================================================== */
   .btn-glass {
-    background: hsla(0 0% 100% / 0.5);
+    background: hsl(35 14% 98% / 0.5);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid hsla(0 0% 100% / 0.3);
+    border: 1px solid hsl(35 10% 80% / 0.3);
     box-shadow: 
       inset 0 1px 0 hsla(0 0% 100% / 0.2),
       0 1px 3px hsla(0 0% 0% / 0.1);
