@@ -1,86 +1,95 @@
 
 
-## Design-Anpassung: "Frosted App Canvas" (Light) + "Graphite Neutral" (Dark)
+## Armstrong Info Page — Redesign-Konzept
 
-### Zusammenfassung
+### Ist-Zustand (Probleme)
 
-6 gezielte Änderungen in `src/index.css` — keine Komponentenänderungen nötig, da alle Werte über CSS Custom Properties fließen.
+Die Seite `/portal/armstrong` ist aktuell eine lange Scroll-Wüste mit 7 Sektionen:
+1. Hero + 3 USP-Cards
+2. "Wie Armstrong arbeitet" (3-Step)
+3. KostenDashboard (4 KPI-Cards + Top-5-Liste)
+4. SystemPreisliste (KI-Aktionen + Infra-Services — bereits collapsible intern)
+5. 3 Add-On Cards (Email-Enrichment, WhatsApp, Registry-Import)
+6. AktionsKatalog (4 KPI-Cards + Filter + Card-Grid aller Aktionen)
+7. CTA-Card
+
+**Hauptprobleme:**
+- **Redundanz**: SystemPreisliste und AktionsKatalog zeigen beide Armstrong-Aktionen — einmal als Preistabelle, einmal als Card-Grid mit Filtern. Die Preisliste zeigt Credits, der Katalog zeigt Modul-Badges und Status. Das gehört zusammen.
+- **Modulnummern sichtbar**: `MOD-04`, `MOD-14` etc. als Badges in den Action-Cards — interne Kennungen, die der User nicht sehen soll.
+- **Keine Collapsibles**: Alles ist offen, die Seite wirkt überladen.
+- **KPI-Dopplung**: KostenDashboard hat 4 KPIs, AktionsKatalog hat nochmal 4 KPIs.
+
+---
+
+### Neues Konzept: 5 Collapsible-Sektionen
+
+```text
+┌─────────────────────────────────────┐
+│  Hero (bleibt)                      │
+│  3 USP-Cards (bleibt)               │
+├─────────────────────────────────────┤
+│ ▶ Wie Armstrong arbeitet            │  ← Collapsible, default geschlossen
+├─────────────────────────────────────┤
+│ ▼ Verbrauch & Kosten                │  ← Collapsible, default offen
+│   KostenDashboard (wie bisher)      │
+├─────────────────────────────────────┤
+│ ▶ Aktionen & Preise                 │  ← KONSOLIDIERT, Collapsible
+│   Vereint: AktionsKatalog +         │
+│   SystemPreisliste in einem Block   │
+├─────────────────────────────────────┤
+│ ▶ Services & Add-Ons                │  ← Collapsible
+│   Email, WhatsApp, Registry-Import  │
+├─────────────────────────────────────┤
+│  CTA (bleibt)                       │
+└─────────────────────────────────────┘
+```
+
+---
 
 ### Änderungen
 
-**Datei: `src/index.css`**
+**Datei: `src/pages/portal/ArmstrongInfoPage.tsx`**
 
-#### 1. Light Mode: Canvas dunkler + neutraler (Zeilen 42-146)
+1. **Collapsible-Wrapper** für jede Sektion: Nutzt `<Collapsible>` aus `@radix-ui/react-collapsible` (bereits installiert). Jede Sektion bekommt einen klickbaren Header mit Chevron-Icon.
+   - "Wie Armstrong arbeitet" → default **geschlossen**
+   - "Verbrauch & Kosten" → default **offen**
+   - "Aktionen & Preise" → default **geschlossen**
+   - "Services & Add-Ons" → default **geschlossen**
 
-Ersetze die Core-Background-Tokens in `:root`:
+2. **Konsolidierung**: AktionsKatalog und SystemPreisliste werden zu einer einzigen Sektion "Aktionen & Preise". Aufbau:
+   - Filter-Bar (Suche + Zone + Status) oben
+   - Darunter: Action-Cards wie bisher, aber **mit Credit-Preis** direkt in der Card (aus `cost_hint_cents`)
+   - Infra-Services als separate Unter-Collapsible "System-Services" am Ende
+   - Die 4 KPI-Cards des AktionsKatalogs (Gesamt/Aktiv/Eingeschränkt/Deaktiviert) entfallen — die Info steckt im Filter
 
-| Token | Alt | Neu |
-|-------|-----|-----|
-| `--background` | `220 25% 98%` | `210 14% 94%` |
-| `--surface` | `220 20% 96%` | `210 12% 92%` |
-| `--surface-2` | `220 18% 94%` | `210 10% 90%` |
-| `--card` | `0 0% 100% / 0.96` | `210 10% 97% / 0.98` |
-| `--popover` | `0 0% 100% / 0.98` | `210 10% 97% / 0.98` |
-| `--border` | `220 18% 86%` | `210 10% 80%` |
-| `--input` | `220 18% 86%` | `210 10% 80%` |
-| `--muted` | `220 20% 96%` | `210 12% 92%` |
-| `--muted-foreground` | `220 12% 38%` | `220 10% 34%` |
+3. **Modulnummern entfernen**: In `AktionsKatalog.tsx` das `module`-Badge (`MOD-XX`) aus den Action-Cards entfernen. Stattdessen den Modulnamen als lesbaren Text anzeigen (z.B. "Immobilien" statt "MOD-04"). Mapping über `routesManifest` → `TileDefinition.title`.
 
-#### 2. Light Mode: bg-atmosphere neutral (Zeilen 306-341)
+**Datei: `src/pages/portal/communication-pro/agenten/AktionsKatalog.tsx`**
 
-Ersetze den gesamten `:root --bg-atmosphere`-Block. Entferne alle Wolken-Layer (1-4) und den Sonnenschein-Glow. Neuer Wert:
+4. **Badge `{action.module}`** (Zeile 171-174) ersetzen: Statt `MOD-04` den lesbaren Modulnamen aus routesManifest anzeigen. Kleines Mapping-Objekt am Dateikopf:
+   ```
+   MOD-02 → Office, MOD-03 → DMS, MOD-04 → Immobilien, ...
+   ```
+   Alternativ: Modul-Badge ganz weglassen (da Zone-Badge bereits vorhanden).
 
-```css
---bg-atmosphere:
-  linear-gradient(
-    180deg,
-    hsl(210 12% 92%) 0%,
-    hsl(210 10% 94%) 35%,
-    hsl(210 8% 96%) 70%,
-    hsl(210 6% 97%) 100%
-  );
-```
+5. **Zone-Labels bereinigen**: `Z2` → "Portal", `Z3` → "Website" ist okay, aber die Emoji-Badges (`🔵`, `🟢`) und die Zone-Distribution-Leiste (Zeile 91-95) entfernen — zu technisch für diese Seite.
 
-#### 3. Dark Mode: Graphite ent-navy-en (Zeilen 151-236)
+6. **KPI-Cards entfernen** aus AktionsKatalog (Zeilen 63-88) — redundant mit KostenDashboard.
 
-Ersetze die Core-Dark-Tokens in `.dark`:
+**Keine Änderung an:**
+- `SystemPreisliste.tsx` — wird weiterhin intern in der konsolidierten Sektion verwendet
+- `KostenDashboard.tsx` — bleibt wie ist
+- Add-On Cards — bleiben, werden nur in Collapsible gewrappt
 
-| Token | Alt | Neu |
-|-------|-----|-----|
-| `--background` | `222 20% 8%` | `220 10% 7%` |
-| `--surface` | `222 18% 12%` | `220 10% 11%` |
-| `--surface-2` | `222 16% 10%` | `220 10% 9%` |
-| `--border` | `222 14% 22%` | `220 8% 20%` |
-| `--muted` | `222 14% 16%` | `220 8% 15%` |
-| `--card-glass` | `222 20% 6% / 0.7` | `220 10% 7% / 0.74` |
-| `--surface-glass` | `222 20% 5% / 0.6` | `220 10% 6% / 0.64` |
-| `--sidebar-background` | `222 20% 5%` | `220 10% 6%` |
+---
 
-#### 4. Dark Mode: bg-atmosphere ent-blauen (Zeilen 344-388)
+### Zusammenfassung
 
-Sättigung in allen Layern drastisch reduzieren (60%→15%, 50%→12%, 40%→10% etc.), Hue von 222-225 auf 220 vereinheitlichen. Layer 6 (Basis-Gradient) von `222 70-80%` auf `220 12-15%`.
-
-#### 5. Ambient-Layer Tokens aktualisieren (Zeilen 129-145 + 231-236)
-
-Light:
-- `--ambient-horizon`: `220 15% 80%` → `195 12% 85%`
-- `--ambient-opacity`: `0.06` → `0.03`
-- `--ambient-vignette`: `0.06` → `0.03`
-
-Dark:
-- `--ambient-horizon`: `225 35% 35%` → `195 12% 28%`
-- `--ambient-opacity`: `0.12` → `0.06`
-- `--ambient-vignette`: `0.14` → `0.10`
-
-#### 6. Keine Komponentenänderungen nötig
-
-- Der Header/Topbar nutzt `glass-card` bzw. `bg-[hsl(var(--surface))]` — diese Werte werden über die Token-Änderungen automatisch neutraler.
-- Die `glass-card`-Klasse (Zeile 603) referenziert `hsl(var(--card))` — bekommt durch Punkt 1 automatisch die neutralere Tint.
-- Kein Lila-Leak gefunden im Code (Suche nach `violet`/`purple`/`lila` war negativ).
-
-### Erwartetes Ergebnis
-
-- **Light**: "Frosted App Canvas" — deutlich weniger weiß, kein Baby-Blau, Cards heben sich sauber ab
-- **Dark**: "Graphite neutral" — Navy-Schleier eliminiert, bleibt Enterprise-dunkel ohne Blaustich
-- **Topbar**: Wirkt durch neutralere Surface-Token automatisch als "App-Frame"
+| Aktion | Datei |
+|--------|-------|
+| Collapsible-Sektionen einbauen | `ArmstrongInfoPage.tsx` |
+| AktionsKatalog + Preisliste konsolidieren | `ArmstrongInfoPage.tsx` |
+| Modulnummern → lesbare Namen | `AktionsKatalog.tsx` |
+| KPI-Cards + Zone-Stats entfernen | `AktionsKatalog.tsx` |
+| Emoji-Badges entfernen | `AktionsKatalog.tsx` |
 
