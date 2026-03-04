@@ -37,13 +37,12 @@ import { getMobileBackTarget } from '@/hooks/useSwipeBack';
 
 const GLASS_BUTTON = cn(
   'h-10 w-10 rounded-full',
-  'bg-white/30 dark:bg-white/10',
-  'backdrop-blur-md',
-  'border border-white/20 dark:border-white/10',
-  'shadow-[inset_0_1px_0_hsla(0,0%,100%,0.15)]',
-  'hover:bg-white/45 dark:hover:bg-white/15',
+  'bg-white/15 dark:bg-white/10',
+  'border border-white/15 dark:border-white/10',
+  'shadow-[inset_0_1px_0_hsla(0,0%,100%,0.08)]',
+  'hover:bg-white/25 dark:hover:bg-white/15',
   'flex items-center justify-center transition-all',
-  'text-foreground'
+  'text-[hsl(var(--chrome-foreground))] dark:text-foreground'
 );
 
 /** Inline analog clock SVG */
@@ -204,7 +203,7 @@ export function SystemBar() {
 
   // Desktop: full SystemBar
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+    <header className="sticky top-0 z-50 w-full border-b bg-[hsl(var(--chrome-bg))] text-[hsl(var(--chrome-foreground))] shadow-[var(--chrome-shadow)] dark:bg-card/70 dark:backdrop-blur-lg dark:supports-[backdrop-filter]:bg-card/60 dark:text-foreground border-border/30" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="flex h-12 items-center justify-between px-4">
 
         {/* LEFT — 3 Glass Buttons */}
@@ -228,7 +227,7 @@ export function SystemBar() {
         </div>
 
         {/* CENTER — SYSTEM OF A TOWN */}
-        <span className="text-foreground font-sans font-semibold tracking-[0.2em] text-sm select-none" style={{ fontSize: '14px' }}>
+        <span className="text-[hsl(var(--chrome-foreground))] dark:text-foreground font-sans font-semibold tracking-[0.2em] text-sm select-none" style={{ fontSize: '14px' }}>
           SYSTEM OF A TOWN
         </span>
 
@@ -247,7 +246,7 @@ export function SystemBar() {
             }}
             className={cn(
               GLASS_BUTTON,
-              armstrongVisible && 'ring-2 ring-primary/30 bg-white/40 dark:bg-white/15'
+              armstrongVisible && 'ring-2 ring-primary/30 bg-white/25 dark:bg-white/15'
             )}
             title={armstrongVisible ? 'Armstrong ausblenden' : 'Armstrong einblenden'}
           >
