@@ -5,14 +5,17 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DESIGN } from '@/config/designManifest';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, Zap, Droplets, Flame, Wifi, Shield, FileText, Smartphone } from 'lucide-react';
+import { Plus, Zap, Droplets, Flame, Wifi, Shield, FileText, Smartphone, ChevronDown } from 'lucide-react';
 import { isDemoId } from '@/engines/demoData/engine';
 import { format } from 'date-fns';
 import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
   strom: { label: 'Strom', icon: Zap, color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' },
@@ -45,8 +48,10 @@ interface MietyContractsSectionProps {
 }
 
 export function MietyContractsSection({ homeId, onOpenDrawer, filterCategories, title }: MietyContractsSectionProps) {
+  const { activeTenantId } = useAuth();
   const queryClient = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const deleteContractMutation = useMutation({
     mutationFn: async (contractId: string) => {
@@ -115,6 +120,8 @@ export function MietyContractsSection({ homeId, onOpenDrawer, filterCategories, 
         {contracts.map(c => {
           const cfg = CATEGORY_CONFIG[c.category] || CATEGORY_CONFIG.sonstige;
           const Icon = cfg.icon;
+          const isExpanded = expandedId === c.id;
+          const entityType = c.category === 'miete' ? 'rental_contract' : 'utility_contract';
           return (
             <Card key={c.id} className="glass-card relative group">
               {!isDemoId(c.id) && (
@@ -125,7 +132,10 @@ export function MietyContractsSection({ homeId, onOpenDrawer, filterCategories, 
                 />
               )}
               <CardContent className="p-4">
-                <div className="flex items-start gap-3">
+                <div
+                  className="flex items-start gap-3 cursor-pointer"
+                  onClick={() => setExpandedId(isExpanded ? null : c.id)}
+                >
                   <div className={`p-2 rounded-lg ${cfg.color}`}>
                     <Icon className="h-4 w-4" />
                   </div>
@@ -143,7 +153,23 @@ export function MietyContractsSection({ homeId, onOpenDrawer, filterCategories, 
                       </p>
                     )}
                   </div>
+                  <ChevronDown className={cn(
+                    "h-4 w-4 text-muted-foreground transition-transform shrink-0 mt-1",
+                    isExpanded && "rotate-180"
+                  )} />
                 </div>
+                {/* Expanded: Datenraum */}
+                {isExpanded && activeTenantId && (
+                  <div className="mt-4 pt-3 border-t border-border/30">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Datenraum</p>
+                    <EntityStorageTree
+                      tenantId={activeTenantId}
+                      entityType={entityType as any}
+                      entityId={c.id}
+                      moduleCode="MOD_20"
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
