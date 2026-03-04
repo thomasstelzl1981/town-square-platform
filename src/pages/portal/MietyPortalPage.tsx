@@ -1,8 +1,7 @@
 /**
  * Miety Portal Page (MOD-20) — Zuhause: Widget-Grid mit Drag & Drop
  * 
- * Alle Elemente sind individuelle Widgets im WidgetCell-Format.
- * User kann per "+" neue Objekte, Kameras und Verträge hinzufügen.
+ * AES-konform: Alle Erstellungs-Flows sind inline (keine Dialogs/Drawers).
  */
 
 import { useState, useCallback } from 'react';
@@ -20,8 +19,8 @@ import { ServiceWidget } from './miety/widgets/ServiceWidget';
 import { ContractWidget } from './miety/widgets/ContractWidget';
 import { AddWidgetMenu } from './miety/widgets/AddWidgetMenu';
 import { MietyCreateHomeForm } from './miety/components/MietyCreateHomeForm';
-import { ContractDrawer } from './miety/components/ContractDrawer';
-import { AddCameraDialog } from '@/components/miety/AddCameraDialog';
+import { ContractInlineForm } from './miety/components/ContractDrawer';
+import { CameraInlineForm } from '@/components/miety/AddCameraDialog';
 import { CameraSetupWizard } from './miety/widgets/CameraSetupWizard';
 import MietyHomeDossierInline from './miety/MietyHomeDossierInline';
 import { useCameras } from '@/hooks/useCameras';
@@ -73,10 +72,10 @@ export default function MietyPortalPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingHome, setEditingHome] = useState<any>(null);
   const [openDossierId, setOpenDossierId] = useState<string | null>(null);
-  const [cameraDialogOpen, setCameraDialogOpen] = useState(false);
   const [showCameraWizard, setShowCameraWizard] = useState(false);
+  const [showCameraInline, setShowCameraInline] = useState(false);
   const [editCamera, setEditCamera] = useState<any>(null);
-  const [contractDrawerOpen, setContractDrawerOpen] = useState(false);
+  const [showContractInline, setShowContractInline] = useState(false);
   const [contractCategory, setContractCategory] = useState('strom');
   const [deletingHomeId, setDeletingHomeId] = useState<string | null>(null);
 
@@ -103,7 +102,7 @@ export default function MietyPortalPage() {
 
   // Camera handlers
   const handleAddCamera = (data: CameraFormData) => {
-    addCamera.mutate(data, { onSuccess: () => setCameraDialogOpen(false) });
+    addCamera.mutate(data, { onSuccess: () => setShowCameraInline(false) });
   };
   const handleWizardComplete = (data: CameraFormData) => {
     addCamera.mutate(data, { onSuccess: () => setShowCameraWizard(false) });
@@ -116,11 +115,11 @@ export default function MietyPortalPage() {
     if (confirm('Kamera wirklich löschen?')) deleteCamera.mutate(id);
   };
 
-  // Contract handler
+  // Contract handler — AES-konform: inline instead of drawer
   const handleAddContract = (category: string) => {
     if (homes.length === 0) { setShowCreateForm(true); return; }
     setContractCategory(category);
-    setContractDrawerOpen(true);
+    setShowContractInline(true);
   };
 
   // Render widget by ID
@@ -128,7 +127,6 @@ export default function MietyPortalPage() {
     const def = getWidget(widgetId);
     if (!def) return null;
 
-    // Filter demo items when demo is off
     if (!demoEnabled && def.entityId && isDemoId(def.entityId)) return null;
 
     switch (def.type) {
@@ -170,7 +168,7 @@ export default function MietyPortalPage() {
     }
   }, [getWidget, demoEnabled, profileName, openDossierId, deletingHomeId, homes]);
 
-  // Loading guard — prevent empty flash before widget hydration
+  // Loading guard
   if (isLoading) {
     return (
       <PageShell>
@@ -182,11 +180,8 @@ export default function MietyPortalPage() {
     );
   }
 
-  // Show create form
   if (showCreateForm) return (
-    <PageShell>
-      <MietyCreateHomeForm onCancel={() => setShowCreateForm(false)} />
-    </PageShell>
+    <PageShell><MietyCreateHomeForm onCancel={() => setShowCreateForm(false)} /></PageShell>
   );
   if (editingHome) return (
     <PageShell>
@@ -246,8 +241,6 @@ export default function MietyPortalPage() {
             </Button>
           </CardContent>
         </Card>
-
-        <AddCameraDialog open={cameraDialogOpen} onOpenChange={setCameraDialogOpen} onSubmit={handleAddCamera} isLoading={addCamera.isPending} mode="add" />
       </PageShell>
     );
   }
@@ -281,7 +274,7 @@ export default function MietyPortalPage() {
         })}
       </DashboardGrid>
 
-      {/* Inline Camera Wizard */}
+      {/* AES-konform: Inline Camera Wizard */}
       {showCameraWizard && (
         <CameraSetupWizard
           onComplete={handleWizardComplete}
@@ -290,24 +283,21 @@ export default function MietyPortalPage() {
         />
       )}
 
-      {/* Inline Dossier below grid */}
-      {openDossierId && (
-        <MietyHomeDossierInline homeId={openDossierId} />
+      {/* AES-konform: Inline camera form */}
+      {showCameraInline && (
+        <CameraInlineForm
+          onSubmit={handleAddCamera}
+          onClose={() => setShowCameraInline(false)}
+          isLoading={addCamera.isPending}
+          mode="add"
+        />
       )}
 
-      {/* Dialogs */}
-      <AddCameraDialog
-        open={cameraDialogOpen}
-        onOpenChange={setCameraDialogOpen}
-        onSubmit={handleAddCamera}
-        isLoading={addCamera.isPending}
-        mode="add"
-      />
+      {/* AES-konform: Inline camera edit */}
       {editCamera && (
-        <AddCameraDialog
-          open={!!editCamera}
-          onOpenChange={(open) => { if (!open) setEditCamera(null); }}
+        <CameraInlineForm
           onSubmit={handleEditCamera}
+          onClose={() => setEditCamera(null)}
           isLoading={updateCamera.isPending}
           initialData={{
             name: editCamera.name,
@@ -319,8 +309,19 @@ export default function MietyPortalPage() {
           mode="edit"
         />
       )}
-      {homes.length > 0 && (
-        <ContractDrawer open={contractDrawerOpen} onOpenChange={setContractDrawerOpen} homeId={homes[0].id} defaultCategory={contractCategory} />
+
+      {/* AES-konform: Inline contract form instead of Drawer */}
+      {showContractInline && homes.length > 0 && (
+        <ContractInlineForm
+          homeId={homes[0].id}
+          defaultCategory={contractCategory}
+          onClose={() => setShowContractInline(false)}
+        />
+      )}
+
+      {/* Inline Dossier below grid */}
+      {openDossierId && (
+        <MietyHomeDossierInline homeId={openDossierId} />
       )}
     </PageShell>
   );

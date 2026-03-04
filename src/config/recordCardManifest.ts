@@ -7,7 +7,7 @@
  * - Label
  */
 
-import { User, Shield, Car, Heart, CreditCard, Landmark, Sun, PawPrint } from 'lucide-react';
+import { User, Shield, Car, Heart, CreditCard, Landmark, Sun, PawPrint, Zap, Home, Camera } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface RecordCardTypeConfig {
@@ -116,6 +116,60 @@ export const RECORD_CARD_TYPES: Record<string, RecordCardTypeConfig> = {
       '03_Versicherung',
       '04_Sonstiges',
     ],
+  },
+  utility_contract: {
+    label: 'Versorgungsvertrag',
+    moduleCode: 'MOD_20',
+    icon: Zap,
+    keywordFields: ['provider_name', 'contract_number'],
+    dmsFolders: [
+      '01_Vertrag',
+      '02_Rechnung',
+      '03_Zaehlerstand',
+      '04_Sonstiges',
+    ],
+  },
+  rental_contract: {
+    label: 'Mietvertrag',
+    moduleCode: 'MOD_20',
+    icon: Home,
+    keywordFields: ['provider_name', 'contract_number'],
+    dmsFolders: [
+      '01_Mietvertrag',
+      '02_Nebenkostenabrechnung',
+      '03_Uebergabeprotokoll',
+      '04_Korrespondenz',
+      '05_Sonstiges',
+    ],
+  },
+  kv_contract: {
+    label: 'Krankenversicherung',
+    moduleCode: 'MOD_18',
+    icon: Heart,
+    keywordFields: ['provider_name', 'policy_number'],
+    dmsFolders: [
+      '01_Police',
+      '02_Abrechnungen',
+      '03_Korrespondenz',
+    ],
+  },
+  private_loan: {
+    label: 'Privatkredit',
+    moduleCode: 'MOD_18',
+    icon: CreditCard,
+    keywordFields: ['bank_name', 'loan_purpose'],
+    dmsFolders: [
+      '01_Vertrag',
+      '02_Tilgungsplan',
+      '03_Korrespondenz',
+    ],
+  },
+  camera: {
+    label: 'Smart Home Kamera',
+    moduleCode: 'MOD_20',
+    icon: Camera,
+    keywordFields: ['name'],
+    dmsFolders: [],
   },
 } as const;
 

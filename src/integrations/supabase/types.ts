@@ -12738,13 +12738,19 @@ export type Database = {
           end_date: string | null
           home_id: string
           id: string
+          kaltmiete: number | null
+          kaution: number | null
+          kuendigungsfrist: string | null
           meter_number: string | null
           monthly_cost: number | null
+          nebenkosten_vorauszahlung: number | null
           notes: string | null
           previous_consumption: number | null
           provider_name: string | null
           start_date: string | null
           tenant_id: string
+          vermieter_kontakt: string | null
+          vermieter_name: string | null
         }
         Insert: {
           cancellation_date?: string | null
@@ -12754,13 +12760,19 @@ export type Database = {
           end_date?: string | null
           home_id: string
           id?: string
+          kaltmiete?: number | null
+          kaution?: number | null
+          kuendigungsfrist?: string | null
           meter_number?: string | null
           monthly_cost?: number | null
+          nebenkosten_vorauszahlung?: number | null
           notes?: string | null
           previous_consumption?: number | null
           provider_name?: string | null
           start_date?: string | null
           tenant_id: string
+          vermieter_kontakt?: string | null
+          vermieter_name?: string | null
         }
         Update: {
           cancellation_date?: string | null
@@ -12770,13 +12782,19 @@ export type Database = {
           end_date?: string | null
           home_id?: string
           id?: string
+          kaltmiete?: number | null
+          kaution?: number | null
+          kuendigungsfrist?: string | null
           meter_number?: string | null
           monthly_cost?: number | null
+          nebenkosten_vorauszahlung?: number | null
           notes?: string | null
           previous_consumption?: number | null
           provider_name?: string | null
           start_date?: string | null
           tenant_id?: string
+          vermieter_kontakt?: string | null
+          vermieter_name?: string | null
         }
         Relationships: [
           {

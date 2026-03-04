@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, Zap, Droplets, Flame, Wifi, Shield, FileText } from 'lucide-react';
+import { Plus, Zap, Droplets, Flame, Wifi, Shield, FileText, Smartphone } from 'lucide-react';
 import { isDemoId } from '@/engines/demoData/engine';
 import { format } from 'date-fns';
 import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
@@ -19,6 +19,7 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: any; color: string 
   gas: { label: 'Gas', icon: Flame, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' },
   wasser: { label: 'Wasser', icon: Droplets, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
   internet: { label: 'Internet', icon: Wifi, color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' },
+  mobilfunk: { label: 'Mobilfunk', icon: Smartphone, color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300' },
   hausrat: { label: 'Hausrat', icon: Shield, color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
   haftpflicht: { label: 'Haftpflicht', icon: Shield, color: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300' },
   miete: { label: 'Miete', icon: FileText, color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300' },
@@ -30,6 +31,7 @@ const PLACEHOLDER_CARDS = [
   { category: 'gas', label: 'Gasvertrag' },
   { category: 'wasser', label: 'Wasservertrag' },
   { category: 'internet', label: 'Internetvertrag' },
+  { category: 'mobilfunk', label: 'Mobilfunkvertrag' },
   { category: 'hausrat', label: 'Hausratversicherung' },
   { category: 'haftpflicht', label: 'Haftpflichtversicherung' },
   { category: 'miete', label: 'Mietvertrag' },
