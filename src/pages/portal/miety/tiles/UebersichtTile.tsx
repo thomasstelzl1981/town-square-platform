@@ -37,6 +37,21 @@ export default function UebersichtTile() {
 
   const { data: homes = [], isLoading } = useHomesQuery();
 
+  // Fetch cameras for this tenant
+  const { data: camerasData = [] } = useQuery({
+    queryKey: ['cameras', activeTenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cameras')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!activeTenantId,
+  });
+
   // Fetch Google Maps API key from edge function
   const { data: mapsApiKey } = useQuery({
     queryKey: ['google-maps-api-key'],
@@ -298,16 +313,36 @@ export default function UebersichtTile() {
               {/* Row 2: Service Cards (MyHammer + Betreut.de) */}
               <MietyServiceCards plz={home.zip} />
 
-              {/* Row 3: Camera placeholder */}
-              <Card className="glass-card border-dashed">
-                <CardContent className="p-6 text-center">
-                  <Camera className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-muted-foreground">Kameras einrichten</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Verbinden Sie eine kompatible IP-Kamera unter Smart Home, um hier Live-Snapshots zu sehen.
-                  </p>
-                </CardContent>
-              </Card>
+              {/* Row 3: Cameras – live from DB or placeholder */}
+              {camerasData && camerasData.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {camerasData.map((cam) => (
+                    <Card key={cam.id} className="glass-card cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all"
+                      onClick={() => navigate('/portal/miety/smarthome')}>
+                      <CardContent className="p-4 flex items-center gap-3">
+                        <Camera className="h-5 w-5 text-primary shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{cam.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {cam.is_active ? 'Aktiv' : 'Inaktiv'}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card className="glass-card border-dashed cursor-pointer hover:border-primary/30 transition-colors"
+                  onClick={() => navigate('/portal/miety/smarthome')}>
+                  <CardContent className="p-6 text-center">
+                    <Camera className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-muted-foreground">Kameras einrichten</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Verbinden Sie eine kompatible IP-Kamera unter Smart Home, um hier Live-Snapshots zu sehen.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Inline Dossier */}
               {openCardId === home.id && (

@@ -3175,6 +3175,7 @@ export type Database = {
           name: string
           refresh_interval_sec: number
           snapshot_url: string
+          tenant_id: string
           updated_at: string
           user_id: string
           vendor: string | null
@@ -3194,6 +3195,7 @@ export type Database = {
           name?: string
           refresh_interval_sec?: number
           snapshot_url: string
+          tenant_id: string
           updated_at?: string
           user_id?: string
           vendor?: string | null
@@ -3213,11 +3215,20 @@ export type Database = {
           name?: string
           refresh_interval_sec?: number
           snapshot_url?: string
+          tenant_id?: string
           updated_at?: string
           user_id?: string
           vendor?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cameras_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       car_service_requests: {
         Row: {

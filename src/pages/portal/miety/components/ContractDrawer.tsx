@@ -73,7 +73,7 @@ export function ContractDrawer({ open, onOpenChange, homeId, defaultCategory }: 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['miety-contracts', homeId] });
+      queryClient.invalidateQueries({ queryKey: ['miety-contracts'] });
       toast.success('Vertrag angelegt');
       resetForm();
       onOpenChange(false);
