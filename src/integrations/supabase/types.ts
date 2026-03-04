@@ -12727,8 +12727,10 @@ export type Database = {
           end_date: string | null
           home_id: string
           id: string
+          meter_number: string | null
           monthly_cost: number | null
           notes: string | null
+          previous_consumption: number | null
           provider_name: string | null
           start_date: string | null
           tenant_id: string
@@ -12741,8 +12743,10 @@ export type Database = {
           end_date?: string | null
           home_id: string
           id?: string
+          meter_number?: string | null
           monthly_cost?: number | null
           notes?: string | null
+          previous_consumption?: number | null
           provider_name?: string | null
           start_date?: string | null
           tenant_id: string
@@ -12755,8 +12759,10 @@ export type Database = {
           end_date?: string | null
           home_id?: string
           id?: string
+          meter_number?: string | null
           monthly_cost?: number | null
           notes?: string | null
+          previous_consumption?: number | null
           provider_name?: string | null
           start_date?: string | null
           tenant_id?: string

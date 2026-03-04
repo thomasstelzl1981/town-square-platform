@@ -27,6 +27,8 @@ const CATEGORIES = [
   { value: 'sonstige', label: 'Sonstige' },
 ];
 
+const METERED_CATEGORIES = ['strom', 'gas', 'wasser'];
+
 interface ContractDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -46,6 +48,10 @@ export function ContractDrawer({ open, onOpenChange, homeId, defaultCategory }: 
   const [endDate, setEndDate] = useState('');
   const [cancellationDate, setCancellationDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [meterNumber, setMeterNumber] = useState('');
+  const [previousConsumption, setPreviousConsumption] = useState('');
+
+  const isMetered = METERED_CATEGORIES.includes(category);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -61,6 +67,8 @@ export function ContractDrawer({ open, onOpenChange, homeId, defaultCategory }: 
         end_date: endDate || null,
         cancellation_date: cancellationDate || null,
         notes: notes || null,
+        meter_number: isMetered && meterNumber ? meterNumber : null,
+        previous_consumption: isMetered && previousConsumption ? parseFloat(previousConsumption) : null,
       });
       if (error) throw error;
     },
@@ -82,7 +90,11 @@ export function ContractDrawer({ open, onOpenChange, homeId, defaultCategory }: 
     setEndDate('');
     setCancellationDate('');
     setNotes('');
+    setMeterNumber('');
+    setPreviousConsumption('');
   }
+
+  const consumptionUnit = category === 'wasser' ? 'm³' : 'kWh';
 
   return (
     <>
@@ -115,9 +127,24 @@ export function ContractDrawer({ open, onOpenChange, homeId, defaultCategory }: 
           <Input value={providerName} onChange={e => setProviderName(e.target.value)} placeholder="z.B. Stadtwerke München" />
         </div>
         <div>
-          <Label>Vertragsnummer</Label>
-          <Input value={contractNumber} onChange={e => setContractNumber(e.target.value)} placeholder="Optional" />
+          <Label>Kundennummer / Vertragsnummer</Label>
+          <Input value={contractNumber} onChange={e => setContractNumber(e.target.value)} placeholder="Ihre Kundennummer beim Anbieter" />
         </div>
+
+        {/* Metered fields: Zählernummer + Vorjahresverbrauch */}
+        {isMetered && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Zählernummer</Label>
+              <Input value={meterNumber} onChange={e => setMeterNumber(e.target.value)} placeholder="z.B. 1ESY1234567890" />
+            </div>
+            <div>
+              <Label>Vorjahresverbrauch ({consumptionUnit})</Label>
+              <Input type="number" value={previousConsumption} onChange={e => setPreviousConsumption(e.target.value)} placeholder={`z.B. ${category === 'wasser' ? '120' : '3500'}`} />
+            </div>
+          </div>
+        )}
+
         <div>
           <Label>Monatliche Kosten (€)</Label>
           <Input type="number" value={monthlyCost} onChange={e => setMonthlyCost(e.target.value)} placeholder="z.B. 85.00" />

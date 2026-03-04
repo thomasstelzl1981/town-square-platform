@@ -7,6 +7,8 @@
  * - listings (Verkaufsmandate)
  * - commissions (Provisionsvereinbarungen)
  * - acq_mandates (Suchaufträge)
+ * - miety_contracts (Versorgungsverträge, Versicherungen)
+ * - cameras (Smart Home Geräte)
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -30,14 +32,21 @@ import {
   Handshake,
   HardDrive,
   ExternalLink,
-  FileQuestion
+  FileQuestion,
+  Zap,
+  Flame,
+  Droplets,
+  Wifi,
+  Home,
+  Camera,
+  ShieldCheck,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 interface Agreement {
   id: string;
-  type: 'consent' | 'finance_mandate' | 'sales_mandate' | 'commission' | 'acq_mandate';
+  type: 'consent' | 'finance_mandate' | 'sales_mandate' | 'commission' | 'acq_mandate' | 'utility_contract' | 'smart_home';
   title: string;
   description: string;
   date: Date;
@@ -60,6 +69,33 @@ const getAgreementIcon = (type: string, code?: string): React.ElementType => {
   if (type === 'commission') return Coins;
   if (type === 'acq_mandate') return FileCheck;
   return FileQuestion;
+};
+
+const getUtilityIcon = (category?: string): React.ElementType => {
+  switch (category) {
+    case 'strom': return Zap;
+    case 'gas': return Flame;
+    case 'wasser': return Droplets;
+    case 'internet': return Wifi;
+    case 'miete': return Home;
+    case 'hausrat':
+    case 'haftpflicht': return ShieldCheck;
+    default: return FileText;
+  }
+};
+
+const getCategoryLabel = (category?: string): string => {
+  const labels: Record<string, string> = {
+    strom: 'Strom',
+    gas: 'Gas',
+    wasser: 'Wasser',
+    internet: 'Internet',
+    hausrat: 'Hausratversicherung',
+    haftpflicht: 'Haftpflichtversicherung',
+    miete: 'Mietvertrag',
+    sonstige: 'Sonstiges',
+  };
+  return labels[category || ''] || 'Vertrag';
 };
 
 // Status badge variant
@@ -93,6 +129,7 @@ const getStatusLabel = (status: string): string => {
     submitted: 'Eingereicht',
     assigned: 'Zugewiesen',
     in_review: 'In Prüfung',
+    online: 'Online',
   };
   return labels[status] || status;
 };
@@ -184,7 +221,39 @@ export function VertraegeTab() {
     enabled: !!activeTenantId,
   });
 
-  const isLoading = consentsLoading || financeLoading || salesLoading || commissionsLoading || acqLoading;
+  // 6. Miety Contracts (Versorgung & Wohnen)
+  const { data: mietyContracts, isLoading: mietyLoading } = useQuery({
+    queryKey: ['miety-contracts-all', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data, error } = await supabase
+        .from('miety_contracts')
+        .select('*')
+        .eq('tenant_id', activeTenantId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // 7. Cameras (Smart Home)
+  const { data: cameras, isLoading: camerasLoading } = useQuery({
+    queryKey: ['cameras-all', activeTenantId],
+    queryFn: async (): Promise<any[]> => {
+      if (!activeTenantId) return [];
+      const { data, error } = await (supabase as any)
+        .from('cameras')
+        .select('id, name, created_at, is_active, refresh_interval_sec')
+        .eq('tenant_id', activeTenantId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  const isLoading = consentsLoading || financeLoading || salesLoading || commissionsLoading || acqLoading || mietyLoading || camerasLoading;
 
   // Format and combine all agreements
   const allAgreements: Agreement[] = [
@@ -255,6 +324,32 @@ export function VertraegeTab() {
       status: am.status,
       icon: FileCheck,
       link: `/portal/investments/mandat/${am.id}`,
+    })),
+    // Miety Contracts (Versorgung & Wohnen)
+    ...(mietyContracts || []).map((mc: any): Agreement => ({
+      id: mc.id,
+      type: 'utility_contract',
+      title: `${getCategoryLabel(mc.category)}${mc.provider_name ? ` — ${mc.provider_name}` : ''}`,
+      description: [
+        mc.contract_number ? `Nr. ${mc.contract_number}` : null,
+        mc.monthly_cost ? `${mc.monthly_cost.toLocaleString('de-DE')} €/Monat` : null,
+        mc.start_date ? `ab ${format(new Date(mc.start_date), 'dd.MM.yyyy', { locale: de })}` : null,
+      ].filter(Boolean).join(' · ') || `Angelegt am ${format(new Date(mc.created_at), 'dd.MM.yyyy', { locale: de })}`,
+      date: new Date(mc.created_at),
+      status: 'active',
+      icon: getUtilityIcon(mc.category),
+      link: '/portal/miety',
+    })),
+    // Cameras (Smart Home)
+    ...(cameras || []).map((cam): Agreement => ({
+      id: cam.id,
+      type: 'smart_home',
+      title: `Kamera — ${cam.name}`,
+      description: `Snapshot alle ${cam.refresh_interval_sec}s`,
+      date: new Date(cam.created_at),
+      status: cam.is_active ? 'active' : 'offline',
+      icon: Camera,
+      link: '/portal/miety',
     })),
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
@@ -347,6 +442,9 @@ export function VertraegeTab() {
                 <li>Verkaufsmandate</li>
                 <li>Provisionsvereinbarungen</li>
                 <li>Suchaufträge (Akquise)</li>
+                <li>Versorgungsverträge (Strom, Gas, Wasser, Internet)</li>
+                <li>Versicherungen (Hausrat, Haftpflicht)</li>
+                <li>Smart Home Geräte (Kameras)</li>
                 <li>Premium-Storage-Verträge</li>
                 <li>Kooperationsvereinbarungen</li>
               </ul>
