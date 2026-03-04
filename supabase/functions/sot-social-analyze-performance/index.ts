@@ -29,7 +29,7 @@ serve(async (req) => {
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Du bist ein Social-Media-Analyst. Analysiere Performance-Daten und gib konkrete Empfehlungen auf Deutsch. Max 200 Wörter." },
           { role: "user", content: `Analysiere diese Social-Media-Kennzahlen:\n\n${metricsText}\n\nWas funktioniert? Was kann verbessert werden? Gib 3 konkrete Tipps.` },
