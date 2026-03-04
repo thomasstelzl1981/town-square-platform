@@ -111,7 +111,7 @@ export function CreditTopUpDialog() {
         </div>
 
         <p className="text-xs text-muted-foreground text-center mt-2">
-          1 Credit = 0,25 € · Sichere Zahlung über Stripe · Sofortige Gutschrift
+          Sichere Zahlung über Stripe · Sofortige Gutschrift
         </p>
       </DialogContent>
     </Dialog>
