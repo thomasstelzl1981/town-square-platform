@@ -103,6 +103,12 @@
     --border-subtle: 35 12% 88%;
     --border-glow: 217 91% 60%;
 
+    /* Chrome Frame (Light-only solid nav) */
+    --chrome-bg: 35 16% 93%;
+    --chrome-bg-2: 35 14% 91%;
+    --chrome-border: 35 10% 80%;
+    --chrome-shadow: 0 4px 14px -10px rgb(0 0 0 / 0.12);
+
     /* Text Hierarchy */
     --text-primary: 222 35% 10%;
     --text-secondary: 220 10% 36%;
@@ -574,10 +580,11 @@
 
   /* Light Mode: solid chrome frame (no glass) */
   :root .glass-nav {
-    background: hsl(var(--surface) / 0.98);
+    background: hsl(var(--chrome-bg) / 0.98);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    border-bottom: 1px solid hsl(var(--border) / 0.6);
+    border: 1px solid hsl(var(--chrome-border) / 0.5);
+    box-shadow: var(--chrome-shadow);
   }
 
   .reading-surface {
@@ -601,7 +608,7 @@
   }
 
   .btn-glass:hover {
-    background: hsla(0 0% 100% / 0.65);
+    background: hsl(var(--chrome-bg-2) / 0.8);
   }
 
   .dark .btn-glass {
@@ -641,6 +648,15 @@
       inset 0 1px 0 hsla(0 0% 100% / 0.3);
   }
 
+  /* Light Mode: solid chrome for floating nav */
+  :root .nav-ios-floating {
+    background: hsl(var(--chrome-bg) / 0.98);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 1px solid hsl(var(--chrome-border) / 0.5);
+    box-shadow: var(--chrome-shadow);
+  }
+
   .dark .nav-ios-floating {
     background: hsla(0 0% 0% / 0.5);
     border-color: hsla(0 0% 100% / 0.08);
@@ -672,6 +688,19 @@
   .nav-tab-glass:hover {
     background: hsla(0, 0%, 100%, 0.25);
     border-color: hsla(0, 0%, 100%, 0.15);
+  }
+
+  /* Light Mode: solid chrome tabs */
+  :root .nav-tab-glass {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: hsl(var(--chrome-bg-2) / 0.7);
+    border: 1px solid hsl(var(--chrome-border) / 0.4);
+    box-shadow: none;
+  }
+  :root .nav-tab-glass:hover {
+    background: hsl(var(--chrome-bg-2) / 0.9);
+    border-color: hsl(var(--chrome-border) / 0.6);
   }
 
   .dark .nav-tab-glass {

@@ -46,7 +46,7 @@ export function TopNavigation() {
   }
 
   return (
-    <nav className="border-b bg-card/60 backdrop-blur-md">
+    <nav className="border-b bg-[hsl(var(--chrome-bg)/0.98)] dark:bg-card/60 dark:backdrop-blur-md">
       {/* Level 1: Area Tabs */}
       <div className="border-b">
         <AreaTabs />

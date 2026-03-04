@@ -34,7 +34,7 @@ export function SubTabs({ module, moduleBase }: SubTabsProps) {
   }
 
   return (
-    <div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none bg-background/50">
+    <div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none bg-[hsl(var(--chrome-bg-2)/0.98)] dark:bg-background/50">
       {visibleTiles.map((tile) => {
         const route = getTileFullPath(moduleBase, tile.path);
         const isActive = location.pathname === route;
