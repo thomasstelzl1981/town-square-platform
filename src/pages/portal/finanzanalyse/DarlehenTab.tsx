@@ -14,6 +14,7 @@ import { FormInput } from '@/components/shared';
 import { CARD, TYPOGRAPHY, HEADER, RECORD_CARD, DEMO_WIDGET, getActiveWidgetGlow, getSelectionRing } from '@/config/designManifest';
 import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -61,6 +62,7 @@ export default function DarlehenTab() {
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-KONTEN');
   const queryClient = useQueryClient();
+  const { createDMS } = useRecordCardDMS();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<'haus' | 'pv' | 'privat' | null>(null);
   const [forms, setForms] = useState<Record<string, Record<string, any>>>({});
@@ -115,17 +117,27 @@ export default function DarlehenTab() {
   const createMutation = useMutation({
     mutationFn: async (form: Record<string, any>) => {
       if (!activeTenantId || !user?.id) throw new Error('No tenant/user');
-      const { error } = await supabase.from('private_loans' as any).insert({
+      const { data: newRow, error } = await supabase.from('private_loans' as any).insert({
         tenant_id: activeTenantId, user_id: user.id,
         loan_purpose: form.loan_purpose, bank_name: form.bank_name || null,
         loan_amount: Number(form.loan_amount) || 0, remaining_balance: Number(form.remaining_balance) || 0,
         interest_rate: Number(form.interest_rate) || 0, monthly_rate: Number(form.monthly_rate) || 0,
         start_date: form.start_date || null, end_date: form.end_date || null,
         status: form.status || 'aktiv', notes: form.notes || null,
-      } as any);
+      } as any).select('id').single();
       if (error) throw error;
+      return { id: (newRow as any).id, bank_name: form.bank_name };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result && activeTenantId) {
+        createDMS.mutate({
+          entityType: 'private_loan',
+          entityId: result.id,
+          entityName: result.bank_name || 'Privatkredit',
+          tenantId: activeTenantId,
+          keywords: [result.bank_name].filter(Boolean),
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['darlehen-private-loans'] });
       queryClient.invalidateQueries({ queryKey: ['fb-private-loans'] });
       toast.success('Privatkredit angelegt');

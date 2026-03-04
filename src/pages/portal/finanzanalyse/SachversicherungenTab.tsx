@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { Plus, Shield, X } from 'lucide-react';
 import { useLegalConsent } from '@/hooks/useLegalConsent';
 import { ConsentRequiredModal } from '@/components/portal/ConsentRequiredModal';
+import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
 import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { cn } from '@/lib/utils';
@@ -66,6 +67,7 @@ export default function SachversicherungenTab() {
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-KONTEN');
   const consentGuard = useLegalConsent();
+  const { createDMS } = useRecordCardDMS();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, Record<string, any>>>({});
   const [showNew, setShowNew] = useState(false);
@@ -96,17 +98,27 @@ export default function SachversicherungenTab() {
       if (!consentGuard.requireConsent()) throw new Error('Consent required');
       if (!activeTenantId || !user?.id) throw new Error('No tenant/user');
       const { details, ...rest } = form;
-      const { error } = await supabase.from('insurance_contracts').insert({
+      const { data: newRow, error } = await supabase.from('insurance_contracts').insert({
         tenant_id: activeTenantId, user_id: user.id,
         category: rest.category as any, insurer: rest.insurer || null,
         policy_no: rest.policy_no || null, policyholder: rest.policyholder || null,
         start_date: rest.start_date || null, end_date: rest.end_date || null,
         premium: Number(rest.premium) || null, payment_interval: (rest.payment_interval as any) || null,
         status: (rest.status as any) || null, details: details || null,
-      });
+      }).select('id').single();
       if (error) throw error;
+      return { id: newRow.id, insurer: rest.insurer, policy_no: rest.policy_no };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result && activeTenantId) {
+        createDMS.mutate({
+          entityType: 'insurance',
+          entityId: result.id,
+          entityName: result.insurer || 'Versicherung',
+          tenantId: activeTenantId,
+          keywords: [result.insurer, result.policy_no].filter(Boolean),
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['fin-insurance'] });
       toast.success('Versicherung angelegt');
       setShowNew(false);

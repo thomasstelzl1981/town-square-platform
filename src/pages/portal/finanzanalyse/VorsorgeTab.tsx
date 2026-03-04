@@ -30,6 +30,7 @@ import { Plus, Info, Umbrella, X } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
 import { cn } from '@/lib/utils';
 import { VorsorgeLueckenrechner } from '@/components/portal/finanzanalyse/VorsorgeLueckenrechner';
 
@@ -65,6 +66,7 @@ export default function VorsorgeTab() {
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-KONTEN');
   const readiness = useDataReadiness();
+  const { createDMS } = useRecordCardDMS();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, Record<string, any>>>({});
   const [showNew, setShowNew] = useState(false);
@@ -97,7 +99,7 @@ export default function VorsorgeTab() {
     mutationFn: async (form: Record<string, any>) => {
       if (!readiness.requireReadiness()) throw new Error('Readiness required');
       if (!activeTenantId || !user?.id) throw new Error('No tenant/user');
-      const { error } = await supabase.from('vorsorge_contracts').insert({
+      const { data: newRow, error } = await supabase.from('vorsorge_contracts').insert({
         tenant_id: activeTenantId, user_id: user.id,
         provider: form.provider || null, contract_no: form.contract_no || null,
         contract_type: form.contract_type || null, person_id: form.person_id || null,
@@ -112,10 +114,20 @@ export default function VorsorgeTab() {
         insured_sum: form.insured_sum ? Number(form.insured_sum) : null,
         dynamics_percent: form.dynamics_percent ? Number(form.dynamics_percent) : null,
         bu_monthly_benefit: form.bu_monthly_benefit ? Number(form.bu_monthly_benefit) : null,
-      });
+      }).select('id').single();
       if (error) throw error;
+      return { id: newRow.id, provider: form.provider, contract_no: form.contract_no };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result && activeTenantId) {
+        createDMS.mutate({
+          entityType: 'vorsorge',
+          entityId: result.id,
+          entityName: result.provider || 'Vorsorgevertrag',
+          tenantId: activeTenantId,
+          keywords: [result.provider, result.contract_no].filter(Boolean),
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['fin-vorsorge'] });
       toast.success('Vorsorgevertrag angelegt');
       setShowNew(false);

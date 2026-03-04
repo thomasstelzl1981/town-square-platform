@@ -21,6 +21,10 @@ export type ParserMode =
   | 'haustier'
   | 'kontakt'
   | 'zinsbestaetigung'
+  | 'versorgungsvertrag'
+  | 'mietvertrag'
+  | 'krankenversicherung'
+  | 'privatkredit'
   | 'allgemein';
 
 /** Legacy mode aliases for backwards compatibility */

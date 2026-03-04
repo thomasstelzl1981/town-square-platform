@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Save, X } from 'lucide-react';
 import { useLegalConsent } from '@/hooks/useLegalConsent';
+import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
 import { ConsentRequiredModal } from '@/components/portal/ConsentRequiredModal';
 
 const CATEGORIES = [
@@ -77,10 +78,12 @@ export function ContractInlineForm({ homeId, defaultCategory, onClose }: Contrac
   const isMetered = METERED_CATEGORIES.includes(category);
   const isRental = category === RENTAL_CATEGORY;
 
+  const { createDMS } = useRecordCardDMS();
+
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!activeTenantId) throw new Error('Kein Mandant');
-      const { error } = await supabase.from('miety_contracts').insert({
+      const { data: newRow, error } = await supabase.from('miety_contracts').insert({
         home_id: homeId,
         tenant_id: activeTenantId,
         category,
@@ -99,10 +102,21 @@ export function ContractInlineForm({ homeId, defaultCategory, onClose }: Contrac
         kuendigungsfrist: isRental ? kuendigungsfrist || null : null,
         vermieter_name: isRental ? vermieterName || null : null,
         vermieter_kontakt: isRental ? vermieterKontakt || null : null,
-      } as any);
+      } as any).select('id').single();
       if (error) throw error;
+      return { id: (newRow as any).id, name: providerName, category };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result && activeTenantId) {
+        const entityType = result.category === RENTAL_CATEGORY ? 'rental_contract' : 'utility_contract';
+        createDMS.mutate({
+          entityType: entityType as any,
+          entityId: result.id,
+          entityName: result.name || 'Vertrag',
+          tenantId: activeTenantId,
+          keywords: [result.name, result.category].filter(Boolean),
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['miety-contracts'] });
       toast.success('Vertrag angelegt');
       onClose();

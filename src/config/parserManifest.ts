@@ -256,7 +256,95 @@ export const PARSER_PROFILES: Record<ParserMode, ParserProfile> = {
     ],
   },
 
-  // ── 11. Allgemein (Auto-Erkennung) ─────────────────────────────────────
+  // ── 12. Versorgungsvertrag ─────────────────────────────────────────────
+  versorgungsvertrag: {
+    parseMode: 'versorgungsvertrag',
+    entityType: 'utility_contract',
+    label: 'Versorgungsvertrag',
+    targetTable: 'miety_contracts',
+    moduleCode: 'MOD_20',
+    targetDmsFolder: '01_Vertrag',
+    exampleDocuments: ['Stromvertrag', 'Gasvertrag', 'Wasserrechnung', 'Internetvertrag', 'Mobilfunkvertrag', 'Jahresabrechnung Stadtwerke'],
+    preprocessPdfTables: true,
+    fields: [
+      { key: 'provider_name', label: 'Anbieter', type: 'string', dbColumn: 'provider_name', required: true },
+      { key: 'contract_number', label: 'Vertragsnummer', type: 'string', dbColumn: 'contract_number', required: false },
+      { key: 'category', label: 'Kategorie', type: 'enum', dbColumn: 'category', required: true, enumValues: ['strom', 'gas', 'wasser', 'internet', 'mobilfunk', 'sonstige'] },
+      { key: 'monthly_cost', label: 'Monatliche Kosten (€)', type: 'currency', dbColumn: 'monthly_cost', required: false },
+      { key: 'meter_number', label: 'Zählernummer', type: 'string', dbColumn: 'meter_number', required: false },
+      { key: 'start_date', label: 'Vertragsbeginn', type: 'date', dbColumn: 'start_date', required: false },
+      { key: 'end_date', label: 'Vertragsende', type: 'date', dbColumn: 'end_date', required: false },
+      { key: 'cancellation_date', label: 'Kündigungsfrist', type: 'date', dbColumn: 'cancellation_date', required: false },
+    ],
+  },
+
+  // ── 13. Mietvertrag ────────────────────────────────────────────────────
+  mietvertrag: {
+    parseMode: 'mietvertrag',
+    entityType: 'rental_contract',
+    label: 'Mietvertrag',
+    targetTable: 'miety_contracts',
+    moduleCode: 'MOD_20',
+    targetDmsFolder: '01_Mietvertrag',
+    exampleDocuments: ['Mietvertrag', 'Nachtrag zum Mietvertrag', 'Mieterhöhung', 'Nebenkostenabrechnung', 'Übergabeprotokoll'],
+    preprocessPdfTables: true,
+    fields: [
+      { key: 'vermieter_name', label: 'Vermieter', type: 'string', dbColumn: 'vermieter_name', required: true },
+      { key: 'kaltmiete', label: 'Kaltmiete (€)', type: 'currency', dbColumn: 'kaltmiete', required: true },
+      { key: 'nebenkosten', label: 'Nebenkosten (€)', type: 'currency', dbColumn: 'nebenkosten_vorauszahlung', required: false },
+      { key: 'kaution', label: 'Kaution (€)', type: 'currency', dbColumn: 'kaution', required: false },
+      { key: 'kuendigungsfrist', label: 'Kündigungsfrist', type: 'string', dbColumn: 'kuendigungsfrist', required: false },
+      { key: 'start_date', label: 'Mietbeginn', type: 'date', dbColumn: 'start_date', required: false },
+      { key: 'end_date', label: 'Mietende', type: 'date', dbColumn: 'end_date', required: false },
+    ],
+  },
+
+  // ── 14. Krankenversicherung ────────────────────────────────────────────
+  krankenversicherung: {
+    parseMode: 'krankenversicherung',
+    entityType: 'kv_contract',
+    label: 'Krankenversicherung',
+    targetTable: 'kv_contracts',
+    moduleCode: 'MOD_18',
+    targetDmsFolder: '01_Police',
+    exampleDocuments: ['KV-Police', 'Beitragsrechnung PKV', 'Beitragsbescheid GKV', 'Tarif-Nachtrag', 'Leistungsabrechnung'],
+    preprocessPdfTables: true,
+    fields: [
+      { key: 'provider', label: 'Versicherer / Kasse', type: 'string', dbColumn: 'provider', required: true },
+      { key: 'kv_type', label: 'KV-Typ', type: 'enum', dbColumn: 'kv_type', required: true, enumValues: ['PKV', 'GKV', 'familienversichert'] },
+      { key: 'person_name', label: 'Versicherte Person', type: 'string', dbColumn: 'person_name', required: false },
+      { key: 'insurance_number', label: 'Versicherungsnummer', type: 'string', dbColumn: 'insurance_number', required: false },
+      { key: 'monthly_premium', label: 'Monatsbeitrag (€)', type: 'currency', dbColumn: 'monthly_premium', required: false },
+      { key: 'employer_contribution', label: 'AG-Anteil (€)', type: 'currency', dbColumn: 'employer_contribution', required: false },
+      { key: 'tariff_name', label: 'Tarif', type: 'string', dbColumn: 'tariff_name', required: false },
+      { key: 'deductible', label: 'Selbstbeteiligung (€)', type: 'currency', dbColumn: 'deductible', required: false },
+      { key: 'contract_start', label: 'Vertragsbeginn', type: 'date', dbColumn: 'contract_start', required: false },
+    ],
+  },
+
+  // ── 15. Privatkredit ───────────────────────────────────────────────────
+  privatkredit: {
+    parseMode: 'privatkredit',
+    entityType: 'private_loan',
+    label: 'Privatkredit',
+    targetTable: 'private_loans',
+    moduleCode: 'MOD_18',
+    targetDmsFolder: '01_Vertrag',
+    exampleDocuments: ['Kreditvertrag', 'Leasingvertrag', 'Ratenkreditvertrag', 'Tilgungsplan', 'Finanzierungsbestätigung'],
+    preprocessPdfTables: true,
+    fields: [
+      { key: 'bank_name', label: 'Bank / Kreditgeber', type: 'string', dbColumn: 'bank_name', required: true },
+      { key: 'loan_amount', label: 'Darlehenssumme (€)', type: 'currency', dbColumn: 'loan_amount', required: true },
+      { key: 'remaining_balance', label: 'Restschuld (€)', type: 'currency', dbColumn: 'remaining_balance', required: false },
+      { key: 'interest_rate', label: 'Zinssatz (%)', type: 'number', dbColumn: 'interest_rate', required: false },
+      { key: 'monthly_rate', label: 'Monatsrate (€)', type: 'currency', dbColumn: 'monthly_rate', required: false },
+      { key: 'loan_purpose', label: 'Verwendungszweck', type: 'enum', dbColumn: 'loan_purpose', required: false, enumValues: ['autokredit', 'konsumkredit', 'leasing', 'moebel', 'bildung', 'umschuldung', 'sonstiges'] },
+      { key: 'start_date', label: 'Vertragsbeginn', type: 'date', dbColumn: 'start_date', required: false },
+      { key: 'end_date', label: 'Vertragsende', type: 'date', dbColumn: 'end_date', required: false },
+    ],
+  },
+
+  // ── 16. Allgemein (Auto-Erkennung) ─────────────────────────────────────
   allgemein: {
     parseMode: 'allgemein',
     entityType: null,
