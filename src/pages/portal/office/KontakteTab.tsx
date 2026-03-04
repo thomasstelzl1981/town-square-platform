@@ -634,10 +634,6 @@ export function KontakteTab() {
         
         {/* Auto-Enrich moved to Armstrong Intelligence (AbrechnungTab) */}
 
-        <Button variant="outline" size="icon" onClick={() => setSettingsOpen(true)} title="Konto-Integrationen">
-          <Settings className="h-4 w-4" />
-        </Button>
-
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -645,6 +641,10 @@ export function KontakteTab() {
               Neuer Kontakt
             </Button>
           </DialogTrigger>
+
+        <Button variant="outline" size="icon" onClick={() => setSettingsOpen(true)} title="Konto-Integrationen">
+          <Settings className="h-4 w-4" />
+        </Button>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Neuen Kontakt erstellen</DialogTitle>

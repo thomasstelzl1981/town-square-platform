@@ -130,6 +130,7 @@ export function BriefTab() {
   // showCreateContext removed — dead code, no trigger existed
   const [prefillApplied, setPrefillApplied] = useState(false);
   const [letterFont, setLetterFont] = useState<LetterFont>('din');
+  const [resolvedLogoUrl, setResolvedLogoUrl] = useState<string | null>(null);
 
   // Fetch profile for private sender
   const { data: profile } = useQuery({
@@ -143,6 +144,20 @@ export function BriefTab() {
       return data as Profile;
     },
   });
+
+  // Resolve letterhead_logo_url storage path to signed URL
+  useEffect(() => {
+    const resolveLogo = async () => {
+      const path = profile?.letterhead_logo_url;
+      if (!path) { setResolvedLogoUrl(null); return; }
+      if (path.startsWith('http')) { setResolvedLogoUrl(path); return; }
+      try {
+        const { data } = await supabase.storage.from('tenant-documents').createSignedUrl(path, 3600);
+        setResolvedLogoUrl(data?.signedUrl ?? null);
+      } catch { setResolvedLogoUrl(null); }
+    };
+    resolveLogo();
+  }, [profile?.letterhead_logo_url]);
 
   // Fetch landlord contexts for sender selection
   const { data: contexts = [] } = useQuery({
@@ -835,7 +850,7 @@ ${senderLine}`);
                 return ctx?.city || undefined;
               })()}
               senderRole={selectedSender?.sublabel !== 'Persönlicher Absender' ? selectedSender?.sublabel : undefined}
-              logoUrl={profile?.letterhead_logo_url || undefined}
+              logoUrl={resolvedLogoUrl || undefined}
               recipientName={(() => { const r = getEffectiveRecipient(); return r ? `${r.first_name} ${r.last_name}` : undefined; })()}
               recipientCompany={(() => { const r = getEffectiveRecipient(); return r?.company || undefined; })()}
               recipientAddress={(() => { const r = getEffectiveRecipient(); return r ? [r.street, [r.postal_code, r.city].filter(Boolean).join(' ')].filter(Boolean).join('\n') || undefined : undefined; })()}

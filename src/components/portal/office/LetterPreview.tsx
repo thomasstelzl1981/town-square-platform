@@ -1,5 +1,4 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
-import defaultLetterheadLogo from '@/assets/logos/armstrong_logo_light.jpg';
 import { formatDateLong } from '@/lib/formatters';
 
 export type LetterFont = 'din' | 'arial' | 'calibri' | 'times' | 'georgia';
@@ -57,7 +56,7 @@ export function LetterPreview({
   signatureUrl,
 }: LetterPreviewProps) {
   const displayDate = formatDateLong(date ? new Date(date) : new Date(), senderCity);
-  const logo = logoUrl || defaultLetterheadLogo;
+  const logo = logoUrl || null;
   const fontFamily = FONT_STACKS[font];
 
   const senderLineParts = [senderCompany, senderName, senderAddress?.replace(/\n/g, ', ')].filter(Boolean);
@@ -223,7 +222,7 @@ export function LetterPreview({
           }}
         >
           {/* Logo — top-right, only on page 1 */}
-          {pageIndex === 0 && (
+          {pageIndex === 0 && logo && (
             <div
               className="absolute flex items-start justify-end"
               style={{ top: '6.7%', right: '9.5%', width: '20%', height: '8.4%' }}
