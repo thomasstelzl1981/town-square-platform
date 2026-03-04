@@ -1,22 +1,29 @@
 
 
-## Plan: RegistryImportCard von Armstrong-Seite entfernen
+## Super-User Rolle für deinen Account setzen
 
-### Änderung
+### Ist-Zustand
 
-**Datei: `src/pages/portal/ArmstrongInfoPage.tsx`**
+- **User:** thomas.stelzl@ncore.online (`b0d2bf55-887f-4678-878b-863af63c06b9`)
+- **Tenant:** `66175861-db5b-4997-8a13-9994c17136b3`
+- **membership_role:** `org_admin` ✓
+- **app_role:** keiner — fehlt `super_user` in `user_roles`
 
-1. Import von `RegistryImportCard` entfernen
-2. `<RegistryImportCard />` aus der "Services & Add-Ons" Sektion entfernen
-3. Die Sektion behält `EmailEnrichmentCard` und `WhatsAppArmstrongCard` — das sind legitime User-facing Add-Ons
+### Änderung: Eine Migration
 
-### Keine weiteren Änderungen
+```sql
+-- 1. Super-User Rolle einfügen
+INSERT INTO user_roles (user_id, role)
+VALUES ('b0d2bf55-887f-4678-878b-863af63c06b9', 'super_user')
+ON CONFLICT (user_id, role) DO NOTHING;
 
-- `RegistryImportCard.tsx` bleibt bestehen — wird weiterhin in Zone 1 Admin (Recherche-Desk) gebraucht
-- Die Edge Function `sot-registry-import` bleibt unverändert
-- Die Research Engine in Zone 1 (`StrategyOverview.tsx`) referenziert den BaFin/IHK-Workflow bereits korrekt
+-- 2. Tiles synchronisieren (damit alle 21 Module freigeschaltet werden)
+SELECT sync_tiles_for_user('b0d2bf55-887f-4678-878b-863af63c06b9');
+```
 
 ### Ergebnis
 
-Armstrong Info Page = reine Produkt-/Feature-Seite mit zwei sinnvollen Add-Ons (Email, WhatsApp). Admin-Import-Tools bleiben in Zone 1.
+- `org_admin` + `super_user` → Zugriff auf alle 21 Module inkl. MOD-09 bis MOD-19
+- Tiles werden automatisch durch `sync_tiles_for_user` aktiviert
+- Kein Code-Change nötig, nur ein DB-Insert
 
