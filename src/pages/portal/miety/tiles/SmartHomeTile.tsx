@@ -7,7 +7,7 @@ import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Camera, Plus, ShoppingCart, ArrowRight, Trash2, Pencil, RefreshCw, Loader2 } from 'lucide-react';
 import { useCameras, useCameraSnapshot, type Camera as CameraType } from '@/hooks/useCameras';
-import { AddCameraDialog } from '@/components/miety/AddCameraDialog';
+import { CameraInlineForm } from '@/components/miety/AddCameraDialog';
 import type { CameraFormData } from '@/hooks/useCameras';
 
 function CameraCard({ camera, onEdit, onDelete }: {
@@ -19,17 +19,12 @@ function CameraCard({ camera, onEdit, onDelete }: {
 
   return (
     <Card className="glass-card overflow-hidden">
-      {/* Snapshot area */}
       <div className="relative aspect-video bg-muted flex items-center justify-center">
         {status === 'loading' && (
           <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
         )}
         {status === 'online' && snapshotUrl && (
-          <img
-            src={snapshotUrl}
-            alt={camera.name}
-            className="w-full h-full object-cover"
-          />
+          <img src={snapshotUrl} alt={camera.name} className="w-full h-full object-cover" />
         )}
         {status === 'offline' && (
           <div className="text-center text-muted-foreground">
@@ -43,28 +38,20 @@ function CameraCard({ camera, onEdit, onDelete }: {
             <p className="text-xs">Verbindungsfehler</p>
           </div>
         )}
-
-        {/* Status badge */}
         <div className="absolute top-2 left-2">
           <Badge
             variant={status === 'online' ? 'default' : 'secondary'}
-            className={status === 'online'
-              ? 'bg-green-600 text-white text-[10px]'
-              : 'text-[10px]'}
+            className={status === 'online' ? 'bg-green-600 text-white text-[10px]' : 'text-[10px]'}
           >
             {status === 'online' ? '● Live' : status === 'loading' ? '…' : '○ Offline'}
           </Badge>
         </div>
       </div>
-
-      {/* Info bar */}
       <CardContent className="p-3">
         <div className="flex items-center justify-between">
           <div>
             <p className="font-medium text-sm">{camera.name}</p>
-            <p className="text-[11px] text-muted-foreground">
-              Alle {camera.refresh_interval_sec}s
-            </p>
+            <p className="text-[11px] text-muted-foreground">Alle {camera.refresh_interval_sec}s</p>
           </div>
           <div className="flex gap-1">
             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => refresh()}>
@@ -86,13 +73,13 @@ function CameraCard({ camera, onEdit, onDelete }: {
 export default function SmartHomeTile() {
   const navigate = useNavigate();
   const { camerasQuery, addCamera, updateCamera, deleteCamera } = useCameras();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [showNewForm, setShowNewForm] = useState(false);
   const [editCamera, setEditCamera] = useState<CameraType | null>(null);
 
   const cameras = camerasQuery.data ?? [];
 
   const handleAdd = (data: CameraFormData) => {
-    addCamera.mutate(data, { onSuccess: () => setDialogOpen(false) });
+    addCamera.mutate(data, { onSuccess: () => setShowNewForm(false) });
   };
 
   const handleEdit = (data: CameraFormData) => {
@@ -111,24 +98,24 @@ export default function SmartHomeTile() {
       <ModulePageHeader
         title="Smart Home"
         description="Kamera-Überwachung und Snapshot-Integration"
+        actions={
+          <Button onClick={() => setShowNewForm(true)} size="sm">
+            <Plus className="h-4 w-4 mr-1" />Kamera
+          </Button>
+        }
       />
 
       {/* Camera grid */}
       {cameras.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {cameras.map((cam) => (
-            <CameraCard
-              key={cam.id}
-              camera={cam}
-              onEdit={(c) => setEditCamera(c)}
-              onDelete={handleDelete}
-            />
+            <CameraCard key={cam.id} camera={cam} onEdit={(c) => setEditCamera(c)} onDelete={handleDelete} />
           ))}
         </div>
       )}
 
-      {/* Empty state when no cameras */}
-      {cameras.length === 0 && !camerasQuery.isLoading && (
+      {/* Empty state */}
+      {cameras.length === 0 && !camerasQuery.isLoading && !showNewForm && (
         <Card className="glass-card">
           <CardContent className="p-6 text-center">
             <div className="p-4 rounded-full bg-primary/10 inline-block mb-4">
@@ -146,17 +133,41 @@ export default function SmartHomeTile() {
                 HTTP-Snapshot
               </Badge>
             </div>
+            <Button onClick={() => setShowNewForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />Kamera hinzufügen
+            </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Add camera button */}
-      <Button onClick={() => setDialogOpen(true)} className="w-full">
-        <Plus className="h-4 w-4 mr-2" />
-        Kamera hinzufügen
-      </Button>
+      {/* AES-konform: Inline create form below grid */}
+      {showNewForm && (
+        <CameraInlineForm
+          onSubmit={handleAdd}
+          onClose={() => setShowNewForm(false)}
+          isLoading={addCamera.isPending}
+          mode="add"
+        />
+      )}
 
-      {/* Link to Smart Home Shop */}
+      {/* AES-konform: Inline edit form below grid */}
+      {editCamera && (
+        <CameraInlineForm
+          onSubmit={handleEdit}
+          onClose={() => setEditCamera(null)}
+          isLoading={updateCamera.isPending}
+          initialData={{
+            name: editCamera.name,
+            snapshot_url: editCamera.snapshot_url,
+            auth_user: editCamera.auth_user ?? '',
+            auth_pass: editCamera.auth_pass ?? '',
+            refresh_interval_sec: editCamera.refresh_interval_sec,
+          }}
+          mode="edit"
+        />
+      )}
+
+      {/* Shop link */}
       <Card className="glass-card border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
         <CardContent className="p-5">
           <div className="flex items-center gap-4">
@@ -170,14 +181,13 @@ export default function SmartHomeTile() {
               </p>
             </div>
             <Button size="sm" onClick={() => navigate('/portal/services/smart-home')}>
-              <ArrowRight className="h-4 w-4 mr-1" />
-              Zum Shop
+              <ArrowRight className="h-4 w-4 mr-1" />Zum Shop
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Requirements info */}
+      {/* Requirements */}
       <Card className="border-dashed">
         <CardContent className="p-4 text-xs text-muted-foreground space-y-2">
           <p className="font-medium text-foreground">Voraussetzungen</p>
@@ -188,33 +198,6 @@ export default function SmartHomeTile() {
           </ul>
         </CardContent>
       </Card>
-
-      {/* Add dialog */}
-      <AddCameraDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSubmit={handleAdd}
-        isLoading={addCamera.isPending}
-        mode="add"
-      />
-
-      {/* Edit dialog */}
-      {editCamera && (
-        <AddCameraDialog
-          open={!!editCamera}
-          onOpenChange={(open) => { if (!open) setEditCamera(null); }}
-          onSubmit={handleEdit}
-          isLoading={updateCamera.isPending}
-          initialData={{
-            name: editCamera.name,
-            snapshot_url: editCamera.snapshot_url,
-            auth_user: editCamera.auth_user ?? '',
-            auth_pass: editCamera.auth_pass ?? '',
-            refresh_interval_sec: editCamera.refresh_interval_sec,
-          }}
-          mode="edit"
-        />
-      )}
     </PageShell>
   );
 }

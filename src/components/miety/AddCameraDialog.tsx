@@ -1,28 +1,33 @@
+/**
+ * CameraInlineForm — Inline card for creating/editing cameras (AES-konform)
+ * 
+ * Replaces the former AddCameraDialog (Dialog pattern → Inline pattern).
+ * Also exports the legacy AddCameraDialog as a compatibility wrapper.
+ */
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { X, Save } from 'lucide-react';
 import { CameraFormData } from '@/hooks/useCameras';
 
-interface AddCameraDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface CameraInlineFormProps {
   onSubmit: (data: CameraFormData) => void;
+  onClose: () => void;
   isLoading?: boolean;
   initialData?: Partial<CameraFormData>;
   mode?: 'add' | 'edit';
 }
 
-export function AddCameraDialog({
-  open,
-  onOpenChange,
+export function CameraInlineForm({
   onSubmit,
+  onClose,
   isLoading,
   initialData,
   mode = 'add',
-}: AddCameraDialogProps) {
-  const [name, setName] = useState(initialData?.name ?? 'Kamera 1');
+}: CameraInlineFormProps) {
+  const [name, setName] = useState(initialData?.name ?? (mode === 'add' ? 'Kamera 1' : ''));
   const [snapshotUrl, setSnapshotUrl] = useState(initialData?.snapshot_url ?? '');
   const [authUser, setAuthUser] = useState(initialData?.auth_user ?? '');
   const [authPass, setAuthPass] = useState(initialData?.auth_pass ?? '');
@@ -30,16 +35,13 @@ export function AddCameraDialog({
     initialData?.refresh_interval_sec?.toString() ?? '30'
   );
 
-  // Reset state when initialData or open changes (fixes edit mode not populating)
   useEffect(() => {
-    if (open) {
-      setName(initialData?.name ?? (mode === 'add' ? 'Kamera 1' : ''));
-      setSnapshotUrl(initialData?.snapshot_url ?? '');
-      setAuthUser(initialData?.auth_user ?? '');
-      setAuthPass(initialData?.auth_pass ?? '');
-      setRefreshInterval(initialData?.refresh_interval_sec?.toString() ?? '30');
-    }
-  }, [open, initialData, mode]);
+    setName(initialData?.name ?? (mode === 'add' ? 'Kamera 1' : ''));
+    setSnapshotUrl(initialData?.snapshot_url ?? '');
+    setAuthUser(initialData?.auth_user ?? '');
+    setAuthPass(initialData?.auth_pass ?? '');
+    setRefreshInterval(initialData?.refresh_interval_sec?.toString() ?? '30');
+  }, [initialData, mode]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,13 +55,18 @@ export function AddCameraDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
+    <Card className="glass-card border-primary/30">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">
             {mode === 'add' ? 'Kamera hinzufügen' : 'Kamera bearbeiten'}
-          </DialogTitle>
-        </DialogHeader>
+          </CardTitle>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="cam-name">Name</Label>
@@ -122,16 +129,39 @@ export function AddCameraDialog({
             />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          {/* Action buttons — AES-konform: Abbrechen + Speichern inline */}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={onClose}>
               Abbrechen
             </Button>
             <Button type="submit" disabled={isLoading || !snapshotUrl}>
+              <Save className="h-4 w-4 mr-2" />
               {mode === 'add' ? 'Hinzufügen' : 'Speichern'}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** @deprecated Legacy wrapper — use CameraInlineForm instead */
+export function AddCameraDialog(props: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: CameraFormData) => void;
+  isLoading?: boolean;
+  initialData?: Partial<CameraFormData>;
+  mode?: 'add' | 'edit';
+}) {
+  if (!props.open) return null;
+  return (
+    <CameraInlineForm
+      onSubmit={props.onSubmit}
+      onClose={() => props.onOpenChange(false)}
+      isLoading={props.isLoading}
+      initialData={props.initialData}
+      mode={props.mode}
+    />
   );
 }

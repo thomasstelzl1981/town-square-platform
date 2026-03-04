@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MietyCreateHomeForm } from '../components/MietyCreateHomeForm';
-import { ContractDrawer } from '../components/ContractDrawer';
+import { ContractInlineForm } from '../components/ContractDrawer';
 import { useHomesQuery } from '../shared/useHomesQuery';
 import { NoHomeBanner } from '../shared/NoHomeBanner';
 import { PageShell } from '@/components/shared/PageShell';
@@ -29,8 +29,8 @@ export default function VersorgungTile() {
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-ZUHAUSE');
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerCategory, setDrawerCategory] = useState<string>('strom');
+  const [showInlineContract, setShowInlineContract] = useState(false);
+  const [inlineCategory, setInlineCategory] = useState<string>('strom');
 
   const { data: contracts = [] } = useQuery({
     queryKey: ['miety-contracts-versorgung', activeTenantId],
@@ -64,10 +64,10 @@ export default function VersorgungTile() {
 
   if (showCreateForm) return <div className="p-4"><MietyCreateHomeForm onCancel={() => setShowCreateForm(false)} /></div>;
 
-  const openDrawer = (cat: string) => {
+  const openInlineContract = (cat: string) => {
     if (homes.length === 0) { setShowCreateForm(true); return; }
-    setDrawerCategory(cat);
-    setDrawerOpen(true);
+    setInlineCategory(cat);
+    setShowInlineContract(true);
   };
 
   const supplyCategories = [
@@ -120,7 +120,7 @@ export default function VersorgungTile() {
                         ) : (
                           <>
                             <p className="text-[10px] text-muted-foreground mt-0.5">Kein Vertrag hinterlegt</p>
-                            <Button size="sm" variant="ghost" className="text-[10px] h-6 mt-1 -ml-2 px-2 text-primary" onClick={() => openDrawer(category)}>
+                            <Button size="sm" variant="ghost" className="text-[10px] h-6 mt-1 -ml-2 px-2 text-primary" onClick={() => openInlineContract(category)}>
                               <Plus className="h-3 w-3 mr-1" />Vertrag anlegen
                             </Button>
                           </>
@@ -201,12 +201,17 @@ export default function VersorgungTile() {
         })}
       </WidgetGrid>
 
-      <Button variant="outline" onClick={() => openDrawer('sonstige')}>
+      <Button variant="outline" onClick={() => openInlineContract('sonstige')}>
         <Plus className="h-4 w-4 mr-1.5" />Weiteren Vertrag hinzufügen
       </Button>
 
-      {homes.length > 0 && (
-        <ContractDrawer open={drawerOpen} onOpenChange={setDrawerOpen} homeId={homes[0].id} defaultCategory={drawerCategory} />
+      {/* AES-konform: Inline form below grid instead of Drawer */}
+      {showInlineContract && homes.length > 0 && (
+        <ContractInlineForm
+          homeId={homes[0].id}
+          defaultCategory={inlineCategory}
+          onClose={() => setShowInlineContract(false)}
+        />
       )}
     </PageShell>
   );
