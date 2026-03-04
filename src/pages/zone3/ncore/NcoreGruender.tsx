@@ -1,10 +1,10 @@
 /**
- * NCORE GRÜNDER — Redesign: Alternating dark/light with advisory image
+ * NCORE GRÜNDER — Thomas Stelzl Portrait + personalisierter Bio
  */
 import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Briefcase, GraduationCap, Network, Globe, Cpu, Shield } from 'lucide-react';
-import advisoryImg from '@/assets/ncore/advisory-session.jpg';
+import portraitImg from '@/assets/ncore/thomas-stelzl-portrait.jpg';
 
 const EXPERTISE_AREAS = [
   { icon: Cpu, label: 'KI & Digitalisierung', desc: 'Operative Implementierung von KI-Lösungen für KMU' },
@@ -21,8 +21,8 @@ export default function NcoreGruender() {
       <SEOHead
         brand="ncore"
         page={{
-          title: 'Der Gründer',
-          description: 'Über den Gründer von Ncore Business Consulting: Langjährige Erfahrung in Finanz- und Unternehmensberatung, operative KI-Kompetenz und ein exzellentes Netzwerk.',
+          title: 'Thomas Stelzl — Gründer',
+          description: 'Thomas Stelzl, Gründer und Geschäftsführer von Ncore Business Consulting: Operative KI-Kompetenz, langjährige Finanzexpertise und ein exzellentes Netzwerk für den Mittelstand.',
           path: '/gruender',
         }}
       />
@@ -31,40 +31,54 @@ export default function NcoreGruender() {
       <section className="relative py-28 px-4 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/20 via-transparent to-transparent" />
         <div className="relative mx-auto max-w-5xl">
-          <p className="mb-4 inline-block rounded-full bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-emerald-400 border border-emerald-500/20">
+          <p className="mb-6 inline-block rounded-full bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-emerald-400 border border-emerald-500/20">
             Über den Gründer
           </p>
-          <h1 className="mb-8 text-4xl font-bold md:text-6xl">
-            Der <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">Gründer</span>
-          </h1>
-          <div className="grid gap-12 md:grid-cols-2">
+
+          <div className="grid gap-12 md:grid-cols-[320px_1fr] items-start">
+            {/* Portrait */}
+            <div className="flex justify-center md:justify-start">
+              <div className="relative">
+                <div className="absolute -inset-3 rounded-2xl bg-emerald-500/15 blur-2xl" />
+                <img
+                  src={portraitImg}
+                  alt="Thomas Stelzl — Gründer von Ncore Business Consulting"
+                  className="relative w-64 h-80 md:w-80 md:h-[400px] rounded-2xl object-cover object-top shadow-2xl ring-1 ring-emerald-500/20"
+                  loading="eager"
+                />
+              </div>
+            </div>
+
+            {/* Bio */}
             <div>
+              <h1 className="mb-2 text-4xl font-bold md:text-5xl">
+                Thomas <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">Stelzl</span>
+              </h1>
+              <p className="mb-8 text-sm font-medium text-emerald-400/80 tracking-wide">Gründer & Geschäftsführer</p>
+
               <p className="text-lg text-slate-300 leading-relaxed mb-6">
-                Ncore Business Consulting wurde aus der Überzeugung gegründet, dass Unternehmensberatung
-                anders funktionieren muss. Nicht als theoretisches Konstrukt, sondern als operative
-                Begleitung — von jemandem, der die Herausforderungen des Mittelstands aus eigener Erfahrung kennt.
+                Ich habe Ncore Business Consulting gegründet, weil ich aus meiner langjährigen operativen Erfahrung
+                in der Finanzbranche und der Zusammenarbeit mit mittelständischen Unternehmen weiß:
+                Gute Beratung darf kein theoretisches Konstrukt sein — sie muss handfest, umsetzbar und bezahlbar bleiben.
               </p>
               <p className="text-slate-400 leading-relaxed mb-6">
-                Mit langjähriger Erfahrung in der Finanz- und Unternehmensberatung und einem tiefen
-                Verständnis für Digitalisierung und künstliche Intelligenz verbindet der Gründer
-                das Beste aus beiden Welten: strategisches Denken und operative Umsetzungskompetenz.
+                Was mich antreibt, ist die Überzeugung, dass Digitalisierung und künstliche Intelligenz
+                nicht nur Konzernen vorbehalten sein dürfen. Jeder Mittelständler verdient Zugang zu Technologien,
+                die sein Geschäft stärken — ohne sechsstellige IT-Budgets. Genau diese Brücke baue ich mit Ncore.
               </p>
-              <p className="text-slate-400 leading-relaxed">
-                Das Ergebnis ist ein Beratungsansatz, der Unternehmen als Ganzes betrachtet —
-                Digitalisierung, Vermögensschutz und Geschäftsmodellentwicklung nicht als isolierte
-                Disziplinen, sondern als verbundenes System. Connecting Dots. Connecting People.
+              <p className="text-slate-400 leading-relaxed mb-8">
+                Meine Philosophie lässt sich in zwei Sätzen zusammenfassen:
+                Unternehmen als Ganzes betrachten und die richtigen Menschen zusammenbringen.
+                <span className="text-emerald-400 font-medium"> Connecting Dots. Connecting People.</span>
               </p>
-            </div>
-            <div className="space-y-4">
-              <div className="rounded-2xl overflow-hidden shadow-lg">
-                <img src={advisoryImg} alt="Beratungssituation" className="w-full h-48 object-cover" />
-              </div>
+
+              {/* Quote */}
               <div className="rounded-2xl border border-emerald-900/30 bg-slate-800/50 p-6">
-                <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-emerald-400">Philosophie</h3>
                 <blockquote className="text-sm text-slate-300 leading-relaxed italic border-l-2 border-emerald-500/30 pl-4">
                   „Viele Berater bieten Teillösungen an. Wir betrachten das Unternehmen als
                   Ganzes und wissen operativ, wie man Digitalisierung und KI zu günstigen
                   Kosten einsetzen kann."
+                  <footer className="mt-3 text-xs text-emerald-400 not-italic font-semibold">— Thomas Stelzl</footer>
                 </blockquote>
               </div>
             </div>
