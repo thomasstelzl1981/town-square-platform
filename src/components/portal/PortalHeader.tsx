@@ -50,7 +50,7 @@ export function PortalHeader({ onMenuClick }: PortalHeaderProps) {
     : profile?.email?.charAt(0).toUpperCase() || 'U';
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-[hsl(var(--chrome-bg)/0.98)] shadow-[var(--chrome-shadow)] dark:bg-background/95 dark:backdrop-blur dark:supports-[backdrop-filter]:bg-background/60 dark:shadow-none">
       <div className="flex h-14 items-center justify-between px-4">
         {/* Left side: Menu toggle + Logo */}
         <div className="flex items-center gap-2">
