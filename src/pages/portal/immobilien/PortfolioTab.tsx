@@ -1073,9 +1073,11 @@ export function PortfolioTab() {
                 const monthlyAmortization = (totals.totalAnnuity - annualInterest) / 12;
                 const monthlyNK = (totals.totalValue * 0.005) / 12; // 0.5% nicht umlagefähig p.a.
                 
-                // Steuervorteil (vereinfacht: 42% Grenzsteuersatz auf Zinsen + NK + AfA)
+                // Steuervorteil: nur bei privaten Kontexten (nicht gewerblich)
+                const isCommercial = selectedContext?.context_type === 'BUSINESS';
                 const afaAnnual = totals.totalValue * 0.02; // 2% AfA
-                const taxDeduction = (annualInterest + (totals.totalValue * 0.005) + afaAnnual) * 0.42;
+                const marginalTaxRate = isCommercial ? 0 : ((selectedContext?.tax_rate_percent ?? 42) / 100);
+                const taxDeduction = (annualInterest + (totals.totalValue * 0.005) + afaAnnual) * marginalTaxRate;
                 const monthlyTaxBenefit = taxDeduction / 12;
                 
                 const totalIncome = monthlyRent + monthlyTaxBenefit;
@@ -1093,10 +1095,12 @@ export function PortfolioTab() {
                             <span>Mieteinnahmen</span>
                             <span className="font-medium">{formatCurrency(monthlyRent)}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span>Steuervorteil</span>
-                            <span className="font-medium">{formatCurrency(monthlyTaxBenefit)}</span>
-                          </div>
+                          {!isCommercial && (
+                            <div className="flex justify-between">
+                              <span>Steuervorteil</span>
+                              <span className="font-medium">{formatCurrency(monthlyTaxBenefit)}</span>
+                            </div>
+                          )}
                           <div className="border-t pt-2 mt-2">
                             <div className="flex justify-between font-semibold">
                               <span>Summe</span>

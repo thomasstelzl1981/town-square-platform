@@ -8,7 +8,7 @@
     "MOD-01": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for Rechtliches layout fix and Stammdaten sections" },
     "MOD-02": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for Gmail OAuth popup fix and manual sync triggers" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
-    "MOD-04": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
+    "MOD-04": { "frozen": true, "frozen_at": "2026-03-04T10:00:00.000Z", "reason": "Re-frozen after EÜR Steuervorteil bugfix for commercial contexts" },
     "MOD-05": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for DAT completion — DMS retrofit and E2E audit" },
     "MOD-06": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-07": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
