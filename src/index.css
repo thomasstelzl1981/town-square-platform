@@ -40,38 +40,38 @@
      LIGHT MODE (Optional fallback - Dark is default)
      ========================================================================= */
   :root {
-    /* Core Backgrounds — Warm-Neutral Light-Graphite */
-    --background: 35 18% 95%;
+    /* Core Backgrounds — Warm-Gray CRM (Hue 215) */
+    --background: 215 18% 96%;
     --foreground: 222 35% 10%;
 
-    /* Glass-enabled surfaces with alpha channel */
-    --card: 35 14% 98% / 0.98;
+    /* Reading surfaces = pure white */
+    --card: 0 0% 100% / 1;
     --card-foreground: 222 35% 10%;
-    --card-glass: 35 14% 97% / 0.7;
-    --surface-glass: 35 14% 95% / 0.6;
+    --card-glass: 215 10% 97% / 0.7;
+    --surface-glass: 215 10% 95% / 0.6;
 
-    --popover: 35 14% 98% / 0.98;
+    --popover: 0 0% 100% / 1;
     --popover-foreground: 222 35% 10%;
 
     /* Primary Colors */
     --primary: 217 91% 56%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 35 16% 92%;
+    --secondary: 215 12% 92%;
     --secondary-foreground: 222 35% 10%;
 
-    --muted: 35 14% 92%;
+    --muted: 215 10% 92%;
     --muted-foreground: 220 10% 34%;
 
-    --accent: 35 16% 92%;
+    --accent: 215 12% 92%;
     --accent-foreground: 222 35% 10%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     /* Borders & Inputs */
-    --border: 35 10% 80%;
-    --input: 35 10% 80%;
+    --border: 215 12% 78%;
+    --input: 215 12% 82%;
     --ring: 217 91% 56%;
 
     /* Radius System — iOS-style larger radii */
@@ -82,13 +82,13 @@
     --radius-full: 9999px;
 
     /* Sidebar */
-    --sidebar-background: 35 14% 96%;
+    --sidebar-background: 215 14% 95%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 35 12% 94%;
+    --sidebar-accent: 215 10% 93%;
     --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 35 10% 88%;
+    --sidebar-border: 215 10% 86%;
     --sidebar-ring: 217.2 91.2% 59.8%;
 
     /* Status Colors */
@@ -98,16 +98,16 @@
     --status-info: 199 80% 42%;
 
     /* Surface Layers */
-    --surface: 35 16% 93%;
-    --surface-2: 35 14% 91%;
-    --border-subtle: 35 12% 88%;
+    --surface: 215 16% 92%;
+    --surface-2: 215 14% 90%;
+    --border-subtle: 215 10% 86%;
     --border-glow: 217 91% 60%;
 
     /* Chrome Frame (Light-only solid nav) */
-    --chrome-bg: 35 16% 93%;
-    --chrome-bg-2: 35 14% 91%;
-    --chrome-border: 35 10% 80%;
-    --chrome-shadow: 0 4px 14px -10px rgb(0 0 0 / 0.12);
+    --chrome-bg: 215 16% 92%;
+    --chrome-bg-2: 215 14% 90%;
+    --chrome-border: 215 12% 78%;
+    --chrome-shadow: 0 6px 18px -14px rgb(0 0 0 / 0.18);
 
     /* Text Hierarchy */
     --text-primary: 222 35% 10%;
@@ -119,33 +119,33 @@
     --accent-primary-hover: 217 91% 70%;
 
     /* Input Surface */
-    --input-bg: 35 16% 96%;
+    --input-bg: 215 14% 97%;
 
     /* Table Surface */
-    --table-header-bg: 35 16% 94%;
-    --table-row-hover: 35 16% 95%;
+    --table-header-bg: 215 14% 94%;
+    --table-row-hover: 215 14% 96%;
 
     /* Reading Surface */
-    --reading-surface: 35 14% 98% / 0.98;
+    --reading-surface: 0 0% 100% / 1;
 
     /* Overlay / Modal */
     --overlay-scrim: 222 84% 4.9% / 0.35;
-    --overlay-surface: 35 14% 98% / 0.96;
+    --overlay-surface: 0 0% 100% / 0.98;
 
-    /* Ambient Background — Warm-Neutral Enterprise */
+    /* Ambient Background — Warm-Gray Enterprise */
     --ambient-opacity: 0.03;
     --ambient-vignette: 0.03;
-    --ambient-horizon: 35 10% 88%;
+    --ambient-horizon: 215 10% 88%;
     --ambient-structure:
       repeating-linear-gradient(
         90deg,
-        hsl(35 10% 30% / 0.03) 0px,
+        hsl(215 10% 30% / 0.03) 0px,
         transparent 1px,
         transparent 120px
       ),
       repeating-linear-gradient(
         0deg,
-        hsl(35 10% 30% / 0.02) 0px,
+        hsl(215 10% 30% / 0.02) 0px,
         transparent 1px,
         transparent 120px
       );
@@ -597,10 +597,10 @@
      iOS GLASS BUTTON STYLE
      =========================================================================== */
   .btn-glass {
-    background: hsl(35 14% 98% / 0.5);
+    background: hsl(215 14% 98% / 0.5);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid hsl(35 10% 80% / 0.3);
+    border: 1px solid hsl(215 12% 78% / 0.3);
     box-shadow: 
       inset 0 1px 0 hsla(0 0% 100% / 0.2),
       0 1px 3px hsla(0 0% 0% / 0.1);
@@ -690,17 +690,17 @@
     border-color: hsla(0, 0%, 100%, 0.15);
   }
 
-  /* Light Mode: solid chrome tabs */
+  /* Light Mode: solid chrome tabs (opaque) */
   :root .nav-tab-glass {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    background: hsl(var(--chrome-bg-2) / 0.7);
-    border: 1px solid hsl(var(--chrome-border) / 0.4);
+    background: hsl(var(--chrome-bg-2) / 1);
+    border: 1px solid hsl(var(--chrome-border) / 0.6);
     box-shadow: none;
   }
   :root .nav-tab-glass:hover {
-    background: hsl(var(--chrome-bg-2) / 0.9);
-    border-color: hsl(var(--chrome-border) / 0.6);
+    background: hsl(var(--chrome-bg-2) / 0.85);
+    border-color: hsl(var(--chrome-border) / 0.8);
   }
 
   .dark .nav-tab-glass {

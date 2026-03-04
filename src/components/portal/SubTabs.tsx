@@ -46,7 +46,7 @@ export function SubTabs({ module, moduleBase }: SubTabsProps) {
             className={cn(
               'px-3 py-1.5 rounded-xl text-sm uppercase tracking-wide whitespace-nowrap',
               isActive
-                ? 'bg-primary/90 backdrop-blur-md text-primary-foreground font-medium shadow-sm'
+                ? 'bg-white text-foreground font-medium shadow-sm border border-[hsl(var(--chrome-border)/0.5)] dark:bg-primary/90 dark:text-primary-foreground dark:border-0'
                 : 'nav-tab-glass text-muted-foreground hover:text-foreground',
               tile.premium && 'border border-warning/30'
             )}
