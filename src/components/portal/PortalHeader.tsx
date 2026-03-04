@@ -50,7 +50,7 @@ export function PortalHeader({ onMenuClick }: PortalHeaderProps) {
     : profile?.email?.charAt(0).toUpperCase() || 'U';
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-[hsl(var(--chrome-bg)/0.98)] shadow-[var(--chrome-shadow)] dark:bg-background/95 dark:backdrop-blur dark:supports-[backdrop-filter]:bg-background/60 dark:shadow-none">
+    <header className="sticky top-0 z-50 w-full border-b border-[hsl(var(--chrome-border)/0.5)] bg-[hsl(var(--chrome-bg))] text-[hsl(var(--chrome-foreground))] shadow-[var(--chrome-shadow)] dark:bg-background/95 dark:backdrop-blur dark:supports-[backdrop-filter]:bg-background/60 dark:shadow-none dark:text-foreground dark:border-border">
       <div className="flex h-14 items-center justify-between px-4">
         {/* Left side: Menu toggle + Logo */}
         <div className="flex items-center gap-2">
@@ -111,7 +111,7 @@ export function PortalHeader({ onMenuClick }: PortalHeaderProps) {
               onClick={toggleArmstrong}
               className={cn(
                 'hidden lg:flex',
-                armstrongVisible && 'ring-2 ring-primary/30 bg-white/40 dark:bg-white/15'
+                armstrongVisible && 'ring-2 ring-primary/30 bg-white/20 dark:bg-white/15'
               )}
               title={armstrongVisible ? 'Armstrong schließen' : 'Armstrong öffnen'}
             >
