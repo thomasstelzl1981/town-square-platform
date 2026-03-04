@@ -93,7 +93,7 @@ export const PetDossier = memo(function PetDossier({
       <PetBehaviorSection pet={pet} readOnly={readOnly} onUpdate={updatePet} />
 
       {/* 7. Dokumente */}
-      <PetDocumentsSection petId={pet.id} readOnly={readOnly} />
+      <PetDocumentsSection petId={pet.id} tenantId={pet.tenant_id} readOnly={readOnly} />
 
       {/* 8. Notizen */}
       <PetNotesSection pet={pet} readOnly={readOnly} onUpdate={updatePet} />

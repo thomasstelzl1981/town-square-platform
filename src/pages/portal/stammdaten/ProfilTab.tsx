@@ -18,6 +18,7 @@ import { useImageSlotUpload } from '@/hooks/useImageSlotUpload';
 import { useDropzone } from 'react-dropzone';
 import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, Mail, Download, Monitor, Smartphone, Zap, WifiOff, Layout, Globe, Share, ExternalLink, Camera, X } from 'lucide-react';
 import { BrandLinkWidget } from '@/components/dashboard/widgets/BrandLinkWidget';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { toast } from 'sonner';
 import { OutboundIdentityWidget } from '@/components/portal/OutboundIdentityWidget';
 import { cn } from '@/lib/utils';
@@ -622,6 +623,19 @@ export function ProfilTab() {
               </div>
             </div>
           </div>
+
+          {/* ── DATENRAUM ── */}
+          {activeTenantId && user?.id && (
+            <div>
+              <p className={RECORD_CARD.SECTION_TITLE}>Datenraum</p>
+              <EntityStorageTree
+                tenantId={activeTenantId}
+                entityType="person"
+                entityId={user.id}
+                moduleCode="MOD_01"
+              />
+            </div>
+          )}
         </RecordCard>
 
         {/* ── Outbound-Kennung (rechte Spalte wenn RecordCard geschlossen) ── */}
