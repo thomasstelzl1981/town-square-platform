@@ -1,60 +1,27 @@
 
 
-## Plan: Gründer-Seite personalisieren — Thomas Stelzl mit Porträtfoto
+## Bug: Steuervorteil in Portfolio-EÜR ignoriert gewerblichen Kontext
 
-### Was wird gemacht
+### Ursache
 
-Die Seite `NcoreGruender.tsx` wird personalisiert: Der bisher anonyme "Gründer"-Text wird auf **Thomas Stelzl** zugeschnitten und das hochgeladene Porträtfoto prominent eingebaut.
+In `PortfolioTab.tsx`, Zeilen 1076-1099: Die **"Monatliche Übersicht (EÜR)"**-Karte berechnet den Steuervorteil mit einem **hardcodierten 42% Grenzsteuersatz** — ohne zu prüfen, ob der ausgewählte Vermieter-Kontext gewerblich (`BUSINESS`) ist.
 
-### Änderungen
+Die Variable `selectedContext` ist im Scope verfügbar (Zeile 744), wird aber in diesem Block nicht genutzt. Das `PortfolioSummaryModal` macht es korrekt (Zeile 1422: `isCommercial={selectedContext?.context_type === 'BUSINESS'}`), aber die EÜR-Karte wurde nie angepasst.
 
-**1. Bild kopieren**
-- Das hochgeladene Foto wird nach `src/assets/ncore/thomas-stelzl-portrait.jpg` kopiert (das vorhandene `thomas-stelzl.jpg` bleibt als Backup).
+### Fix
 
-**2. Hero-Bereich umgestalten** (`NcoreGruender.tsx`)
+**Datei:** `src/pages/portal/immobilien/PortfolioTab.tsx` (Zeilen 1063-1103)
 
-Aktuell: Links Text (anonym, kein Name), rechts kleines Beratungsfoto + Philosophie-Box.
+1. **`isCommercial`-Flag** ableiten: `const isCommercial = selectedContext?.context_type === 'BUSINESS';`
+2. **Steuervorteil auf 0 setzen** wenn gewerblich: `const monthlyTaxBenefit = isCommercial ? 0 : taxDeduction / 12;`
+3. **Steuervorteil-Zeile ausblenden** wenn gewerblich: `{!isCommercial && (<div>Steuervorteil...</div>)}`
+4. **Summe Einnahmen** anpassen (ist bereits korrekt, da `monthlyTaxBenefit = 0`)
 
-**Neu — Premium-Portrait-Layout:**
-- **Links**: Großes, rundes oder abgerundetes Porträtfoto von Thomas Stelzl (ca. 320×400px) mit dezentem Emerald-Glow-Schatten
-- **Rechts**: Personalisierter Text mit Name
-  - Überschrift: `Thomas Stelzl` statt "Der Gründer"
-  - Subtitle-Badge bleibt: "Über den Gründer"
-  - Text wird umformuliert auf 1. Person / persönlich:
-    - Absatz 1: Wer er ist, warum er Ncore gegründet hat (operative Erfahrung Finanzbranche + KMU)
-    - Absatz 2: Was ihn antreibt (Digitalisierung + KI erschwinglich für den Mittelstand)
-    - Absatz 3: Philosophie ("Connecting Dots. Connecting People.")
-  - Die Philosophie-Blockquote bleibt, wird aber als Zitat mit `— Thomas Stelzl` signiert
+Zusätzlich: Den hardcodierten 42%-Steuersatz durch den tatsächlichen Steuersatz des Kontexts ersetzen (`selectedContext?.tax_rate_percent / 100 || 0.42`), falls ein privater Kontext vorliegt.
 
-**3. Kein struktureller Umbau**
-- Expertise-Grid, Kernwerte-Section und CTA bleiben unverändert
-- Nur die Hero-Section wird angepasst
-- SEO-Description wird auf "Thomas Stelzl" aktualisiert
+### Betroffene Dateien
 
-### Visuelles Konzept
-
-```text
-┌─────────────────────────────────────────────────┐
-│  [Badge: Über den Gründer]                      │
-│                                                 │
-│  ┌──────────┐   Thomas Stelzl                   │
-│  │          │   ─────────────                   │
-│  │  Portrait│   Gründer & Geschäftsführer       │
-│  │  Foto    │                                   │
-│  │  320x400 │   Persönlicher Text...            │
-│  │  rounded │   ...warum Ncore entstand          │
-│  │  emerald │   ...was ihn antreibt              │
-│  │  glow    │                                   │
-│  └──────────┘   ┌─ Philosophie-Quote ──────┐    │
-│                 │ „Viele Berater..."        │    │
-│                 │         — Thomas Stelzl   │    │
-│                 └──────────────────────────-┘    │
-└─────────────────────────────────────────────────┘
-```
-
-### Dateien
-| Datei | Aktion |
-|-------|--------|
-| `src/assets/ncore/thomas-stelzl-portrait.jpg` | Neues Bild kopieren |
-| `src/pages/zone3/ncore/NcoreGruender.tsx` | Hero-Section umbauen |
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/portal/immobilien/PortfolioTab.tsx` | EÜR-Block: isCommercial-Check + dynamischer Steuersatz |
 
