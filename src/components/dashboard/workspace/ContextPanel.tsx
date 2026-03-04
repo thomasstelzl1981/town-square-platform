@@ -1,11 +1,22 @@
 /**
- * ContextPanel — Right column: Active entity, sources, memory, recent actions
+ * ContextPanel — Right column: Active entity, sources, memory (editable), recent actions
+ * Phase 3: Memory snippets are now add/edit/delete capable
  */
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { useArmstrongContext } from '@/hooks/useArmstrongContext';
+import { useArmstrongProjects, type ArmstrongProject, type MemorySnippet } from '@/hooks/useArmstrongProjects';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import type { ArmstrongProject, MemorySnippet } from '@/hooks/useArmstrongProjects';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Building2,
   Users,
@@ -16,14 +27,28 @@ import {
   Lightbulb,
   CheckCircle2,
   AlertCircle,
+  Plus,
+  Trash2,
+  X,
 } from 'lucide-react';
 
 interface ContextPanelProps {
   activeProject: ArmstrongProject | null;
 }
 
+const SNIPPET_TYPE_LABELS: Record<string, string> = {
+  decision: 'Entscheidung',
+  assumption: 'Annahme',
+  preference: 'Präferenz',
+  note: 'Notiz',
+};
+
 export function ContextPanel({ activeProject }: ContextPanelProps) {
   const armstrongContext = useArmstrongContext();
+  const { updateProject } = useArmstrongProjects();
+  const [isAdding, setIsAdding] = useState(false);
+  const [newContent, setNewContent] = useState('');
+  const [newType, setNewType] = useState<MemorySnippet['type']>('note');
 
   const context = useMemo(() => {
     if (armstrongContext.zone === 'Z2') return armstrongContext;
@@ -36,11 +61,35 @@ export function ContextPanel({ activeProject }: ContextPanelProps) {
 
   const snippetIcon = (type: string) => {
     switch (type) {
-      case 'decision': return <CheckCircle2 className="h-3 w-3 text-green-500" />;
+      case 'decision': return <CheckCircle2 className="h-3 w-3 text-emerald-500" />;
       case 'assumption': return <AlertCircle className="h-3 w-3 text-amber-500" />;
-      case 'preference': return <Lightbulb className="h-3 w-3 text-blue-400" />;
+      case 'preference': return <Lightbulb className="h-3 w-3 text-primary" />;
       default: return <FileText className="h-3 w-3 text-muted-foreground" />;
     }
+  };
+
+  const handleAddSnippet = () => {
+    if (!activeProject || !newContent.trim()) return;
+    const snippet: MemorySnippet = {
+      id: crypto.randomUUID(),
+      type: newType,
+      content: newContent.trim(),
+      created_at: new Date().toISOString(),
+    };
+    updateProject.mutate({
+      id: activeProject.id,
+      memory_snippets: [...memorySnippets, snippet],
+    });
+    setNewContent('');
+    setIsAdding(false);
+  };
+
+  const handleDeleteSnippet = (snippetId: string) => {
+    if (!activeProject) return;
+    updateProject.mutate({
+      id: activeProject.id,
+      memory_snippets: memorySnippets.filter(s => s.id !== snippetId),
+    });
   };
 
   return (
@@ -122,21 +171,74 @@ export function ContextPanel({ activeProject }: ContextPanelProps) {
             </div>
           )}
 
-          {/* Memory Snippets */}
-          {memorySnippets.length > 0 && (
+          {/* Memory Snippets (editable) */}
+          {activeProject && (
             <div>
-              <div className="flex items-center gap-1.5 mb-2">
-                <Brain className="h-3 w-3 text-primary" />
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Memory</span>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <Brain className="h-3 w-3 text-primary" />
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Memory</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0"
+                  onClick={() => setIsAdding(!isAdding)}
+                >
+                  {isAdding ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                </Button>
               </div>
-              <div className="space-y-1">
-                {memorySnippets.map(snippet => (
-                  <div key={snippet.id} className="px-2 py-1.5 rounded-md bg-muted/30 text-xs flex items-start gap-2">
-                    {snippetIcon(snippet.type)}
-                    <span className="text-[11px] leading-relaxed">{snippet.content}</span>
-                  </div>
-                ))}
-              </div>
+
+              {/* Add snippet form */}
+              {isAdding && (
+                <div className="mb-2 p-2 rounded-md bg-primary/5 border border-primary/10 space-y-1.5">
+                  <Select value={newType} onValueChange={(v) => setNewType(v as MemorySnippet['type'])}>
+                    <SelectTrigger className="h-6 text-[10px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(SNIPPET_TYPE_LABELS).map(([key, label]) => (
+                        <SelectItem key={key} value={key} className="text-xs">{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={newContent}
+                    onChange={(e) => setNewContent(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddSnippet(); }}
+                    placeholder="Inhalt..."
+                    className="h-7 text-xs"
+                    autoFocus
+                  />
+                  <Button size="sm" className="h-6 text-[10px] w-full" onClick={handleAddSnippet} disabled={!newContent.trim()}>
+                    Hinzufügen
+                  </Button>
+                </div>
+              )}
+
+              {memorySnippets.length === 0 && !isAdding ? (
+                <p className="text-[11px] text-muted-foreground px-2">Keine Einträge. Nutze + um Entscheidungen oder Notizen zu speichern.</p>
+              ) : (
+                <div className="space-y-1">
+                  {memorySnippets.map(snippet => (
+                    <div key={snippet.id} className="group px-2 py-1.5 rounded-md bg-muted/30 text-xs flex items-start gap-2">
+                      {snippetIcon(snippet.type)}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[11px] leading-relaxed">{snippet.content}</span>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">
+                          {SNIPPET_TYPE_LABELS[snippet.type] || snippet.type}
+                        </p>
+                      </div>
+                      <button
+                        className="opacity-0 group-hover:opacity-100 shrink-0 p-0.5 text-muted-foreground hover:text-destructive transition-opacity"
+                        onClick={() => handleDeleteSnippet(snippet.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

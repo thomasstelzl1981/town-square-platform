@@ -3,7 +3,7 @@
  * Left: Projects & Threads | Center: Chat | Right: Context & Sources
  * Mobile: Chat only, sidebars as drawers
  */
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useArmstrongAdvisor } from '@/hooks/useArmstrongAdvisor';
@@ -16,6 +16,7 @@ import { ArmstrongOrb, type OrbState } from '@/components/chat/ArmstrongOrb';
 import { VoiceButton } from '@/components/shared/VoiceButton';
 import { ProjectsSidebar } from '@/components/dashboard/workspace/ProjectsSidebar';
 import { ContextPanel } from '@/components/dashboard/workspace/ContextPanel';
+import { SlashCommandPicker } from '@/components/dashboard/workspace/SlashCommandPicker';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,7 +31,11 @@ import {
   VolumeX,
   PanelLeftOpen,
   PanelRightOpen,
+  Database,
+  Globe,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function ArmstrongWorkspace() {
   const isMobile = useIsMobile();
@@ -41,6 +46,9 @@ export function ArmstrongWorkspace() {
   const [showRightPanel, setShowRightPanel] = useState(false);
   const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
   const [mobileRightOpen, setMobileRightOpen] = useState(false);
+  const [useMyData, setUseMyData] = useState(true);
+  const [showSlashPicker, setShowSlashPicker] = useState(false);
+  const [slashQuery, setSlashQuery] = useState('');
 
   const advisor = useArmstrongAdvisor();
   const voice = useArmstrongVoice();
@@ -56,12 +64,44 @@ export function ArmstrongWorkspace() {
   const handleSend = useCallback(() => {
     if (!input.trim() || advisor.isLoading) return;
     setVoiceMode(false);
+    setShowSlashPicker(false);
+    setSlashQuery('');
     advisor.sendMessage(input.trim(), docUpload.documentContext || undefined);
     if (docUpload.documentContext) docUpload.clearDocument();
     setInput('');
   }, [input, advisor, docUpload]);
 
+  const handleInputChange = useCallback((value: string) => {
+    setInput(value);
+    // Slash command detection
+    if (value.startsWith('/')) {
+      setShowSlashPicker(true);
+      setSlashQuery(value.slice(1));
+    } else {
+      setShowSlashPicker(false);
+      setSlashQuery('');
+    }
+  }, []);
+
+  const handleSlashSelect = useCallback((action: any) => {
+    setShowSlashPicker(false);
+    setSlashQuery('');
+    setInput('');
+    advisor.selectAction({
+      action_code: action.action_code,
+      title_de: action.title_de,
+      execution_mode: action.execution_mode,
+      risk_level: action.risk_level,
+      cost_model: action.cost_model,
+      credits_estimate: 0,
+      cost_hint_cents: action.cost_hint_cents || 0,
+      side_effects: action.side_effects || [],
+      why: '',
+    });
+  }, [advisor]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (showSlashPicker) return; // Let picker handle keyboard
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -270,54 +310,87 @@ export function ArmstrongWorkspace() {
 
       {/* Input bar */}
       <div className="p-3 border-t border-border/30 shrink-0">
-        <div className="max-w-3xl mx-auto flex items-center gap-2 p-1.5 rounded-xl bg-muted/40 border border-border/20">
-          <VoiceButton
-            isRecording={voice.isRecording}
-            isConnecting={voice.isConnecting}
-            isSpeaking={voice.isSpeaking}
-            error={voice.error}
-            onPressStart={handleVoicePressStart}
-            onPressEnd={handleVoicePressEnd}
-            size="md"
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(
-              'h-8 w-8 p-0 rounded-full shrink-0',
-              docUpload.documentContext ? 'text-primary' : 'text-muted-foreground'
-            )}
-            onClick={() => docInputRef.current?.click()}
-            disabled={advisor.isLoading || docUpload.isParsing}
-            title="Dokument anhängen"
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={docUpload.documentContext ? 'Frage zum Dokument...' : 'Nachricht an Armstrong...'}
-            className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-9 text-sm"
-            disabled={advisor.isLoading}
-          />
-          <Button
-            size="sm"
-            className={cn(
-              'h-8 w-8 p-0 rounded-full transition-all shrink-0',
-              input.trim() && !advisor.isLoading
-                ? 'bg-primary hover:bg-primary/90'
-                : 'bg-muted'
-            )}
-            onClick={handleSend}
-            disabled={!input.trim() || advisor.isLoading}
-          >
-            {advisor.isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            ) : (
-              <Send className="h-4 w-4 text-primary-foreground" />
-            )}
-          </Button>
+        <div className="max-w-3xl mx-auto relative">
+          {/* Slash command picker */}
+          {showSlashPicker && (
+            <SlashCommandPicker
+              query={slashQuery}
+              currentModule={advisor.currentModule}
+              onSelect={handleSlashSelect}
+              onClose={() => { setShowSlashPicker(false); setSlashQuery(''); }}
+            />
+          )}
+
+          <div className="flex items-center gap-2 p-1.5 rounded-xl bg-muted/40 border border-border/20">
+            <VoiceButton
+              isRecording={voice.isRecording}
+              isConnecting={voice.isConnecting}
+              isSpeaking={voice.isSpeaking}
+              error={voice.error}
+              onPressStart={handleVoicePressStart}
+              onPressEnd={handleVoicePressEnd}
+              size="md"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                'h-8 w-8 p-0 rounded-full shrink-0',
+                docUpload.documentContext ? 'text-primary' : 'text-muted-foreground'
+              )}
+              onClick={() => docInputRef.current?.click()}
+              disabled={advisor.isLoading || docUpload.isParsing}
+              title="Dokument anhängen"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            <Input
+              value={input}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={docUpload.documentContext ? 'Frage zum Dokument...' : 'Nachricht an Armstrong... (/ für Aktionen)'}
+              className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-9 text-sm"
+              disabled={advisor.isLoading}
+            />
+
+            {/* Data mode toggle */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className={cn(
+                      'shrink-0 p-1.5 rounded-full transition-colors',
+                      useMyData ? 'text-primary bg-primary/10' : 'text-muted-foreground'
+                    )}
+                    onClick={() => setUseMyData(!useMyData)}
+                  >
+                    {useMyData ? <Database className="h-4 w-4" /> : <Globe className="h-4 w-4" />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  {useMyData ? 'Mit deinen Daten arbeiten (aktiv)' : 'Allgemeiner Modus (ohne Daten)'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <Button
+              size="sm"
+              className={cn(
+                'h-8 w-8 p-0 rounded-full transition-all shrink-0',
+                input.trim() && !advisor.isLoading
+                  ? 'bg-primary hover:bg-primary/90'
+                  : 'bg-muted'
+              )}
+              onClick={handleSend}
+              disabled={!input.trim() || advisor.isLoading}
+            >
+              {advisor.isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              ) : (
+                <Send className="h-4 w-4 text-primary-foreground" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
