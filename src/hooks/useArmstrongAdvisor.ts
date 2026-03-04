@@ -628,23 +628,125 @@ export function useArmstrongAdvisor(options?: UseArmstrongAdvisorOptions) {
     try {
       const request = buildRequest(text, undefined, undefined, documentContext);
       
-      const { data, error } = await supabase.functions.invoke('sot-armstrong-advisor', {
-        body: request,
-      });
+      // Use raw fetch for streaming support
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-armstrong-advisor`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify(request),
+        }
+      );
 
-      if (error) throw error;
-
-      const assistantMessage = processResponse(data);
-      addMessage(assistantMessage);
-
-      if (data.type === 'RESULT') {
-        toast({
-          title: data.status === 'completed' ? 'Aktion abgeschlossen' : 'Aktion fehlgeschlagen',
-          description: data.message,
-          variant: data.status === 'completed' ? 'default' : 'destructive',
-        });
+      if (!response.ok) {
+        throw new Error(`Armstrong error: ${response.status}`);
       }
 
+      const contentType = response.headers.get('Content-Type') || '';
+      
+      // ── SSE Streaming response (EXPLAIN intent) ──
+      if (contentType.includes('text/event-stream') && response.body) {
+        const assistantMsgId = crypto.randomUUID();
+        let fullText = '';
+        let metaData: { suggested_actions?: SuggestedAction[]; next_steps?: string[] } | null = null;
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        // Add empty assistant message to start streaming into
+        const initialMsg: ChatMessage = {
+          id: assistantMsgId,
+          role: 'assistant',
+          content: '',
+          timestamp: new Date(),
+          responseType: 'EXPLAIN',
+        };
+        setMessages(prev => [...prev, initialMsg]);
+
+        let streamDone = false;
+        while (!streamDone) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          let newlineIndex: number;
+          while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+            let line = buffer.slice(0, newlineIndex);
+            buffer = buffer.slice(newlineIndex + 1);
+
+            if (line.endsWith('\r')) line = line.slice(0, -1);
+            if (line.startsWith(':') || line.trim() === '') continue;
+            if (!line.startsWith('data: ')) continue;
+
+            const payload = line.slice(6).trim();
+            
+            if (payload === '[DONE]') {
+              streamDone = true;
+              break;
+            }
+
+            // Custom metadata event
+            if (payload.startsWith('[META]')) {
+              try {
+                metaData = JSON.parse(payload.slice(6));
+              } catch { /* ignore */ }
+              continue;
+            }
+
+            try {
+              const parsed = JSON.parse(payload);
+              const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
+              if (delta) {
+                fullText += delta;
+                setMessages(prev =>
+                  prev.map(m =>
+                    m.id === assistantMsgId ? { ...m, content: fullText } : m
+                  )
+                );
+              }
+            } catch {
+              // Incomplete JSON, put back
+              buffer = line + '\n' + buffer;
+              break;
+            }
+          }
+        }
+
+        // Finalize with metadata
+        const conv = getConversationForProject(projectId);
+        conv.push({ role: 'assistant', content: fullText });
+        
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === assistantMsgId
+              ? {
+                  ...m,
+                  content: fullText,
+                  suggestedActions: metaData?.suggested_actions,
+                }
+              : m
+          )
+        );
+      } else {
+        // ── JSON response (ACTION, DRAFT, CONFIRM, RESULT, BLOCKED) ──
+        const data = await response.json();
+        const assistantMessage = processResponse(data);
+        addMessage(assistantMessage);
+
+        if (data.type === 'RESULT') {
+          toast({
+            title: data.status === 'completed' ? 'Aktion abgeschlossen' : 'Aktion fehlgeschlagen',
+            description: data.message,
+            variant: data.status === 'completed' ? 'default' : 'destructive',
+          });
+        }
+      }
     } catch (err) {
       console.error('Armstrong advisor error:', err);
       
@@ -669,7 +771,7 @@ export function useArmstrongAdvisor(options?: UseArmstrongAdvisorOptions) {
     } finally {
       setIsLoading(false);
     }
-  }, [addMessage, buildRequest, processResponse]);
+  }, [addMessage, buildRequest, processResponse, projectId, getConversationForProject]);
 
   /**
    * Confirm and execute a pending action

@@ -71,6 +71,10 @@ interface RequestBody {
     content_type: string;
     confidence: number;
   } | null;
+  /** Data mode: 'tenant' = use tenant DB data, 'general' = general knowledge only */
+  data_mode?: 'tenant' | 'general';
+  /** Project ID for chat isolation and context */
+  project_id?: string | null;
 }
 
 // Legacy Request (backward compatibility)
@@ -148,7 +152,9 @@ AKTUELLER KONTEXT:
 - Zone: ${body.zone} | Modul: ${body.module || 'unbekannt'}
 - Seite: ${body.route || '/'}
 ${body.entity ? `- Aktive Entität: ${body.entity.type} (ID: ${body.entity.id})` : ''}
-- Nutzer-Rolle: ${userContext.roles.join(', ') || 'unbekannt'}`.trim();
+- Nutzer-Rolle: ${userContext.roles.join(', ') || 'unbekannt'}
+- Datenmodus: ${body.data_mode === 'general' ? 'Allgemein (kein Zugriff auf Tenant-Daten)' : 'Tenant (Zugriff auf Nutzerdaten)'}
+${body.project_id ? `- Projekt-ID: ${body.project_id}` : '- Kein Projekt aktiv (Freier Chat)'}`.trim();
 }
 
 // =============================================================================
@@ -3167,7 +3173,7 @@ async function generateExplainResponse(
   body?: RequestBody,
   userContext?: UserContext,
   availableActions?: ActionDefinition[]
-): Promise<string> {
+): Promise<string | Response> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
   if (!LOVABLE_API_KEY) {
@@ -3250,6 +3256,7 @@ async function generateExplainResponse(
           ...conversationMessages,
         ],
         max_tokens: 4000,
+        stream: true,
       }),
     });
 
@@ -3258,8 +3265,8 @@ async function generateExplainResponse(
       return `Ich kann Ihre Frage zu "${message}" beantworten. Wie kann ich Ihnen helfen?`;
     }
 
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || "Ich konnte keine passende Antwort generieren.";
+    // Return the raw SSE stream body for the caller to handle
+    return response;
   } catch (err) {
     console.error("[Armstrong] AI generation error:", err);
     return `Entschuldigung, ich konnte die Anfrage nicht verarbeiten.`;
@@ -4066,9 +4073,9 @@ serve(async (req) => {
     
     // MVP Request handling
     const body = rawBody as RequestBody;
-    const { zone, module, route, entity, message, action_request, flow, document_context } = body;
+    const { zone, module, route, entity, message, action_request, flow, document_context, data_mode, project_id } = body;
     
-    console.log(`[Armstrong] MVP Request: zone=${zone}, module=${module}, route=${route}, flow=${flow?.flow_type || 'none'}`);
+    console.log(`[Armstrong] MVP Request: zone=${zone}, module=${module}, route=${route}, flow=${flow?.flow_type || 'none'}, data_mode=${data_mode || 'tenant'}, project_id=${project_id || 'none'}`);
     
     // Validate zone
     if (zone !== "Z2") {
@@ -4134,7 +4141,7 @@ serve(async (req) => {
     }
 
     // Persist incoming user message
-    const sessionId = (body as any).session_id || crypto.randomUUID();
+    const sessionId = project_id || (body as any).session_id || crypto.randomUUID();
     persistChatMessage(supabase, sessionId, userContext, zone, module, 'user', message);
 
     // Classify intent FIRST to enable Global Assist Mode
@@ -4349,13 +4356,56 @@ serve(async (req) => {
     if (intent === "EXPLAIN") {
       // Enable Global Assist Mode when not in MVP module
       const isGlobalAssist = !isInMvpModule;
-      const explanation = await generateExplainResponse(message, module, supabase, isGlobalAssist, buildContextBlock(body, userContext), body, userContext, availableActions);
+      const explainResult = await generateExplainResponse(message, module, supabase, isGlobalAssist, buildContextBlock(body, userContext), body, userContext, availableActions);
       const suggestions = suggestActionsForMessage(message, availableActions);
       
+      // If we got a Response object back, it's a streaming response from the AI gateway
+      if (explainResult instanceof Response && explainResult.body) {
+        // Build metadata to append after stream completes
+        const metaPayload = JSON.stringify({
+          type: "EXPLAIN",
+          suggested_actions: suggestions,
+          next_steps: suggestions.length > 0 
+            ? ["Wählen Sie eine der vorgeschlagenen Aktionen aus."]
+            : isGlobalAssist
+              ? ["Ich kann Ihnen bei weiteren Aufgaben helfen — fragen Sie einfach!"]
+              : [],
+        });
+
+        // Create a transform stream that filters gateway [DONE], passes SSE data, then appends metadata
+        const reader = explainResult.body.getReader();
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+
+        const stream = new ReadableStream({
+          async pull(controller) {
+            const { done, value } = await reader.read();
+            if (done) {
+              // After AI stream ends, send metadata event then our own DONE
+              controller.enqueue(encoder.encode(`data: [META]${metaPayload}\n\n`));
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+              controller.close();
+              return;
+            }
+            // Filter out the gateway's [DONE] so we can append metadata before ours
+            const chunk = decoder.decode(value, { stream: true });
+            const filtered = chunk.replace(/data: \[DONE\]\s*\n?\n?/g, '');
+            if (filtered) {
+              controller.enqueue(encoder.encode(filtered));
+            }
+          },
+        });
+
+        return new Response(stream, {
+          headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+        });
+      }
+      
+      // Fallback: non-streaming response (string)
       return new Response(
         JSON.stringify({
           type: "EXPLAIN",
-          message: explanation,
+          message: explainResult,
           citations: [],
           suggested_actions: suggestions,
           next_steps: suggestions.length > 0 

@@ -189,7 +189,7 @@ Am Ende: Generiere einen JSON-Block mit Metadaten:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Schreibe einen Ratgeber-Artikel zum Thema: "${topic}"` },
