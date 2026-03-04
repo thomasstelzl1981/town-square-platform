@@ -5,6 +5,7 @@
  * Sektion 3: Kontobewegungen (mit CSV-Import)
  */
 import { useState } from 'react';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -368,6 +369,20 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
         {!isDemo && (accountIban || accountId) && (
           <TransactionReviewQueue accountRef={accountIban || accountId} />
         )}
+
+        {/* Sektion 5: Datenraum */}
+        {!isDemo && account?.id && activeTenantId && (
+          <div className="mt-4">
+            <p className={RECORD_CARD.SECTION_TITLE}>Datenraum</p>
+            <EntityStorageTree
+              tenantId={activeTenantId}
+              entityType="bank_account"
+              entityId={account.id}
+              moduleCode="MOD_18"
+            />
+          </div>
+        )}
+
         {!isDemo && (
           <TransactionCsvImportDialog
             open={importDialogOpen}

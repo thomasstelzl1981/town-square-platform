@@ -4,6 +4,7 @@
  * Filtered to category='vorsorge' only
  */
 import { useState } from 'react';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { useDataReadiness } from '@/hooks/useDataReadiness';
 import { DataReadinessModal } from '@/components/portal/DataReadinessModal';
 import { ConsentRequiredModal } from '@/components/portal/ConsentRequiredModal';
@@ -365,6 +366,17 @@ export default function VorsorgeTab() {
           <div className="space-y-6">
             <VorsorgeFields form={form} onUpdate={(f, v) => updateField(selectedId, f, v)} />
           </div>
+          {activeTenantId && (
+            <div className="mt-4">
+              <p className={RECORD_CARD.SECTION_TITLE}>Datenraum</p>
+              <EntityStorageTree
+                tenantId={activeTenantId}
+                entityType="vorsorge"
+                entityId={selectedId}
+                moduleCode="MOD_18"
+              />
+            </div>
+          )}
           <div className={RECORD_CARD.ACTIONS}>
             <Button variant="destructive" size="sm" onClick={() => deleteMutation.mutate(selectedId)}>Löschen</Button>
             <Button size="sm" onClick={() => updateMutation.mutate(form)} disabled={updateMutation.isPending}>Speichern</Button>

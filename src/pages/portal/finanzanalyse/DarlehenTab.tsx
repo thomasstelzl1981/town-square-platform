@@ -5,6 +5,7 @@
  * Sektion 3: Privatkredite (CRUD aus private_loans)
  */
 import { useState, useMemo } from 'react';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { useNavigate } from 'react-router-dom';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
@@ -489,6 +490,17 @@ export default function DarlehenTab() {
               </Button>
             </div>
             <PrivatLoanFields form={form} onUpdate={(f, v) => updateField(selectedId, f, v)} />
+            {activeTenantId && (
+              <div className="mt-4">
+                <p className={RECORD_CARD.SECTION_TITLE}>Datenraum</p>
+                <EntityStorageTree
+                  tenantId={activeTenantId}
+                  entityType="private_loan"
+                  entityId={selectedId}
+                  moduleCode="MOD_18"
+                />
+              </div>
+            )}
             <div className={RECORD_CARD.ACTIONS}>
               <Button variant="destructive" size="sm" onClick={() => deleteMutation.mutate(selectedId)}>Löschen</Button>
               <Button size="sm" onClick={() => updateMutation.mutate(form)} disabled={updateMutation.isPending}>Speichern</Button>

@@ -3,6 +3,7 @@
  * DB-backed CRUD — Pattern: SachversicherungenTab
  */
 import { useState } from 'react';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
@@ -393,6 +394,17 @@ export default function KrankenversicherungTab() {
               onUpdate={(f, v) => updateField(selectedId, f, v)}
             />
           </div>
+          {activeTenantId && (
+            <div className="mt-4">
+              <p className={RECORD_CARD.SECTION_TITLE}>Datenraum</p>
+              <EntityStorageTree
+                tenantId={activeTenantId}
+                entityType="kv_contract"
+                entityId={selectedId}
+                moduleCode="MOD_18"
+              />
+            </div>
+          )}
           <div className={RECORD_CARD.ACTIONS}>
             {!isDemoId(selectedId) && (
               <Button variant="destructive" size="sm" onClick={() => deleteMutation.mutate(selectedId)}>Löschen</Button>

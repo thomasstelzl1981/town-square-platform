@@ -3,6 +3,7 @@
  * Widget CE Layout: WidgetGrid + WidgetCell (4-col, square)
  */
 import { useState } from 'react';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
@@ -390,6 +391,17 @@ export default function SachversicherungenTab() {
               onDetailUpdate={(f, v) => updateDetail(selectedId, f, v)}
             />
           </div>
+          {activeTenantId && (
+            <div className="mt-4">
+              <p className={RECORD_CARD.SECTION_TITLE}>Datenraum</p>
+              <EntityStorageTree
+                tenantId={activeTenantId}
+                entityType="insurance"
+                entityId={selectedId}
+                moduleCode="MOD_18"
+              />
+            </div>
+          )}
           <div className={RECORD_CARD.ACTIONS}>
             <Button variant="destructive" size="sm" onClick={() => deleteMutation.mutate(selectedId)}>Löschen</Button>
             <Button size="sm" onClick={() => updateMutation.mutate(form)} disabled={updateMutation.isPending}>Speichern</Button>
