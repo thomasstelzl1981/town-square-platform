@@ -8,6 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { calculateTax, type TaxAssessmentType } from '@/lib/taxCalculator';
 import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
@@ -424,6 +425,24 @@ export function PortfolioTab() {
     enabled: !!activeTenantId,
   });
 
+  // Fetch NK periods for non-allocatable costs (replaces 0.5% flat rate)
+  const { data: nkPeriodsData } = useQuery({
+    queryKey: ['portfolio-nk-periods', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data, error } = await supabase
+        .from('nk_periods')
+        .select('property_id, non_allocatable_eur, period_start, period_end, status')
+        .eq('tenant_id', activeTenantId);
+      if (error) {
+        console.warn('NK periods query error:', error);
+        return [];
+      }
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
   // Filter units by selected context
   const filteredUnits = useMemo(() => {
     if (!unitsWithProperties) return [];
@@ -569,6 +588,36 @@ export function PortfolioTab() {
     return years;
   }, [totals]);
 
+  // Aggregate non-allocatable NK from nk_periods for relevant properties
+  const nkAggregation = useMemo(() => {
+    const unitsToUse = selectedContextId ? filteredUnits : (unitsWithProperties || []);
+    const relevantPropertyIds = [...new Set(unitsToUse.map(u => u.property_id))];
+    
+    if (!nkPeriodsData || nkPeriodsData.length === 0 || relevantPropertyIds.length === 0) {
+      return { hasData: false, annualTotal: null as number | null };
+    }
+    
+    // Get latest confirmed/active period per property
+    let totalNonAllocatable = 0;
+    let anyPropertyHasData = false;
+    
+    for (const propId of relevantPropertyIds) {
+      const periodsForProp = nkPeriodsData
+        .filter(p => p.property_id === propId && p.non_allocatable_eur != null)
+        .sort((a, b) => b.period_start.localeCompare(a.period_start));
+      
+      if (periodsForProp.length > 0) {
+        totalNonAllocatable += periodsForProp[0].non_allocatable_eur!;
+        anyPropertyHasData = true;
+      }
+    }
+    
+    return { 
+      hasData: anyPropertyHasData, 
+      annualTotal: anyPropertyHasData ? totalNonAllocatable : null 
+    };
+  }, [nkPeriodsData, unitsWithProperties, filteredUnits, selectedContextId]);
+
   const eurChartData = useMemo(() => {
     if (!totals) return [];
     
@@ -579,14 +628,14 @@ export function PortfolioTab() {
       const rate = (l.interest_rate_percent || 0) / 100;
       return sum + (balance * rate);
     }, 0) || 0;
-    const nonRecoverableNk = totals.totalValue * 0.005;
+    const nonRecoverableNk = nkAggregation.hasData ? nkAggregation.annualTotal! : 0;
     const annualAmort = totals.totalAnnuity - annualInterest;
     const surplus = annualIncome - annualInterest - nonRecoverableNk;
     
     return [
       { name: 'Mieteinnahmen p.a.', value: Math.round(annualIncome), type: 'income', fill: 'hsl(var(--chart-1))' },
       { name: 'Zinskosten p.a.', value: -Math.round(annualInterest), type: 'expense', fill: 'hsl(var(--chart-2))' },
-      { name: 'Nicht umlf. NK', value: -Math.round(nonRecoverableNk), type: 'expense', fill: 'hsl(var(--chart-3))' },
+      { name: 'Nicht umlf. NK', value: nkAggregation.hasData ? -Math.round(nonRecoverableNk) : 0, type: 'expense', fill: 'hsl(var(--chart-3))' },
       { name: 'Tilgung p.a.', value: -Math.round(annualAmort), type: 'expense', fill: 'hsl(var(--chart-4))' },
       { name: 'Überschuss p.a.', value: Math.round(surplus), type: 'result', fill: surplus >= 0 ? 'hsl(var(--chart-1))' : 'hsl(var(--destructive))' },
     ];
@@ -1071,18 +1120,41 @@ export function PortfolioTab() {
                 }, 0) || 0;
                 const monthlyInterest = annualInterest / 12;
                 const monthlyAmortization = (totals.totalAnnuity - annualInterest) / 12;
-                const monthlyNK = (totals.totalValue * 0.005) / 12; // 0.5% nicht umlagefähig p.a.
                 
-                // Steuervorteil: nur bei privaten Kontexten (nicht gewerblich)
+                // NK: Echte Daten aus nk_periods oder k.A.
+                const hasNKData = nkAggregation.hasData;
+                const monthlyNK = hasNKData ? nkAggregation.annualTotal! / 12 : null;
+                
+                // Steuer: Gewerblich = immer 0 (nie positiver Steuereffekt)
+                // Privat: nur wenn zvE hinterlegt, sonst k.A.
                 const isCommercial = selectedContext?.context_type === 'BUSINESS';
-                const afaAnnual = totals.totalValue * 0.02; // 2% AfA
-                const marginalTaxRate = isCommercial ? 0 : ((selectedContext?.tax_rate_percent ?? 42) / 100);
-                const taxDeduction = (annualInterest + (totals.totalValue * 0.005) + afaAnnual) * marginalTaxRate;
-                const monthlyTaxBenefit = taxDeduction / 12;
+                const hasZvE = !isCommercial && selectedContext?.taxable_income_yearly != null && selectedContext.taxable_income_yearly > 0;
                 
-                const totalIncome = monthlyRent + monthlyTaxBenefit;
-                const totalExpenses = monthlyInterest + monthlyAmortization + monthlyNK;
-                const monthlyResult = totalIncome - totalExpenses;
+                let monthlyTaxBenefit: number | null = null;
+                if (isCommercial) {
+                  // Gewerblich: Steuereffekt ist immer 0 — keine Erstattung möglich
+                  monthlyTaxBenefit = 0;
+                } else if (hasZvE) {
+                  // Privat mit zvE: Echte Berechnung über taxCalculator
+                  const assessmentType: TaxAssessmentType = (selectedContext?.tax_assessment_type === 'SPLITTING') ? 'SPLITTING' : 'EINZEL';
+                  const taxResult = calculateTax({
+                    taxableIncome: selectedContext!.taxable_income_yearly!,
+                    assessmentType,
+                    churchTax: selectedContext?.church_tax ?? false,
+                    childrenCount: selectedContext?.children_count ?? 0,
+                  });
+                  const marginalRate = taxResult.marginalTaxRate / 100;
+                  
+                  const afaAnnual = totals.totalValue * 0.02; // 2% AfA
+                  const nkForTax = hasNKData ? nkAggregation.annualTotal! : 0;
+                  const taxDeduction = (annualInterest + nkForTax + afaAnnual) * marginalRate;
+                  monthlyTaxBenefit = taxDeduction / 12;
+                }
+                // else: monthlyTaxBenefit remains null → k.A.
+                
+                const totalIncomeValue = monthlyRent + (monthlyTaxBenefit ?? 0);
+                const totalExpensesValue = monthlyInterest + monthlyAmortization + (monthlyNK ?? 0);
+                const monthlyResult = totalIncomeValue - totalExpensesValue;
 
                 return (
                   <>
@@ -1098,13 +1170,15 @@ export function PortfolioTab() {
                           {!isCommercial && (
                             <div className="flex justify-between">
                               <span>Steuervorteil</span>
-                              <span className="font-medium">{formatCurrency(monthlyTaxBenefit)}</span>
+                              <span className="font-medium">
+                                {monthlyTaxBenefit !== null ? formatCurrency(monthlyTaxBenefit) : 'k.A.'}
+                              </span>
                             </div>
                           )}
                           <div className="border-t pt-2 mt-2">
                             <div className="flex justify-between font-semibold">
                               <span>Summe</span>
-                              <span className="text-green-600">{formatCurrency(totalIncome)}</span>
+                              <span className="text-green-600">{formatCurrency(totalIncomeValue)}</span>
                             </div>
                           </div>
                         </div>
@@ -1116,7 +1190,9 @@ export function PortfolioTab() {
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
                             <span>Nicht umlf. NK</span>
-                            <span className="font-medium text-red-600">-{formatCurrency(monthlyNK)}</span>
+                            <span className="font-medium text-red-600">
+                              {monthlyNK !== null ? `-${formatCurrency(monthlyNK)}` : 'k.A.'}
+                            </span>
                           </div>
                           <div className="flex justify-between">
                             <span>Zinsen</span>
@@ -1129,7 +1205,7 @@ export function PortfolioTab() {
                           <div className="border-t pt-2 mt-2">
                             <div className="flex justify-between font-semibold">
                               <span>Summe</span>
-                              <span className="text-red-600">-{formatCurrency(totalExpenses)}</span>
+                              <span className="text-red-600">-{formatCurrency(totalExpensesValue)}</span>
                             </div>
                           </div>
                         </div>
@@ -1142,6 +1218,11 @@ export function PortfolioTab() {
                       <span className={`text-lg font-bold ${monthlyResult >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {monthlyResult >= 0 ? '+' : ''}{formatCurrency(monthlyResult)}
                       </span>
+                      {(monthlyNK === null || monthlyTaxBenefit === null) && !isCommercial && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Hinweis: Unvollständige Daten — Positionen mit „k.A." sind nicht in der Summe enthalten.
+                        </p>
+                      )}
                     </div>
                   </>
                 );
