@@ -1,99 +1,204 @@
 
 
-## Analyse: Zuhause-Modul — 4 Kernprobleme
-
-### Problem 1: Kamera-Tabelle hat kein `tenant_id` — Multi-Tenancy-Bruch
-
-Die `cameras`-Tabelle hat nur `user_id` (mit RLS `auth.uid() = user_id`). Sie hat **kein** `tenant_id`-Feld. Das widerspricht dem Multi-Tenancy-Modell der Plattform, bei dem alle Business-Tabellen `tenant_id` haben müssen.
-
-**Konsequenz:** Die Kamera, die im Golden Tenant angelegt wurde (`user_id: d028bc99-...`), ist für den neuen User unsichtbar. Der `useCameras`-Hook hat keinen `tenant_id`-Filter.
-
-**Fix:**
-- DB-Migration: `tenant_id UUID` zu `cameras` hinzufügen (mit Backfill aus `profiles.active_tenant_id`)
-- Neue RESTRICTIVE RLS-Policies auf `tenant_id` statt nur `user_id`
-- `useCameras`-Hook: `tenant_id`-Filter ergänzen
-- `CameraSetupWizard` + `AddCameraDialog`: `tenant_id` beim Insert mitgeben
-
-### Problem 2: Vertrag anlegen erzeugt kein Widget (Query-Key-Mismatch)
-
-`ContractDrawer.tsx` invalidiert nach Speichern:
-```
-queryKey: ['miety-contracts', homeId]
-```
-
-Aber `useZuhauseWidgets.ts` nutzt:
-```
-queryKey: ['miety-contracts-all', activeTenantId]
-```
-
-**Die Keys matchen nicht.** Deshalb wird die Widget-Liste nach Vertragsanlage nicht aktualisiert — kein neues Widget erscheint.
-
-**Fix:**
-- `ContractDrawer.tsx` Zeile 76: Zusätzlich `['miety-contracts-all']` und `['miety-contracts-versorgung']` invalidieren (oder alle `miety-contracts`-Queries per Prefix invalidieren)
-
-### Problem 3: `UebersichtTile.tsx` rendert statischen Kamera-Platzhalter
-
-`UebersichtTile.tsx` (Zeilen 301-310) zeigt immer nur einen statischen "Kameras einrichten"-Platzhalter. Dieser Tile wird zwar nicht als Hauptseite genutzt (das ist `MietyPortalPage`), aber er wird möglicherweise an anderer Stelle referenziert. Die echten Kameras werden nur im `MietyPortalPage` via `useZuhauseWidgets` → `CameraWidget` gerendert.
-
-**Status:** Die Hauptseite (`MietyPortalPage`) ist architektonisch korrekt — sie rendert Kamera-Widgets dynamisch aus der DB. Das Problem ist rein das fehlende `tenant_id` (Problem 1).
-
-### Problem 4: Stammdaten-Verträge — Redundanz klären
-
-Die `VertraegeTab` in MOD-01 aggregiert jetzt korrekt `miety_contracts` und `cameras`. Das ist eine **Lese-Übersicht** (read-only Referenz). Versorgungsverträge und Smart Home werden und sollen primär in Zuhause (MOD-20) verwaltet. In Stammdaten werden sie nur als Referenz mit Deeplink angezeigt. Das ist korrekt und kein Fehler.
+## System-Audit: Akten, Verträge und Erstellungsflows — Vollständige Analyse
 
 ---
 
-## Reparaturplan (4 Schritte)
+### A. Inventar aller Akten-Typen (recordCardManifest.ts)
 
-| # | Was | Datei(en) | Typ |
-|---|-----|-----------|-----|
-| 1 | `tenant_id` zu `cameras` hinzufügen + RLS-Policies umstellen | DB-Migration | Migration |
-| 2 | `useCameras`-Hook: `tenant_id`-Filter + Insert mit `tenant_id` | `src/hooks/useCameras.ts` | Code |
-| 3 | Query-Key-Mismatch fixen: ContractDrawer invalidiert alle relevanten Queries | `src/pages/portal/miety/components/ContractDrawer.tsx` | Code |
-| 4 | `UebersichtTile.tsx` Zeile 301-310: Statischen Kamera-Platzhalter durch echte Kamera-Query ersetzen (für Kontexte wo der Tile direkt gerendert wird) | `src/pages/portal/miety/tiles/UebersichtTile.tsx` | Code |
+Das System kennt aktuell **8 Akten-Typen** im `RECORD_CARD_TYPES`:
 
-### Migration-SQL (Schritt 1):
-
-```sql
--- Add tenant_id to cameras
-ALTER TABLE cameras ADD COLUMN IF NOT EXISTS tenant_id UUID;
-
--- Backfill existing cameras from profiles
-UPDATE cameras c
-SET tenant_id = p.active_tenant_id
-FROM profiles p
-WHERE c.user_id = p.id AND c.tenant_id IS NULL;
-
--- Make tenant_id NOT NULL after backfill
-ALTER TABLE cameras ALTER COLUMN tenant_id SET NOT NULL;
-
--- Drop old user-only policies
-DROP POLICY IF EXISTS cameras_select_own ON cameras;
-DROP POLICY IF EXISTS cameras_insert_own ON cameras;
-DROP POLICY IF EXISTS cameras_update_own ON cameras;
-DROP POLICY IF EXISTS cameras_delete_own ON cameras;
-
--- New tenant-scoped RESTRICTIVE policies
-CREATE POLICY cameras_tenant_select ON cameras FOR SELECT TO authenticated
-  USING (tenant_id = (SELECT active_tenant_id FROM profiles WHERE id = auth.uid()));
-
-CREATE POLICY cameras_tenant_insert ON cameras FOR INSERT TO authenticated
-  WITH CHECK (tenant_id = (SELECT active_tenant_id FROM profiles WHERE id = auth.uid()));
-
-CREATE POLICY cameras_tenant_update ON cameras FOR UPDATE TO authenticated
-  USING (tenant_id = (SELECT active_tenant_id FROM profiles WHERE id = auth.uid()));
-
-CREATE POLICY cameras_tenant_delete ON cameras FOR DELETE TO authenticated
-  USING (tenant_id = (SELECT active_tenant_id FROM profiles WHERE id = auth.uid()));
+```text
+┌─────────────────┬──────────┬───────────┬────────────────────────────┐
+│ Akten-Typ       │ Modul    │ DMS-Ordner│ Erstellungsort             │
+├─────────────────┼──────────┼───────────┼────────────────────────────┤
+│ person          │ MOD_01   │ 8 Ordner  │ MOD-01 Stammdaten          │
+│ insurance       │ MOD_18   │ 5 Ordner  │ MOD-18 Sachversicherungen  │
+│ vehicle         │ MOD_17   │ 5 Ordner  │ MOD-17 Fahrzeuge           │
+│ pv_plant        │ MOD_19   │ 8 Ordner  │ MOD-19 Photovoltaik        │
+│ vorsorge        │ MOD_18   │ 4 Ordner  │ MOD-18 Vorsorge            │
+│ subscription    │ MOD_18   │ 0 Ordner  │ MOD-18 Abonnements         │
+│ bank_account    │ MOD_18   │ 0 Ordner  │ MOD-18 Konten              │
+│ pet             │ MOD_05   │ 4 Ordner  │ MOD-05 Meine Tiere         │
+└─────────────────┴──────────┴───────────┴────────────────────────────┘
 ```
 
-### Code-Änderungen:
+**Fehlende Akten-Typen** (nicht im Manifest registriert):
 
-**`useCameras.ts`:** `activeTenantId` als Parameter nutzen, bei Insert `tenant_id` mitgeben, Query nach `tenant_id` filtern (RLS macht es automatisch, aber expliziter Filter ist sauberer).
+| Fehlend | Wo es hingehört | DB-Tabelle | Status |
+|---------|----------------|------------|--------|
+| **Zuhause/Wohnung** | MOD_20 | `miety_homes` | Existiert, aber kein RecordCard-Typ |
+| **Versorgungsvertrag** | MOD_20 | `miety_contracts` | Existiert, aber kein RecordCard-Typ |
+| **Kamera/Smart Home** | MOD_20 | `cameras` | Existiert, aber kein RecordCard-Typ |
+| **Privatkredit** | MOD_18 | `private_loans` | Existiert, aber kein RecordCard-Typ |
+| **Krankenversicherung** | MOD_18 | `kv_contracts` | Existiert, aber kein RecordCard-Typ |
 
-**`ContractDrawer.tsx` Zeile 76:** Ersetzen durch:
-```ts
-queryClient.invalidateQueries({ queryKey: ['miety-contracts'] }); // prefix match
+---
+
+### B. Inventar aller Vertragsarten und ihre Kategorien
+
+#### MOD-18 (Finanzanalyse) — Darlehen
+`private_loans.loan_purpose` Optionen:
+- `autokredit`, `konsumkredit`, `moebel`, `bildung`, `umschuldung`, `sonstiges`
+
+**Fehlt:** `leasing` — Leasing-Verträge können aktuell NICHT als Privatkredit angelegt werden. In der Selbstauskunft (MOD-07) existiert `leasing` als Verbindlichkeitstyp, aber im DarlehenTab fehlt es.
+
+#### MOD-20 (Zuhause) — Versorgungsverträge
+`miety_contracts.category` Optionen:
+- `strom`, `gas`, `wasser`, `internet`, `hausrat`, `haftpflicht`, `miete`, `sonstige`
+
+**Fehlt:** `mobilfunk` / `telefon` — kein eigener Kategorietyp. Mobilfunkverträge müssten aktuell als `sonstige` angelegt werden.
+
+**Fehlt:** `mietvertrag` existiert als Kategorie `miete` im CATEGORY_CONFIG, aber es gibt keinen dedizierten Erstellungsflow dafür (der ContractDrawer erlaubt zwar alle Kategorien, aber der Mietvertrag hat keine spezifischen Felder wie Kaltmiete, Nebenkosten, Vermieter, Kündigungsfrist).
+
+---
+
+### C. Erstellungs-Flow-Analyse (Pattern-Homogenität)
+
+```text
+┌─────────────────────────┬──────────┬──────────────┬───────────┬──────────────┐
+│ Aktentyp                │ Modul    │ UI-Pattern   │ +Button   │ Speichern/   │
+│                         │          │              │           │ Löschen      │
+├─────────────────────────┼──────────┼──────────────┼───────────┼──────────────┤
+│ Sachversicherung        │ MOD-18   │ ✅ INLINE     │ ✅ Header  │ ✅ Inline     │
+│ Krankenversicherung     │ MOD-18   │ ✅ INLINE     │ ✅ Header  │ ✅ Inline     │
+│ Vorsorge                │ MOD-18   │ ✅ INLINE     │ ✅ Header  │ ✅ Inline     │
+│ Abonnement              │ MOD-18   │ ✅ INLINE     │ ✅ Header  │ ✅ Inline     │
+│ Privatkredit            │ MOD-18   │ ✅ INLINE     │ ✅ Dropdown│ ✅ Inline     │
+│ Bankkonto               │ MOD-18   │ ❌ DIALOG     │ ❌ Dialog  │ ❌ Dialog     │
+│ Fahrzeug                │ MOD-17   │ ✅ INLINE     │ ✅ Header  │ ✅ Inline     │
+│ PV-Anlage               │ MOD-19   │ ✅ INLINE     │ ✅ Header  │ ✅ Inline     │
+│ Zuhause (Wohnung)       │ MOD-20   │ ✅ INLINE     │ ✅ Header  │ ✅ Inline     │
+│ Versorgungsvertrag      │ MOD-20   │ ❌ DRAWER     │ ❌ Drawer  │ ❌ Drawer     │
+│ Kamera                  │ MOD-20   │ ❌ DIALOG     │ ❌ Dialog  │ ❌ Dialog     │
+│ Haustier                │ MOD-05   │ ❌ DIALOG     │ ❌ Dialog  │ ❌ Dialog     │
+│ Person (Haushalt)       │ MOD-01   │ ✅ INLINE     │ ✅ Header  │ ✅ Inline     │
+└─────────────────────────┴──────────┴──────────────┴───────────┴──────────────┘
 ```
-Das invalidiert alle Queries die mit `miety-contracts` beginnen.
+
+**4 Abweichler** vom Soll-Standard (Inline):
+1. `AddBankAccountDialog` — MOD-18 Konten
+2. `ContractDrawer` — MOD-20 Versorgungsverträge
+3. `AddCameraDialog` — MOD-20 Smart Home
+4. `PetsMeineTiere` Dialog — MOD-05 Haustiere
+
+---
+
+### D. Vollständiges Konzept: Akten-Erstellungs-Standard (AES)
+
+#### D.1 — Der Standard-Flow (Soll-Zustand)
+
+```text
+SCHRITT 1: ANLAGE
+┌──────────────────────────────────────────────┐
+│ ModulePageHeader                             │
+│   [Titel]  [Beschreibung]        [＋ Button] │
+└──────────────────────────────┬───────────────┘
+                               │ onClick
+                               ▼
+                    setShowNew(true)
+                               │
+                               ▼
+┌──────────────────────────────────────────────┐
+│ WidgetGrid (bestehende Akten als Tiles)      │
+│  ┌─────┐ ┌─────┐ ┌─────┐                    │
+│  │Akte1│ │Akte2│ │Akte3│                     │
+│  └─────┘ └─────┘ └─────┘                    │
+└──────────────────────────────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────┐
+│ INLINE CREATE CARD (showNew = true)          │
+│                                              │
+│  ┌─ Formularfelder ───────────────────────┐  │
+│  │ Feld 1: ___________                    │  │
+│  │ Feld 2: ___________                    │  │
+│  │ Feld 3: ___________                    │  │
+│  └────────────────────────────────────────┘  │
+│                                              │
+│  [Abbrechen]              [💾 Speichern]     │
+└──────────────────────────────────────────────┘
+
+SCHRITT 2: WIDGET ENTSTEHT
+Nach Speichern: Query-Invalidierung → neues Widget-Tile im Grid
+
+SCHRITT 3: BEARBEITEN
+Klick auf Widget-Tile → selectedId wird gesetzt →
+Inline-Detail-Card erscheint unter dem Grid mit:
+  [Speichern]  [🗑 Löschen]
+```
+
+#### D.2 — Regeln
+
+| # | Regel | Begründung |
+|---|-------|------------|
+| R1 | Immer Inline, nie Dialog/Drawer | Konsistente UX über alle Module |
+| R2 | Plus-Button immer im ModulePageHeader | Einheitlicher Einstiegspunkt |
+| R3 | Formular erscheint unter dem WidgetGrid | Kein Kontextverlust, Grid bleibt sichtbar |
+| R4 | Buttons: Speichern (primär) + Abbrechen (ghost) | Für neue Einträge |
+| R5 | Buttons: Speichern (primär) + Löschen (destructive) | Für bestehende Einträge |
+| R6 | Nach Speichern: Prefix-basierte Query-Invalidierung | Alle abhängigen Queries werden aktualisiert |
+| R7 | Demo-Einträge (isDemoId) sind löschgeschützt | Konsistenz mit DemoData-Governance |
+
+#### D.3 — Datenraum-Entstehung (DMS-Flow)
+
+Beim Speichern einer neuen Akte:
+
+1. **DB-Insert** → Erzeugt den Datensatz mit UUID (`crypto.randomUUID()`)
+2. **DMS-Tree-Creation** → `useRecordCardDMS.createDMS()` wird aufgerufen mit:
+   - `entityType` → schlägt in `RECORD_CARD_TYPES` die `dmsFolders` nach
+   - `entityId` → die neue UUID
+   - `tenantId` → aus AuthContext
+   - Erzeugt in `dms_folders` automatisch die definierten Unterordner
+3. **Storage-Pfad** → `{tenantId}/{moduleCode}/{entityId}/{ordner}/{dateiname}`
+
+**ID-Vergabe:**
+- Alle IDs sind UUIDs (`crypto.randomUUID()` oder DB-Default `gen_random_uuid()`)
+- Demo-IDs nutzen reservierte Ranges: `d0000000-*` und `e0000000-*`
+- Die ID wird bei Client-Insert vergeben, nicht erst von der DB
+
+#### D.4 — Fehlende Einträge zum Ergänzen
+
+**Im recordCardManifest.ts:**
+
+| Neuer Typ | label | moduleCode | icon | dmsFolders |
+|-----------|-------|------------|------|------------|
+| `utility_contract` | Versorgungsvertrag | MOD_20 | Zap | `01_Vertrag`, `02_Rechnung`, `03_Zaehlerstand`, `04_Sonstiges` |
+| `rental_contract` | Mietvertrag | MOD_20 | Home | `01_Mietvertrag`, `02_Nebenkostenabrechnung`, `03_Uebergabeprotokoll`, `04_Korrespondenz`, `05_Sonstiges` |
+| `kv_contract` | Krankenversicherung | MOD_18 | Heart | `01_Police`, `02_Abrechnungen`, `03_Korrespondenz` |
+| `private_loan` | Privatkredit | MOD_18 | CreditCard | `01_Vertrag`, `02_Tilgungsplan`, `03_Korrespondenz` |
+| `camera` | Smart Home Kamera | MOD_20 | Camera | — |
+
+**In miety_contracts CATEGORY_CONFIG:**
+- `mobilfunk` hinzufügen (Label: "Mobilfunk", Icon: Smartphone)
+
+**In DarlehenTab PURPOSE_OPTIONS:**
+- `leasing` hinzufügen (Label: "Leasing")
+
+**Mietvertrag-Felder** (neue Felder in `miety_contracts` oder eigene Tabelle):
+- `kaltmiete`, `nebenkosten_vorauszahlung`, `kaution`, `kuendigungsfrist`, `vermieter_name`, `vermieter_kontakt`
+
+---
+
+### E. Implementierungsplan (priorisiert)
+
+| # | Aufgabe | Dateien |
+|---|---------|---------|
+| 1 | `recordCardManifest.ts` erweitern um 5 fehlende Typen | `src/config/recordCardManifest.ts` |
+| 2 | `mobilfunk` als Kategorie in `miety_contracts` CATEGORY_CONFIG hinzufügen | `MietyContractsSection.tsx`, `ContractDrawer.tsx`, `VertraegeTab.tsx` |
+| 3 | `leasing` in DarlehenTab PURPOSE_OPTIONS hinzufügen | `DarlehenTab.tsx` |
+| 4 | Mietvertrag-Felder: DB-Migration für spezifische Felder | Migration |
+| 5 | **Haustier** → Dialog zu Inline umbauen | `PetsMeineTiere.tsx` |
+| 6 | **Bankkonto** → Dialog zu Inline umbauen | `KontenTab.tsx`, `AddBankAccountDialog.tsx` entfernen |
+| 7 | **Versorgungsvertrag** → Drawer zu Inline umbauen | `ContractDrawer.tsx` → Inline, `VersorgungTile.tsx` |
+| 8 | **Kamera** → Dialog zu Inline umbauen | `AddCameraDialog.tsx` → Inline, `SmartHomeTile.tsx` |
+| 9 | Spec-Dokument erstellen | `spec/current/08_standards/AKTEN_ERSTELLUNGS_STANDARD.md` |
+
+---
+
+### F. Langfristige Sicherung: Architektur-Validator
+
+Um zukünftige Abweichungen zu verhindern, wird der `architectureValidator.ts` um eine Prüfung erweitert:
+- Warnung bei Import von `Dialog` oder `DetailDrawer` in Dateien, die ein CRUD-Pattern implementieren (erkennbar an `showNew`, `mutation`, `insert`)
+- Warnung bei neuen Akten-Typen ohne Eintrag im `recordCardManifest.ts`
 
