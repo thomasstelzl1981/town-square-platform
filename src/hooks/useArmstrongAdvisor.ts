@@ -649,11 +649,11 @@ export function useArmstrongAdvisor(options?: UseArmstrongAdvisorOptions) {
 
       const contentType = response.headers.get('Content-Type') || '';
       
-      // ── SSE Streaming response (EXPLAIN intent) ──
+      // ── SSE Streaming response (EXPLAIN or DRAFT intent) ──
       if (contentType.includes('text/event-stream') && response.body) {
         const assistantMsgId = crypto.randomUUID();
         let fullText = '';
-        let metaData: { suggested_actions?: SuggestedAction[]; next_steps?: string[] } | null = null;
+        let metaData: { type?: string; suggested_actions?: SuggestedAction[]; next_steps?: string[] } | null = null;
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -718,7 +718,8 @@ export function useArmstrongAdvisor(options?: UseArmstrongAdvisorOptions) {
           }
         }
 
-        // Finalize with metadata
+        // Finalize with metadata — determine response type from META
+        const responseType: AdvisorResponseType = (metaData?.type as AdvisorResponseType) || 'EXPLAIN';
         const conv = getConversationForProject(projectId);
         conv.push({ role: 'assistant', content: fullText });
         
@@ -728,13 +729,18 @@ export function useArmstrongAdvisor(options?: UseArmstrongAdvisorOptions) {
               ? {
                   ...m,
                   content: fullText,
+                  responseType,
                   suggestedActions: metaData?.suggested_actions,
+                  // For DRAFT responses, wrap streamed content as draft object
+                  ...(responseType === 'DRAFT' ? {
+                    draft: { title: 'Entwurf', content: fullText, format: 'markdown' as const },
+                  } : {}),
                 }
               : m
           )
         );
       } else {
-        // ── JSON response (ACTION, DRAFT, CONFIRM, RESULT, BLOCKED) ──
+        // ── JSON response (ACTION, CONFIRM, RESULT, BLOCKED, non-streaming DRAFT) ──
         const data = await response.json();
         const assistantMessage = processResponse(data);
         addMessage(assistantMessage);
