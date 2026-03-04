@@ -16,7 +16,7 @@ import {
 import { SystemPreisliste } from '@/components/shared/SystemPreisliste';
 import { EmailEnrichmentCard } from '@/components/shared/EmailEnrichmentCard';
 import { WhatsAppArmstrongCard } from '@/components/shared/WhatsAppArmstrongCard';
-import { RegistryImportCard } from '@/components/shared/RegistryImportCard';
+
 import { AktionsKatalog } from '@/pages/portal/communication-pro/agenten/AktionsKatalog';
 import { cn } from '@/lib/utils';
 
@@ -144,7 +144,6 @@ export default function ArmstrongInfoPage() {
         <div className="space-y-4">
           <EmailEnrichmentCard />
           <WhatsAppArmstrongCard />
-          <RegistryImportCard />
         </div>
       </CollapsibleSection>
 
