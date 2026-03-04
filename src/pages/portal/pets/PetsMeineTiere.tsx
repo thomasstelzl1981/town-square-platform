@@ -17,6 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePets, useCreatePet } from '@/hooks/usePets';
+import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -41,9 +43,11 @@ function getAge(birthDate: string | null): string {
 export default function PetsMeineTiere() {
   const { data: allPets = [], isLoading } = usePets();
   const { isEnabled } = useDemoToggles();
+  const { activeTenantId } = useAuth();
   const demoEnabled = isEnabled('GP-PETS');
   const pets = demoEnabled ? allPets : allPets.filter(p => !isDemoId(p.id));
   const createPet = useCreatePet();
+  const { createDMS } = useRecordCardDMS();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openPetId, setOpenPetId] = useState<string | null>(null);
@@ -51,7 +55,17 @@ export default function PetsMeineTiere() {
 
   const handleCreate = async () => {
     if (!newPet.name.trim()) return;
-    await createPet.mutateAsync({ name: newPet.name, species: newPet.species as any, breed: newPet.breed || null });
+    const pet = await createPet.mutateAsync({ name: newPet.name, species: newPet.species as any, breed: newPet.breed || null });
+    // DAT: Create DMS folder + Sort-Container via standard hook
+    if (pet && activeTenantId) {
+      createDMS.mutate({
+        entityType: 'pet',
+        entityId: pet.id,
+        entityName: pet.name,
+        tenantId: activeTenantId,
+        keywords: [pet.name, pet.breed, pet.chip_number].filter(Boolean) as string[],
+      });
+    }
     setNewPet({ name: '', species: 'dog', breed: '' });
     setDialogOpen(false);
   };
