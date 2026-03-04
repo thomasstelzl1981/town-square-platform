@@ -22,6 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Shield, X } from 'lucide-react';
 import { useLegalConsent } from '@/hooks/useLegalConsent';
+import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
 import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { cn } from '@/lib/utils';
@@ -61,6 +62,7 @@ export default function KrankenversicherungTab() {
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-KONTEN');
   const consentGuard = useLegalConsent();
+  const { createDMS } = useRecordCardDMS();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, Record<string, any>>>({});
   const [showNew, setShowNew] = useState(false);
@@ -120,10 +122,20 @@ export default function KrankenversicherungTab() {
         insured_via_person_name: rest.insured_via_person_name || null,
         insured_until_age: Number(rest.insured_until_age) || null,
       };
-      const { error } = await supabase.from('kv_contracts').insert(payload);
+      const { data: newRow, error } = await supabase.from('kv_contracts').insert(payload).select('id').single();
       if (error) throw error;
+      return { id: newRow.id, provider: payload.provider, insurance_number: payload.insurance_number };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result && activeTenantId) {
+        createDMS.mutate({
+          entityType: 'kv_contract',
+          entityId: result.id,
+          entityName: result.provider || 'Krankenversicherung',
+          tenantId: activeTenantId,
+          keywords: [result.provider, result.insurance_number].filter(Boolean),
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['fin-kv'] });
       toast.success('Krankenversicherung angelegt');
       setShowNew(false);

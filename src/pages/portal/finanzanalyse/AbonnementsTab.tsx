@@ -14,6 +14,7 @@ import { CARD, TYPOGRAPHY, HEADER, RECORD_CARD, DEMO_WIDGET, getActiveWidgetGlow
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
 import { FormInput } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -60,6 +61,7 @@ export default function AbonnementsTab() {
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-KONTEN');
   const readiness = useDataReadiness();
+  const { createDMS } = useRecordCardDMS();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, Record<string, any>>>({});
@@ -103,16 +105,26 @@ export default function AbonnementsTab() {
     mutationFn: async (form: Record<string, any>) => {
       if (!readiness.requireReadiness()) throw new Error('Readiness required');
       if (!activeTenantId || !user?.id) throw new Error('No tenant/user');
-      const { error } = await supabase.from('user_subscriptions').insert({
+      const { data: newRow, error } = await supabase.from('user_subscriptions').insert({
         tenant_id: activeTenantId, user_id: user.id,
         custom_name: form.custom_name || null, merchant: form.merchant || null,
         category: (form.category as any) || null, frequency: form.frequency || null,
         amount: Number(form.amount) || null, status: form.status || null,
         auto_renew: form.auto_renew ?? true,
-      });
+      }).select('id').single();
       if (error) throw error;
+      return { id: newRow.id, name: form.custom_name || form.merchant };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result && activeTenantId) {
+        createDMS.mutate({
+          entityType: 'subscription',
+          entityId: result.id,
+          entityName: result.name || 'Abonnement',
+          tenantId: activeTenantId,
+          keywords: [result.name].filter(Boolean),
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['fin-subscriptions'] });
       toast.success('Abonnement angelegt');
       setShowNew(false);

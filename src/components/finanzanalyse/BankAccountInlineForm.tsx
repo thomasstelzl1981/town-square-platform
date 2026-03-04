@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,7 @@ function decodeOwnerValue(val: string): { type: string; id: string } {
 export function BankAccountInlineForm({ onClose }: BankAccountInlineFormProps) {
   const queryClient = useQueryClient();
   const { activeTenantId } = useAuth();
+  const { createDMS } = useRecordCardDMS();
   const [formData, setFormData] = useState<BankAccountFormData>(defaultFormData);
   const [ibanError, setIbanError] = useState<string | null>(null);
 
@@ -105,7 +107,7 @@ export function BankAccountInlineForm({ onClose }: BankAccountInlineFormProps) {
         await supabase.from('bank_accounts').update({ is_default: false }).eq('tenant_id', activeTenantId);
       }
 
-      const { error } = await supabase.from('bank_accounts').insert({
+      const { data: newRow, error } = await supabase.from('bank_accounts').insert({
         tenant_id: activeTenantId,
         account_name: data.account_name,
         iban: cleanIban,
@@ -114,10 +116,20 @@ export function BankAccountInlineForm({ onClose }: BankAccountInlineFormProps) {
         status: 'pending',
         owner_type: data.owner_type || null,
         owner_id: data.owner_id || null,
-      });
+      }).select('id').single();
       if (error) throw error;
+      return { id: newRow.id, name: data.account_name, bank: data.bank_name };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result && activeTenantId) {
+        createDMS.mutate({
+          entityType: 'bank_account',
+          entityId: result.id,
+          entityName: result.name || 'Bankkonto',
+          tenantId: activeTenantId,
+          keywords: [result.name, result.bank].filter(Boolean),
+        });
+      }
       toast.success('Bankkonto hinzugefügt');
       queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
       onClose();
