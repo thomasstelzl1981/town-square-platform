@@ -2,10 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface Camera {
   id: string;
   user_id: string;
+  tenant_id: string;
   name: string;
   snapshot_url: string;
   auth_user: string | null;
@@ -33,9 +35,10 @@ export interface CameraFormData {
 
 export function useCameras() {
   const queryClient = useQueryClient();
+  const { activeTenantId } = useAuth();
 
   const camerasQuery = useQuery({
-    queryKey: ['cameras'],
+    queryKey: ['cameras', activeTenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('cameras')
@@ -45,10 +48,12 @@ export function useCameras() {
       if (error) throw error;
       return (data ?? []) as Camera[];
     },
+    enabled: !!activeTenantId,
   });
 
   const addCamera = useMutation({
     mutationFn: async (form: CameraFormData) => {
+      if (!activeTenantId) throw new Error('Kein aktiver Tenant');
       const { data, error } = await supabase
         .from('cameras')
         .insert({
@@ -64,6 +69,7 @@ export function useCameras() {
           internal_port: form.internal_port ?? 80,
           external_domain: form.external_domain || null,
           external_port: form.external_port || null,
+          tenant_id: activeTenantId,
         })
         .select()
         .single();
