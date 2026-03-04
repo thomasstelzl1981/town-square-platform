@@ -41,7 +41,7 @@
      ========================================================================= */
   :root {
     /* Core Backgrounds — Warm-Gray CRM (Hue 215) */
-    --background: 215 18% 96%;
+    --background: 215 18% 94%;
     --foreground: 222 35% 10%;
 
     /* Reading surfaces = pure white */
@@ -122,7 +122,7 @@
     --input-bg: 215 14% 97%;
 
     /* Table Surface */
-    --table-header-bg: 215 14% 94%;
+    --table-header-bg: 215 14% 92%;
     --table-row-hover: 215 14% 96%;
 
     /* Reading Surface */
@@ -564,6 +564,12 @@
     background: hsl(var(--card));
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Light Mode: no blur needed on opaque white cards */
+  :root .glass-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .glass-surface {
