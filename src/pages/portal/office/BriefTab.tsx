@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { resolveStorageSignedUrl } from '@/lib/storage-url';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useSearchParams } from 'react-router-dom';
@@ -153,7 +154,8 @@ export function BriefTab() {
       if (path.startsWith('http')) { setResolvedLogoUrl(path); return; }
       try {
         const { data } = await supabase.storage.from('tenant-documents').createSignedUrl(path, 3600);
-        setResolvedLogoUrl(data?.signedUrl ?? null);
+        const resolved = resolveStorageSignedUrl(data?.signedUrl);
+        setResolvedLogoUrl(resolved || null);
       } catch { setResolvedLogoUrl(null); }
     };
     resolveLogo();

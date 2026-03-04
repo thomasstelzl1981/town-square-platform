@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,17 @@ export function AddCameraDialog({
   const [refreshInterval, setRefreshInterval] = useState(
     initialData?.refresh_interval_sec?.toString() ?? '30'
   );
+
+  // Reset state when initialData or open changes (fixes edit mode not populating)
+  useEffect(() => {
+    if (open) {
+      setName(initialData?.name ?? (mode === 'add' ? 'Kamera 1' : ''));
+      setSnapshotUrl(initialData?.snapshot_url ?? '');
+      setAuthUser(initialData?.auth_user ?? '');
+      setAuthPass(initialData?.auth_pass ?? '');
+      setRefreshInterval(initialData?.refresh_interval_sec?.toString() ?? '30');
+    }
+  }, [open, initialData, mode]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

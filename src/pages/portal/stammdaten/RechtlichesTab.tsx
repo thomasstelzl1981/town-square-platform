@@ -179,7 +179,7 @@ export function RechtlichesTab() {
     : null;
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-3xl mx-auto">
       {/* Status Banner */}
       {isFullyConsented ? (
         <div className="flex items-center gap-3 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
@@ -299,7 +299,7 @@ function DocCard({
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="p-4 rounded-md bg-muted/50 prose prose-sm dark:prose-invert max-w-none text-sm min-h-[200px]">
+        <div className="p-4 rounded-md bg-muted/50 prose prose-sm dark:prose-invert max-w-prose text-sm min-h-[200px] overflow-x-auto">
           {rendered ? (
             <ReactMarkdown>{rendered}</ReactMarkdown>
           ) : (
