@@ -53,7 +53,7 @@ export function AreaTabs() {
             className={cn(
               'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium uppercase tracking-wide',
               isActive
-                ? 'bg-primary/90 backdrop-blur-md text-primary-foreground shadow-lg'
+                ? 'bg-white text-foreground shadow-md border border-[hsl(var(--chrome-border)/0.5)] dark:bg-primary/90 dark:text-primary-foreground dark:shadow-lg dark:border-0'
                 : 'nav-tab-glass text-muted-foreground hover:text-foreground'
             )}
           >
