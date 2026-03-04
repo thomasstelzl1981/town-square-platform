@@ -1,233 +1,241 @@
 
-# Armstrong Workspace — Umsetzungsplan
 
-## Ausgangslage
+# Vollstaendige KI-Analyse: Armstrong Workspace & alle KI-Integrationen
 
-Das Dashboard (`PortalDashboard.tsx`) hat aktuell **2 Snap-Sektionen**:
-- **Sektion 1**: "WELCOME ON BOARD" — System-Widget-Grid (Wetter, Globe, Finance, Radio, PV, etc.) via `DashboardGrid` + `SortableWidget`
-- **Sektion 2**: "ARMSTRONG" — NotesWidget + TaskWidgets (Armstrong-generierte Aufgaben-Kacheln)
+## 1. Armstrong Workspace ↔ Orb Integration: Status
 
-**Ziel**: Sektion 1 bleibt unverändert. Sektion 2 wird zum **Armstrong Workspace** — ein ChatGPT-artiger Full-Page Chat mit 3-Spalten-Layout (Desktop) bzw. Chat-only (Mobile).
+Die Integration funktioniert sauber. Der Datenfluss:
 
----
-
-## Architektur-Übersicht
-
-```
-Sektion 2 (Armstrong Workspace)
-├── Desktop (≥768px): 3-Spalten-Layout
-│   ├── Links (280px): ProjectsSidebar
-│   │   ├── "Neues Projekt" Button
-│   │   ├── Projects-Liste (armstrong_projects)
-│   │   ├── Threads-Liste (armstrong_chat_sessions)
-│   │   └── Quick Actions (Recherche, Notiz, Aufgabe)
-│   ├── Mitte (flex-1): WorkspaceChat
-│   │   ├── Chat-Verlauf (MessageRenderer, bestehend)
-│   │   ├── Tool Cards (ActionCard, SuggestedActions, bestehend)
-│   │   ├── "Mit meinen Daten arbeiten" Toggle
-│   │   └── Composer (Input + Attachments + Voice + Slash-Commands)
-│   └── Rechts (320px): ContextPanel
-│       ├── Aktiver Kontext (Projekt/Entity)
-│       ├── Quellen-Liste (DMS-Links, Datensätze)
-│       ├── Letzte Actions (Status, Credits)
-│       └── Memory-Snippets (editierbar)
-├── Mobile (<768px): Chat-only
-│   └── WorkspaceChat (full-width)
-│   └── Context als Drawer (optional)
+```text
+ArmstrongWorkspace.tsx
+  ├── orbState = f(advisor.isLoading, advisor.isExecuting, voice.isSpeaking, docUpload.isParsing)
+  │     → idle | thinking | working | speaking
+  ├── ArmstrongOrb (rein visuell, CSS-Animationen: ping, orbit, pulse)
+  ├── useArmstrongAdvisor → sot-armstrong-advisor (Edge Function, 4446 Zeilen)
+  │     → Gemini 2.5 Pro, 4000 Token, nicht-streaming
+  ├── useArmstrongVoice → sot-armstrong-voice (WebSocket Proxy)
+  │     → OpenAI gpt-4o-realtime (NICHT Lovable AI Gateway!)
+  ├── useArmstrongDocUpload → sot-document-parser (Edge Function)
+  │     → Gemini 2.5 Pro, 32000 Token, Vision
+  └── useArmstrongProjects → armstrong_projects (CRUD)
 ```
 
----
+**Bewertung**: Orb-States korrekt verdrahtet. Chat-Isolation per Projekt funktioniert (Map-Cache). Data-Mode wird im Request gesendet. SlashCommandPicker greift auf armstrongManifest.
 
-## Phase 1: Foundation (DB + Basis-UI)
-
-### 1.1 DB-Tabelle `armstrong_projects`
-```sql
-CREATE TABLE armstrong_projects (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  tenant_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  title TEXT NOT NULL DEFAULT 'Neues Projekt',
-  goal TEXT,
-  status TEXT NOT NULL DEFAULT 'active', -- active, archived, completed
-  linked_entities JSONB DEFAULT '[]',    -- [{type, id, label}]
-  memory_snippets JSONB DEFAULT '[]',    -- [{key, value, created_at}]
-  task_list JSONB DEFAULT '[]',          -- [{id, text, done, created_at}]
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- RLS: User kann nur eigene Projekte im eigenen Tenant sehen
-ALTER TABLE armstrong_projects ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users manage own projects"
-  ON armstrong_projects FOR ALL TO authenticated
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
--- Updated-at Trigger
-CREATE TRIGGER set_updated_at
-  BEFORE UPDATE ON armstrong_projects
-  FOR EACH ROW EXECUTE FUNCTION moddatetime(updated_at);
-```
-
-### 1.2 CRUD-Hook: `useArmstrongProjects`
-- Pfad: `src/hooks/useArmstrongProjects.ts`
-- Funktionen: `useProjects()`, `useCreateProject()`, `useUpdateProject()`, `useDeleteProject()`
-- Basiert auf `@tanstack/react-query` + Supabase SDK
-- Kein frozen module betroffen (Hook liegt in `/hooks/`)
-
-### 1.3 Workspace-Chat-Komponente (Mittel-Spalte)
-- Pfad: `src/components/dashboard/workspace/WorkspaceChat.tsx`
-- **Extrahiert Chat-Logik aus bestehendem `ChatPanel.tsx`** (Wiederverwendung, kein Duplikat)
-- Nutzt bestehende Hooks: `useArmstrongAdvisor`, `useArmstrongVoice`, `useArmstrongDocUpload`
-- Nutzt bestehende Renderer: `MessageRenderer`, `ActionCard`, `SuggestedActions`
-- **Unterschied zu ChatPanel**: Kein Floating/Sheet, sondern eingebettete Full-Height-Komponente
-- Kein eigener Advisor-Hook, sondern Props-basierte Komposition
-
-### 1.4 Dashboard Sektion 2 Umbau
-- In `PortalDashboard.tsx` Sektion 2: TaskWidget-Grid ersetzen durch `ArmstrongWorkspace`
-- Bestehende TaskWidgets bleiben erreichbar (verschoben in Kontext-Panel oder als Tool Cards)
-- NotesWidget wird Teil des Kontext-Panels (rechts)
-
-**Deliverables Phase 1:**
-- [x] `armstrong_projects` Tabelle mit RLS
-- [x] `useArmstrongProjects` Hook
-- [x] `WorkspaceChat` Komponente (Chat in Sektion 2, 1-Spalte zunächst)
-- [x] Dashboard Sektion 2 zeigt Chat statt Widget-Grid
+**Problem identifiziert**: `sot-armstrong-voice` nutzt **OpenAI gpt-4o-realtime** via direkten API-Key (`OPENAI_API_KEY`), NICHT Lovable AI Gateway. Das ist die einzige Funktion die einen externen API-Key direkt nutzt statt des Gateways.
 
 ---
 
-## Phase 2: 3-Spalten-Layout + Projects
+## 2. VOLLSTAENDIGE KI-BESTANDSAUFNAHME (50 Edge Functions mit AI)
 
-### 2.1 Layout-Wrapper: `ArmstrongWorkspace`
-- Pfad: `src/components/dashboard/workspace/ArmstrongWorkspace.tsx`
-- Desktop: `grid grid-cols-[280px_1fr_320px]`
-- Mobile: Nur `WorkspaceChat` (full-width)
-- Verwendet `react-resizable-panels` (bereits installiert) für resize
+### A. DOKUMENTENANALYSE (Schwerpunkt)
 
-### 2.2 Linke Spalte: `ProjectsSidebar`
-- Pfad: `src/components/dashboard/workspace/ProjectsSidebar.tsx`
-- Zeigt: Projects-Liste, Chat-Threads, Quick-Action-Buttons
-- Datenquelle: `useArmstrongProjects` + bestehende `armstrong_chat_sessions`
-- "Neues Projekt" → Dialog mit Titel + Ziel
-- Projekt anklicken → setzt aktiven Kontext im Workspace
+| # | Funktion | Modell | Token | Multimodal | Dateitypen | Extrahierte Felder | Kosten |
+|---|----------|--------|-------|------------|------------|-------------------|--------|
+| 1 | `sot-document-parser` | gemini-2.5-pro | 32.000 | Vision (PDF/Bild) | PDF, JPG, PNG, WEBP, DOCX, XLSX, CSV, XLS | 10 Modi: immobilie (11 Felder), finanzierung (9), versicherung (10), fahrzeugschein (10), pv_anlage (10), vorsorge (10), person (10), haustier (8), kontakt (7), allgemein (auto-detect) | 1 Cr (AI) / 0 Cr (XLSX/CSV direkt) |
+| 2 | `sot-invoice-parse` | gemini-2.5-pro | 32.000 | Vision | PDF, Bild | vendor_name, invoice_number, amounts, VAT, IBAN, NK-Kategorie, property_hints | 1 Cr |
+| 3 | `sot-nk-beleg-parse` | gemini-2.5-pro | 16.000 | Vision | PDF, Bild | provider, amounts, meter readings, consumption, cost_category + Cross-Validation-Modus | 1 Cr |
+| 4 | `sot-weg-abrechnung-parse` | gemini-2.5-pro | 32.000 | Vision | PDF | WEG-Positionen, Umlageschluessel, Einzelabrechnungen, Ruecklagen | 1 Cr |
+| 5 | `sot-storage-extract` | gemini-2.5-pro | 32.000 | Vision | PDF, Bild | Freitext → document_chunks + Embedding | 1 Cr |
+| 6 | `sot-storage-extractor` | gemini-2.5-pro | 32.000 | Vision | PDF, Bild | Variante von storage-extract (Bulk?) | 1 Cr |
+| 7 | `sot-inbound-receive` | gemini-2.5-pro | 32.000 | Nein (Text) | E-Mail-Body | Absender, Betreff, Kategorisierung, Auto-Sortierung | 1 Cr |
+| 8 | `sot-extract-email` | gemini-2.5-pro | 8.000 | Nein | E-Mail-Text | Strukturierte Daten aus E-Mail-Inhalten | 0 Cr |
+| 9 | `sot-extract-offer` | gemini-2.5-pro | 8.000 | Nein | Text | Immobilienangebote → Preis, Fläche, Rendite, Lage | 1 Cr |
+| 10 | `sot-project-intake` | gemini-2.5-pro | 8.000 | Vision | PDF (Exposé) | Projektdaten + Einheitenliste via Tool-Calling | 10 Cr |
+| 11 | `sot-acq-offer-extract` | gemini-2.5-pro | 8.000 | Nein | Text | Akquise-Angebotsdaten | 1 Cr |
+| 12 | `sot-acq-profile-extract` | gemini-2.5-pro | — | Nein | Text | Ankaufsprofil-Extraktion | 1 Cr |
+| 13 | `sot-excel-ai-import` | gemini-2.5-pro | — | Nein | XLSX/CSV | Generischer Excel-Import mit AI-Mapping | 1 Cr |
+| 14 | `sot-embedding-pipeline` | gemini-2.5-pro | — | Nein | Text | 768d Vektoren fuer Hybrid-Suche | — |
 
-### 2.3 Rechte Spalte: `ContextPanel`
-- Pfad: `src/components/dashboard/workspace/ContextPanel.tsx`
-- Zeigt: Aktiver Kontext, Quellen, letzte Actions, Memory-Snippets
-- Datenquelle: `armstrong_action_runs` (letzte Runs) + Projekt-Memory
-- Deep-Links zu Entitäten (Immobilien, Kontakte, DMS)
+**Sprache**: Alle Dokumente werden auf Deutsch verarbeitet. Prompts sind Deutsch. Gemischte Dokumente (EN/DE) werden unterstuetzt aber DE priorisiert.
 
-### 2.4 Chat-Sessions mit Projekt-Verknüpfung
-- `armstrong_chat_sessions` bekommt optionale Spalte `project_id` (nullable FK)
-- Migration: `ALTER TABLE armstrong_chat_sessions ADD COLUMN project_id UUID REFERENCES armstrong_projects(id) ON DELETE SET NULL;`
+**Bildanalyse/OCR**: Alle Vision-fähigen Parser nutzen Gemini Vision (base64-encoded images/PDFs). Kein separates OCR — Gemini handhabt gescannte Dokumente nativ.
 
-**Deliverables Phase 2:**
-- [x] `ArmstrongWorkspace` 3-Spalten-Layout
-- [x] `ProjectsSidebar` mit Projects + Threads
-- [x] `ContextPanel` mit Quellen + Actions + Memory
-- [x] `project_id` FK auf Chat-Sessions
+**Dual-Path Architektur** (sot-document-parser):
+- **Path A (Deterministisch)**: XLSX/CSV → SheetJS direkt → Fuzzy Column Mapping → 0 Credits
+- **Path B (AI Vision)**: PDF/Bild → Gemini 2.5 Pro Vision → JSON-Extraktion → 1 Credit
+- **Path B+CSV**: PDF mit Tabellen → Gemini Flash → CSV → SheetJS → Enhanced Prompt → 1 Credit
+
+### B. CHAT & BERATUNG
+
+| # | Funktion | Modell | Token | Streaming | Zweck |
+|---|----------|--------|-------|-----------|-------|
+| 1 | `sot-armstrong-advisor` | gemini-2.5-pro | 4.000 | Nur fuer Social-Audit | Haupt-Chat, Intent-Klassifikation, 200+ Actions, E-Mail-Compose, Dokument-Analyse |
+| 2 | `sot-armstrong-website` | gemini-2.5-pro | 2.000 | SSE Streaming | Zone 3 Website-Chat (Kaufy, FutureRoom, etc.) |
+| 3 | `sot-armstrong-voice` | **OpenAI gpt-4o-realtime** | ~300 | WebSocket | Voice-Konversation via OpenAI Realtime API |
+
+### C. CONTENT & MARKETING
+
+| # | Funktion | Modell | Token | Zweck |
+|---|----------|--------|-------|-------|
+| 1 | `sot-content-engine` | gemini-2.5-pro | 8.000 | Blog/SEO-Content fuer 7 Brands |
+| 2 | `sot-social-draft-generate` | gemini-2.5-pro | 8.000 | Social-Media-Posts (Tool-Calling) |
+| 3 | `sot-social-draft-rewrite` | gemini-2.5-pro | — | Post-Rewrite/Optimierung |
+| 4 | `sot-social-generate-briefing` | gemini-2.5-pro | — | Content-Briefings |
+| 5 | `sot-social-analyze-performance` | gemini-2.5-pro | 4.000 | KPI-Analyse |
+| 6 | `sot-social-extract-patterns` | gemini-2.5-pro | — | Muster-Erkennung |
+| 7 | `sot-expose-description` | gemini-2.5-pro | 4.000 | Exposé-Texte |
+| 8 | `sot-generate-landing-page` | gemini-2.5-pro | 8.000 | Lagebeschreibungen fuer Projekte |
+| 9 | `sot-project-description` | gemini-2.5-pro | — | Projektbeschreibungen |
+| 10 | `sot-website-ai-generate` | gemini-2.5-pro | 8.000 | Website-Sektionen |
+| 11 | `sot-website-update-section` | gemini-2.5-pro | — | Website-Sektions-Updates |
+
+### D. E-MAIL & KOMMUNIKATION
+
+| # | Funktion | Modell | Token | Zweck |
+|---|----------|--------|-------|-------|
+| 1 | `sot-mail-ai-assist` | **gemini-2.5-flash** | 4.000 | Ausformulieren, Qualitätscheck, Kuerzen, Verbessern |
+| 2 | `sot-letter-generate` | gemini-2.5-pro | 8.000 | Briefgenerierung |
+| 3 | `sot-nk-letter-generate` | **gemini-2.5-flash** | — | NK-Abrechnungsbriefe |
+
+### E. FINANZIERUNG & ANALYSE
+
+| # | Funktion | Modell | Token | Zweck |
+|---|----------|--------|-------|-------|
+| 1 | `sot-finance-prepare` | gemini-2.5-pro | 16.000 | Bankenpakete erstellen |
+| 2 | `sot-finance-bank-match` | **gemini-2.5-flash** | 12.000 | Bank-Matching via Tool-Calling |
+| 3 | `sot-transaction-categorize` | gemini-2.5-pro | — | Kontobewegungen kategorisieren |
+| 4 | `sot-investment-engine` | gemini-2.5-pro | — | Investment-Berechnungen |
+
+### F. AKQUISE & RECHERCHE
+
+| # | Funktion | Modell | Token | Zweck |
+|---|----------|--------|-------|-------|
+| 1 | `sot-acq-ai-research` | gemini-2.5-pro | 8.000 | KI-Research fuer Akquise |
+| 2 | `sot-acq-generate-response` | gemini-2.5-pro | 8.000 | Antwort-Generierung |
+| 3 | `sot-acq-contact-enrich` | gemini-2.5-pro | 4.000 | Kontakt-Anreicherung |
+| 4 | `sot-acq-standalone-research` | gemini-2.5-pro | — | Standalone Research |
+| 5 | `sot-research-ai-assist` | gemini-2.5-pro | 8.000 | Filter-Suggestion, Scoring |
+| 6 | `sot-research-engine` | gemini-2.5-pro | 8.000 | Lead-Research |
+| 7 | `sot-dossier-auto-research` | gemini-2.5-pro | — | Auto-Dossier |
+| 8 | `sot-research-strategy-resolver` | gemini-2.5-pro | — | Strategy Resolution |
+
+### G. LIFECYCLE & AUTOMATION (Cron)
+
+| # | Funktion | Modell | Token | Zweck |
+|---|----------|--------|-------|-------|
+| 1 | `sot-tenancy-lifecycle` | **gemini-2.5-flash** | 600-800 | TLC: Zahlungserinnerungen, Zusammenfassungen |
+| 2 | `sot-slc-lifecycle` | **gemini-2.5-flash** | 800 | SLC: Sales-Lifecycle |
+| 3 | `sot-flc-lifecycle` | gemini-2.5-pro | — | FLC: Finance-Lifecycle |
+| 4 | `sot-pslc-lifecycle-patrol` | gemini-2.5-pro | — | PSLC: Pet Service Lifecycle |
+
+### H. TELEFON & VOICE
+
+| # | Funktion | Modell | Token | Zweck |
+|---|----------|--------|-------|-------|
+| 1 | `sot-phone-converse` | **gemini-2.5-flash** | 300 | Live-Gesprächssteuerung |
+| 2 | `sot-phone-postcall` | **gemini-2.5-flash** | 2.000 | Nachbearbeitung: Zusammenfassung, Sentiment |
+| 3 | `sot-phone-agent-sync` | gemini-2.5-flash | 300 | Agent-Sync |
+| 4 | `sot-armstrong-voice` | **OpenAI gpt-4o-realtime** | — | WebSocket Voice (NICHT Gateway!) |
+
+### I. SONSTIGE
+
+| # | Funktion | Modell | Token | Zweck |
+|---|----------|--------|-------|-------|
+| 1 | `sot-meeting-summarize` | gemini-2.5-pro | 8.000 | Meeting-Zusammenfassungen |
+| 2 | `sot-renovation-scope-ai` | **gemini-2.5-flash** + pro | 8.000 | Renovierungs-Scoping (3 AI-Calls) |
+| 3 | `sot-market-pulse-report` | gemini-2.5-pro | — | Marktberichte (Streaming) |
+| 4 | `sot-project-market-report` | gemini-2.5-pro | — | Projekt-Marktberichte (Streaming) |
+| 5 | `sot-solar-insights` | gemini-2.5-pro | — | PV-Analyse |
+| 6 | `sot-vv-prefill-check` | gemini-2.5-pro | — | Vorsorge Prefill |
 
 ---
 
-## Phase 3: Intelligence (Slash-Commands, Memory, Data-Toggle)
+## 3. TECHNISCHE ANALYSE
 
-### 3.1 Slash-Command Tool Picker
-- Pfad: `src/components/dashboard/workspace/SlashCommandPicker.tsx`
-- Trigger: `/` im Composer öffnet Popover
-- Datenquelle: `armstrongManifest.ts` (bereits strukturiert)
-- Filter: Kontext-basiert (aktives Modul), Freitext-Suche
-- Auswahl → Action-Code wird an Advisor übergeben
+### Streaming-Funktionen (SSE)
+Nur 4 von ~50 Funktionen nutzen Streaming:
+- `sot-armstrong-website` (Zone 3 Chat)
+- `sot-armstrong-advisor` (nur Social-Audit-Teil)
+- `sot-market-pulse-report`
+- `sot-project-market-report`
 
-### 3.2 Project Memory UI
-- Im `ContextPanel` (rechts): Memory-Snippets anzeigen/editieren/löschen
-- CRUD direkt auf `armstrong_projects.memory_snippets` (JSONB)
-- Armstrong kann per Action Memory-Snippets hinzufügen (Tool Card)
+**Problem**: Der Haupt-Chat (`sot-armstrong-advisor`) streamt NICHT. Antworten werden komplett generiert und dann gesendet. Bei 4000 Token = 3-8 Sekunden Wartezeit ohne sichtbare Fortschritte.
 
-### 3.3 "Mit meinen Daten arbeiten" Toggle
-- Boolean-Switch im Composer-Bereich
-- Steuert `context_mode: 'general' | 'tenant'` im Advisor-Request
-- Default im Portal: `tenant` (ON)
-- General-Modus: Kein Entity-Injection, keine DB-Reads, nur LLM-Chat
+### Function Calling / Tool Use
+- `sot-social-draft-generate` — Tool: `draft_result`
+- `sot-finance-bank-match` — Tool: `bank_matching_result`
+- `sot-nk-beleg-parse` — Tool: `cross_validation_result`
+- `sot-project-intake` — Tool: `extract_project_data`
+- `sot-armstrong-advisor` — 200+ Action-Definitionen (nicht als AI Tools, sondern als Intent-Mapping)
 
-### 3.4 General-Chat Billing
-- Neuer Action-Code: `ARM.CHAT.GENERAL` (1 Credit pro Nachricht oder konfigurierbar)
-- Credit-Preflight auch für General Chat
-- Logging in `armstrong_action_runs` mit `action_code = 'ARM.CHAT.GENERAL'`
+### Multimodal (Vision)
+`sot-document-parser`, `sot-invoice-parse`, `sot-nk-beleg-parse`, `sot-weg-abrechnung-parse`, `sot-storage-extract`, `sot-storage-extractor`, `sot-project-intake`
 
-**Deliverables Phase 3:**
-- [x] Slash-Command Picker
-- [x] Memory-Snippets UI (CRUD)
-- [x] Data-Toggle im Composer
-- [x] General-Chat Billing-Code
+### Echtzeit vs. Batch
+- **Echtzeit**: Chat (Advisor, Website), Voice (Phone, Armstrong), Mail-Assist
+- **Batch/Cron**: Lifecycle (TLC/SLC/FLC), Content-Engine, Market Reports
 
 ---
 
-## Phase 4: Polish + Mobile
+## 4. KOSTENANALYSE
 
-### 4.1 Mobile-Responsive
-- Mobile: Nur `WorkspaceChat` sichtbar
-- Projects-Sidebar als Sheet/Drawer (Hamburger-Icon)
-- Context-Panel als Bottom-Sheet (Swipe-up oder Button)
+### Modell-Verteilung (nach Memory: Maximum Power Standard)
 
-### 4.2 Empty States
-- Kein Projekt: "Erstelle dein erstes Projekt" + Beispiele
-- Kein Chat: Armstrong-Begrüßung + Quick-Actions
-- Keine Actions: "Tippe `/` um Tools zu entdecken"
+| Modell | Anzahl Funktionen | Typischer Token-Bereich |
+|--------|-------------------|------------------------|
+| google/gemini-2.5-pro | ~40 | 2.000–32.000 |
+| google/gemini-2.5-flash | ~8 | 300–2.000 |
+| OpenAI gpt-4o-realtime | 1 | WebSocket (extern) |
 
-### 4.3 Onboarding
-- Erstes Öffnen: Kurze Tour (3 Steps) per Tooltip-Overlay
-- "Was kann Armstrong?" → Link zu `/portal/armstrong` (Capability Center)
+### Geschaetzte Kosten pro Dokumenttyp
 
-### 4.4 TaskWidgets Migration
-- Bestehende TaskWidgets werden zu Tool Cards im Chat
-- ODER: Verbleiben als Widget-Row über dem Chat (konfigurierbar)
-- NotesWidget → Rechte Spalte oder eigenes Project-Feature
+| Dokumenttyp | Input-Tokens (geschaetzt) | Output-Tokens | Gesamtkosten/Dok |
+|-------------|--------------------------|---------------|-----------------|
+| PDF Exposé (10 Seiten) | ~15.000 | ~2.000 | ~$0.06 |
+| PDF Rechnung (1-2 Seiten) | ~3.000 | ~500 | ~$0.01 |
+| XLSX/CSV (direkt) | 0 (kein AI) | 0 | $0.00 |
+| WEG-Abrechnung (20+ Seiten) | ~25.000 | ~5.000 | ~$0.10 |
+| NK-Beleg + Cross-Validation | ~5.000 + ~8.000 | ~1.000 + ~3.000 | ~$0.06 |
 
-**Deliverables Phase 4:**
-- [x] Mobile Drawers für Sidebar + Context
-- [x] Empty States für alle 3 Spalten
-- [x] Onboarding-Tour
-- [x] TaskWidget → Tool Card Migration
+### Prognose bei Skalierung
+
+| Szenario | Dokumente/Monat | AI-Calls gesamt | Geschaetzte Kosten |
+|----------|----------------|----------------|-------------------|
+| Aktuell (Test) | ~100 | ~200 | ~$10-20 |
+| 10 Tenants aktiv | ~1.000 | ~2.000 | ~$100-200 |
+| 50 Tenants | ~5.000 | ~10.000 | ~$500-1.000 |
+| 100 Tenants | ~10.000 | ~20.000 | ~$1.000-2.000 |
+
+**Kosten-Treiber #1**: `sot-armstrong-advisor` (haeufigste Aufrufe, 4000 Token pro Antwort)
+**Kosten-Treiber #2**: `sot-document-parser` (32.000 Token, Vision)
+**Kosten-Treiber #3**: `sot-finance-prepare` (16.000 Token, komplexe Bankenpakete)
 
 ---
 
-## Datei-Übersicht (Neue Dateien)
+## 5. IDENTIFIZIERTE PROBLEME & EMPFEHLUNGEN
 
-```
-src/components/dashboard/workspace/
-├── ArmstrongWorkspace.tsx      ← Layout-Container (3-Spalten)
-├── WorkspaceChat.tsx           ← Chat-Spalte (Mitte)
-├── ProjectsSidebar.tsx         ← Projects + Threads (Links)
-├── ContextPanel.tsx            ← Quellen + Memory (Rechts)
-├── SlashCommandPicker.tsx      ← Tool-Picker Popover
-├── WorkspaceComposer.tsx       ← Input + Toggle + Attachments
-└── ProjectMemoryEditor.tsx     ← Memory-Snippets CRUD
+### Kritisch
+1. **sot-armstrong-voice nutzt OpenAI direkt** — Einzige Funktion die nicht ueber Lovable AI Gateway geht. Erfordert separaten `OPENAI_API_KEY`. Sollte auf Lovable AI migriert werden oder bewusst als Ausnahme dokumentiert werden.
+2. **Kein Streaming im Haupt-Chat** — `sot-armstrong-advisor` buffert die komplette Antwort (bis 4000 Token), was 3-8s Wartezeit ohne Feedback verursacht.
+3. **Duplikat: sot-storage-extract vs sot-storage-extractor** — Zwei sehr aehnliche Funktionen fuer Datei-Extraktion. Konsolidierungspotential.
 
-src/hooks/
-├── useArmstrongProjects.ts     ← CRUD für armstrong_projects
-└── (bestehend: useArmstrongAdvisor, useArmstrongVoice, etc.)
-```
+### Optimierungspotential
+4. **Modell-Downgrade fuer einfache Tasks** — Folgende Funktionen koennten von gemini-2.5-pro auf gemini-2.5-flash wechseln ohne Qualitaetsverlust:
+   - `sot-expose-description` (Textgenerierung)
+   - `sot-social-analyze-performance` (KPI-Analyse)
+   - `sot-acq-contact-enrich` (simple Anreicherung)
+   - `sot-content-engine` (Blog-Posts)
+   - `sot-extract-email` (einfache Extraktion)
 
-## Betroffene bestehende Dateien
+5. **Token-Limits ueberdimensioniert** — Mehrere Funktionen haben 32.000 Token Limit, generieren aber typisch <2.000 Token Output. Reduktion auf 8.000-16.000 wuerde Latenz senken.
 
-| Datei | Änderung |
-|---|---|
-| `src/pages/portal/PortalDashboard.tsx` | Sektion 2: TaskGrid → `<ArmstrongWorkspace />` |
-| `src/components/chat/ChatPanel.tsx` | Bleibt bestehen für ArmstrongSheet (Floating), wird nicht dupliziert |
-| `src/components/portal/ArmstrongSheet.tsx` | Bleibt bestehen für kontextuelle Quick-Chats außerhalb Dashboard |
+6. **Armstrong Advisor hat 4.446 Zeilen** — Monolithisch. Enthaelt Intent-Klassifikation, Action-Execution, E-Mail-Compose, Dokument-Analyse, Social-Audit, Web-Research in einer Datei. Splitting wuerde Wartbarkeit verbessern.
 
-## Nicht betroffen (Freeze-sicher)
+### Fehlende Integration
+7. **data_mode wird gesendet aber nicht verarbeitet** — `useArmstrongAdvisor` sendet `data_mode: 'tenant' | 'general'` im Request, aber `sot-armstrong-advisor` ignoriert dieses Feld im RequestBody-Interface. Die Edge Function hat kein `data_mode` im Interface.
+8. **project_id wird gesendet aber nicht persistiert** — Aehnlich: Client sendet `project_id`, Edge Function speichert es nicht in der Session.
 
-- Alle Module MOD-01 bis MOD-22 bleiben unverändert
-- `armstrongManifest.ts` wird nur gelesen, nicht geschrieben
-- Edge Functions bleiben unverändert
-- Sektion 1 (System-Widgets) wird nicht angefasst
+---
 
-## Token-Abrechnung
+## 6. NAECHSTE SCHRITTE (Empfehlung)
 
-Vollständig abgedeckt durch bestehendes System:
-- **Action-basierte Chats**: `armstrong_action_runs` + `armstrong_billing_events` (bestehend)
-- **General Chat**: Neuer Code `ARM.CHAT.GENERAL` mit konfigurierbarem Credit-Cost
-- **Credit-Preflight**: Prüfung VOR jeder Nachricht/Action (bestehend)
-- **Audit**: Jeder Vorgang in `armstrong_action_runs` protokolliert (bestehend)
+| Prioritaet | Massnahme | Aufwand |
+|------------|-----------|--------|
+| P0 | `data_mode` + `project_id` in sot-armstrong-advisor verarbeiten | 2h |
+| P0 | Streaming fuer Haupt-Chat aktivieren | 4h |
+| P1 | sot-storage-extract/extractor konsolidieren | 2h |
+| P1 | Modell-Downgrade fuer 5 einfache Funktionen (→ Flash) | 1h |
+| P2 | sot-armstrong-voice auf Lovable AI migrieren oder dokumentieren | 4h |
+| P2 | sot-armstrong-advisor in Sub-Module aufteilen | 8h |
+
