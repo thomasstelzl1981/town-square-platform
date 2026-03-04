@@ -4,7 +4,7 @@
   "description": "SSOT for module freeze states. Lovable and all AI assistants MUST check this file before modifying any module code. If a module is frozen, changes to its paths are NOT ALLOWED without explicit unfreeze.",
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
-    "MOD-00": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "reason": "Full freeze — all modules locked except MOD-11" },
+    "MOD-00": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for Armstrong Workspace integration in Dashboard Section 2" },
     "MOD-01": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for Rechtliches layout fix and Stammdaten sections" },
     "MOD-02": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for Gmail OAuth popup fix and manual sync triggers" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
