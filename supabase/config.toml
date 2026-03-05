@@ -301,3 +301,6 @@ verify_jwt = false
 
 [functions.sot-europace-proxy]
 verify_jwt = false
+
+[functions.sot-project-landing-ai]
+verify_jwt = false

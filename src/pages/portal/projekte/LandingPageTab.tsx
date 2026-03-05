@@ -237,72 +237,46 @@ export default function LandingPageTab() {
     }
   };
 
-  // ─── AI Website Optimization (full section structure) ────
+  // ─── AI Website Optimization (writes to landing_pages directly) ────
   const handleAiGenerate = async () => {
-    if (!projectId || !landingPage?.id || !organizationId) return;
+    if (!projectId || !landingPage?.id) return;
     setAiGenerating(true);
     try {
-      // Step 1: Generate project descriptions if missing
-      if (!rawProject?.full_description) {
-        const { data: descData, error: descErr } = await supabase.functions.invoke('sot-project-description', {
-          body: { projectId },
+      const { data: aiData, error: aiErr } = await supabase.functions.invoke('sot-project-landing-ai', {
+        body: { projectId, landingPageId: landingPage.id },
+      });
+
+      if (aiErr) throw aiErr;
+      if (aiData?.error) throw new Error(aiData.error);
+
+      // Update local editor state with AI results
+      if (aiData?.content) {
+        const c = aiData.content;
+        setEditor({
+          hero_headline: c.hero_headline || editor.hero_headline,
+          hero_subheadline: c.hero_subheadline || editor.hero_subheadline,
+          about_text: c.about_text || editor.about_text,
+          highlights_json: c.highlights || editor.highlights_json,
+          footer_company_name: editor.footer_company_name,
+          footer_address: editor.footer_address,
         });
-        if (descErr) console.warn('Description generation failed, continuing with website generation');
-        if (descData?.description) {
-          await supabase.from('dev_projects').update({ full_description: descData.description }).eq('id', projectId);
-        }
-        if (descData?.location_description) {
-          await supabase.from('dev_projects').update({ location_description: descData.location_description }).eq('id', projectId);
-        }
+        setEditorDirty(false); // AI already saved to DB
       }
 
-      // Step 2: Call sot-website-ai-generate for complete website structure
-      // First ensure we have a tenant_website entry
-      let { data: website } = await supabase
-        .from('tenant_websites')
-        .select('id')
-        .eq('tenant_id', organizationId)
-        .maybeSingle();
+      toast.success('KI-Website optimiert', {
+        description: 'Hero, Beschreibung, Lage und Highlights wurden generiert.',
+      });
 
-      if (!website) {
-        const { data: newSite } = await supabase
-          .from('tenant_websites')
-          .insert({
-            tenant_id: organizationId,
-            name: projectName,
-            slug: landingPage.slug || 'home',
-            created_by: (await supabase.auth.getUser()).data.user?.id || '',
-          })
-          .select('id')
-          .single();
-        website = newSite;
-      }
-
-      if (website) {
-        const { data: aiData, error: aiErr } = await supabase.functions.invoke('sot-website-ai-generate', {
-          body: {
-            website_id: website.id,
-            name: projectName,
-            industry: 'Immobilien / Kapitalanlage',
-            target_audience: 'Kapitalanleger und Investoren',
-            goal: 'lead_generation',
-            template_id: 'modern',
-          },
-        });
-        if (aiErr) throw aiErr;
-        if (aiData?.error) throw new Error(aiData.error);
-        toast.success('KI-Website optimiert', {
-          description: `${aiData?.sections_count || 6} Sektionen generiert — Hero, Features, About, Services, Kontakt, Footer.`,
-        });
-      }
-
-      // Refresh all related queries
+      // Refresh queries
       queryClient.invalidateQueries({ queryKey: ['landing-page', projectId] });
       queryClient.invalidateQueries({ queryKey: ['dev-projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project-landing-home', landingPage.slug] });
     } catch (err: any) {
       const msg = err?.message || 'Unbekannter Fehler';
       if (msg.includes('Rate-Limit') || msg.includes('429')) {
         toast.error('Rate-Limit erreicht', { description: 'Bitte in einer Minute erneut versuchen.' });
+      } else if (msg.includes('402')) {
+        toast.error('KI-Credits aufgebraucht', { description: 'Bitte Credits in den Einstellungen aufladen.' });
       } else {
         toast.error('KI-Website-Optimierung fehlgeschlagen', { description: msg });
       }
