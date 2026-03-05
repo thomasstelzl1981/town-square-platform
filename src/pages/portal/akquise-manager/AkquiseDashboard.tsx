@@ -55,7 +55,7 @@ function EditRow({ label, value, onChange, placeholder }: {
 
 export default function AkquiseDashboard() {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, activeTenantId } = useAuth();
   const { data: pendingMandates, isLoading: loadingPending } = useAcqMandatesPending();
   const { data: activeMandates, isLoading: loadingActive } = useAcqMandatesActive();
   const cancelMandate = useCancelAcqMandate();
