@@ -929,17 +929,40 @@ serve(async (req) => {
     const providerPromises: Promise<ContactResult[]>[] = [];
     const providersUsed: string[] = [];
 
-    if (isPortalSearch && FIRECRAWL_API_KEY) {
-      providersUsed.push("firecrawl_portal");
-      providerPromises.push(
-        searchPortalsFirecrawl(
-          query,
-          location,
-          FIRECRAWL_API_KEY,
-          max_results,
-          portal_config
-        )
-      );
+    if (isPortalSearch && FIRECRAWL_API_KEY && LOVABLE_API_KEY) {
+      // New: search all 3 portals in parallel, return rich listing data
+      providersUsed.push("firecrawl_portal_all");
+      const portalPromise = searchAllPortals(
+        location, FIRECRAWL_API_KEY, LOVABLE_API_KEY,
+        Math.min(max_results, 20), portal_config
+      ).then(({ results: listings, run_diagnostics }) => {
+        // Attach diagnostics to be picked up later
+        (portalPromise as any).__diagnostics = run_diagnostics;
+        (portalPromise as any).__listings = listings;
+        // Return legacy ContactResult[] for dedup pipeline compat
+        return listings.map((item: PortalListingResult) => ({
+          name: item.title,
+          salutation: null, first_name: null, last_name: null,
+          email: null, phone: null,
+          website: item.url, address: item.address,
+          rating: null, reviews_count: null,
+          confidence: item.price ? 70 : 50,
+          sources: ["firecrawl_portal"] as string[],
+          source_refs: {
+            portal: item.portal, search_type: "listings",
+            price_raw: item.price ? String(item.price) : null,
+            broker_name: item.broker_name || null,
+            area_sqm: item.living_area_sqm ? String(item.living_area_sqm) : null,
+            rooms: item.rooms ? String(item.rooms) : null,
+            object_type: item.object_type || null,
+            city: item.city || null, zip_code: item.zip_code || null,
+            units_count: item.units_count || null,
+            year_built: item.year_built || null,
+            gross_yield: item.gross_yield || null,
+          },
+        }));
+      });
+      providerPromises.push(portalPromise);
     } else if (isPortalSearch) {
       // No Firecrawl available — portal search not possible
       providersUsed.push("none");
