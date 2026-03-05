@@ -163,108 +163,171 @@ async function searchApify(
   }
 }
 
-// ── Apify Portal Scraper (ImmoScout24, Immowelt, etc.) ─────────────
+// ── Portal Scraper via Firecrawl (ImmoScout24, Immowelt, etc.) ─────────────
 
-async function searchApifyPortals(
+async function searchPortalsFirecrawl(
   query: string,
   location: string | undefined,
-  apiToken: string,
+  firecrawlKey: string,
   maxResults: number,
   portalConfig?: ResearchRequest["portal_config"]
 ): Promise<ContactResult[]> {
   const portal = portalConfig?.portal || "immoscout24";
   const searchType = portalConfig?.search_type || "listings";
 
-  // Use a general web scraper actor for portal scraping
-  const runUrl = `https://api.apify.com/v2/acts/apify~web-scraper/run-sync-get-dataset-items?token=${apiToken}&timeout=55`;
-
   // Build the portal search URL
-  let startUrl = "";
-  const searchQuery = query ? encodeURIComponent(query) : "";
   const locationQuery = location ? encodeURIComponent(location) : "";
+  let startUrl = "";
 
   if (portal === "immoscout24") {
     if (searchType === "brokers") {
       startUrl = `https://www.immobilienscout24.de/immobilienmakler/${locationQuery || "deutschland"}.html`;
     } else {
-      startUrl = `https://www.immobilienscout24.de/Suche/de/${locationQuery || "deutschland"}/wohnung-kaufen?enteredFrom=result_list`;
+      startUrl = `https://www.immobilienscout24.de/Suche/de/${locationQuery || "deutschland"}/wohnung-kaufen`;
     }
   } else if (portal === "immowelt") {
     startUrl = `https://www.immowelt.de/liste/${locationQuery || "deutschland"}/wohnungen/kaufen`;
   } else {
-    startUrl = `https://www.kleinanzeigen.de/s-immobilien/${locationQuery || ""}/${searchQuery || "immobilien"}/k0c195`;
+    startUrl = `https://www.kleinanzeigen.de/s-immobilien/${locationQuery || ""}/${query ? encodeURIComponent(query) : "immobilien"}/k0c195`;
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 55000);
+  console.log(`Firecrawl portal scrape: ${startUrl}`);
 
   try {
-    const resp = await fetch(runUrl, {
+    const resp = await fetch("https://api.firecrawl.dev/v1/scrape", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${firecrawlKey}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
-        startUrls: [{ url: startUrl }],
-        pageFunction: `async function pageFunction(context) {
-          const { $, request } = context;
-          const results = [];
-          $('[data-item],.result-list-entry,.aditem').each((i, el) => {
-            const $el = $(el);
-            results.push({
-              title: $el.find('h2, .result-title, [data-go-to-expose-id]').first().text().trim(),
-              price: $el.find('[data-is-price], .result-price, .aditem-main--middle--price').first().text().trim(),
-              address: $el.find('.result-address, .result-list-entry__address').first().text().trim(),
-              url: $el.find('a[href*="/expose"], a[href*="/anzeige"]').first().attr('href'),
-              broker: $el.find('.result-list-entry__brand-name, .broker-name').first().text().trim(),
-              phone: $el.find('[data-phone], .phone-number').first().text().trim(),
-              email: $el.find('a[href^="mailto:"]').first().attr('href')?.replace('mailto:', ''),
-            });
-          });
-          return results.slice(0, ${maxResults});
-        }`,
-        maxPagesPerCrawl: 1,
-        proxyConfiguration: { useApifyProxy: true },
+        url: startUrl,
+        formats: ["markdown", "links"],
+        onlyMainContent: true,
+        waitFor: 3000,
       }),
     });
 
-    clearTimeout(timeoutId);
-
     if (!resp.ok) {
-      console.error("Apify portal error:", resp.status, await resp.text());
+      console.error("Firecrawl portal error:", resp.status, await resp.text());
       return [];
     }
 
-    const rawItems: any[] = await resp.json();
-    // Flatten nested arrays from page function
-    const items = rawItems.flat().filter(Boolean);
+    const data = await resp.json();
+    const markdown = data.data?.markdown || data.markdown || "";
+    const links = data.data?.links || data.links || [];
 
-    return items.map((item: any, idx: number) => ({
-      name: item.title || item.broker || `Ergebnis ${idx + 1}`,
+    if (!markdown) {
+      console.log("Firecrawl returned empty markdown for portal");
+      return [];
+    }
+
+    // Use AI to extract structured listings from the markdown
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY not available for portal extraction");
+      return [];
+    }
+
+    const extractionPrompt = `Extrahiere aus dem folgenden Immobilienportal-Markdown alle Inserate/Listings.
+Portal: ${portal}
+Suchtyp: ${searchType}
+Suchort: ${location || "Deutschland"}
+
+Markdown-Inhalt:
+${markdown.slice(0, 15000)}
+
+Verfügbare Links auf der Seite:
+${links.slice(0, 50).join("\n")}
+
+Extrahiere maximal ${maxResults} Ergebnisse.`;
+
+    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: "Du extrahierst strukturierte Daten aus Immobilienportal-Seiten." },
+          { role: "user", content: extractionPrompt },
+        ],
+        tools: [{
+          type: "function",
+          function: {
+            name: "return_listings",
+            description: "Return extracted portal listings",
+            parameters: {
+              type: "object",
+              properties: {
+                listings: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string" },
+                      price: { type: "string", description: "Preis als Text" },
+                      address: { type: "string" },
+                      url: { type: "string", description: "Link zum Inserat" },
+                      broker_name: { type: "string" },
+                      broker_phone: { type: "string" },
+                      broker_email: { type: "string" },
+                      area_sqm: { type: "string" },
+                      rooms: { type: "string" },
+                    },
+                    required: ["title"],
+                  },
+                },
+              },
+              required: ["listings"],
+              additionalProperties: false,
+            },
+          },
+        }],
+        tool_choice: { type: "function", function: { name: "return_listings" } },
+      }),
+    });
+
+    if (!aiResp.ok) {
+      console.error("AI extraction for portal failed:", aiResp.status);
+      return [];
+    }
+
+    const aiData = await aiResp.json();
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall) return [];
+
+    const parsed = JSON.parse(toolCall.function.arguments);
+    const listings = parsed.listings || [];
+
+    return listings.map((item: any, idx: number) => ({
+      name: item.title || `Ergebnis ${idx + 1}`,
       salutation: null,
       first_name: null,
       last_name: null,
-      email: item.email || null,
-      phone: item.phone || null,
+      email: item.broker_email || null,
+      phone: item.broker_phone || null,
       website: item.url
-        ? item.url.startsWith("http")
-          ? item.url
-          : `https://www.immobilienscout24.de${item.url}`
+        ? item.url.startsWith("http") ? item.url : `https://www.immobilienscout24.de${item.url}`
         : null,
       address: item.address || null,
       rating: null,
       reviews_count: null,
-      confidence: item.email ? 75 : 50,
-      sources: ["apify_portal"],
+      confidence: item.broker_email ? 75 : 50,
+      sources: ["firecrawl_portal"],
       source_refs: {
         portal,
         search_type: searchType,
         price_raw: item.price || null,
-        broker_name: item.broker || null,
+        broker_name: item.broker_name || null,
+        area_sqm: item.area_sqm || null,
+        rooms: item.rooms || null,
       },
     }));
   } catch (err) {
-    clearTimeout(timeoutId);
-    console.error("Apify portal timeout or error:", err);
+    console.error("Firecrawl portal error:", err);
     return [];
   }
 }
