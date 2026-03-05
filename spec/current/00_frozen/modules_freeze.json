@@ -17,7 +17,7 @@
     "MOD-10": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-11": { "frozen": true, "frozen_at": "2026-03-05T21:00:00.000Z", "reason": "Re-frozen after R-1 refactoring: FMEinreichung.tsx split into 5 Cards + fmEinreichungTypes.ts + fmEinreichungHelpers.tsx" },
     "MOD-12": { "frozen": true, "frozen_at": "2026-03-05T21:00:00.000Z", "reason": "Re-frozen after B-4 refactoring: AkquiseMandate.tsx split from 885 to ~260 lines + 8 extracted sub-components/helpers" },
-    "MOD-13": { "frozen": true, "frozen_at": "2026-03-05T17:46:00.000Z", "reason": "Re-frozen after Preisliste save button always-visible fix" },
+    "MOD-13": { "frozen": true, "frozen_at": "2026-03-05T23:00:00.000Z", "reason": "Re-frozen after R-31: ProjectDetailPage split into ProjectDetailHeader + ProjectUnitsTable + ProjectInfoTabs" },
     "MOD-14": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },

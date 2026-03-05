@@ -66,32 +66,27 @@
 
 ---
 
-## Wave 2 — Tranche 4: Leichte Monolithen (400-510 Zeilen) — OFFEN
+## Wave 2 — Tranche 4 ✅ (R-25–R-35)
 
-| # | Datei | Zeilen | Modul | Extraktionen |
-|---|-------|--------|-------|-------------|
-| R-25 | Agreements.tsx | 506 | Admin | AgreementsList + AgreementDetail + AgreementForm → Orchestrator ~120 Z |
-| R-26 | Dashboard.tsx (Admin) | 491 | Admin | AdminKPIGrid + AdminQuickActions + AdminActivityFeed → Orchestrator ~120 Z |
-| R-27 | Delegations.tsx | 486 | Admin | DelegationTable + DelegationCreateDialog + DelegationStatsRow → Orchestrator ~120 Z |
-| R-28 | ArmstrongWorkspace.tsx | 479 | MOD-00 | WorkspaceInput + WorkspaceHistory + WorkspaceActions → Orchestrator ~120 Z |
-| R-29 | FMDashboard.tsx | 472 | MOD-11 | FMDashboardKPIs + FMDashboardCaseList + FMDashboardQuickActions → Orchestrator ~120 Z |
-| R-30 | VerwaltungTab.tsx | 456 | MOD-04 | VerwaltungHeader + VerwaltungGrid + VerwaltungActions → Orchestrator ~120 Z |
-| R-31 | ProjectDetailPage.tsx | 456 | MOD-13 | ProjectHeader + ProjectTabRouter + ProjectQuickFacts → Orchestrator ~120 Z |
-| R-32 | SanierungTab.tsx | 451 | MOD-04 | SanierungOverview + SanierungMassnahmen + SanierungKostenRechner → Orchestrator ~120 Z |
-| R-33 | MasterTemplatesImmobilienakte.tsx | 444 | Admin | ImmoTemplateFields + ImmoTemplatePreview + ImmoTemplateActions → Orchestrator ~120 Z |
-| R-34 | StorageFileManager.tsx | 434 | MOD-03 | FileManagerToolbar + FileManagerGrid + FileManagerUpload → Orchestrator ~120 Z |
-| R-35 | RolesManagement.tsx | 419 | Admin | RolesTable + RoleEditDialog + RolePermissionMatrix → Orchestrator ~120 Z |
+| # | Phase | Datei | Vorher | Nachher | Modul | Neue Dateien |
+|---|-------|-------|--------|---------|-------|-------------|
+| R-25 | ✅ | Agreements.tsx | 506 | ~90 | Admin | AgreementsTemplateTable, AgreementsConsentLog |
+| R-26 | ✅ | Dashboard.tsx (Admin) | 491 | ~100 | Admin | AdminKPIGrid, AdminSessionCard |
+| R-27 | ✅ | Delegations.tsx | 486 | ~100 | Admin | DelegationTable |
+| R-28 | ✅ | ArmstrongWorkspace.tsx | 479 | ~180 | MOD-00 | WorkspaceChatHeader, WorkspaceChatMessages, WorkspaceChatInput |
+| R-29 | ✅ | FMDashboard.tsx | 472 | ~83 | MOD-11 | FMZinsTickerWidget, FMMandateCards, FMProfileEditSheet |
+| R-30 | ✅ | VerwaltungTab.tsx | 456 | ~150 | MOD-04 | VerwaltungContextGrid, VerwaltungPropertyAccordion, VerwaltungGesamtergebnis |
+| R-31 | ✅ | ProjectDetailPage.tsx | 456 | ~120 | MOD-13 | ProjectDetailHeader, ProjectUnitsTable, ProjectInfoTabs |
+| R-32 | ✅ | SanierungTab.tsx | 451 | ~89 | MOD-04 | SanierungDemoDetail |
+| R-33 | ✅ | MasterTemplatesImmo.tsx | 444 | ~60 | Admin | ImmoAkteBlockView, immoAkteBlocks.ts |
+| R-34 | ⬜ | StorageFileManager.tsx | 434 | — | MOD-03 | Skipped — already modular (5 views) |
+| R-35 | ✅ | RolesManagement.tsx | 419 | ~30 | Admin | RolesCatalogTab, RolesMatrixTab, RolesGovernanceTab |
 
-### Freeze-Anforderungen Tranche 4
+### Ergebnis
 
-| Module | Dateien |
-|--------|---------|
-| MOD-00 | ArmstrongWorkspace |
-| MOD-03 | StorageFileManager |
-| MOD-04 | VerwaltungTab, SanierungTab |
-| MOD-11 | FMDashboard |
-| MOD-13 | ProjectDetailPage |
-| Admin (kein Unfreeze) | Agreements, Dashboard, Delegations, MasterTemplatesImmo, Roles |
+- **33 von 35 Dateien** refactored (R-28 ArmstrongWorkspace + R-34 StorageFileManager waren optional, R-28 jetzt done)
+- **~80+ Sub-Components** extrahiert
+- **Durchschnittliche Reduktion**: ~65%
 
 ---
 
