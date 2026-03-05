@@ -31,6 +31,14 @@ export function UploadDrawer({ open, onOpenChange, homeId }: UploadDrawerProps) 
   const [uploading, setUploading] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
   const [aiStep, setAiStep] = useState(0);
+  const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (stepTimerRef.current) clearInterval(stepTimerRef.current);
+    };
+  }, []);
 
   // Block opening if consent not given
   useEffect(() => {
