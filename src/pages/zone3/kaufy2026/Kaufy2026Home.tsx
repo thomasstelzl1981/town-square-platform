@@ -285,18 +285,11 @@ export default function Kaufy2026Home() {
     const runCalc = async () => {
       setIsSearching(true);
       const newCache: Record<string, InvestmentMetrics> = {};
+      const batch = allListings.slice(0, 20);
+      const accountingMap = await fetchAccountingMap(batch);
 
-      await Promise.all(allListings.slice(0, 20).map(async (listing: any) => {
-        const monthlyRent = listing.monthly_rent_total || (listing.asking_price * 0.04 / 12);
-        const input: CalculationInput = {
-          ...defaultInput,
-          purchasePrice: listing.asking_price,
-          monthlyRent,
-          equity: searchParams.equity,
-          taxableIncome: searchParams.zvE,
-          maritalStatus: searchParams.maritalStatus,
-          hasChurchTax: searchParams.hasChurchTax,
-        };
+      await Promise.all(batch.map(async (listing: any) => {
+        const input = buildCalcInput(listing, searchParams, accountingMap);
         const result = await calculate(input);
         if (result) {
           newCache[listing.listing_id] = {
@@ -315,7 +308,7 @@ export default function Kaufy2026Home() {
     };
 
     runCalc();
-  }, [hasSearched, allListings, metricsCache, searchParams, calculate]);
+  }, [hasSearched, allListings, metricsCache, searchParams, calculate, fetchAccountingMap, buildCalcInput]);
 
   // Investment search handler
   const handleInvestmentSearch = useCallback(async (params: SearchParams) => {
