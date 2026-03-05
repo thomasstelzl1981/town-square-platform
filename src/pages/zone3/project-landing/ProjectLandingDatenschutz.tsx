@@ -35,7 +35,7 @@ export default function ProjectLandingDatenschutz() {
       if ((project as any).developer_context_id) {
         const { data: ctx } = await supabase
           .from('developer_contexts')
-          .select('name, legal_form, street, house_number, postal_code, city, email')
+          .select('name, legal_form, street, house_number, postal_code, city')
           .eq('id', (project as any).developer_context_id)
           .maybeSingle();
         devContext = ctx;
