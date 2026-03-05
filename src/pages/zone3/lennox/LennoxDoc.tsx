@@ -58,6 +58,12 @@ export default function LennoxDoc() {
   const [vetResults, setVetResults] = useState<VetResult[]>([]);
   const [vetLoading, setVetLoading] = useState(false);
   const [vetSearched, setVetSearched] = useState(false);
+  const [vetElapsed, setVetElapsed] = useState(0);
+  const vetTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => { if (vetTimerRef.current) clearInterval(vetTimerRef.current); };
+  }, []);
 
   const [insuranceOpen, setInsuranceOpen] = useState(false);
   const [insuranceType, setInsuranceType] = useState('');
