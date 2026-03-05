@@ -143,7 +143,7 @@ const fmt = (v: number) =>
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export default function KaufyFinanceRequestSheet({ open, onClose, listing, engineParams }: Props) {
+export default function KaufyFinanceRequestSheet({ open, onClose, listing, engineParams, source = 'zone3_kaufy_expose', entityType = 'listing' }: Props) {
   const [form, setForm] = useState<FormData>(initialFormData);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
