@@ -1,15 +1,614 @@
-{
-  "generated_at": "2026-03-05T12:00:00Z",
-  "total_count": 9,
-  "sites": [
-    { "name": "kaufy", "base": "/website/kaufy", "layout": "Kaufy2026Layout", "route_count": 11 },
-    { "name": "futureroom", "base": "/website/futureroom", "layout": "FutureRoomLayout", "route_count": 11 },
-    { "name": "sot", "base": "/website/sot", "layout": "SotLayout", "route_count": 22 },
-    { "name": "acquiary", "base": "/website/acquiary", "layout": "AcquiaryLayout", "route_count": 11 },
-    { "name": "lennox", "base": "/website/tierservice", "layout": "LennoxLayout", "route_count": 14 },
-    { "name": "project-landing", "base": "/website/projekt", "layout": "ProjectLandingLayout", "route_count": 6 },
-    { "name": "ncore", "base": "/website/ncore", "layout": "NcoreLayout", "route_count": 11 },
-    { "name": "otto", "base": "/website/otto-advisory", "layout": "OttoAdvisoryLayout", "route_count": 10 },
-    { "name": "zlwohnbau", "base": "/website/zl-wohnbau", "layout": "ZLWohnbauLayout", "route_count": 8 }
-  ]
-}
+[
+  {
+    "key": "kaufy",
+    "base": "/website/kaufy",
+    "layout": "Kaufy2026Layout",
+    "route_count": 11,
+    "routes": [
+      {
+        "path": "",
+        "component": "Kaufy2026Home",
+        "title": "KAUFY Home"
+      },
+      {
+        "path": "vermieter",
+        "component": "Kaufy2026Vermieter",
+        "title": "Für Vermieter"
+      },
+      {
+        "path": "verkaeufer",
+        "component": "Kaufy2026Verkaeufer",
+        "title": "Für Verkäufer"
+      },
+      {
+        "path": "vertrieb",
+        "component": "Kaufy2026Vertrieb",
+        "title": "Für Partner"
+      },
+      {
+        "path": "immobilien/:publicId",
+        "component": "Kaufy2026Expose",
+        "title": "Exposé"
+      },
+      {
+        "path": "kontakt",
+        "component": "Kaufy2026Kontakt",
+        "title": "Kontakt"
+      },
+      {
+        "path": "faq",
+        "component": "Kaufy2026FAQ",
+        "title": "FAQ"
+      },
+      {
+        "path": "impressum",
+        "component": "Kaufy2026Impressum",
+        "title": "Impressum"
+      },
+      {
+        "path": "datenschutz",
+        "component": "Kaufy2026Datenschutz",
+        "title": "Datenschutz"
+      },
+      {
+        "path": "ratgeber",
+        "component": "KaufyRatgeber",
+        "title": "Ratgeber — KAUFY"
+      },
+      {
+        "path": "ratgeber/:slug",
+        "component": "KaufyRatgeberArticle",
+        "title": "Ratgeber Artikel"
+      }
+    ]
+  },
+  {
+    "key": "futureroom",
+    "base": "/website/futureroom",
+    "layout": "FutureRoomLayout",
+    "route_count": 11,
+    "routes": [
+      {
+        "path": "",
+        "component": "FutureRoomHome",
+        "title": "Future Room"
+      },
+      {
+        "path": "bonitat",
+        "component": "FutureRoomBonitat",
+        "title": "Bonität"
+      },
+      {
+        "path": "karriere",
+        "component": "FutureRoomKarriere",
+        "title": "Karriere"
+      },
+      {
+        "path": "faq",
+        "component": "FutureRoomFAQ",
+        "title": "FAQ"
+      },
+      {
+        "path": "login",
+        "component": "FutureRoomLogin",
+        "title": "Login"
+      },
+      {
+        "path": "akte",
+        "component": "FutureRoomAkte",
+        "title": "Meine Akte"
+      },
+      {
+        "path": "kontakt",
+        "component": "FutureRoomKontakt",
+        "title": "Kontakt"
+      },
+      {
+        "path": "impressum",
+        "component": "FutureRoomImpressum",
+        "title": "Impressum"
+      },
+      {
+        "path": "datenschutz",
+        "component": "FutureRoomDatenschutz",
+        "title": "Datenschutz"
+      },
+      {
+        "path": "ratgeber",
+        "component": "FutureRoomRatgeber",
+        "title": "Ratgeber — Future Room"
+      },
+      {
+        "path": "ratgeber/:slug",
+        "component": "FutureRoomRatgeberArticle",
+        "title": "Ratgeber Artikel"
+      }
+    ]
+  },
+  {
+    "key": "sot",
+    "base": "/website/sot",
+    "layout": "SotLayout",
+    "route_count": 26,
+    "routes": [
+      {
+        "path": "",
+        "component": "SotHome",
+        "title": "System of a Town — Struktur und KI für Ihren Haushalt"
+      },
+      {
+        "path": "plattform",
+        "component": "SotPlattform",
+        "title": "Plattform"
+      },
+      {
+        "path": "intelligenz",
+        "component": "SotIntelligenz",
+        "title": "Armstrong Intelligence"
+      },
+      {
+        "path": "module",
+        "component": "SotModule",
+        "title": "Module"
+      },
+      {
+        "path": "preise",
+        "component": "SotPreise",
+        "title": "Preise"
+      },
+      {
+        "path": "demo",
+        "component": "SotDemo",
+        "title": "Demo"
+      },
+      {
+        "path": "karriere",
+        "component": "SotKarriere",
+        "title": "Karriere"
+      },
+      {
+        "path": "faq",
+        "component": "SotFAQ",
+        "title": "FAQ"
+      },
+      {
+        "path": "impressum",
+        "component": "SotImpressum",
+        "title": "Impressum"
+      },
+      {
+        "path": "datenschutz",
+        "component": "SotDatenschutz",
+        "title": "Datenschutz"
+      },
+      {
+        "path": "nutzungsbedingungen",
+        "component": "SotNutzungsbedingungen",
+        "title": "Nutzungsbedingungen"
+      },
+      {
+        "path": "loesungen/mietsonderverwaltung",
+        "component": "SotMietsonderverwaltung",
+        "title": "Digitale Mietsonderverwaltung"
+      },
+      {
+        "path": "loesungen/immobilienverwaltung",
+        "component": "SotImmobilienverwaltung",
+        "title": "Digitale Immobilienverwaltung"
+      },
+      {
+        "path": "loesungen/finanzdienstleistungen",
+        "component": "SotFinanzdienstleistungen",
+        "title": "Finanzdienstleistungen"
+      },
+      {
+        "path": "ratgeber/mietsonderverwaltung-vs-weg",
+        "component": "RatgeberMsvVsWeg",
+        "title": "MSV vs. WEG-Verwaltung"
+      },
+      {
+        "path": "ratgeber/nebenkostenabrechnung-vermieter",
+        "component": "RatgeberNebenkostenabrechnung",
+        "title": "Nebenkostenabrechnung Ratgeber"
+      },
+      {
+        "path": "ratgeber/hausverwaltung-wechseln",
+        "component": "RatgeberImmobilienverwalterWechseln",
+        "title": "Hausverwaltung wechseln"
+      },
+      {
+        "path": "ratgeber/immobilien-portfolioanalyse",
+        "component": "RatgeberPortfolioAnalyse",
+        "title": "Portfolioanalyse Ratgeber"
+      },
+      {
+        "path": "ratgeber/immobilienfinanzierung-kapitalanleger",
+        "component": "RatgeberImmobilienfinanzierung",
+        "title": "Immobilienfinanzierung Ratgeber"
+      },
+      {
+        "path": "ratgeber/renditeberechnung-immobilien",
+        "component": "RatgeberRenditeberechnung",
+        "title": "Renditeberechnung Ratgeber"
+      },
+      {
+        "path": "real-estate",
+        "component": "SotPlattform",
+        "title": "Plattform"
+      },
+      {
+        "path": "finance",
+        "component": "SotPlattform",
+        "title": "Plattform"
+      },
+      {
+        "path": "management",
+        "component": "SotPlattform",
+        "title": "Plattform"
+      },
+      {
+        "path": "energy",
+        "component": "SotPlattform",
+        "title": "Plattform"
+      },
+      {
+        "path": "armstrong",
+        "component": "SotIntelligenz",
+        "title": "Armstrong Intelligence"
+      },
+      {
+        "path": "capital",
+        "component": "SotPlattform",
+        "title": "Plattform"
+      }
+    ]
+  },
+  {
+    "key": "acquiary",
+    "base": "/website/acquiary",
+    "layout": "AcquiaryLayout",
+    "route_count": 11,
+    "routes": [
+      {
+        "path": "",
+        "component": "AcquiaryHome",
+        "title": "ACQUIARY"
+      },
+      {
+        "path": "methodik",
+        "component": "AcquiaryMethodik",
+        "title": "Methodik"
+      },
+      {
+        "path": "netzwerk",
+        "component": "AcquiaryNetzwerk",
+        "title": "Netzwerk"
+      },
+      {
+        "path": "karriere",
+        "component": "AcquiaryKarriere",
+        "title": "Karriere"
+      },
+      {
+        "path": "objekt",
+        "component": "AcquiaryObjekt",
+        "title": "Objekt anbieten"
+      },
+      {
+        "path": "kontakt",
+        "component": "AcquiaryKontakt",
+        "title": "Kontakt"
+      },
+      {
+        "path": "faq",
+        "component": "AcquiaryFAQ",
+        "title": "FAQ"
+      },
+      {
+        "path": "impressum",
+        "component": "AcquiaryImpressum",
+        "title": "Impressum"
+      },
+      {
+        "path": "datenschutz",
+        "component": "AcquiaryDatenschutz",
+        "title": "Datenschutz"
+      },
+      {
+        "path": "ratgeber",
+        "component": "AcquiaryRatgeber",
+        "title": "Ratgeber — ACQUIARY"
+      },
+      {
+        "path": "ratgeber/:slug",
+        "component": "AcquiaryRatgeberArticle",
+        "title": "Ratgeber Artikel"
+      }
+    ]
+  },
+  {
+    "key": "lennox",
+    "base": "/website/tierservice",
+    "layout": "LennoxLayout",
+    "route_count": 14,
+    "routes": [
+      {
+        "path": "",
+        "component": "LennoxStartseite",
+        "title": "Lennox & Friends — Dog Resorts"
+      },
+      {
+        "path": "partner/:slug",
+        "component": "LennoxPartnerProfil",
+        "title": "Partner-Profil"
+      },
+      {
+        "path": "shop",
+        "component": "LennoxShop",
+        "title": "Lennox Shop"
+      },
+      {
+        "path": "doc",
+        "component": "LennoxDoc",
+        "title": "Doc — Lennox & Friends"
+      },
+      {
+        "path": "lennox",
+        "component": "LennoxLennox",
+        "title": "Lennox — Founders"
+      },
+      {
+        "path": "partner-werden",
+        "component": "LennoxPartnerWerden",
+        "title": "Partner werden"
+      },
+      {
+        "path": "login",
+        "component": "LennoxAuth",
+        "title": "Anmelden"
+      },
+      {
+        "path": "mein-bereich",
+        "component": "LennoxMeinBereich",
+        "title": "Mein Bereich"
+      },
+      {
+        "path": "kontakt",
+        "component": "LennoxKontakt",
+        "title": "Kontakt"
+      },
+      {
+        "path": "faq",
+        "component": "LennoxFAQ",
+        "title": "FAQ"
+      },
+      {
+        "path": "impressum",
+        "component": "LennoxImpressum",
+        "title": "Impressum"
+      },
+      {
+        "path": "datenschutz",
+        "component": "LennoxDatenschutz",
+        "title": "Datenschutz"
+      },
+      {
+        "path": "ratgeber",
+        "component": "LennoxRatgeber",
+        "title": "Ratgeber — Lennox & Friends"
+      },
+      {
+        "path": "ratgeber/:slug",
+        "component": "LennoxRatgeberArticle",
+        "title": "Ratgeber Artikel"
+      }
+    ]
+  },
+  {
+    "key": "project-landing",
+    "base": "/website/projekt",
+    "layout": "ProjectLandingLayout",
+    "route_count": 6,
+    "routes": [
+      {
+        "path": ":slug",
+        "component": "ProjectLandingHome",
+        "title": "Projekt"
+      },
+      {
+        "path": ":slug/objekt",
+        "component": "ProjectLandingObjekt",
+        "title": "Objekt"
+      },
+      {
+        "path": ":slug/beratung",
+        "component": "ProjectLandingBeratung",
+        "title": "Beratung"
+      },
+      {
+        "path": ":slug/einheit/:unitId",
+        "component": "ProjectLandingExpose",
+        "title": "Exposé"
+      },
+      {
+        "path": ":slug/impressum",
+        "component": "ProjectLandingImpressum",
+        "title": "Impressum"
+      },
+      {
+        "path": ":slug/datenschutz",
+        "component": "ProjectLandingDatenschutz",
+        "title": "Datenschutz"
+      }
+    ]
+  },
+  {
+    "key": "ncore",
+    "base": "/website/ncore",
+    "layout": "NcoreLayout",
+    "route_count": 11,
+    "routes": [
+      {
+        "path": "",
+        "component": "NcoreHome",
+        "title": "Ncore Business Consulting — Connecting Dots. Connecting People."
+      },
+      {
+        "path": "digitalisierung",
+        "component": "NcoreDigitalisierung",
+        "title": "Digitalisierung & KI für KMU — Ncore Business Consulting"
+      },
+      {
+        "path": "stiftungen",
+        "component": "NcoreStiftungen",
+        "title": "Stiftungen & Vermögensschutz — Ncore Business Consulting"
+      },
+      {
+        "path": "geschaeftsmodelle",
+        "component": "NcoreGeschaeftsmodelle",
+        "title": "Geschäftsmodelle & Vertrieb — Ncore Business Consulting"
+      },
+      {
+        "path": "netzwerk",
+        "component": "NcoreNetzwerk",
+        "title": "Unser Netzwerk — Ncore Business Consulting"
+      },
+      {
+        "path": "gruender",
+        "component": "NcoreGruender",
+        "title": "Gründer — Ncore Business Consulting"
+      },
+      {
+        "path": "kontakt",
+        "component": "NcoreKontakt",
+        "title": "Kontakt — Ncore Business Consulting"
+      },
+      {
+        "path": "impressum",
+        "component": "NcoreImpressum",
+        "title": "Impressum — Ncore Business Consulting"
+      },
+      {
+        "path": "datenschutz",
+        "component": "NcoreDatenschutz",
+        "title": "Datenschutz — Ncore Business Consulting"
+      },
+      {
+        "path": "ratgeber",
+        "component": "NcoreRatgeber",
+        "title": "Ratgeber — Ncore Business Consulting"
+      },
+      {
+        "path": "ratgeber/:slug",
+        "component": "NcoreRatgeberArticle",
+        "title": "Ratgeber Artikel"
+      }
+    ]
+  },
+  {
+    "key": "otto",
+    "base": "/website/otto-advisory",
+    "layout": "OttoAdvisoryLayout",
+    "route_count": 10,
+    "routes": [
+      {
+        "path": "",
+        "component": "OttoHome",
+        "title": "Otto² Advisory — Ganzheitliche Finanzberatung"
+      },
+      {
+        "path": "unternehmer",
+        "component": "OttoUnternehmer",
+        "title": "Für Unternehmer — Otto² Advisory"
+      },
+      {
+        "path": "private-haushalte",
+        "component": "OttoPrivateHaushalte",
+        "title": "Für Privathaushalte — Otto² Advisory"
+      },
+      {
+        "path": "finanzierung",
+        "component": "OttoFinanzierung",
+        "title": "Finanzierung beantragen — Otto² Advisory"
+      },
+      {
+        "path": "kontakt",
+        "component": "OttoKontakt",
+        "title": "Kontakt — Otto² Advisory"
+      },
+      {
+        "path": "faq",
+        "component": "OttoFAQ",
+        "title": "FAQ — Otto² Advisory"
+      },
+      {
+        "path": "impressum",
+        "component": "OttoImpressum",
+        "title": "Impressum — Otto² Advisory"
+      },
+      {
+        "path": "datenschutz",
+        "component": "OttoDatenschutz",
+        "title": "Datenschutz — Otto² Advisory"
+      },
+      {
+        "path": "ratgeber",
+        "component": "OttoRatgeber",
+        "title": "Ratgeber — Otto² Advisory"
+      },
+      {
+        "path": "ratgeber/:slug",
+        "component": "OttoRatgeberArticle",
+        "title": "Ratgeber Artikel"
+      }
+    ]
+  },
+  {
+    "key": "zlwohnbau",
+    "base": "/website/zl-wohnbau",
+    "layout": "ZLWohnbauLayout",
+    "route_count": 8,
+    "routes": [
+      {
+        "path": "",
+        "component": "ZLWohnbauHome",
+        "title": "ZL Wohnbau — Wohnraum für Mitarbeiter"
+      },
+      {
+        "path": "leistungen",
+        "component": "ZLWohnbauLeistungen",
+        "title": "Leistungen — ZL Wohnbau"
+      },
+      {
+        "path": "portfolio",
+        "component": "ZLWohnbauPortfolio",
+        "title": "Portfolio — ZL Wohnbau"
+      },
+      {
+        "path": "kontakt",
+        "component": "ZLWohnbauKontakt",
+        "title": "Kontakt — ZL Wohnbau"
+      },
+      {
+        "path": "impressum",
+        "component": "ZLWohnbauImpressum",
+        "title": "Impressum — ZL Wohnbau"
+      },
+      {
+        "path": "datenschutz",
+        "component": "ZLWohnbauDatenschutz",
+        "title": "Datenschutz — ZL Wohnbau"
+      },
+      {
+        "path": "ratgeber",
+        "component": "ZLWohnbauRatgeber",
+        "title": "Ratgeber — ZL Wohnbau"
+      },
+      {
+        "path": "ratgeber/:slug",
+        "component": "ZLWohnbauRatgeberArticle",
+        "title": "Ratgeber Artikel"
+      }
+    ]
+  }
+]
