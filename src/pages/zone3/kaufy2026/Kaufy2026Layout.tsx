@@ -150,12 +150,9 @@ export default function Kaufy2026Layout() {
                   {link.label}
                 </Link>
               ))}
-              <div className="pt-4 border-t flex gap-2">
-                <Link to="/auth" className="flex-1">
-                  <Button variant="outline" className="w-full">Anmelden</Button>
-                </Link>
-                <Link to="/auth" className="flex-1">
-                  <Button className="w-full">Registrieren</Button>
+              <div className="pt-4 border-t">
+                <Link to="/auth">
+                  <Button className="w-full">Anmelden</Button>
                 </Link>
               </div>
             </nav>
