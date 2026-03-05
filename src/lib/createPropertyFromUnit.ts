@@ -107,20 +107,14 @@ export async function createPropertyFromUnit(
         is_demo: false,
         // Area & Structure
         total_area_sqm: unit.area_sqm || null,
-        rooms: unit.rooms || null,
-        floor: unit.floor != null ? String(unit.floor) : null,
-        units_count: 1,
         // Financial
         purchase_price: unit.list_price || null,
         annual_income: annualIncome > 0 ? annualIncome : null,
-        hausgeld_monthly: monthlyHausgeld > 0 ? monthlyHausgeld : null,
         // Construction & Energy
         year_built: context.projectYearBuilt || null,
         description: context.projectData?.full_description || null,
         heating_type: context.projectData?.heating_type || null,
         energy_source: context.projectData?.energy_source || null,
-        energy_cert_type: context.projectData?.energy_cert_type || null,
-        energy_class: context.projectData?.energy_class || null,
         renovation_year: context.projectData?.renovation_year || null,
       })
       .select('id')
