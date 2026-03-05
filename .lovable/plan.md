@@ -91,7 +91,7 @@
 
 ### Tranche 2: Hohe Monolithen (700-904 Zeilen)
 
-#### R-11: TenancyTab.tsx (904 Z, MOD-04)
+#### R-11: TenancyTab.tsx (904 Z, MOD-04) ✅ DONE — 904→~200 Z, 5 neue Dateien in src/components/portfolio/tenancy/
 **Pfad:** `src/components/portfolio/TenancyTab.tsx`  
 **Extraktionen → `src/components/portfolio/tenancy/`:**
 1. `tenancyTypes.ts` — TenancyContract, TenantInfo
