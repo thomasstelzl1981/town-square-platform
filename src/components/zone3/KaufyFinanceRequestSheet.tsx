@@ -252,13 +252,23 @@ export default function KaufyFinanceRequestSheet({ open, onClose, listing, engin
       toast.success('Finanzierungsanfrage erfolgreich eingereicht!');
 
       // Record SLC inquiry event (fire-and-forget)
-      recordInquiryForListing({
-        listingId: listing.id,
-        propertyId: listing.property_id,
-        source: 'zone3_kaufy_expose',
-        contactEmail: form.email,
-        contactName: `${form.firstName} ${form.lastName}`.trim(),
-      });
+      // For project units there's no listing record — use recordInquiryForProjectUnit
+      if (entityType === 'project_unit') {
+        recordInquiryForProjectUnit({
+          unitId: listing.id,
+          source,
+          contactEmail: form.email,
+          contactName: `${form.firstName} ${form.lastName}`.trim(),
+        });
+      } else {
+        recordInquiryForListing({
+          listingId: listing.id,
+          propertyId: listing.property_id,
+          source,
+          contactEmail: form.email,
+          contactName: `${form.firstName} ${form.lastName}`.trim(),
+        });
+      }
     } catch (err: unknown) {
       console.error('Submit error:', err);
       toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler bei der Einreichung');
