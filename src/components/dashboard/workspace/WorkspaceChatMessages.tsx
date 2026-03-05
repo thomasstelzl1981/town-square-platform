@@ -21,7 +21,7 @@ interface Props {
   isSpeaking: boolean;
   currentModule: string | null;
   onActionSelect: (action: any) => void;
-  onConfirm: () => void;
+  onConfirm: (actionCode: string, params?: Record<string, unknown>) => void;
   onCancel: () => void;
   onSpeak: (text: string) => void;
   onSendEmail: (params: any) => void;
