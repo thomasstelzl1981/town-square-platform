@@ -410,8 +410,19 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
               </Select>
             </div>
           </div>
+          {researchEngine.isSearching && (
+            <SearchProgressIndicator
+              elapsedSeconds={researchEngine.elapsedSeconds}
+              estimatedDuration={researchEngine.estimatedDuration}
+              phases={[
+                { upTo: 20, label: "Google Places durchsuchen…" },
+                { upTo: 45, label: "Websites nach E-Mails scannen…" },
+                { upTo: 70, label: "Kontakte anreichern…" },
+              ]}
+            />
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSearchDialog(false)}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => setShowSearchDialog(false)} disabled={researchEngine.isSearching}>Abbrechen</Button>
             <Button onClick={handleEngineSearch} disabled={researchEngine.isSearching}>
               {researchEngine.isSearching && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Suchen
