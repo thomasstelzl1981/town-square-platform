@@ -17,6 +17,7 @@ import {
 export default function AkquiseTools() {
   const [calcOpen, setCalcOpen] = React.useState(false);
   const [dataRoomOpen, setDataRoomOpen] = React.useState(false);
+  const [exposeUploadOpen, setExposeUploadOpen] = React.useState(false);
 
   return (
     <PageShell>
