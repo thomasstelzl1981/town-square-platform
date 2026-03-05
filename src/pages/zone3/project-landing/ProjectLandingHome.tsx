@@ -110,6 +110,7 @@ const HIGHLIGHT_ICONS = [TrendingUp, Shield, Home, Star, Building2];
 
 export default function ProjectLandingHome() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useState({
     zvE: 60000,
     equity: 50000,
