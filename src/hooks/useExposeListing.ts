@@ -148,6 +148,36 @@ export function useExposeListing({
         .select('id', { count: 'exact', head: true })
         .eq('property_id', propertyId);
 
+      // Fallback hero image: check project-level document_links if no property images exist
+      let heroImageUrl: string | null = DEMO_PROPERTY_IMAGE_MAP[propertyId] || null;
+      if (!heroImageUrl) {
+        // Check if this property comes from a project and fetch project hero image
+        const { data: unitLink } = await supabase
+          .from('dev_project_units')
+          .select('project_id')
+          .eq('property_id', propertyId)
+          .maybeSingle();
+
+        if (unitLink?.project_id) {
+          const { data: projectImageLinks } = await supabase
+            .from('document_links')
+            .select('documents!inner (file_path, mime_type)')
+            .eq('object_type', 'project')
+            .eq('object_id', unitLink.project_id)
+            .order('is_title_image', { ascending: false })
+            .order('display_order', { ascending: true })
+            .limit(1);
+
+          if (projectImageLinks?.length) {
+            const doc = (projectImageLinks[0] as any).documents;
+            if (doc?.file_path && String(doc.mime_type || '').startsWith('image/')) {
+              const { getCachedSignedUrl } = await import('@/lib/imageCache');
+              heroImageUrl = await getCachedSignedUrl(doc.file_path);
+            }
+          }
+        }
+      }
+
       return {
         id: row.id,
         public_id: row.public_id,
@@ -167,13 +197,13 @@ export function useExposeListing({
         heating_type: props?.heating_type ?? null,
         monthly_rent: annualIncome > 0 ? annualIncome / 12 : 0,
         units_count: (unitsCount && unitsCount > 0) ? unitsCount : 1,
-        hero_image_url: DEMO_PROPERTY_IMAGE_MAP[propertyId] || null,
+        hero_image_url: heroImageUrl,
       };
     },
     enabled: !!publicId,
   });
 
-  // Fetch AfA overrides
+  // Fetch AfA overrides from property_accounting
   const { data: accountingData } = useQuery({
     queryKey: [`${queryKeyPrefix}-accounting`, listing?.property_id],
     queryFn: async () => {
@@ -187,21 +217,65 @@ export function useExposeListing({
     enabled: !!listing?.property_id,
   });
 
+  // Fallback: If no property_accounting exists, try to get AfA from dev_projects
+  // This handles project-based listings where property_accounting was never created
+  const { data: projectAfaFallback } = useQuery({
+    queryKey: [`${queryKeyPrefix}-project-afa-fallback`, listing?.property_id],
+    queryFn: async () => {
+      // Find dev_project_units linked to this property, then get the project's AfA settings
+      const { data: unitLink } = await supabase
+        .from('dev_project_units')
+        .select('project_id')
+        .eq('property_id', listing!.property_id)
+        .maybeSingle();
+
+      if (!unitLink?.project_id) return null;
+
+      const { data: project } = await supabase
+        .from('dev_projects')
+        .select('afa_model, afa_rate_percent, land_share_percent')
+        .eq('id', unitLink.project_id)
+        .maybeSingle();
+
+      return project;
+    },
+    // Only run when property_accounting returned nothing
+    enabled: !!listing?.property_id && accountingData === null,
+  });
+
   // Update params when listing/accounting data arrives
   useEffect(() => {
     if (listing) {
+      // Priority: property_accounting > dev_projects > defaults
+      const hasAccounting = !!(accountingData?.afa_rate_percent || accountingData?.building_share_percent || accountingData?.afa_model);
+
+      let afaRate: number | undefined;
+      let buildingShare = 0.8;
+      let afaModel: 'linear' | '7i' | '7h' | '7b' = 'linear';
+
+      if (hasAccounting) {
+        afaRate = accountingData?.afa_rate_percent ?? undefined;
+        buildingShare = accountingData?.building_share_percent
+          ? accountingData.building_share_percent / 100
+          : 0.8;
+        afaModel = mapAfaModelToEngine(accountingData?.afa_model);
+      } else if (projectAfaFallback) {
+        afaRate = projectAfaFallback.afa_rate_percent ?? undefined;
+        const landShare = projectAfaFallback.land_share_percent ?? 20;
+        buildingShare = 1 - (landShare / 100);
+        afaModel = mapAfaModelToEngine(projectAfaFallback.afa_model);
+      }
+
       setParams(prev => ({
         ...prev,
         purchasePrice: listing.asking_price || 250000,
         monthlyRent: listing.monthly_rent || Math.round((listing.asking_price || 250000) * 0.004),
-        afaRateOverride: accountingData?.afa_rate_percent ?? undefined,
-        buildingShare: accountingData?.building_share_percent
-          ? accountingData.building_share_percent / 100
-          : 0.8,
-        afaModel: mapAfaModelToEngine(accountingData?.afa_model),
+        afaRateOverride: afaRate,
+        buildingShare,
+        afaModel,
       }));
     }
-  }, [listing, accountingData]);
+  }, [listing, accountingData, projectAfaFallback]);
 
   // Auto-calculate when params change (if URL params enabled = auto-calc mode)
   useEffect(() => {

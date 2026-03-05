@@ -31,7 +31,7 @@ export function useProjectUnitExpose({
 }: UseProjectUnitExposeOptions) {
   const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
 
-  // Fetch unit + project
+  // Fetch unit + project + project hero image
   const { data, isLoading } = useQuery({
     queryKey: ['project-unit-expose', unitId],
     queryFn: async () => {
@@ -50,7 +50,38 @@ export function useProjectUnitExpose({
         .maybeSingle();
       if (projErr || !project) return null;
 
-      return { unit: unit as any, project: project as any };
+      // Fetch project hero image from document_links
+      let heroImageUrl: string | null = null;
+      const projectId = (unit as any).project_id;
+      const propertyId = (unit as any).property_id;
+
+      // Try property-level images first, then project-level
+      const objectQueries = [
+        ...(propertyId ? [{ type: 'property', id: propertyId }] : []),
+        { type: 'project', id: projectId },
+      ];
+
+      for (const q of objectQueries) {
+        const { data: imgLinks } = await supabase
+          .from('document_links')
+          .select('documents!inner (file_path, mime_type)')
+          .eq('object_type', q.type)
+          .eq('object_id', q.id)
+          .order('is_title_image', { ascending: false })
+          .order('display_order', { ascending: true })
+          .limit(1);
+
+        if (imgLinks?.length) {
+          const doc = (imgLinks[0] as any).documents;
+          if (doc?.file_path && String(doc.mime_type || '').startsWith('image/')) {
+            const { getCachedSignedUrl } = await import('@/lib/imageCache');
+            heroImageUrl = await getCachedSignedUrl(doc.file_path);
+            if (heroImageUrl) break;
+          }
+        }
+      }
+
+      return { unit: unit as any, project: project as any, heroImageUrl };
     },
     enabled: !!unitId,
     staleTime: 5 * 60 * 1000,
@@ -118,11 +149,11 @@ export function useProjectUnitExpose({
       year_built: project.construction_year ?? 0,
       monthly_rent: unit.rent_net ?? unit.current_rent ?? 0,
       units_count: 1,
-      hero_image_url: null,
+      hero_image_url: data?.heroImageUrl ?? null,
       heating_type: project.heating_type || null,
       energy_source: project.energy_source || null,
     };
-  }, [unit, project]);
+  }, [unit, project, data?.heroImageUrl]);
 
   // Gross yield
   const grossYield = useMemo(() => {
