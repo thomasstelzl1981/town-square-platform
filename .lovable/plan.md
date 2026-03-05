@@ -1,164 +1,157 @@
 
 
-# Armstrong Workspace — Vollständige Systemanalyse Zone 2
+# Kostenoptimierung Dokumentenverarbeitung — Neue Denkrichtung
 
-## Architektur-Übersicht (Ist-Zustand)
+## Das eigentliche Problem
+
+Aktuell wird **jedes Dokument** mit dem teuersten Modell verarbeitet: **Gemini 2.5 Pro** ($1.25/M Input, $5.00/M Output). Das ist so, als wuerde man fuer jeden Brief den teuersten Anwalt engagieren — egal ob es eine Werbebroschure oder ein Kaufvertrag ist.
+
+DeepSeek faellt wegen DSGVO aus. Aber es gibt **zwei Hebel**, die zusammen fast die gleiche Ersparnis bringen — und DSGVO-konform bleiben:
+
+---
+
+## Hebel 1: Modell-Tiering (sofort umsetzbar, -85% bis -95%)
+
+Das Lovable AI Gateway bietet **drei Gemini-Stufen**, alle EU-konform:
+
+| Modell | Input/M | Output/M | Faktor vs. Pro | Geeignet fuer |
+|--------|---------|----------|---------------|---------------|
+| **Gemini 2.5 Pro** | $1.25 | $5.00 | 1x (teuer) | Komplexe WEG-Abrechnungen, 50-Seiten-Vertraege |
+| **Gemini 2.5 Flash** | $0.15 | $0.60 | ~8x guenstiger | Standard-Dokumente (Rechnungen, Policen, Mietvertraege) |
+| **Gemini 2.5 Flash Lite** | $0.04 | $0.15 | ~30x guenstiger | Einfache Briefe, E-Mails, Kontoauszuege |
+
+### Kostenvergleich fuer 70.000 PDFs
+
+| Strategie | Kosten | Ersparnis vs. aktuell |
+|-----------|--------|-----------------------|
+| **Aktuell**: Alles mit Pro | ~$2.000 | — |
+| **Tiered**: 10% Pro, 60% Flash, 30% Flash Lite | ~$280 | **-86%** |
+| **DeepSeek** (hypothetisch) | ~$186 | -91% |
+
+**Das Tiering bringt fast die gleiche Ersparnis wie DeepSeek — ohne DSGVO-Risiko.**
+
+### Wie funktioniert das Routing?
+
+Der Extractor prueft vor dem AI-Call:
+- **Dateigröße < 100KB** oder **MIME = text/plain** → Flash Lite
+- **Dateiname enthaelt** "WEG", "Abrechnung", "Teilungserklaerung", ">20 Seiten" → Pro
+- **Alles andere** (Rechnungen, Policen, Standard-Vertraege) → Flash
+
+Das ist eine reine Konfigurations-Aenderung in `sot-storage-extractor` und `sot-document-parser` — keine neue Architektur noetig.
+
+---
+
+## Hebel 2: Lazy Extraction (On-Demand statt Bulk)
+
+Aktuell: Alle 70.000 PDFs werden sofort komplett ausgelesen. Aber ein Kunde arbeitet typischerweise nur mit 10-20% seiner Dokumente aktiv.
+
+### Neues Konzept: Dreistufige Indexierung
 
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                    ARMSTRONG WORKSPACE (Zone 2)                      │
-├──────────────┬───────────────────────┬──────────────────────────────┤
-│ ProjectsSidebar │    Chat Column       │     ContextPanel            │
-│ ─ Projekte     │ ─ Orb (4 States)     │ ─ Aktiver Kontext           │
-│ ─ Freier Chat  │ ─ SSE Streaming      │ ─ Projekt-Info              │
-│ ─ CRUD         │ ─ Voice (PTT+TTS)    │ ─ EntityLinker              │
-│                │ ─ Doc Upload (50MB)  │ ─ Task-Liste CRUD           │
-│                │ ─ Slash-Commands     │ ─ Memory Snippets CRUD      │
-│                │ ─ Data-Mode Toggle   │ ─ Dashboard Fallback        │
-└──────────────┴───────────────────────┴──────────────────────────────┘
-        │                   │                        │
-        ▼                   ▼                        ▼
-  armstrong_projects   sot-armstrong-advisor    Lokaler State
-  (DB: CRUD)           (Edge: 4541 Zeilen)     (kein DB-Read)
-                            │
-                     ┌──────┴──────┐
-                     │  LÜCKE #1   │
-                     │ Kein Zugriff│
-                     │ auf Project │
-                     │ Memory/Tasks│
-                     └─────────────┘
+Stufe 1: METADATA-SCAN (kostenlos, sofort)
+─────────────────────────────────────────
+Dateiname, Dateityp, Groesse, Ordnerstruktur
+→ Reicht fuer Sortierung und Uebersicht
+→ Armstrong weiss: "Im Ordner Immobilien/Berlin liegen 47 PDFs"
+
+Stufe 2: LIGHT-EXTRACT (Flash Lite, ~$0.001/Dok)
+─────────────────────────────────────────
+Nur erste Seite lesen → Dokumenttyp + 3-5 Schluesselfelder
+→ Armstrong weiss: "Das ist ein Mietvertrag, Mieter Mueller, 850€ kalt"
+→ Kostet fuer 70.000 Docs: ~$70 statt ~$2.000
+
+Stufe 3: DEEP-EXTRACT (Flash/Pro, on-demand)
+─────────────────────────────────────────
+Komplette Extraktion — nur wenn User/Armstrong es braucht
+→ Trigger: User oeffnet Dokument, Armstrong braucht Details
+→ Kostet pro Dok: $0.003-$0.029 je nach Komplexitaet
 ```
 
-## Was funktioniert
+### Warum das funktioniert
 
-| Feature | Status | Details |
-|---------|--------|---------|
-| Chat-Isolation per Projekt | ✅ Client | Map-Cache im useRef, wechselt bei Projektwechsel |
-| Chat-Persistenz | ✅ Backend | `armstrong_chat_sessions` mit `project_id` FK |
-| SSE Streaming | ✅ EXPLAIN+DRAFT | Token-by-Token Rendering |
-| Data-Mode Toggle | ✅ Frontend→Backend | `data_mode: tenant/general` im System-Prompt |
-| Project CRUD | ✅ Vollständig | Titel, Ziel, Status, linked_entities, memory, tasks |
-| Memory Snippets | ✅ UI-CRUD | 4 Typen: Entscheidung, Annahme, Präferenz, Notiz |
-| Task-Liste | ✅ UI-CRUD | Add, toggle done, delete |
-| Entity Linker | ✅ UI | Immobilien + Kontakte verknüpfen via Combobox |
-| Slash-Commands | ✅ | Kontextsensitiv nach Modul, greift auf armstrongManifest |
-| Voice (STT) | ✅ | ElevenLabs Scribe + Browser-Fallback via usePushToTalk |
-| Voice (TTS) | ✅ | ElevenLabs via `elevenlabs-tts` + Browser-Fallback |
-| Doc Upload | ✅ | 50MB, 40+ Formate, Magic Intake Detection |
-| Onboarding | ✅ | Zeigt sich bei leerem Chat ohne aktives Projekt |
-| 200+ Actions | ✅ | Intent-Klassifizierung → EXPLAIN/DRAFT/ACTION |
-| Orb-States | ✅ | idle/thinking/working/speaking korrekt verdrahtet |
+Wenn ein Kunde 70.000 PDFs hat, wird er in den ersten Monaten vielleicht 5.000-10.000 davon aktiv nutzen. Die restlichen 60.000 brauchen nur Stufe 1+2 (Metadaten + Typ-Erkennung).
 
-## Kritische Lücken
+**Kosten-Szenario mit Lazy Extraction:**
 
-### LÜCKE 1 — Armstrong hat KEIN Gedächtnis (P0)
+| Phase | Dokumente | Methode | Kosten |
+|-------|-----------|---------|--------|
+| Sofort: Alle 70.000 scannen | 70.000 | Stufe 1 (Metadaten) | $0 |
+| Sofort: Alle 70.000 light-extracten | 70.000 | Stufe 2 (Flash Lite, 1 Seite) | ~$70 |
+| Laufend: Aktiv genutzte Docs | ~10.000 | Stufe 3 (Flash/Pro) | ~$40-100 |
+| **Gesamt im ersten Monat** | | | **~$110-170** |
 
-**Das Kernproblem:** Die Edge Function `sot-armstrong-advisor` liest **niemals** die `armstrong_projects`-Tabelle. 
+Verglichen mit aktuell ~$2.000 fuer sofortige Komplett-Extraktion.
 
-Das bedeutet:
-- **Memory Snippets** → Armstrong weiß NICHTS von gespeicherten Entscheidungen, Annahmen, Präferenzen
-- **Task-Liste** → Armstrong kennt keine offenen Aufgaben des Projekts
-- **Linked Entities** → Armstrong weiß nicht, welche Immobilien/Kontakte zum Projekt gehören
-- **Projekt-Ziel** → Armstrong kennt nicht mal das Projektziel
+---
 
-Der User sieht Memory/Tasks/Entities im ContextPanel (rechte Spalte), aber die KI hat **null Zugriff** darauf. Das `project_id` wird zwar gesendet und geloggt, aber nie genutzt um Projektdaten zu laden.
+## Technische Umsetzung — Was sich aendert
 
-**Fix:** In `sot-armstrong-advisor/index.ts` vor dem AI-Call:
-1. `armstrong_projects` laden wo `id = project_id`
-2. `memory_snippets`, `task_list`, `linked_entities`, `goal` in den System-Prompt injizieren
-3. Optional: Linked Entity Details (Immobilien-Adresse, Kontakt-Name) nachladen
+### 1. Model-Router in `sot-storage-extractor` und `sot-document-parser`
 
-### LÜCKE 2 — Chat-Historie geht bei Page Reload verloren (P0)
+Statt hardcoded `model: "google/gemini-2.5-pro"` eine Funktion:
 
-Die Chat-Isolation nutzt nur einen **In-Memory Map-Cache** (`useRef<Map>`). Bei Page-Reload sind alle Nachrichten weg.
-
-Die Sessions werden zwar in `armstrong_chat_sessions` gespeichert, aber der Frontend-Hook **liest sie nie zurück**. Es gibt keinen `loadSessionMessages(projectId)` Call.
-
-**Fix:** In `useArmstrongAdvisor.ts`:
-1. Bei Projektwechsel: `armstrong_chat_sessions` abfragen wo `project_id = X`
-2. Messages aus DB laden und in den Cache setzen
-3. Beim Start: letzte Session pro Projekt laden
-
-### LÜCKE 3 — data_mode hat keine echte Auswirkung (P1)
-
-`data_mode` wird korrekt gesendet und erscheint im System-Prompt als Text:
-```
-- Datenmodus: Allgemein (kein Zugriff auf Tenant-Daten)
+```text
+selectModel(file) → {
+  if textOnly oder < 100KB         → "google/gemini-2.5-flash-lite"
+  if complex (WEG, >20 Seiten)     → "google/gemini-2.5-pro"
+  else                              → "google/gemini-2.5-flash"
+}
 ```
 
-Aber die Edge Function ändert ihr Verhalten **nicht**:
-- Entity-Kontext wird trotzdem geladen (egal ob `general`)
-- DB-Queries für Actions laufen trotzdem
-- Es gibt keine Logik `if (data_mode === 'general') skip entity loading`
+Aenderung in: `sot-storage-extractor/index.ts` (Zeile 380: model-Parameter), `sot-document-parser/index.ts`
 
-**Fix:** In der Edge Function: Entity-Context-Loading und DB-Queries skippen wenn `data_mode === 'general'`.
+### 2. Light-Extract-Modus fuer Stufe 2
 
-### LÜCKE 4 — Kein Wissensabruf aus DMS/StorageX (P1)
+Neuer Parameter `extractionDepth: "light" | "full"`:
+- **light**: Nur erste Seite senden, verkuerzter Prompt ("Nenne Dokumenttyp und 5 Schluesselfelder"), Flash Lite
+- **full**: Wie bisher, komplettes Dokument
 
-Armstrong kann Dokumente **uploaden und parsen** (via `useArmstrongDocUpload`), aber hat **keinen proaktiven Zugriff** auf bereits gespeicherte Dokumente im DMS.
+Aenderung in: `sot-storage-extractor/index.ts` (process-batch Action)
 
-Wenn ein Nutzer fragt "Was steht in meinem Mietvertrag?", kann Armstrong:
-- ❌ Nicht im DMS suchen
-- ❌ Nicht auf `document_chunks` zugreifen (Embedding-Suche)
-- ❌ Nicht auf `tenant-documents` Storage zugreifen
+### 3. On-Demand Deep-Extract Trigger
 
-Die Infrastruktur existiert (`sot-storage-extract`, `sot-embedding-pipeline`), ist aber nicht an den Advisor angebunden.
+Wenn Armstrong ein Dokument braucht und nur Stufe-2-Daten vorliegen → automatischer Deep-Extract:
 
-### LÜCKE 5 — Proaktive Aufgaben-Erstellung fehlt (P2)
+```text
+Armstrong fragt: "Was steht im Mietvertrag Mueller?"
+→ searchDocumentChunks() findet Light-Extract
+→ Wenn nur Stufe 2: automatisch Stufe 3 triggern
+→ Ergebnis in document_chunks speichern
+→ Naechste Anfrage: Daten sofort da (kein erneuter AI-Call)
+```
 
-Armstrong kann im Chat Aufgaben vorschlagen, aber **nicht selbst** in die `task_list` des Projekts schreiben. Die Actions `ARM.MOD00.CREATE_TASK` existieren, aber sie schreiben in ein separates Widget-System, nicht in `armstrong_projects.task_list`.
+Aenderung in: `sot-armstrong-advisor/index.ts` (DMS-Search-Logik)
 
-## Dokumentation: Wie Armstrong heute Wissen sammelt
+### 4. extraction_depth Feld in document_chunks
 
-| Wissensquelle | Zugriff | Qualität |
-|---------------|---------|----------|
-| System-Prompt (statisch) | ✅ Immer | Kern-Identität, Governance, Prioritäten |
-| Modul-Kontext (Route) | ✅ Immer | Aktuelles Modul + Entity-Typ |
-| Entity-Daten (DB-Query) | ✅ Bei Entity aktiv | Immobilien-Details, Finance-Case, etc. |
-| Conversation History | ✅ Letzte 10 Msgs | In-Session Memory, geht bei Reload verloren |
-| Knowledge Base (kb_items) | ✅ Falls vorhanden | Brand-spezifisches Wissen (6 Items/Brand) |
-| Projekt-Memory | ❌ FEHLT | Memory Snippets werden nie gelesen |
-| Projekt-Tasks | ❌ FEHLT | Task-Liste wird nie gelesen |
-| Projekt-Entities | ❌ FEHLT | Linked Entities werden nie gelesen |
-| DMS/Dokumente | ❌ FEHLT | Kein Retrieval aus gespeicherten Docs |
-| Persisted Sessions | ❌ FEHLT (Read) | Werden geschrieben, nie geladen |
+Neues Feld `extraction_depth: 'metadata' | 'light' | 'full'` um zu tracken, welche Stufe ein Dokument hat.
 
-## Implementierungsplan
+Aenderung: DB-Migration (neues Feld)
 
-### Phase 1: Armstrong Gedächtnis aktivieren (P0)
+---
 
-**A. Projekt-Kontext in Edge Function laden**
-- Datei: `supabase/functions/sot-armstrong-advisor/index.ts`
-- Neue Funktion: `loadProjectContext(supabase, projectId)`
-- Lädt: `armstrong_projects` → `memory_snippets`, `task_list`, `linked_entities`, `goal`
-- Injiziert als `PROJEKT-KONTEXT:` Block im System-Prompt
-- Für linked_entities: Nachladen der Basis-Details (Adresse, Name) aus `properties`/`contacts`
+## Zusammenfassung: Beides kombiniert
 
-**B. Chat-Historie aus DB laden**
-- Datei: `src/hooks/useArmstrongAdvisor.ts`
-- Neue Funktion: `loadPersistedSession(projectId)`
-- Bei Projektwechsel: `armstrong_chat_sessions` query, Messages in Cache laden
-- Initiale Welcome-Message nur wenn keine persisted Session existiert
+| Massnahme | Einsparung | DSGVO | Aufwand |
+|-----------|-----------|-------|---------|
+| **Modell-Tiering** (Flash/Flash Lite statt Pro) | -85% bis -95% | Konform (Lovable Gateway) | 1 Tag |
+| **Lazy Extraction** (Light + On-Demand) | -90% bis -95% | Konform | 2-3 Tage |
+| **Beides kombiniert** | **-95% bis -98%** | Konform | 3-4 Tage |
 
-### Phase 2: data_mode enforcing (P1)
+**70.000 PDFs: Von ~$2.000 auf ~$70-170 — ohne DeepSeek, ohne DSGVO-Risiko.**
 
-**C. General-Mode Skip-Logic**
-- Datei: `supabase/functions/sot-armstrong-advisor/index.ts`
-- Wenn `data_mode === 'general'`: Entity-Context-Loading skippen, keine DB-Queries für Tenant-Daten
-- System-Prompt anpassen: "Du hast in diesem Modus keinen Zugriff auf Nutzerdaten"
+Armstrong wird trotzdem alles verstehen: Stufe 2 gibt ihm genuegend Kontext fuer die meisten Fragen, und Stufe 3 wird automatisch nachgeladen wenn er tiefere Details braucht.
 
-### Phase 3: DMS-Retrieval anbinden (P2)
+---
 
-**D. Embedding-basierte Dokumentensuche**
-- Datei: `supabase/functions/sot-armstrong-advisor/index.ts`
-- Neue Funktion: `searchDocumentChunks(supabase, tenantId, query, limit)`
-- Nutzt `document_chunks` Tabelle mit Embedding-Similarity-Search
-- Wird bei EXPLAIN-Intent getriggert wenn Nachricht auf Dokumente referenziert
+## Betroffene Dateien
 
-### Betroffene Dateien
-
-| Datei | Änderung | Phase |
-|-------|----------|-------|
-| `supabase/functions/sot-armstrong-advisor/index.ts` | Projekt-Kontext laden, data_mode enforcing, DMS-Retrieval | 1, 2, 3 |
-| `src/hooks/useArmstrongAdvisor.ts` | Chat-Sessions aus DB laden bei Projektwechsel | 1 |
+| Datei | Aenderung |
+|-------|-----------|
+| `supabase/functions/sot-storage-extractor/index.ts` | Model-Router + Light-Extract-Modus |
+| `supabase/functions/sot-document-parser/index.ts` | Model-Router (Flash/Pro/Lite Auswahl) |
+| `supabase/functions/sot-armstrong-advisor/index.ts` | On-Demand Deep-Extract bei fehlender Tiefe |
+| DB-Migration | `extraction_depth` Feld in `document_chunks` |
+| `supabase/functions/sot-invoice-parse/index.ts` | Model → Flash statt Pro |
+| `supabase/functions/sot-nk-beleg-parse/index.ts` | Model → Flash statt Pro |
 
