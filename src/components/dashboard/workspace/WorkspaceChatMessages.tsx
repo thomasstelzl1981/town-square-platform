@@ -9,10 +9,7 @@ import { ArmstrongOrb, type OrbState } from '@/components/chat/ArmstrongOrb';
 import { ArmstrongChipBar } from '@/components/chat/ArmstrongChipBar';
 import { WorkspaceOnboarding } from './WorkspaceOnboarding';
 
-interface Message {
-  id: string;
-  [key: string]: any;
-}
+import type { ChatMessage } from '@/hooks/useArmstrongAdvisor';
 
 interface Props {
   messages: Message[];
