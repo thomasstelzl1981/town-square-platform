@@ -102,7 +102,7 @@
 6. `TenancyKPIRow.tsx` — Leerstandsquote, Soll-Ist (~60 Z)
 **Ziel:** Orchestrator ~180 Z
 
-#### R-12: UnitDetailPage.tsx (708 Z, MOD-13)
+#### R-12: UnitDetailPage.tsx (708 Z, MOD-13) ✅ DONE — 708→~150 Z, 6 neue Dateien in src/components/projekte/unit/
 **Pfad:** `src/pages/portal/projekte/UnitDetailPage.tsx`  
 **Extraktionen → `src/components/projekte/unit/`:**
 1. `unitTypes.ts` — UnitData, PricingInfo
