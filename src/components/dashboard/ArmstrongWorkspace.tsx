@@ -124,7 +124,11 @@ export function ArmstrongWorkspace() {
   }, [voice, advisor]);
 
   const handleSpeak = useCallback((text: string) => {
-    voice.isSpeaking ? voice.stopSpeaking() : voice.speakResponse(text);
+    if (voice.isSpeaking) {
+      voice.stopSpeaking();
+    } else {
+      voice.speakResponse(text);
+    }
   }, [voice]);
 
   // Multi-file upload handler

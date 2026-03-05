@@ -49,7 +49,7 @@ serve(async (req) => {
       .select()
       .single();
 
-    let enrichmentData: Record<string, unknown> = { ...staging.enrichment_data };
+    const enrichmentData: Record<string, unknown> = { ...staging.enrichment_data };
     let qualityScore = staging.quality_score || 50;
 
     // ========================================

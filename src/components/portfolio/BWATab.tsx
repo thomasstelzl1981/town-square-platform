@@ -156,7 +156,7 @@ export function BWATab({ propertyIds, veName, tenantId }: BWATabProps) {
     // Darlehen einzeln
     const activeFinancing = data.financing.filter((f: any) => f.is_active !== false);
     const darlehen = activeFinancing.map((f: any) => {
-      let zins = f.annual_interest > 0 ? f.annual_interest : (f.current_balance && f.interest_rate ? f.current_balance * f.interest_rate / 100 : 0);
+      const zins = f.annual_interest > 0 ? f.annual_interest : (f.current_balance && f.interest_rate ? f.current_balance * f.interest_rate / 100 : 0);
       return {
         id: f.id,
         bankName: f.bank_name || 'Darlehen',

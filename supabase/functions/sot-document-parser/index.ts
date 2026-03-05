@@ -705,7 +705,7 @@ serve(async (req) => {
     }
 
     // ── Normalize: support both old format (data.properties/contacts) and new (records) ──
-    let records = parsedData.records || [];
+    const records = parsedData.records || [];
     if (!records.length && parsedData.data) {
       const d = parsedData.data as Record<string, unknown[]>;
       for (const key of ['properties', 'contacts', 'financing']) {

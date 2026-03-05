@@ -134,7 +134,7 @@ export function calculateSlaCompliance(assignments: ServiceAssignment[]): {
   if (total === 0) return { total: 0, onTime: 0, late: 0, complianceRate: 100, averageCostDeviation: 0 };
 
   let onTime = 0;
-  let costDeviations: number[] = [];
+  const costDeviations: number[] = [];
 
   for (const a of completed) {
     if (a.scheduledDate && a.completedAt) {

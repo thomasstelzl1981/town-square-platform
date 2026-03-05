@@ -278,7 +278,7 @@ async function assembleBody(
   // Build HTML version
   const userBodyHtml = opts.bodyHtml || `<pre style="font-family:inherit;white-space:pre-wrap;">${escapeHtml(opts.bodyText)}</pre>`;
   
-  let htmlParts = [userBodyHtml];
+  const htmlParts = [userBodyHtml];
   
   if (signatureText) {
     htmlParts.push(`<div style="margin-top:16px;padding-top:12px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:13px;white-space:pre-wrap;">${escapeHtml(signatureText)}</div>`);

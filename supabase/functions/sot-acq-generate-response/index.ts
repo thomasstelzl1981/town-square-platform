@@ -20,7 +20,7 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    let systemPrompt = `Du bist ein professioneller Immobilien-Akquisemanager. Schreibe eine höfliche und professionelle E-Mail auf Deutsch.
+    const systemPrompt = `Du bist ein professioneller Immobilien-Akquisemanager. Schreibe eine höfliche und professionelle E-Mail auf Deutsch.
     
 Die E-Mail sollte:
 - Kurz und prägnant sein (max. 150 Wörter)

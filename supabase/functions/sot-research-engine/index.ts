@@ -711,7 +711,7 @@ serve(async (req) => {
     }
 
     const providerResults = await Promise.all(providerPromises);
-    let allResults: ContactResult[] = providerResults.flat();
+    const allResults: ContactResult[] = providerResults.flat();
 
     console.log(
       `Phase 1 complete: ${allResults.length} results from ${providersUsed.join(", ")}`

@@ -49,7 +49,7 @@ export function ContactImportPipeline({
   const toggleOne = (idx: number) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      next.has(idx) ? next.delete(idx) : next.add(idx);
+      if (next.has(idx)) { next.delete(idx); } else { next.add(idx); }
       return next;
     });
   };
@@ -73,7 +73,8 @@ export function ContactImportPipeline({
         .single();
       const tenantId = (profile as any)?.org_id;
 
-      let imported = 0, skipped = 0, updated = 0;
+      let imported = 0, skipped = 0;
+      const updated = 0;
 
       if (target === 'contact_staging') {
         // Direct insert into staging for Desk flows

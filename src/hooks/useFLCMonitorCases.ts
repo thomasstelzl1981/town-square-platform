@@ -71,7 +71,7 @@ export function useFLCMonitorCases() {
       // Fetch finance_packages for SUBMISSION_GATE (A4 fix)
       const requestIds = (requests as any[]).map((r: any) => r.id);
       
-      let packagesMap: Record<string, string> = {};
+      const packagesMap: Record<string, string> = {};
       const { data: packages } = await supabase
         .from('finance_packages' as any)
         .select('finance_request_id, status')
@@ -100,7 +100,7 @@ export function useFLCMonitorCases() {
         })
         .filter(Boolean);
 
-      let commissionsMap: Record<string, any> = {};
+      const commissionsMap: Record<string, any> = {};
       if (mandateIds.length > 0) {
         const { data: commissions } = await supabase
           .from('commissions' as any)
@@ -123,7 +123,7 @@ export function useFLCMonitorCases() {
         })
         .filter(Boolean);
 
-      let managersMap: Record<string, string> = {};
+      const managersMap: Record<string, string> = {};
       if (managerIds.length > 0) {
         const { data: managers } = await supabase
           .from('profiles')
