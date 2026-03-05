@@ -1,100 +1,135 @@
 
-# Refactoring-Masterplan: TSX-Monolithen → Modulare Architektur
 
-> **Datum**: 2026-03-05 (aktualisiert)
-> **Status**: Wave 1 ✅ (R-1–R-6) — Wave 2 Tranche 1 ✅ (R-7–R-10) — Tranche 2 ✅ (R-11–R-14) — Tranche 3 ✅ (R-15–R-24) — Tranche 4 ✅ (R-25–R-35)
-> **Methode**: Bewährtes Orchestrator + Sub-Components Pattern
+# Analyse: KI-Telefonassistent — ElevenLabs vs. Twilio TwiML Dual-Path-Problem
 
----
+## Befund
 
-## Gesamtstatistik
+### Architektur-Übersicht: Es existieren ZWEI parallele Telefon-Pfade
 
-| Metrik | Wave 1 (done) | Wave 2 T1-T3 (done) | Wave 2 T4 (geplant) | Gesamt |
-|--------|--------------|---------------------|---------------------|--------|
-| Dateien | 6 | 18 | 11 | 35 |
-| Zeilen vorher | 5.530 | ~10.800 | ~4.900 | ~21.230 |
-| Zeilen nachher | ~1.350 | ~3.200 | ~1.320 | ~5.870 |
-| Reduktion | 76% | ~70% | ~73% | ~72% |
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│ PFAD A — Twilio TwiML (AKTIV auf allen Nummern)                    │
+│                                                                     │
+│  Anruf → sot-phone-inbound → <Say voice="Polly.Marlene">          │
+│        → <Gather speech> → sot-phone-converse                      │
+│        → Lovable AI Gateway (gemini-2.5-flash) → Text-Antwort      │
+│        → <Say voice="Polly.Marlene"> (Amazon Polly TTS!)           │
+│        → Loop bis Goodbye                                           │
+│                                                                     │
+│  Problem: Polly.Marlene = langsame, robotische Amazon-Stimme       │
+│           Kein ElevenLabs involviert!                                │
+│           Gather-Loop = langsam (STT→LLM→TTS pro Runde)            │
+└─────────────────────────────────────────────────────────────────────┘
 
----
+┌─────────────────────────────────────────────────────────────────────┐
+│ PFAD B — ElevenLabs Conversational AI (KONFIGURIERT aber INAKTIV)   │
+│                                                                     │
+│  sot-phone-agent-sync → Erstellt ElevenLabs Agent (✅ korrekt)     │
+│  → Stimme: Laura (FGY2WhTYpPnrIDTdsKH5)                            │
+│  → LLM: gemini-2.5-flash                                           │
+│  → ASR: ElevenLabs native                                          │
+│  → Turn-based conversation                                         │
+│                                                                     │
+│  ABER: sot-phone-provision setzt VoiceUrl auf sot-phone-inbound    │
+│  → Twilio ruft IMMER den TwiML-Pfad auf, nie ElevenLabs!           │
+│  → Der ElevenLabs Agent existiert, wird aber nie angerufen          │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-## Wave 1 — ABGESCHLOSSEN ✅
+### Kernproblem
 
-| # | Phase | Datei | Vorher | Nachher | Modul |
-|---|-------|-------|--------|---------|-------|
-| 1 | R-1 ✅ | FMEinreichung.tsx | 1039 | 295 | MOD-11 |
-| 2 | R-2 ✅ | ExposeDetail.tsx | 1008 | 299 | MOD-06 |
-| 3 | R-3 ✅ | Inbox.tsx | 976 | 180 | Admin |
-| 4 | R-4 ✅ | KontexteTab.tsx | 923 | 214 | MOD-04 |
-| 5 | R-5 ✅ | AnfrageFormV2.tsx | 904 | 183 | MOD-07 |
-| 6 | R-6 ✅ | Users.tsx | 680 | 178 | Admin |
+Die `sot-phone-provision` Edge Function (Zeile 320) setzt bei jedem Nummernkauf:
+```
+VoiceUrl: ${webhookBaseUrl}/sot-phone-inbound
+```
 
----
+Das bedeutet: **Alle eingehenden Anrufe gehen an `sot-phone-inbound`**, welches den alten Twilio `<Say>`/`<Gather>` Loop verwendet mit **Amazon Polly Marlene** (robotisch, langsam). Der ElevenLabs-Agent wird zwar via `sot-phone-agent-sync` erstellt und konfiguriert, aber **nie tatsächlich mit der Twilio-Nummer verbunden**.
 
-## Wave 2 — Tranche 1 ✅ (R-7–R-10)
+Der `sot-phone-agent-sync` importiert die Nummer zwar in ElevenLabs (Schritt 2: `import_number`) und weist den Agent zu — aber Twilio ruft trotzdem `sot-phone-inbound` auf, weil die `VoiceUrl` nicht geändert wird.
 
-| # | Phase | Datei | Vorher | Nachher | Modul |
-|---|-------|-------|--------|---------|-------|
-| 7 | R-7 ✅ | EmailTab.tsx | 1506 | ~180 | MOD-02 |
-| 8 | R-8 ✅ | PortfolioTab.tsx | 1511 | ~200 | MOD-04 |
-| 9 | R-9 ✅ | BriefTab.tsx | 1012 | ~200 | MOD-02 |
-| 10 | R-10 ✅ | GeldeingangTab.tsx | 1018 | ~200 | MOD-04 |
+### Symptome die der User beschreibt
 
-## Wave 2 — Tranche 2 ✅ (R-11–R-14)
+1. **"Ganz langsame Begrüßung"** → Amazon Polly Marlene TTS ist langsam
+2. **"Wiederholt sich"** → Der Gather-Loop wartet auf STT, holt LLM-Antwort, spricht sie mit Polly vor, wiederholt den Gather → jede Runde dauert 5-10s
+3. **"Ein Gespräch findet nicht statt"** → Die Latenz zwischen Sprechen→Antwort ist so hoch (STT + LLM + TTS), dass der Anrufer auflegt oder der Timeout greift
+4. **"CommPro-Desk lädt nicht"** → Muss geprüft werden (wahrscheinlich ein Runtime-Fehler)
 
-| # | Phase | Datei | Vorher | Nachher | Modul |
-|---|-------|-------|--------|---------|-------|
-| 11 | R-11 ✅ | TenancyTab.tsx | 904 | ~200 | MOD-04 |
-| 12 | R-12 ✅ | UnitDetailPage.tsx | 708 | ~150 | MOD-13 |
-| 13 | R-13 ✅ | TileCatalog.tsx | 646 | ~150 | Admin |
-| 14 | R-14 ✅ | ManagerFreischaltung.tsx | 635 | ~140 | Admin |
+### CommPro-Desk (Zone 1) Problem
 
-## Wave 2 — Tranche 3 ✅ (R-15–R-24)
-
-| # | Phase | Datei | Vorher | Nachher | Modul | Neue Dateien |
-|---|-------|-------|--------|---------|-------|-------------|
-| 15 | R-15 ✅ | PropertyDetailPage.tsx | 628 | ~200 | MOD-04 | PropertyDetailHeader, PropertyTabRouter |
-| 16 | R-16 ✅ | CaringProviderDetail.tsx | 599 | ~160 | MOD-22 | ProviderGallery, ProviderProfileCard, ProviderServicesCard, ProviderBookingSection |
-| 17 | R-17 ✅ | FMFinanzierungsakte.tsx | 596 | ~200 | MOD-11 | AkteKaufySearch |
-| 18 | R-18 ✅ | MasterTemplates.tsx | 585 | ~140 | Admin | 3 sub-components |
-| 19 | R-19 ✅ | OrganizationDetail.tsx | 581 | ~160 | Admin | 3 sub-components |
-| 20 | R-20 ✅ | FMFallDetail.tsx | 579 | ~160 | MOD-11 | FallHeaderBlock, FallContentBlocks |
-| 21 | R-21 ✅ | LeadManagerKampagnen.tsx | 576 | ~100 | MOD-10 | KampagnenKPIs, KampagnenLeadInbox, KampagnenCampaignList, KampagnenCreator |
-| 22 | R-22 ✅ | LeadPool.tsx | 560 | ~140 | Admin | 3 sub-components |
-| 23 | R-23 ✅ | ObjekteingangDetail.tsx | 539 | ~200 | MOD-12 | ObjektKPIRow, ObjektBasisdaten |
-| 24 | R-24 ✅ | Oversight.tsx | 531 | ~140 | Admin | 3 sub-components |
+Der `CommProDesk.tsx` selbst ist strukturell korrekt. Mögliche Ursachen:
+- `useBrandKnowledge` Hook-Fehler (in `BrandAssistantPanel`)
+- `OperativeDeskShell` Rendering-Problem
+- Braucht Browser-Test zur Diagnose
 
 ---
 
-## Wave 2 — Tranche 4 ✅ (R-25–R-35)
+## Lösungsplan
 
-| # | Phase | Datei | Vorher | Nachher | Modul | Neue Dateien |
-|---|-------|-------|--------|---------|-------|-------------|
-| R-25 | ✅ | Agreements.tsx | 506 | ~90 | Admin | AgreementsTemplateTable, AgreementsConsentLog |
-| R-26 | ✅ | Dashboard.tsx (Admin) | 491 | ~100 | Admin | AdminKPIGrid, AdminSessionCard |
-| R-27 | ✅ | Delegations.tsx | 486 | ~100 | Admin | DelegationTable |
-| R-28 | ✅ | ArmstrongWorkspace.tsx | 479 | ~180 | MOD-00 | WorkspaceChatHeader, WorkspaceChatMessages, WorkspaceChatInput |
-| R-29 | ✅ | FMDashboard.tsx | 472 | ~83 | MOD-11 | FMZinsTickerWidget, FMMandateCards, FMProfileEditSheet |
-| R-30 | ✅ | VerwaltungTab.tsx | 456 | ~150 | MOD-04 | VerwaltungContextGrid, VerwaltungPropertyAccordion, VerwaltungGesamtergebnis |
-| R-31 | ✅ | ProjectDetailPage.tsx | 456 | ~120 | MOD-13 | ProjectDetailHeader, ProjectUnitsTable, ProjectInfoTabs |
-| R-32 | ✅ | SanierungTab.tsx | 451 | ~89 | MOD-04 | SanierungDemoDetail |
-| R-33 | ✅ | MasterTemplatesImmo.tsx | 444 | ~60 | Admin | ImmoAkteBlockView, immoAkteBlocks.ts |
-| R-34 | ⬜ | StorageFileManager.tsx | 434 | — | MOD-03 | Skipped — already modular (5 views) |
-| R-35 | ✅ | RolesManagement.tsx | 419 | ~30 | Admin | RolesCatalogTab, RolesMatrixTab, RolesGovernanceTab |
+### Phase 1: ElevenLabs-Pfad aktivieren (Edge Functions)
 
-### Ergebnis
+**Ziel**: Wenn eine Nummer bei ElevenLabs importiert und einem Agent zugewiesen ist, soll ElevenLabs die Anrufe direkt verarbeiten — NICHT der TwiML-Pfad.
 
-- **33 von 35 Dateien** refactored (R-28 ArmstrongWorkspace + R-34 StorageFileManager waren optional, R-28 jetzt done)
-- **~80+ Sub-Components** extrahiert
-- **Durchschnittliche Reduktion**: ~65%
+#### 1a. `sot-phone-provision` anpassen
+Nach dem Nummernkauf bei Twilio soll automatisch `sot-phone-agent-sync` mit `action: 'sync'` aufgerufen werden. Wenn der Sync erfolgreich ist (Agent + Nummer bei ElevenLabs registriert), wird die Twilio-Nummer so konfiguriert, dass ElevenLabs die Anrufe erhält.
+
+**Aber**: ElevenLabs Conversational AI übernimmt die Nummer komplett — wenn die Nummer bei ElevenLabs importiert ist und ein Agent zugewiesen ist, routet ElevenLabs den Anruf direkt. Die `VoiceUrl` bei Twilio wird dann von ElevenLabs überschrieben.
+
+Das bedeutet: Der `sot-phone-agent-sync` macht das BEREITS richtig — das Problem ist, dass die **Reihenfolge** falsch ist:
+1. `sot-phone-provision` kauft Nummer → setzt VoiceUrl auf `sot-phone-inbound`
+2. User muss manuell "Sync" klicken im CommPro-Desk
+3. Erst dann wird die Nummer bei ElevenLabs importiert
+
+**Fix**: `sot-phone-provision` muss nach dem Kauf automatisch den ElevenLabs-Sync durchführen.
+
+#### 1b. `sot-phone-inbound` als Fallback behalten
+Falls ElevenLabs down ist oder die Nummer nicht importiert werden kann, soll der TwiML-Pfad als Fallback dienen — aber mit ElevenLabs TTS statt Polly:
+- `<Say>` ersetzen durch `<Play>` mit Audio von `elevenlabs-tts` Edge Function
+- Oder: Streaming-TTS via `<Stream>` Twilio Media Streams
+
+#### 1c. `sot-phone-converse` verbessern (Fallback-Pfad)
+Für den Fall, dass der TwiML-Pfad genutzt wird:
+- ElevenLabs TTS statt Polly.Marlene verwenden
+- Turbo-Modell für schnellere Antworten
+
+### Phase 2: CommPro-Desk reparieren + Freeze
+
+#### 2a. Browser-Test des CommPro-Desk
+- Navigiere zu `/admin/commpro-desk` und prüfe auf Fehler
+- Identifiziere den genauen Fehler (Hook-Fehler, Render-Fehler, etc.)
+
+#### 2b. Freeze für CommPro-Desk einführen
+Da der CommPro-Desk unter `src/pages/admin/desks/CommProDesk.tsx` und `src/components/admin/desks/commpro/*` liegt, gehört er zu Zone 1. Der Freeze muss in `infra_freeze.json` oder einer neuen Freeze-Datei für Zone 1 Desks eingetragen werden.
+
+### Phase 3: Freeze-Eintrag
+
+Neuer Eintrag in `infra_freeze.json`:
+```json
+"commpro_desk": { 
+  "frozen": true, 
+  "path": "src/pages/admin/desks/CommProDesk.tsx, src/components/admin/desks/commpro/*",
+  "reason": "Phone system stabilization — ElevenLabs integration fix"
+}
+```
 
 ---
 
-## Regeln
+## Betroffene Dateien
 
-1. **Keine funktionalen Änderungen** — Reine Extraktion
-2. **Keine DB-Änderungen** — Kein Migrations-Tool nötig
-3. **Keine neuen Routes** — Bestehende Routen bleiben
-4. **Module sofort re-freezen** nach Abschluss jeder Phase
-5. **TSX Creation Check** (Regel F) — vor jeder neuen Datei auf Duplikate prüfen
-6. **Zone Separation** (Regel G) — keine Cross-Zone-Imports
+| Datei | Zone | Frozen? | Aktion |
+|-------|------|---------|--------|
+| `supabase/functions/sot-phone-provision/index.ts` | Infra | **Ja (edge_functions)** | Auto-Sync nach Nummernkauf |
+| `supabase/functions/sot-phone-inbound/index.ts` | Infra | **Ja** | ElevenLabs TTS statt Polly |
+| `supabase/functions/sot-phone-converse/index.ts` | Infra | **Ja** | ElevenLabs TTS Fallback |
+| `spec/current/00_frozen/infra_freeze.json` | Spec | Nein | CommPro-Desk Freeze eintragen |
+
+**Erforderlich**: `UNFREEZE INFRA-edge_functions` um die Edge Functions zu reparieren.
+
+---
+
+## Zusammenfassung
+
+Das ElevenLabs-System ist **korrekt konfiguriert** (Agent-Sync, Knowledge Store, Voice-Settings) aber **nie aktiviert** — alle Anrufe laufen über den alten Twilio TwiML-Pfad mit Amazon Polly. Die Lösung ist:
+1. Auto-Sync nach Nummernkauf (ElevenLabs übernimmt Anruf-Routing)
+2. TwiML-Fallback mit ElevenLabs TTS statt Polly
+3. CommPro-Desk debuggen und freezing einführen
+
