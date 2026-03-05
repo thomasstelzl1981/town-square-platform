@@ -109,7 +109,7 @@ serve(async (req) => {
     // Generate guest token
     const guestToken = await createLiveKitToken(
       LIVEKIT_API_KEY, LIVEKIT_API_SECRET,
-      invite.invitee_email, call.livekit_room_name, 600
+      invite.invitee_email, call.livekit_room_name, 7200
     );
 
     const livekitUrl = Deno.env.get('LIVEKIT_URL') || '';
