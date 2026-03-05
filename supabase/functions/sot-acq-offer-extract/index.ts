@@ -270,7 +270,7 @@ serve(async (req) => {
       throw new Error('Failed to download document: ' + downloadError?.message);
     }
 
-    const documentContent = await readDocumentContent(fileData, doc.mime_type || '', doc.file_name);
+    const documentContent = await readDocumentContent(fileData, doc.mime_type || '', doc.file_name, LOVABLE_API_KEY);
 
     // AI Extraction
     const prompt = buildExtractionPrompt(documentContent, doc.file_name);

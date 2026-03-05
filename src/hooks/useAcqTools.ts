@@ -199,7 +199,10 @@ export function useStandaloneGeoMap() {
       });
 
       if (error) throw error;
-      return data as GeoMapResult;
+      
+      // The edge function returns { success, data } — extract the data
+      const result = data?.data || data;
+      return result as GeoMapResult;
     },
     onSuccess: () => {
       toast.success('GeoMap-Analyse abgeschlossen');

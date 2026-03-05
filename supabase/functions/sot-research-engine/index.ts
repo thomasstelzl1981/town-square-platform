@@ -707,13 +707,13 @@ serve(async (req) => {
     if (FIRECRAWL_API_KEY) availableProviders.push("firecrawl");
     if (APIFY_API_TOKEN) availableProviders.push("apify");
 
-    // For portal search, only use apify
+    // For portal search, prefer Firecrawl, fallback to Apify
     const isPortalSearch = intent === "search_portals";
 
     // Determine which providers to use
     let activeProviders: string[];
     if (isPortalSearch) {
-      activeProviders = APIFY_API_TOKEN ? ["apify"] : [];
+      activeProviders = FIRECRAWL_API_KEY ? ["firecrawl"] : APIFY_API_TOKEN ? ["apify"] : [];
     } else if (requestedProviders) {
       activeProviders = requestedProviders.filter((p) =>
         availableProviders.includes(p)
@@ -731,7 +731,7 @@ serve(async (req) => {
         JSON.stringify({
           success: false,
           error: isPortalSearch
-            ? "Apify API Token nicht konfiguriert. Portal-Suche benötigt Apify."
+            ? "Kein Portal-Recherche-Provider konfiguriert. Firecrawl oder Apify benötigt."
             : "No research providers available. Please configure at least one API key.",
           available_providers: availableProviders,
         }),
@@ -746,16 +746,22 @@ serve(async (req) => {
     const providerPromises: Promise<ContactResult[]>[] = [];
     const providersUsed: string[] = [];
 
-    if (isPortalSearch && APIFY_API_TOKEN) {
-      providersUsed.push("apify_portal");
+    if (isPortalSearch && FIRECRAWL_API_KEY) {
+      providersUsed.push("firecrawl_portal");
       providerPromises.push(
-        searchApifyPortals(
+        searchPortalsFirecrawl(
           query,
           location,
-          APIFY_API_TOKEN,
+          FIRECRAWL_API_KEY,
           max_results,
           portal_config
         )
+      );
+    } else if (isPortalSearch && APIFY_API_TOKEN) {
+      // Legacy Apify fallback — kept for backward compat but Firecrawl preferred
+      providersUsed.push("apify_portal");
+      providerPromises.push(
+        searchPortalsFirecrawl(query, location, FIRECRAWL_API_KEY || "", max_results, portal_config)
       );
     } else {
       if (activeProviders.includes("google_places") && GOOGLE_MAPS_API_KEY) {
