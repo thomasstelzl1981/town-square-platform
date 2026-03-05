@@ -211,7 +211,7 @@ serve(async (req) => {
       // Determine mime type from path
       const fileName = storagePath.split('/').pop() || 'document';
       const mimeType = fileName.endsWith('.pdf') ? 'application/pdf' : 'text/plain';
-      const documentContent = await readDocumentContent(fileData, mimeType, fileName);
+      const documentContent = await readDocumentContent(fileData, mimeType, fileName, LOVABLE_API_KEY);
 
       // AI Extraction
       const prompt = buildExtractionPrompt(documentContent, fileName);
