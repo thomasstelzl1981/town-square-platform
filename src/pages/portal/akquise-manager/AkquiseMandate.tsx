@@ -93,9 +93,9 @@ export default function AkquiseMandate() {
   // Hooks
   const { data: contacts = [] } = useContactStaging(activeMandateId || '');
   const bulkCreate = useBulkCreateStagingContacts();
-  const { data: sentMessages = [] } = useOutboundMsgs(activeMandateId || '');
-  const { data: templates = [] } = useTemplates2('outreach');
-  const bulkSend = useBulkSend2();
+  const { data: sentMessages = [] } = useAcqOutboundMessages(activeMandateId || '');
+  const { data: templates = [] } = useEmailTemplates('outreach');
+  const bulkSend = useBulkSendOutreach();
 
   const approvedContacts = contacts.filter(c => c.status === 'approved');
   const selectedApprovedContacts = approvedContacts.filter(c => selectedContactIds.has(c.id));
