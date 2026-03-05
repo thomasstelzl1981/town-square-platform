@@ -1,102 +1,79 @@
 
+Ziel: Den kompletten Flow stabil machen und dann als echten End-to-End-Smoke-Test prüfen: Magic Intake → Projektdatenblatt → Landingpage-Erstellung → Landingpage (inkl. Rechner/Exposé/Verlinkungen) → Veröffentlichung/Preview → Reset → Löschprüfung.
 
-# Fix: Landing Page "Projekt nicht gefunden" — Root Cause & Repair Plan
+Ist-Analyse (bereits geprüft):
+1) Projekt „Menden Living“ ist vorhanden, Landingpage `menden-living` existiert (`draft`), AI-Optimierung läuft.
+2) Kritische Datenlücken im Projektdatenblatt/Landingpage-Kontext:
+   - `developer_contexts` hat keine `phone`/`email`/`register_court`-Spalten.
+   - Mehrere Selects fragen diese Felder dennoch ab (führt zu Fehlern/Null-Resultaten und damit leeren Footer/Impressum-Daten).
+3) Rechner-/Qualitätsproblem auf Landing-Startseite:
+   - Tabelle nutzt `rent_net`, im Datensatz ist aber `current_rent` gefüllt (72/72), dadurch Miete/Rendite in der UI leer bzw. schwach.
+4) Exposé-Download-Link-Problem:
+   - `ProjectLandingObjekt` sucht über `storage_nodes.folder_path/type`; diese Spalten existieren so nicht.
+   - Exposé liegt tatsächlich in `storage_nodes` (`node_type='file'`, Ordner `01_expose`), wird aber mit aktueller Query nicht gefunden.
+5) Beratungsformular-Risiko:
+   - Direkter Insert in `leads` aus Zone 3; Policy-Lage ist restriktiv und kann in Public/anon-Kontext brechen.
 
-## Root Cause (3 issues)
+Umsetzungsplan:
+Phase A — Datenkonsistenz Projektdatenblatt/Landingpage
+1) `src/pages/portal/projekte/LandingPageTab.tsx`
+   - `developer_contexts`-Select auf reale Spalten reduzieren.
+   - Fallbacks ergänzen:
+     - `footer_company_name`: zuerst Developer Context, sonst `dev_projects.seller_name`.
+     - `footer_address`: nur aus realen Context-Feldern aufbauen.
+     - Kontaktfelder sauber null-sicher setzen.
+2) `src/pages/zone3/project-landing/ProjectLandingDatenschutz.tsx`
+   - fehlerhafte `developer_contexts`-Felder entfernen (kein `email`-Select).
+   - Ausgabe nur mit vorhandenen Feldern.
+3) `src/pages/zone3/project-landing/ProjectLandingImpressum.tsx`
+   - `register_court`-Fallback korrigieren (nicht vorhandenes Feld entfernen).
+   - Impressum robust mit vorhandenen Feldern rendern.
 
-### 1. Missing Foreign Key — Breaks JOIN
-`landing_pages.project_id` has **no FK to `dev_projects.id`**. The Supabase client's `dev_projects!inner(...)` syntax requires a FK relationship. Without it, PostgREST cannot resolve the join and the query silently returns null.
-- **Affects:** `ProjectLandingLayout.tsx` (header, footer, logo)
-- **Affects:** `ProjectLandingHome.tsx` uses separate queries but same root issue on `dev_projects`
+Phase B — Landingpage-Inhalte & Verlinkungen funktional machen
+4) `src/pages/zone3/project-landing/ProjectLandingHome.tsx`
+   - Für Miete/Yield/Engine-Fallback `unit.rent_net ?? unit.current_rent` nutzen.
+   - Summen-/Ø-Berechnungen analog korrigieren.
+   - Rechner-Anker/CTA prüfen und konsistent halten.
+5) `src/pages/zone3/project-landing/ProjectLandingObjekt.tsx`
+   - Exposé-Abfrage auf korrektes `storage_nodes`-Schema umbauen:
+     - `node_type='file'`
+     - `entity_id = project.id`
+     - Parent-Ordner `01_expose` ermitteln und daraus Dateien lesen.
+   - Download-CTA explizit als Verkaufsexposé kennzeichnen.
+6) `src/pages/zone3/project-landing/ProjectLandingExpose.tsx`
+   - Verlinkungen zurück zur Projektseite/Beratung/Rechner prüfen und ggf. Text klarer machen.
 
-### 2. No Public RLS — Blocks Anonymous & Cross-Tenant Access
-The landing page is a **public website** (Zone 3), but:
-- `dev_projects` — only allows `tenant_id = get_user_tenant_id()` (auth required)
-- `dev_project_units` — same restriction
-- `document_links` — no policy for `object_type = 'project'`
-- `documents` — no public policy for project images
+Phase C — Lead-Capture robust absichern
+7) Statt Direkt-Insert aus Zone 3:
+   - neue Backend-Funktion für Landing-Leads (slug-validiert, tenant-sicher, serverseitiges Insert).
+   - `ProjectLandingBeratung.tsx` auf diese Funktion umstellen.
+   - Vorteil: kein Public-Insert auf `leads`, stabiler bei RLS.
 
-Even logged-in users see "Projekt nicht gefunden" because the restrictive `tenant_isolation_restrictive` policy blocks unless `get_user_tenant_id()` matches.
+Phase D — Reset/Smoke-Test-Absicherung
+8) `useTenantReset`-Pfad validieren:
+   - DB-Reset + Storage-Reset + Ledger-Logging end-to-end prüfen.
+   - Falls nötig, Fehlerbehandlung verbessern (klare Status pro Phase).
+9) Prüf-Skript/Checklist für Smoke-Test (ich führe danach exakt so durch):
+   - A: Projektdatenblatt Vollständigkeit (Verkäufer/Anbieter/Impressumfelder)
+   - B: Landingpage erzeugen
+   - C: Startseite: Hero, Galerie, Highlights, Rechner, Einheiten-Tabelle
+   - D: Objektseite: Verkaufsexposé Download vorhanden
+   - E: Einheitenseite: Exposé + Rechner + Beratung-Link
+   - F: Beratungsformular Submit erfolgreich
+   - G: Veröffentlichung/Preview-Link erreichbar
+   - H: Reset ausführen
+   - I: Verifizieren, dass Projekt/Landing/Units/Bilder/Leads wie erwartet gelöscht oder zurückgesetzt sind
 
-### 3. Existing landing page status is `draft`
-The public RLS policy on `landing_pages` only allows `preview` and `active`. For the portal preview (logged-in user), this works via the org-member policy. But the public path blocks `draft` — this is correct behavior but needs the preview flow to account for it.
+Sicherheits- und Governance-Check:
+- MOD-13 ist nicht eingefroren.
+- Zone3 „project-landing“ ist nicht in der Zone3-Freeze-Liste gesperrt.
+- Keine Änderungen an gesperrter Infrastruktur (manifests/goldenpath) nötig.
+- RLS-Öffnung für sensible Tabellen wird vermieden; Lead-Write wird serverseitig gekapselt.
 
-## Fix Plan
-
-### Migration 1: Add FK + Public RLS Policies
-
-```sql
--- 1. Add FK from landing_pages to dev_projects
-ALTER TABLE public.landing_pages
-  ADD CONSTRAINT landing_pages_project_id_fkey
-  FOREIGN KEY (project_id) REFERENCES public.dev_projects(id);
-
--- 2. Public SELECT on dev_projects for projects with active landing pages
-CREATE POLICY "public_read_landing_page_projects"
-ON public.dev_projects FOR SELECT TO anon, authenticated
-USING (
-  id IN (
-    SELECT project_id FROM public.landing_pages
-    WHERE status IN ('draft', 'preview', 'active')
-  )
-);
-
--- 3. Public SELECT on dev_project_units for those projects
-CREATE POLICY "public_read_landing_page_units"
-ON public.dev_project_units FOR SELECT TO anon, authenticated
-USING (
-  project_id IN (
-    SELECT project_id FROM public.landing_pages
-    WHERE status IN ('draft', 'preview', 'active')
-  )
-);
-
--- 4. Public SELECT on document_links for project images
-CREATE POLICY "public_read_project_image_links"
-ON public.document_links FOR SELECT TO anon, authenticated
-USING (
-  object_type = 'project'
-  AND object_id IN (
-    SELECT project_id FROM public.landing_pages
-    WHERE status IN ('draft', 'preview', 'active')
-  )
-);
-
--- 5. Public SELECT on documents for project-linked images
-CREATE POLICY "public_read_project_landing_documents"
-ON public.documents FOR SELECT TO anon, authenticated
-USING (
-  id IN (
-    SELECT dl.document_id FROM public.document_links dl
-    WHERE dl.object_type = 'project'
-    AND dl.object_id IN (
-      SELECT project_id FROM public.landing_pages
-      WHERE status IN ('draft', 'preview', 'active')
-    )
-  )
-);
-
--- 6. Include 'draft' in landing_pages public policy (for preview from portal)
-DROP POLICY IF EXISTS "Public can view active landing pages" ON public.landing_pages;
-CREATE POLICY "Public can view landing pages"
-ON public.landing_pages FOR SELECT TO anon, authenticated
-USING (status IN ('draft', 'preview', 'active'));
-```
-
-### No Code Changes Needed
-The existing `ProjectLandingHome.tsx` and `ProjectLandingLayout.tsx` code is correct — the queries will work once the FK and RLS policies are in place.
-
-### Security Note
-- Only projects with a `landing_pages` record are exposed publicly
-- The policies are read-only (SELECT)
-- `locked` status pages remain invisible
-- Write operations remain protected by existing org-member policies
-
-### Freeze Check
-| Path | Frozen? |
-|---|---|
-| Database migration | No |
-| `ProjectLandingHome.tsx` (Zone 3, project-landing) | **Not frozen** (not in zone3_freeze.json) |
-| `ProjectLandingLayout.tsx` | **Not frozen** |
-| No code changes needed | N/A |
-
+Abnahme-Kriterien (Done):
+1) Kein „Projekt nicht gefunden“, keine leere Template-Seite.
+2) Projektdatenblatt zeigt/übernimmt Anbieter-/Verkäuferdaten korrekt.
+3) Rechner zeigt realistische Werte (Mietdaten aus `current_rent` fallback).
+4) Verkaufsexposé ist auf Objektseite verfügbar und downloadbar.
+5) Beratungseintrag funktioniert zuverlässig.
+6) Reset löscht Daten nachvollziehbar; Nachprüfung ist sauber.
