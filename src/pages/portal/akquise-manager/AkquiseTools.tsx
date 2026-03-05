@@ -11,6 +11,7 @@ import {
   PropertyResearchTool,
   StandaloneCalculatorPanel,
   AcqDataRoom,
+  ExposeDragDropUploader,
 } from './components';
 
 export default function AkquiseTools() {
