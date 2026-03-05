@@ -39,7 +39,7 @@ const footerLinks = {
 
 export function SotFooter() {
   return (
-    <footer className="border-t border-border/40 bg-card/30">
+    <footer className="border-t border-border/40 bg-card/30 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-8 lg:gap-12">
           {/* Brand */}

@@ -7,16 +7,16 @@
    ATMOSPHERIC BACKGROUNDS — THEME-AWARE
    =========================================================================== */
 
-/* Deep Space + Aurora Atmosphere (Dark Mode) */
+/* Deep Space + Aurora Atmosphere (Dark Mode — Graphite Neutral) */
 .theme-sot-dark .sot-atmosphere,
 :root[data-sot-theme="dark"] .sot-atmosphere {
   background: 
-    radial-gradient(ellipse 80% 60% at 80% 0%, hsl(275 60% 25% / 0.35) 0%, transparent 65%),
-    radial-gradient(ellipse 70% 50% at 20% 10%, hsl(340 50% 22% / 0.25) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 50% at 5% 100%, hsl(275 45% 18% / 0.4) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 60% 80%, hsl(340 45% 18% / 0.2) 0%, transparent 50%),
-    radial-gradient(ellipse 40% 30% at 50% 50%, hsl(180 60% 18% / 0.15) 0%, transparent 45%),
-    linear-gradient(180deg, hsl(222 40% 8%) 0%, hsl(260 35% 6%) 50%, hsl(222 50% 5%) 100%);
+    radial-gradient(ellipse 80% 60% at 80% 0%, hsl(217 60% 18% / 0.3) 0%, transparent 65%),
+    radial-gradient(ellipse 70% 50% at 20% 10%, hsl(275 40% 15% / 0.2) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 5% 100%, hsl(217 45% 12% / 0.3) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 60% 80%, hsl(275 35% 12% / 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, hsl(217 50% 15% / 0.1) 0%, transparent 45%),
+    linear-gradient(180deg, hsl(220 10% 7%) 0%, hsl(220 12% 5%) 50%, hsl(220 10% 4%) 100%);
 }
 
 /* Light Atmosphere (Light Mode) */
@@ -93,22 +93,61 @@
 }
 
 /* ===========================================================================
-   GLASS EFFECTS
+   GLASS EFFECTS — CI-aligned
    =========================================================================== */
 
 .sot-glass {
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   background: hsl(var(--z3-background) / 0.8);
   border: 1px solid hsl(var(--z3-border) / 0.5);
 }
 
 .sot-glass-card {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  background: hsl(var(--z3-card) / 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: hsl(var(--z3-card));
   border: 1px solid hsl(var(--z3-border) / 0.4);
   border-radius: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+/* Dark mode glass-card enhancements */
+.theme-sot-dark .sot-glass-card,
+:root[data-sot-theme="dark"] .sot-glass-card {
+  box-shadow: var(--z3-shadow-card, 0 4px 24px -6px hsl(0 0% 0% / 0.4));
+}
+
+.theme-sot-dark .sot-glass-card:hover,
+:root[data-sot-theme="dark"] .sot-glass-card:hover {
+  border-color: hsl(var(--z3-accent) / 0.3);
+  box-shadow: var(--z3-shadow-glow, 0 0 30px -8px hsl(217 91% 60% / 0.2));
+  transform: translateY(-2px);
+}
+
+/* Dark mode module card glow */
+.theme-sot-dark .sot-module-card,
+:root[data-sot-theme="dark"] .sot-module-card {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--z3-shadow-card, 0 4px 24px -6px hsl(0 0% 0% / 0.4));
+}
+
+.theme-sot-dark .sot-module-card:hover,
+:root[data-sot-theme="dark"] .sot-module-card:hover {
+  box-shadow: var(--z3-shadow-glow, 0 0 30px -8px hsl(217 91% 60% / 0.25));
+}
+
+/* Ambient layer for dark mode */
+.theme-sot-dark .sot-ambient-layer,
+:root[data-sot-theme="dark"] .sot-ambient-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 100% 50% at 50% 100%, hsl(220 10% 7% / 0.8) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 40% at 50% 0%, hsl(217 91% 60% / 0.03) 0%, transparent 60%);
 }
 
 /* ===========================================================================

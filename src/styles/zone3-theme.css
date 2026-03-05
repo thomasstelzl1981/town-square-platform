@@ -68,48 +68,59 @@ html.theme-sot {
   --destructive-foreground: 0 0% 100%;
 }
 
-/* Dark Mode — Primary Experience (Aurora-Enhanced) */
+/* Dark Mode — Graphite Neutral CI (aligned with Zone 2) */
 .theme-sot-dark,
 .theme-sot.dark,
 :root[data-sot-theme="dark"],
 html.theme-sot-dark {
-  --z3-background: 222 40% 8%;
-  --z3-foreground: 210 40% 98%;
-  --z3-card: 222 25% 12%;
-  --z3-card-foreground: 210 40% 98%;
+  --z3-background: 220 10% 7%;
+  --z3-foreground: 210 20% 96%;
+  --z3-card: 222 18% 12% / 0.92;
+  --z3-card-foreground: 210 20% 96%;
   --z3-primary: 217 91% 60%;
-  --z3-primary-foreground: 222 47% 6%;
-  --z3-secondary: 222 30% 14%;
-  --z3-secondary-foreground: 210 40% 98%;
-  --z3-muted: 222 20% 18%;
-  --z3-muted-foreground: 215 20% 65%;
+  --z3-primary-foreground: 222 20% 8%;
+  --z3-secondary: 222 14% 16%;
+  --z3-secondary-foreground: 210 20% 96%;
+  --z3-muted: 220 8% 15%;
+  --z3-muted-foreground: 220 10% 70%;
   --z3-accent: 217 91% 60%;
   --z3-accent-secondary: 275 45% 50%;
   --z3-accent-foreground: 0 0% 100%;
-  --z3-border: 222 20% 20%;
-  --z3-input: 222 20% 20%;
+  --z3-border: 220 8% 20%;
+  --z3-input: 220 8% 20%;
   --z3-glow: 217 91% 60%;
 
+  /* Surface layers */
+  --z3-surface: 220 10% 11%;
+  --z3-surface-2: 220 10% 8%;
+  --z3-border-subtle: 220 8% 18%;
+  --z3-border-glow: 217 91% 60%;
+
+  /* Shadow system */
+  --z3-shadow-card: 0 4px 24px -6px hsl(0 0% 0% / 0.4);
+  --z3-shadow-elevated: 0 12px 40px -12px hsl(0 0% 0% / 0.5);
+  --z3-shadow-glow: 0 0 30px -8px hsl(217 91% 60% / 0.25);
+
   /* === Bridge: map z3 → standard shadcn variables === */
-  --background: 222 40% 8%;
-  --foreground: 210 40% 98%;
-  --card: 222 25% 12%;
-  --card-foreground: 210 40% 98%;
+  --background: 220 10% 7%;
+  --foreground: 210 20% 96%;
+  --card: 222 18% 12% / 0.92;
+  --card-foreground: 210 20% 96%;
   --primary: 217 91% 60%;
-  --primary-foreground: 222 47% 6%;
-  --secondary: 222 30% 14%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 222 20% 18%;
-  --muted-foreground: 215 20% 65%;
+  --primary-foreground: 222 20% 8%;
+  --secondary: 222 14% 16%;
+  --secondary-foreground: 210 20% 96%;
+  --muted: 220 8% 15%;
+  --muted-foreground: 220 10% 70%;
   --accent: 217 91% 60%;
   --accent-foreground: 0 0% 100%;
-  --border: 222 20% 20%;
-  --input: 222 20% 20%;
+  --border: 220 8% 20%;
+  --input: 220 8% 20%;
   --ring: 217 91% 60%;
-  --popover: 222 25% 12%;
-  --popover-foreground: 210 40% 98%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
+  --popover: 222 18% 12% / 0.94;
+  --popover-foreground: 210 20% 96%;
+  --destructive: 0 62% 50%;
+  --destructive-foreground: 210 40% 98%;
 }
 
 /* ===========================================================================

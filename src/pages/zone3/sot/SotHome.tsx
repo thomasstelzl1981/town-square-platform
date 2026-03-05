@@ -1,6 +1,7 @@
 /**
  * SoT Home — Anthropic/Revolut-inspired Premium Design
  * Bold gradients, hero images, vibrant colors, strong visual hierarchy
+ * CI-aligned Dark Mode — Graphite Neutral
  */
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
@@ -20,15 +21,15 @@ import sotHeroDashboard from '@/assets/sot-hero-dashboard.jpg';
 import sotAiIntelligence from '@/assets/sot-ai-intelligence.jpg';
 import sotWorkspace from '@/assets/sot-workspace.jpg';
 
-/* ── Hero Feature Pills ── */
+/* ── Hero Feature Pills — functional descriptions, no model names ── */
 const heroPills = [
   { icon: Building2, label: 'Immobilien', color: 'from-blue-500 to-blue-600' },
   { icon: Wallet, label: 'Finanzen', color: 'from-emerald-500 to-emerald-600' },
   { icon: FileText, label: 'Dokumente', color: 'from-violet-500 to-violet-600' },
   { icon: Car, label: 'Fuhrpark', color: 'from-amber-500 to-amber-600' },
   { icon: Sun, label: 'Energie', color: 'from-orange-500 to-orange-600' },
-  { icon: Brain, label: 'Gemini 2.5 Pro', color: 'from-blue-400 to-cyan-500' },
-  { icon: Cpu, label: 'GPT-5', color: 'from-emerald-400 to-teal-500' },
+  { icon: Brain, label: 'Dokumentenanalyse', color: 'from-blue-400 to-cyan-500' },
+  { icon: Cpu, label: 'Textgenerierung', color: 'from-emerald-400 to-teal-500' },
   { icon: Sparkles, label: '35+ KI-Engines', color: 'from-pink-500 to-pink-600' },
 ];
 
@@ -159,6 +160,47 @@ function Reveal({ children, className, delay = 0 }: { children: React.ReactNode;
   );
 }
 
+/* ── Animated Counter ── */
+function AnimatedCounter({ value, suffix = '' }: { value: string; suffix?: string }) {
+  const [display, setDisplay] = useState('0');
+  const ref = useRef<HTMLDivElement>(null);
+  const [started, setStarted] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !started) {
+        setStarted(true);
+        const numericValue = parseInt(value.replace(/\D/g, ''));
+        if (isNaN(numericValue) || numericValue === 0) {
+          setDisplay(value);
+          return;
+        }
+        const duration = 1200;
+        const steps = 30;
+        const stepTime = duration / steps;
+        let step = 0;
+        const interval = setInterval(() => {
+          step++;
+          const progress = step / steps;
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const current = Math.round(numericValue * eased);
+          setDisplay(value.replace(String(numericValue), String(current)));
+          if (step >= steps) {
+            clearInterval(interval);
+            setDisplay(value);
+          }
+        }, stepTime);
+      }
+    }, { threshold: 0.3 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [value, started]);
+
+  return <span ref={ref}>{display}{suffix}</span>;
+}
+
 export default function SotHome() {
   const [email, setEmail] = useState('');
   const { isDark } = useSotTheme();
@@ -175,8 +217,18 @@ export default function SotHome() {
             className="w-full h-full object-cover"
             loading="eager"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-background" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-black/30" />
+          <div className={cn(
+            "absolute inset-0",
+            isDark 
+              ? "bg-gradient-to-b from-[hsl(220,10%,7%)]/80 via-[hsl(220,10%,7%)]/60 to-background"
+              : "bg-gradient-to-b from-black/70 via-black/50 to-background"
+          )} />
+          <div className={cn(
+            "absolute inset-0",
+            isDark
+              ? "bg-gradient-to-r from-[hsl(220,10%,7%)]/70 via-transparent to-[hsl(220,10%,7%)]/40"
+              : "bg-gradient-to-r from-black/60 via-transparent to-black/30"
+          )} />
         </div>
 
         {/* Content */}
@@ -205,7 +257,7 @@ export default function SotHome() {
               {heroPills.map((pill) => (
                 <div
                   key={pill.label}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-xs font-medium text-white/80"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-xs font-medium text-white/80 hover:bg-white/15 hover:border-white/20 transition-all duration-200"
                 >
                   <pill.icon className="w-3.5 h-3.5" />
                   {pill.label}
@@ -241,15 +293,18 @@ export default function SotHome() {
         </div>
       </section>
 
-      {/* ── STATS BAR — Anthropic-style minimal ── */}
-      <section className="py-12 sm:py-16 border-b border-border/30">
+      {/* ── STATS BAR — Animated counters ── */}
+      <section className={cn(
+        "py-12 sm:py-16 border-b",
+        isDark ? "border-border/20 bg-[hsl(220,10%,7%)]/50" : "border-border/30"
+      )}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-8">
-            {stats.map((s) => (
-              <Reveal key={s.label}>
+            {stats.map((s, i) => (
+              <Reveal key={s.label} delay={i * 80}>
                 <div className="text-center">
                   <div className={cn('text-4xl sm:text-5xl font-black tracking-tight', s.color)}>
-                    {s.value}
+                    <AnimatedCounter value={s.value} />
                   </div>
                   <p className="text-xs text-muted-foreground mt-2 uppercase tracking-[0.2em] font-semibold">{s.label}</p>
                 </div>
@@ -277,8 +332,10 @@ export default function SotHome() {
             {painPoints.map((pp, i) => (
               <Reveal key={pp.title} delay={i * 120}>
                 <div className={cn(
-                  'relative rounded-3xl border border-border/30 p-8 overflow-hidden group hover:-translate-y-1 transition-all duration-300',
-                  isDark ? 'bg-card/60' : 'bg-card shadow-lg shadow-black/5'
+                  'relative rounded-3xl border p-8 overflow-hidden group hover:-translate-y-1 transition-all duration-300',
+                  isDark 
+                    ? 'bg-card/60 border-border/20 backdrop-blur-md hover:border-border/40 hover:shadow-[0_0_30px_-8px_hsl(217,91%,60%,0.1)]' 
+                    : 'bg-card border-border/30 shadow-lg shadow-black/5'
                 )}>
                   <div className={cn('absolute inset-0 bg-gradient-to-br opacity-50', pp.gradient)} />
                   <div className="relative">
@@ -299,7 +356,10 @@ export default function SotHome() {
       </section>
 
       {/* ── REPLACED TOOLS — Scrolling banner ── */}
-      <section className="py-12 overflow-hidden border-y border-border/20">
+      <section className={cn(
+        "py-12 overflow-hidden border-y",
+        isDark ? "border-border/15" : "border-border/20"
+      )}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-6">
           <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Was Sie nicht mehr brauchen</p>
         </div>
@@ -315,7 +375,7 @@ export default function SotHome() {
         </div>
       </section>
 
-      {/* ── 3 AREAS — Vibrant gradient headers ── */}
+      {/* ── 3 AREAS — Vibrant gradient headers with glass cards ── */}
       <section className="py-20 sm:py-32">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <Reveal>
@@ -337,8 +397,10 @@ export default function SotHome() {
             {areas.map((area, areaIdx) => (
               <Reveal key={area.key} delay={areaIdx * 100}>
                 <div className={cn(
-                  'rounded-3xl overflow-hidden border border-border/20',
-                  isDark ? 'bg-card/40' : 'bg-card shadow-xl shadow-black/5'
+                  'rounded-3xl overflow-hidden border',
+                  isDark 
+                    ? 'bg-card/40 border-border/15 backdrop-blur-sm hover:border-border/30 transition-all duration-300' 
+                    : 'bg-card border-border/20 shadow-xl shadow-black/5'
                 )}>
                   {/* Area header with gradient */}
                   <div className={cn('bg-gradient-to-r p-6 sm:p-8', area.gradient)}>
@@ -359,7 +421,7 @@ export default function SotHome() {
                           key={modIdx} 
                           className={cn(
                             'flex items-start gap-3.5 p-4 rounded-2xl transition-all duration-200 group cursor-default',
-                            isDark ? 'hover:bg-muted/30' : 'hover:bg-muted/50'
+                            isDark ? 'hover:bg-muted/20 hover:shadow-[0_0_15px_-5px_hsl(217,91%,60%,0.1)]' : 'hover:bg-muted/50'
                           )}
                         >
                           <div className={cn('h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0', area.bgGlow)}>
@@ -401,7 +463,12 @@ export default function SotHome() {
               className="w-full h-full object-cover"
               loading="lazy"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
+            <div className={cn(
+              "absolute inset-0",
+              isDark
+                ? "bg-gradient-to-r from-[hsl(220,10%,7%)]/85 via-[hsl(220,10%,7%)]/65 to-[hsl(220,10%,7%)]/45"
+                : "bg-gradient-to-r from-black/80 via-black/60 to-black/40"
+            )} />
           </div>
 
           {/* Content */}
@@ -410,10 +477,6 @@ export default function SotHome() {
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/20 backdrop-blur-sm border border-violet-400/30 mb-3 text-xs font-bold text-violet-300 tracking-wider uppercase">
                 <Brain className="w-3.5 h-3.5" />
                 <Brand>Armstrong</Brand> Intelligence
-              </div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 mb-6 text-[10px] font-bold text-white/70 tracking-wider uppercase ml-3">
-                <Cpu className="w-3 h-3 text-cyan-400" />
-                Powered by Gemini 2.5 Pro & GPT-5
               </div>
 
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight leading-[1.1]">
@@ -436,7 +499,7 @@ export default function SotHome() {
                   { icon: Cpu, title: 'Pay per Use', desc: <span>Nur zahlen, wenn <Brand>Armstrong</Brand> arbeitet.</span> },
                   { icon: Shield, title: 'Volle Kontrolle', desc: 'Preis vorher sehen. Keine Überraschungen.' },
                 ].map((h) => (
-                  <div key={h.title} className="rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-5">
+                  <div key={h.title} className="rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-5 hover:bg-white/10 hover:border-white/20 transition-all duration-300">
                     <h.icon className="w-5 h-5 text-violet-400 mb-3" />
                     <h4 className="text-sm font-bold text-white">{h.title}</h4>
                     <p className="text-xs text-white/50 mt-1">{h.desc}</p>
@@ -444,14 +507,14 @@ export default function SotHome() {
                 ))}
               </div>
 
-              {/* Example queries */}
+              {/* Example queries — interactive typing feel */}
               <div className="mt-8 flex flex-wrap gap-2">
                 {[
                   'Welche Fahrzeuge brauchen TÜV?',
                   'Fasse alle Mietverträge zusammen',
                   'Offene Rechnungen anzeigen',
                 ].map((q) => (
-                  <div key={q} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs text-white/70">
+                  <div key={q} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs text-white/70 hover:bg-white/10 hover:text-white/90 hover:border-white/20 transition-all duration-200 cursor-default">
                     <MessageSquare className="w-3 h-3 text-violet-400 flex-shrink-0" />
                     {q}
                   </div>
@@ -470,7 +533,7 @@ export default function SotHome() {
         </div>
       </section>
 
-      {/* ── KI-POWER — Model showcase ── */}
+      {/* ── KI-POWER — Functional showcase, no model names ── */}
       <section className="py-20 sm:py-28">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <Reveal>
@@ -496,45 +559,41 @@ export default function SotHome() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
             {[
               {
-                model: 'Gemini 2.5 Pro',
-                provider: 'Google',
-                strength: 'Reasoning & Dokumentanalyse',
-                desc: 'Komplexe Vertragsanalyse, Multi-Dokument-Vergleiche, 32.000 Token Context-Window für ganze Datenräume.',
+                title: 'Reasoning Engine',
+                strength: 'Dokumentanalyse & Vergleiche',
+                desc: 'Komplexe Vertragsanalyse, Multi-Dokument-Vergleiche, großes Context-Window für ganze Datenräume.',
                 color: 'from-blue-500 to-cyan-500',
-                badge: '32k Token',
+                badge: 'Deep Analysis',
               },
               {
-                model: 'GPT-5',
-                provider: 'OpenAI',
-                strength: 'Textgenerierung & Kommunikation',
+                title: 'Textgenerator',
+                strength: 'Kommunikation & Berichte',
                 desc: 'Professionelle E-Mails, Briefe, Berichte und Zusammenfassungen — auf Deutsch, in Ihrem Tonfall.',
                 color: 'from-emerald-500 to-teal-500',
                 badge: 'Top Textqualität',
               },
               {
-                model: 'Gemini 2.5 Flash',
-                provider: 'Google',
-                strength: 'Schnelle Klassifikation & OCR',
+                title: 'Schnellklassifikator',
+                strength: 'OCR & Posteingang',
                 desc: 'Posteingang sortieren, Dokumente kategorisieren, Belege erkennen — in Millisekunden.',
                 color: 'from-amber-500 to-orange-500',
                 badge: 'Ultra-schnell',
               },
             ].map((m, i) => (
-              <Reveal key={m.model} delay={i * 120}>
+              <Reveal key={m.title} delay={i * 120}>
                 <div className={cn(
-                  'relative rounded-3xl border border-border/30 p-8 overflow-hidden group hover:-translate-y-1 transition-all duration-300 h-full',
-                  isDark ? 'bg-card/60' : 'bg-card shadow-lg shadow-black/5'
+                  'relative rounded-3xl border p-8 overflow-hidden group hover:-translate-y-1 transition-all duration-300 h-full',
+                  isDark 
+                    ? 'bg-card/60 border-border/20 backdrop-blur-md hover:border-border/40 hover:shadow-[0_0_30px_-8px_hsl(217,91%,60%,0.15)]' 
+                    : 'bg-card border-border/30 shadow-lg shadow-black/5'
                 )}>
                   <div className={cn('absolute top-0 left-0 right-0 h-1 bg-gradient-to-r', m.color)} />
                   <div className="flex items-center gap-2 mb-4">
                     <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase text-white bg-gradient-to-r', m.color)}>
-                      {m.provider}
-                    </span>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-muted text-muted-foreground">
                       {m.badge}
                     </span>
                   </div>
-                  <h3 className="text-xl font-bold mb-1">{m.model}</h3>
+                  <h3 className="text-xl font-bold mb-1">{m.title}</h3>
                   <p className="text-xs font-semibold text-primary mb-3">{m.strength}</p>
                   <p className="text-sm text-muted-foreground leading-relaxed">{m.desc}</p>
                 </div>
@@ -545,8 +604,10 @@ export default function SotHome() {
           {/* KI Engine capabilities */}
           <Reveal delay={200}>
             <div className={cn(
-              'rounded-3xl border border-border/20 p-8 sm:p-10',
-              isDark ? 'bg-card/40' : 'bg-card shadow-xl shadow-black/5'
+              'rounded-3xl border p-8 sm:p-10',
+              isDark 
+                ? 'bg-card/40 border-border/15 backdrop-blur-sm' 
+                : 'bg-card border-border/20 shadow-xl shadow-black/5'
             )}>
               <h3 className="text-xl font-bold mb-6 text-center">Was unsere 35+ KI-Engines können</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -558,7 +619,10 @@ export default function SotHome() {
                   { icon: MessageSquare, label: 'Zusammenfassungen', desc: 'Meetings & Verträge' },
                   { icon: Search, label: 'Marktanalysen', desc: 'Preise & Renditen' },
                 ].map((cap) => (
-                  <div key={cap.label} className="text-center p-3">
+                  <div key={cap.label} className={cn(
+                    "text-center p-3 rounded-xl transition-all duration-200",
+                    isDark ? "hover:bg-muted/20" : "hover:bg-muted/50"
+                  )}>
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-2">
                       <cap.icon className="w-5 h-5 text-primary" />
                     </div>
@@ -591,7 +655,7 @@ export default function SotHome() {
                 <Reveal key={s.num} delay={i * 100}>
                   <div className={cn(
                     'flex items-start gap-5 p-5 rounded-2xl transition-all duration-200',
-                    isDark ? 'hover:bg-card/60' : 'hover:bg-muted/50'
+                    isDark ? 'hover:bg-card/60 hover:backdrop-blur-sm' : 'hover:bg-muted/50'
                   )}>
                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0">
                       <s.icon className="w-6 h-6 text-primary" />
@@ -609,7 +673,10 @@ export default function SotHome() {
             </div>
 
             <Reveal delay={200}>
-              <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-black/20">
+              <div className={cn(
+                "relative rounded-3xl overflow-hidden",
+                isDark ? "shadow-2xl shadow-black/40" : "shadow-2xl shadow-black/20"
+              )}>
                 <img 
                   src={sotWorkspace} 
                   alt="System of a Town Workspace" translate="no" 
