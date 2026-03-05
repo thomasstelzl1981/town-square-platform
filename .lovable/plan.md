@@ -1,17 +1,35 @@
 
 
-# Kaufy-Showcase: Bis zu 5 ausgewaehlte Einheiten pro Projekt
+# Fix: "Vertrieb aktivieren" Toggle funktioniert nicht
 
-## Status: Implementiert
+## Root Cause
 
-### Aenderungen
+In `VertriebTab.tsx` Zeile 33:
 
-1. **DB-Migration**: `kaufy_showcase boolean DEFAULT false` auf `dev_project_units`
-2. **KaufyShowcaseDialog.tsx**: Neuer Dialog mit Unit-Liste, Checkbox-Auswahl (1–5), Auto-Vorschlag (Quintil-Algorithmus)
-3. **SalesApprovalSection.tsx**: Kaufy-Toggle oeffnet Dialog statt Direkt-Publish. Deaktivierung loescht alle Kaufy-Publikationen + resettet Showcase-Flags.
+```tsx
+const [selectedProject, setSelectedProject] = useState<string>(projects[0]?.id || '');
+```
 
-### Regeln
-- Minimum: 1 Einheit, Maximum: 5 Einheiten
-- Auto-Vorschlag waehlt Einheiten mit maximaler Preis-Streuung
-- Bereits als Showcase markierte Einheiten werden beim erneuten Oeffnen vorausgewaehlt
-- Landing Page bleibt davon unberuehrt (alle Einheiten)
+`projects` wird asynchron geladen. Beim ersten Render ist `projects` ein leeres Array (`[]`), also wird `selectedProject` auf `''` initialisiert. Wenn die Daten spaeter geladen werden, bleibt `selectedProject` trotzdem `''` — React `useState` aktualisiert den Initialwert nicht.
+
+Dadurch ist `activeProjectId = ''`, was `SalesApprovalSection` als `projectId=""` erhaelt. Da `!!""` = `false`, ist `hasProject = false` und der Switch ist **disabled**.
+
+## Loesung
+
+In `VertriebTab.tsx`:
+
+1. `selectedProject` mit einem `useEffect` synchronisieren, der den Wert setzt, sobald `projects` geladen sind und noch kein Projekt ausgewaehlt ist:
+
+```tsx
+const [selectedProject, setSelectedProject] = useState<string>('');
+
+// Sync: sobald Projekte geladen, erstes Projekt vorauswaehlen
+useEffect(() => {
+  if (!selectedProject && projects.length > 0) {
+    setSelectedProject(projects[0].id);
+  }
+}, [projects, selectedProject]);
+```
+
+Das ist eine reine UI-Korrektur in einer einzelnen Datei (`VertriebTab.tsx`). Keine DB-Aenderung noetig.
+
