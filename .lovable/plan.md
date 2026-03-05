@@ -76,7 +76,7 @@
 7. `BriefAddressBlock.tsx` — Adressblock-Formular (~80 Z)
 **Ziel:** Orchestrator ~180 Z
 
-#### R-10: GeldeingangTab.tsx (1018 Z, MOD-04)
+#### R-10: GeldeingangTab.tsx (1018 Z, MOD-04) ✅ DONE — 1018→~200 Z, 7 neue Dateien in src/components/portfolio/geldeingang/
 **Pfad:** `src/components/portfolio/GeldeingangTab.tsx`  
 **Extraktionen → `src/components/portfolio/geldeingang/`:**
 1. `geldeingangTypes.ts` — Transaction, MatchResult
