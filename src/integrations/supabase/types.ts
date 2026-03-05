@@ -6665,6 +6665,7 @@ export type Database = {
           grundbuchblatt: string | null
           hausgeld: number | null
           id: string
+          kaufy_showcase: boolean | null
           list_price: number | null
           min_price: number | null
           notes: string | null
@@ -6696,6 +6697,7 @@ export type Database = {
           grundbuchblatt?: string | null
           hausgeld?: number | null
           id?: string
+          kaufy_showcase?: boolean | null
           list_price?: number | null
           min_price?: number | null
           notes?: string | null
@@ -6727,6 +6729,7 @@ export type Database = {
           grundbuchblatt?: string | null
           hausgeld?: number | null
           id?: string
+          kaufy_showcase?: boolean | null
           list_price?: number | null
           min_price?: number | null
           notes?: string | null

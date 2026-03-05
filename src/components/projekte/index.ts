@@ -8,6 +8,7 @@ export { QuickIntakeUploader } from './QuickIntakeUploader';
 export { ProjectCard, ProjectCardPlaceholder } from './ProjectCard';
 export { StickyCalculatorPanel } from './StickyCalculatorPanel';
 export { SalesApprovalSection } from './SalesApprovalSection';
+export { KaufyShowcaseDialog } from './KaufyShowcaseDialog';
 
 // Block Components
 export { ProjectPricingBlock } from './blocks/ProjectPricingBlock';

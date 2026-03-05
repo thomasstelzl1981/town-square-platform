@@ -1,0 +1,1 @@
+ALTER TABLE dev_project_units ADD COLUMN kaufy_showcase boolean DEFAULT false;
