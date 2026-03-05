@@ -23,6 +23,7 @@ interface ProjectUnit {
   rooms_count: number | null;
   list_price: number | null;
   rent_net: number | null;
+  current_rent: number | null;
   status: string | null;
 }
 
