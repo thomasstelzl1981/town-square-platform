@@ -213,8 +213,28 @@ export default function LennoxDoc() {
 
           {/* Results */}
           {vetLoading && (
-            <div className="flex justify-center py-8">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" style={{ borderColor: C.forest }} />
+            <div className="max-w-xl mx-auto py-4 space-y-2">
+              <div className="flex items-center justify-between text-xs" style={{ color: C.barkMuted }}>
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  {vetElapsed < 15 ? 'Tierärzte im Umkreis suchen…' : vetElapsed < 35 ? 'Kontaktdaten prüfen…' : 'Ergebnisse zusammenführen…'}
+                </span>
+                <span className="tabular-nums font-medium">{vetElapsed}s</span>
+              </div>
+              <div className="relative h-2 w-full overflow-hidden rounded-full" style={{ background: `${C.forest}20` }}>
+                <div
+                  className="h-full rounded-full transition-all duration-1000"
+                  style={{
+                    background: C.forest,
+                    width: `${Math.min((vetElapsed / 45) * 100, vetElapsed > 45 ? 98 + 1.5 * (1 - 1 / (1 + (vetElapsed - 45) / 30)) : 98)}%`,
+                  }}
+                />
+              </div>
+              <p className="text-[10px]" style={{ color: C.barkMuted }}>
+                {vetElapsed > 45
+                  ? 'Die Suche dauert etwas länger — Quellen liefern noch Daten.'
+                  : 'Bitte warten — Tierärzte werden aus mehreren Quellen gesucht.'}
+              </p>
             </div>
           )}
 

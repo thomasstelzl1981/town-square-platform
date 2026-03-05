@@ -473,8 +473,19 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
               </Select>
             </div>
           </div>
+          {(apifyLoading || researchEngine.isSearching) && (
+            <SearchProgressIndicator
+              elapsedSeconds={researchEngine.elapsedSeconds}
+              estimatedDuration={researchEngine.estimatedDuration}
+              phases={[
+                { upTo: 25, label: "Portal wird gescannt…" },
+                { upTo: 50, label: "Kontakte extrahiert…" },
+                { upTo: 80, label: "Daten bereinigt…" },
+              ]}
+            />
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowApifyDialog(false)}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => setShowApifyDialog(false)} disabled={apifyLoading || researchEngine.isSearching}>Abbrechen</Button>
             <Button onClick={handleApifySearch} disabled={apifyLoading || researchEngine.isSearching}>
               {(apifyLoading || researchEngine.isSearching) && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Job starten
