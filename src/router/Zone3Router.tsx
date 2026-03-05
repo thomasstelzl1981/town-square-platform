@@ -234,6 +234,8 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
     ZLWohnbauKontakt: React.lazy(() => import('@/pages/zone3/zlwohnbau/ZLWohnbauKontakt')),
     ZLWohnbauImpressum: React.lazy(() => import('@/pages/zone3/zlwohnbau/ZLWohnbauImpressum')),
     ZLWohnbauDatenschutz: React.lazy(() => import('@/pages/zone3/zlwohnbau/ZLWohnbauDatenschutz')),
+    ZLWohnbauRatgeber: React.lazy(() => import('@/pages/zone3/zlwohnbau/ZLWohnbauRatgeber')),
+    ZLWohnbauRatgeberArticle: React.lazy(() => import('@/pages/zone3/zlwohnbau/ZLWohnbauRatgeberArticle')),
   },
 };
 

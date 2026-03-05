@@ -1,18 +1,472 @@
-{
-  "generated_at": "2026-03-05T12:00:00Z",
-  "total_count": 94,
-  "note": "Zone 1 Admin routes from routesManifest.ts (SSOT). Includes: Dashboard, Orgs, Users, Delegations, Masterdata (11), KI-Office (3), Tiles, Integrations, Oversight, Audit, Agreements, Partner-Verification, Manager-Freischaltung, Roles, Support, FutureRoom (9), Acquiary (9), Sales-Desk (6), Lead-Desk (3), Projekt-Desk (4), Pet-Desk (6), Finance-Desk (5), Armstrong (13), Fortbildung, Service-Desk, Ncore-Desk (3), Otto-Desk (4), CommPro-Desk, Compliance.",
-  "sections": [
-    { "group": "Core", "count": 17, "routes": ["", "organizations", "organizations/:id", "users", "delegations", "masterdata (+10 sub)", "tiles", "integrations", "oversight", "audit", "agreements", "partner-verification", "manager-freischaltung", "roles", "support"] },
-    { "group": "KI-Office", "count": 3, "routes": ["ki-office/recherche", "ki-office/kontakte", "ki-office/email"] },
-    { "group": "FutureRoom", "count": 9, "routes": ["futureroom (+8 sub: inbox, zuweisung, finanzierungsmanager, bankkontakte, monitoring, vorlagen, website-leads, contracts)"] },
-    { "group": "Acquiary", "count": 9, "routes": ["acquiary (+8 sub: kontakte, datenbank, mandate, needs-routing, monitor, inbox, assignments, audit)"] },
-    { "group": "Sales Desk", "count": 6, "routes": ["sales-desk (+5 sub: kontakte, veroeffentlichungen, inbox, partner, audit)"] },
-    { "group": "Lead Desk", "count": 3, "routes": ["lead-desk (+2 sub: kampagnen, templates)"] },
-    { "group": "Projekt Desk", "count": 4, "routes": ["projekt-desk (+3 sub: projekte, listings, landing-pages)"] },
-    { "group": "Pet Desk", "count": 6, "routes": ["pet-desk (+5 sub: kontakte, vorgaenge, kunden, shop, billing)"] },
-    { "group": "Finance Desk", "count": 5, "routes": ["finance-desk (+4 sub: kontakte, inbox, faelle, monitor)"] },
-    { "group": "Armstrong", "count": 13, "routes": ["armstrong (+12 sub: actions, logs, billing, knowledge, policies, test, integrations, engines, golden-paths, costs, health, review)"] },
-    { "group": "Other Desks", "count": 9, "routes": ["fortbildung", "service-desk", "ncore-desk (+2 sub)", "otto-desk (+3 sub)", "commpro-desk", "compliance"] }
-  ]
-}
+[
+  {
+    "path": "",
+    "component": "Dashboard",
+    "title": "Admin Dashboard"
+  },
+  {
+    "path": "organizations",
+    "component": "Organizations",
+    "title": "Kunden & Tenants"
+  },
+  {
+    "path": "organizations/:id",
+    "component": "OrganizationDetail",
+    "title": "Organisation Details"
+  },
+  {
+    "path": "users",
+    "component": "Users",
+    "title": "Benutzer"
+  },
+  {
+    "path": "delegations",
+    "component": "Delegations",
+    "title": "Delegationen"
+  },
+  {
+    "path": "masterdata",
+    "component": "MasterTemplates",
+    "title": "Stammdaten-Vorlagen"
+  },
+  {
+    "path": "masterdata/immobilienakte",
+    "component": "MasterTemplatesImmobilienakte",
+    "title": "Immobilienakte Vorlage"
+  },
+  {
+    "path": "masterdata/selbstauskunft",
+    "component": "MasterTemplatesSelbstauskunft",
+    "title": "Selbstauskunft Vorlage"
+  },
+  {
+    "path": "masterdata/projektakte",
+    "component": "MasterTemplatesProjektakte",
+    "title": "Projektakte Vorlage"
+  },
+  {
+    "path": "masterdata/fahrzeugakte",
+    "component": "MasterTemplatesFahrzeugakte",
+    "title": "Fahrzeugakte Vorlage"
+  },
+  {
+    "path": "masterdata/photovoltaikakte",
+    "component": "MasterTemplatesPhotovoltaikakte",
+    "title": "Photovoltaikakte Vorlage"
+  },
+  {
+    "path": "masterdata/finanzierungsakte",
+    "component": "MasterTemplatesFinanzierungsakte",
+    "title": "Finanzierungsakte Vorlage"
+  },
+  {
+    "path": "masterdata/versicherungsakte",
+    "component": "MasterTemplatesVersicherungsakte",
+    "title": "Versicherungsakte Vorlage"
+  },
+  {
+    "path": "masterdata/vorsorgeakte",
+    "component": "MasterTemplatesVorsorgeakte",
+    "title": "Vorsorgeakte Vorlage"
+  },
+  {
+    "path": "masterdata/personenakte",
+    "component": "MasterTemplatesPersonenakte",
+    "title": "Personenakte Vorlage"
+  },
+  {
+    "path": "masterdata/haustierakte",
+    "component": "MasterTemplatesHaustierakte",
+    "title": "Haustierakte Vorlage"
+  },
+  {
+    "path": "ki-office/recherche",
+    "component": "AdminRecherche",
+    "title": "Recherche"
+  },
+  {
+    "path": "ki-office/kontakte",
+    "component": "AdminKontaktbuch",
+    "title": "Kontaktbuch"
+  },
+  {
+    "path": "ki-office/email",
+    "component": "AdminEmailAgent",
+    "title": "E-Mail Agent"
+  },
+  {
+    "path": "tiles",
+    "component": "TileCatalog",
+    "title": "Tile-Katalog"
+  },
+  {
+    "path": "integrations",
+    "component": "Integrations",
+    "title": "Integrationen"
+  },
+  {
+    "path": "oversight",
+    "component": "Oversight",
+    "title": "Oversight"
+  },
+  {
+    "path": "audit",
+    "component": "AuditHub",
+    "title": "Audit Hub"
+  },
+  {
+    "path": "agreements",
+    "component": "Agreements",
+    "title": "Vereinbarungen"
+  },
+  {
+    "path": "partner-verification",
+    "component": "PartnerVerification",
+    "title": "Partner-Verifizierung"
+  },
+  {
+    "path": "manager-freischaltung",
+    "component": "ManagerFreischaltung",
+    "title": "Manager-Freischaltung"
+  },
+  {
+    "path": "roles",
+    "component": "RolesManagement",
+    "title": "Rollen & Berechtigungen"
+  },
+  {
+    "path": "support",
+    "component": "Support",
+    "title": "Support"
+  },
+  {
+    "path": "futureroom",
+    "component": "FutureRoom",
+    "title": "Future Room"
+  },
+  {
+    "path": "futureroom/inbox",
+    "component": "FutureRoomInbox",
+    "title": "Inbox"
+  },
+  {
+    "path": "futureroom/zuweisung",
+    "component": "FutureRoomZuweisung",
+    "title": "Zuweisung"
+  },
+  {
+    "path": "futureroom/finanzierungsmanager",
+    "component": "FutureRoomManagers",
+    "title": "Finanzierungsmanager"
+  },
+  {
+    "path": "futureroom/bankkontakte",
+    "component": "FutureRoomBanks",
+    "title": "Bankkontakte"
+  },
+  {
+    "path": "futureroom/monitoring",
+    "component": "FutureRoomMonitoring",
+    "title": "Monitoring"
+  },
+  {
+    "path": "futureroom/vorlagen",
+    "component": "FutureRoomTemplates",
+    "title": "Vorlagen"
+  },
+  {
+    "path": "futureroom/website-leads",
+    "component": "FutureRoomWebLeads",
+    "title": "Website-Leads"
+  },
+  {
+    "path": "futureroom/contracts",
+    "component": "FutureRoomContracts",
+    "title": "Contracts"
+  },
+  {
+    "path": "acquiary",
+    "component": "AcquiaryDashboard",
+    "title": "Acquiary"
+  },
+  {
+    "path": "acquiary/kontakte",
+    "component": "AcquiaryKontakte",
+    "title": "Kontakte"
+  },
+  {
+    "path": "acquiary/datenbank",
+    "component": "AcquiaryDatenbank",
+    "title": "Datenbank"
+  },
+  {
+    "path": "acquiary/mandate",
+    "component": "AcquiaryMandates",
+    "title": "Mandate"
+  },
+  {
+    "path": "acquiary/needs-routing",
+    "component": "AcquiaryNeedsRouting",
+    "title": "Routing"
+  },
+  {
+    "path": "acquiary/monitor",
+    "component": "AcquiaryMonitor",
+    "title": "Monitor"
+  },
+  {
+    "path": "acquiary/inbox",
+    "component": "AcquiaryInbox",
+    "title": "Inbox"
+  },
+  {
+    "path": "acquiary/assignments",
+    "component": "AcquiaryAssignments",
+    "title": "Zuweisungen"
+  },
+  {
+    "path": "acquiary/audit",
+    "component": "AcquiaryAudit",
+    "title": "Audit"
+  },
+  {
+    "path": "sales-desk",
+    "component": "SalesDeskDashboard",
+    "title": "Sales Desk"
+  },
+  {
+    "path": "sales-desk/kontakte",
+    "component": "SalesDeskKontakte",
+    "title": "Kontakte"
+  },
+  {
+    "path": "sales-desk/veroeffentlichungen",
+    "component": "SalesDeskPublishing",
+    "title": "Veröffentlichungen"
+  },
+  {
+    "path": "sales-desk/inbox",
+    "component": "SalesDeskInbox",
+    "title": "Inbox"
+  },
+  {
+    "path": "sales-desk/partner",
+    "component": "SalesDeskPartner",
+    "title": "Partner"
+  },
+  {
+    "path": "sales-desk/audit",
+    "component": "SalesDeskAudit",
+    "title": "Audit"
+  },
+  {
+    "path": "lead-desk",
+    "component": "LeadDeskRouter",
+    "title": "Lead Desk"
+  },
+  {
+    "path": "lead-desk/kampagnen",
+    "component": "LeadKampagnenDesk",
+    "title": "Kampagnen"
+  },
+  {
+    "path": "lead-desk/templates",
+    "component": "LeadBrandTemplates",
+    "title": "Brand-Templates"
+  },
+  {
+    "path": "projekt-desk",
+    "component": "ProjektDeskDashboard",
+    "title": "Projekt Desk"
+  },
+  {
+    "path": "projekt-desk/projekte",
+    "component": "ProjektDeskProjekte",
+    "title": "Projekte"
+  },
+  {
+    "path": "projekt-desk/listings",
+    "component": "ProjektDeskListings",
+    "title": "Listings"
+  },
+  {
+    "path": "projekt-desk/landing-pages",
+    "component": "ProjektDeskLandingPages",
+    "title": "Landing Pages"
+  },
+  {
+    "path": "pet-desk",
+    "component": "PetDeskRouter",
+    "title": "Pet Desk"
+  },
+  {
+    "path": "pet-desk/kontakte",
+    "component": "PetDeskKontakte",
+    "title": "Kontakte"
+  },
+  {
+    "path": "pet-desk/vorgaenge",
+    "component": "PetDeskVorgaenge",
+    "title": "Vorgänge"
+  },
+  {
+    "path": "pet-desk/kunden",
+    "component": "PetDeskKunden",
+    "title": "Kunden"
+  },
+  {
+    "path": "pet-desk/shop",
+    "component": "PetDeskShop",
+    "title": "Shop"
+  },
+  {
+    "path": "pet-desk/billing",
+    "component": "PetDeskBilling",
+    "title": "Abrechnung"
+  },
+  {
+    "path": "finance-desk",
+    "component": "FinanceDeskRouter",
+    "title": "Finance Desk"
+  },
+  {
+    "path": "finance-desk/kontakte",
+    "component": "FinanceDeskKontakte",
+    "title": "Kontakte"
+  },
+  {
+    "path": "finance-desk/inbox",
+    "component": "FinanceDeskInboxPage",
+    "title": "Inbox"
+  },
+  {
+    "path": "finance-desk/faelle",
+    "component": "FinanceDeskFaellePage",
+    "title": "Fälle"
+  },
+  {
+    "path": "finance-desk/monitor",
+    "component": "FinanceDeskMonitorPage",
+    "title": "Monitor"
+  },
+  {
+    "path": "armstrong",
+    "component": "ArmstrongDashboard",
+    "title": "Armstrong Console"
+  },
+  {
+    "path": "armstrong/actions",
+    "component": "ArmstrongActions",
+    "title": "Actions-Katalog"
+  },
+  {
+    "path": "armstrong/logs",
+    "component": "ArmstrongLogs",
+    "title": "Action Logs"
+  },
+  {
+    "path": "armstrong/billing",
+    "component": "ArmstrongBilling",
+    "title": "Billing"
+  },
+  {
+    "path": "armstrong/knowledge",
+    "component": "ArmstrongKnowledge",
+    "title": "Knowledge Base"
+  },
+  {
+    "path": "armstrong/policies",
+    "component": "ArmstrongPolicies",
+    "title": "Policies"
+  },
+  {
+    "path": "armstrong/test",
+    "component": "ArmstrongTestHarness",
+    "title": "Test Harness"
+  },
+  {
+    "path": "armstrong/integrations",
+    "component": "ArmstrongIntegrations",
+    "title": "Widget-Integrationen"
+  },
+  {
+    "path": "armstrong/engines",
+    "component": "ArmstrongEngines",
+    "title": "Engine Registry"
+  },
+  {
+    "path": "armstrong/golden-paths",
+    "component": "ArmstrongGoldenPaths",
+    "title": "Golden Path Registry"
+  },
+  {
+    "path": "armstrong/costs",
+    "component": "PlatformCostMonitor",
+    "title": "Plattform-Kostenmonitor"
+  },
+  {
+    "path": "armstrong/health",
+    "component": "PlatformHealth",
+    "title": "Platform Health Monitor"
+  },
+  {
+    "path": "armstrong/review",
+    "component": "WeeklyReview",
+    "title": "Wöchentliches Review"
+  },
+  {
+    "path": "fortbildung",
+    "component": "AdminFortbildung",
+    "title": "Fortbildung"
+  },
+  {
+    "path": "service-desk",
+    "component": "ServiceDeskRouter",
+    "title": "Service Desk"
+  },
+  {
+    "path": "ncore-desk",
+    "component": "NcoreDeskRouter",
+    "title": "Ncore Desk"
+  },
+  {
+    "path": "ncore-desk/kontakte",
+    "component": "NcoreDeskKontakte",
+    "title": "Kontakte"
+  },
+  {
+    "path": "ncore-desk/monitor",
+    "component": "NcoreDeskMonitor",
+    "title": "Monitor"
+  },
+  {
+    "path": "otto-desk",
+    "component": "OttoDeskRouter",
+    "title": "Otto² Advisory Desk"
+  },
+  {
+    "path": "otto-desk/kontakte",
+    "component": "OttoDeskKontakte",
+    "title": "Kontakte"
+  },
+  {
+    "path": "otto-desk/inbox",
+    "component": "OttoDeskInbox",
+    "title": "Inbox"
+  },
+  {
+    "path": "otto-desk/monitor",
+    "component": "OttoDeskMonitor",
+    "title": "Monitor"
+  },
+  {
+    "path": "commpro-desk",
+    "component": "CommProDeskRouter",
+    "title": "CommPro Desk"
+  },
+  {
+    "path": "compliance",
+    "component": "ComplianceDeskRouter",
+    "title": "Compliance Desk"
+  }
+]
