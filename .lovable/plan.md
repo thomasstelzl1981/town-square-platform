@@ -51,7 +51,7 @@
 10. `useEmailQueries.ts` — React-Query Hooks (~80 Z)
 **Ziel:** Orchestrator ~180 Z
 
-#### R-8: PortfolioTab.tsx (1511 Z, MOD-04)
+#### R-8: PortfolioTab.tsx (1511 Z, MOD-04) ✅ DONE — 1511→~200 Z, 7 neue Dateien in src/components/immobilien/portfolio/
 **Pfad:** `src/pages/portal/immobilien/PortfolioTab.tsx`  
 **Extraktionen → `src/components/immobilien/portfolio/`:**
 1. `portfolioTypes.ts` — PropertySummary, FilterState
