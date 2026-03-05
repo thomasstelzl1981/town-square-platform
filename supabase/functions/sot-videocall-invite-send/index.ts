@@ -68,7 +68,7 @@ serve(async (req) => {
     if (insertError) throw insertError;
 
     // Build join link
-    const origin = req.headers.get('origin') || 'https://systemofatown.com';
+    const origin = req.headers.get('origin') || 'https://systemofatown.lovable.app';
     const joinLink = `${origin}/portal/office/videocalls/join/${invite.id}?t=${token}`;
 
     // Get host profile name

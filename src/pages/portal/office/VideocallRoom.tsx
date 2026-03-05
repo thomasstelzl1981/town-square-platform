@@ -61,9 +61,9 @@ export const VideocallRoom = ({ guestToken, guestRoomName, guestLivekitUrl }: Vi
       setCallStatus((call as any).status);
       setRoomName((call as any).livekit_room_name);
 
-      // Generate fresh token (also returns livekitUrl)
-      const res = await supabase.functions.invoke('sot-videocall-create', {
-        body: { title: (call as any).title || 'Videocall' },
+      // Generate fresh token for the EXISTING room (not create a new one)
+      const res = await supabase.functions.invoke('sot-videocall-rejoin', {
+        body: { callId },
       });
 
       if (res.error) {

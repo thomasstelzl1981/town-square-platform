@@ -159,6 +159,9 @@ verify_jwt = false
 [functions.sot-videocall-end]
 verify_jwt = false
 
+[functions.sot-videocall-rejoin]
+verify_jwt = false
+
 [functions.sot-research-ai-assist]
 verify_jwt = false
 
