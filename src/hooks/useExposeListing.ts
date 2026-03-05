@@ -233,7 +233,7 @@ export function useExposeListing({
 
       const { data: project } = await supabase
         .from('dev_projects')
-        .select('afa_model, afa_rate_percent, land_share_percent, ground_share_percent')
+        .select('afa_model, afa_rate_percent, land_share_percent')
         .eq('id', unitLink.project_id)
         .maybeSingle();
 
