@@ -339,6 +339,7 @@ export function useArmstrongAdvisor(options?: UseArmstrongAdvisorOptions) {
   // ── Per-project message cache ──
   const messageCacheRef = useRef<Map<string, ChatMessage[]>>(new Map());
   const conversationCacheRef = useRef<Map<string, Array<{ role: string; content: string }>>>(new Map());
+  const loadedSessionsRef = useRef<Set<string>>(new Set());
 
   const getMessagesForProject = useCallback((pid: string | null): ChatMessage[] => {
     const key = cacheKey(pid);
@@ -365,6 +366,47 @@ export function useArmstrongAdvisor(options?: UseArmstrongAdvisorOptions) {
   const lastIntakeStepRef = useRef<IntakeState['step']>(null);
   const prevProjectIdRef = useRef<string | null>(projectId);
 
+  // ── Load persisted session from DB ──
+  const loadPersistedSession = useCallback(async (pid: string | null) => {
+    if (!pid) return; // Free chat doesn't persist
+    const key = cacheKey(pid);
+    if (loadedSessionsRef.current.has(key)) return; // Already loaded
+    
+    try {
+      const { data: sessions } = await supabase
+        .from('armstrong_chat_sessions')
+        .select('messages, last_active_at')
+        .eq('project_id', pid)
+        .order('last_active_at', { ascending: false })
+        .limit(1);
+
+      if (sessions && sessions.length > 0 && Array.isArray(sessions[0].messages)) {
+        const dbMessages = sessions[0].messages as Array<{ role: string; content: string; timestamp: string }>;
+        if (dbMessages.length > 0) {
+          const restoredMessages: ChatMessage[] = dbMessages.map((m, i) => ({
+            id: `restored-${i}-${Date.now()}`,
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+            timestamp: new Date(m.timestamp || Date.now()),
+          }));
+          
+          // Restore conversation history for AI context
+          const restoredConv = dbMessages.map(m => ({ role: m.role, content: m.content }));
+          
+          messageCacheRef.current.set(key, restoredMessages);
+          conversationCacheRef.current.set(key, restoredConv);
+          setMessages(restoredMessages);
+          
+          console.log(`[Armstrong] Restored ${restoredMessages.length} messages for project ${pid}`);
+        }
+      }
+      loadedSessionsRef.current.add(key);
+    } catch (err) {
+      console.error('[Armstrong] Failed to load persisted session:', err);
+      loadedSessionsRef.current.add(key); // Mark as attempted to avoid retry loops
+    }
+  }, []);
+
   // ── Switch project: save current, load new ──
   useEffect(() => {
     const prevKey = cacheKey(prevProjectIdRef.current);
@@ -374,15 +416,29 @@ export function useArmstrongAdvisor(options?: UseArmstrongAdvisorOptions) {
       // Save current messages to cache
       messageCacheRef.current.set(prevKey, messages);
       
-      // Load messages for new project
-      const newMessages = getMessagesForProject(projectId);
-      setMessages(newMessages);
+      // Load messages for new project (from cache or DB)
+      const cachedMessages = messageCacheRef.current.get(newKey);
+      if (cachedMessages && loadedSessionsRef.current.has(newKey)) {
+        setMessages(cachedMessages);
+      } else {
+        // Set welcome first, then load from DB
+        const newMessages = getMessagesForProject(projectId);
+        setMessages(newMessages);
+        loadPersistedSession(projectId);
+      }
       setPendingAction(null);
       setActiveFlow(null);
       
       prevProjectIdRef.current = projectId;
     }
-  }, [projectId]);
+  }, [projectId, loadPersistedSession]);
+
+  // Initial load for current project
+  useEffect(() => {
+    if (projectId && !loadedSessionsRef.current.has(cacheKey(projectId))) {
+      loadPersistedSession(projectId);
+    }
+  }, []);
 
   // Keep cache in sync with messages state
   useEffect(() => {

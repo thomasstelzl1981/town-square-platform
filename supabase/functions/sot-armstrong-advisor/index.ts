@@ -214,6 +214,135 @@ async function loadEntityContext(
 }
 
 // =============================================================================
+// PROJECT CONTEXT: Load Armstrong project memory, tasks, linked entities
+// =============================================================================
+
+interface ProjectContext {
+  title: string;
+  goal: string | null;
+  status: string;
+  memory_snippets: Array<{ type: string; content: string; created_at?: string }>;
+  task_list: Array<{ text: string; done: boolean }>;
+  linked_entities: Array<{ type: string; id: string; label?: string }>;
+}
+
+async function loadProjectContext(
+  supabase: ReturnType<typeof createClient>,
+  projectId: string | null | undefined,
+  tenantId: string | null
+): Promise<ProjectContext | null> {
+  if (!projectId || !tenantId) return null;
+
+  try {
+    const { data: project, error } = await supabase
+      .from("armstrong_projects")
+      .select("title, goal, status, memory_snippets, task_list, linked_entities")
+      .eq("id", projectId)
+      .eq("tenant_id", tenantId)
+      .single();
+
+    if (error || !project) {
+      console.log(`[Armstrong] No project found for ${projectId}`);
+      return null;
+    }
+
+    const ctx: ProjectContext = {
+      title: project.title || "Unbenanntes Projekt",
+      goal: (project as any).goal || null,
+      status: project.status || "active",
+      memory_snippets: Array.isArray((project as any).memory_snippets) ? (project as any).memory_snippets : [],
+      task_list: Array.isArray((project as any).task_list) ? (project as any).task_list : [],
+      linked_entities: Array.isArray((project as any).linked_entities) ? (project as any).linked_entities : [],
+    };
+
+    return ctx;
+  } catch (err) {
+    console.error("[Armstrong] Project context load error:", err);
+    return null;
+  }
+}
+
+function buildProjectContextBlock(ctx: ProjectContext | null): string {
+  if (!ctx) return "";
+
+  const parts: string[] = ["\nPROJEKT-KONTEXT:"];
+  parts.push(`- Projekt: "${ctx.title}" (Status: ${ctx.status})`);
+  if (ctx.goal) parts.push(`- Ziel: ${ctx.goal}`);
+
+  if (ctx.memory_snippets.length > 0) {
+    parts.push("\nGEDAECHTNIS (vom Nutzer gespeicherte Entscheidungen/Notizen):");
+    for (const m of ctx.memory_snippets.slice(0, 20)) {
+      parts.push(`  - [${m.type || 'Notiz'}] ${m.content}`);
+    }
+  }
+
+  if (ctx.task_list.length > 0) {
+    const open = ctx.task_list.filter(t => !t.done);
+    const done = ctx.task_list.filter(t => t.done);
+    parts.push(`\nAUFGABEN (${open.length} offen, ${done.length} erledigt):`);
+    for (const t of open.slice(0, 10)) {
+      parts.push(`  - [ ] ${t.text}`);
+    }
+    for (const t of done.slice(0, 5)) {
+      parts.push(`  - [x] ${t.text}`);
+    }
+  }
+
+  if (ctx.linked_entities.length > 0) {
+    parts.push("\nVERKNÜPFTE ENTITÄTEN:");
+    for (const e of ctx.linked_entities.slice(0, 10)) {
+      parts.push(`  - ${e.type}: ${e.label || e.id}`);
+    }
+  }
+
+  parts.push("\nWICHTIG: Beziehe dich auf das Projekt-Gedächtnis wenn relevant. Erinnere den Nutzer an offene Aufgaben wenn passend.");
+  return parts.join("\n");
+}
+
+// =============================================================================
+// DMS DOCUMENT SEARCH: Search document_chunks for RAG context
+// =============================================================================
+
+async function searchDocumentChunks(
+  supabase: ReturnType<typeof createClient>,
+  tenantId: string,
+  query: string,
+  limit: number = 5
+): Promise<string> {
+  try {
+    // Use text search via RPC if available, fallback to ilike
+    const searchTerms = query
+      .replace(/[^a-zA-ZäöüÄÖÜß\s]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length > 3)
+      .slice(0, 3);
+
+    if (searchTerms.length === 0) return "";
+
+    const orFilter = searchTerms.map(t => `text.ilike.%${t}%`).join(',');
+    
+    const { data: chunks, error } = await supabase
+      .from("document_chunks")
+      .select("text, document_id")
+      .eq("tenant_id", tenantId)
+      .or(orFilter)
+      .limit(limit);
+
+    if (error || !chunks || chunks.length === 0) return "";
+
+    const contextParts = chunks.map((c: any, i: number) => 
+      `[Dokument-Auszug ${i + 1}]: ${(c.text || '').substring(0, 500)}`
+    );
+
+    return `\nDOKUMENTEN-KONTEXT (aus dem DMS):\n${contextParts.join('\n\n')}`;
+  } catch (err) {
+    console.error("[Armstrong] Document search error:", err);
+    return "";
+  }
+}
+
+
+// =============================================================================
 // SESSION PERSISTENCE: Save/load chat sessions
 // =============================================================================
 
@@ -281,7 +410,8 @@ function buildUnifiedSystemPrompt(
   userContext: UserContext,
   availableActions: ActionDefinition[],
   kbContext: string,
-  isGlobalAssist: boolean
+  isGlobalAssist: boolean,
+  projectContextBlock: string = ""
 ): string {
   const moduleLabel = MODULE_LABELS[body.module] || body.module;
   const topActions = availableActions.slice(0, 5).map(a => `  - ${a.title_de} (${a.action_code})`).join('\n');
@@ -318,6 +448,7 @@ Schlage diese proaktiv vor, z.B.: "Ich erkenne ein Exposé — soll ich daraus e
 - Bei sensiblen Themen: Disclaimer verwenden
 - Keine Steuer-/Rechtsberatung (verweise auf Fachberater)
 - Keine Garantien oder Zusagen
+${projectContextBlock}
 ${kbContext ? `\nWISSENSKONTEXT:\n${kbContext}` : ''}`.trim();
 }
 
@@ -3174,7 +3305,8 @@ async function generateExplainResponse(
   contextBlock: string = "",
   body?: RequestBody,
   userContext?: UserContext,
-  availableActions?: ActionDefinition[]
+  availableActions?: ActionDefinition[],
+  projectContext?: ProjectContext | null
 ): Promise<string | Response> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
@@ -3223,15 +3355,36 @@ async function generateExplainResponse(
     }
   }
 
-  // Load entity context if available
+  // Skip entity/tenant data loading in general mode
+  const isGeneralMode = body?.data_mode === 'general';
+  
+  // Load entity context if available (skip in general mode)
   let entityContextBlock = "";
-  if (body?.entity?.id && body.entity.type !== 'none' && userContext) {
+  if (!isGeneralMode && body?.entity?.id && body.entity.type !== 'none' && userContext) {
     entityContextBlock = await loadEntityContext(body.entity, userContext, supabase);
   }
 
+  // Load DMS document context if message references documents (skip in general mode)
+  let dmsContext = "";
+  if (!isGeneralMode && userContext?.org_id && message.length > 15) {
+    const docKeywords = ['dokument', 'vertrag', 'mietvertrag', 'rechnung', 'bescheid', 'nachweis', 'urkunde', 'exposé', 'gutachten', 'protokoll', 'abrechnung', 'was steht in', 'finde im'];
+    const lowerMsg = message.toLowerCase();
+    if (docKeywords.some(kw => lowerMsg.includes(kw))) {
+      dmsContext = await searchDocumentChunks(supabase, userContext.org_id, message, 5);
+    }
+  }
+
+  // Build project context block
+  const projCtxBlock = buildProjectContextBlock(projectContext || null);
+  
+  // General mode system prompt override
+  const dataModeHint = isGeneralMode 
+    ? "\n\nDATENMODUS: ALLGEMEIN — Du hast KEINEN Zugriff auf Nutzerdaten, Immobilien, Kontakte oder Dokumente. Beantworte nur allgemeine Fachfragen." 
+    : "";
+
   // Use unified prompt when body/userContext available, fall back to legacy
   const systemPrompt = (body && userContext)
-    ? buildUnifiedSystemPrompt(body, userContext, availableActions || [], kbContext + entityContextBlock, isGlobalAssist)
+    ? buildUnifiedSystemPrompt(body, userContext, availableActions || [], kbContext + entityContextBlock + dmsContext, isGlobalAssist, projCtxBlock + dataModeHint)
     : `${ARMSTRONG_CORE_IDENTITY}\n\n${contextBlock}\n\nGOVERNANCE:\n- Schreibende Aktionen erfordern Nutzerbestätigung\n- Bei sensiblen Themen: Disclaimer verwenden\n- Proaktiv passende nächste Schritte vorschlagen${kbContext ? `\n\nWissenskontext:\n${kbContext}` : ''}`;
 
   // Build conversation messages array — include full history if available
@@ -4149,6 +4302,12 @@ serve(async (req) => {
       );
     }
 
+    // Load project context (memory, tasks, linked entities)
+    const projectContext = await loadProjectContext(supabase, project_id, userContext.org_id);
+    if (projectContext) {
+      console.log(`[Armstrong] Project loaded: "${projectContext.title}" — ${projectContext.memory_snippets.length} memories, ${projectContext.task_list.length} tasks, ${projectContext.linked_entities.length} entities`);
+    }
+
     // Persist incoming user message (with project_id for session isolation)
     const sessionId = project_id || (body as any).session_id || crypto.randomUUID();
     persistChatMessage(supabase, sessionId, userContext, zone, module, 'user', message, undefined, project_id);
@@ -4365,7 +4524,7 @@ serve(async (req) => {
     if (intent === "EXPLAIN") {
       // Enable Global Assist Mode when not in MVP module
       const isGlobalAssist = !isInMvpModule;
-      const explainResult = await generateExplainResponse(message, module, supabase, isGlobalAssist, buildContextBlock(body, userContext), body, userContext, availableActions);
+      const explainResult = await generateExplainResponse(message, module, supabase, isGlobalAssist, buildContextBlock(body, userContext), body, userContext, availableActions, projectContext);
       const suggestions = suggestActionsForMessage(message, availableActions);
       
       // If we got a Response object back, it's a streaming response from the AI gateway
