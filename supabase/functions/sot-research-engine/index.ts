@@ -856,6 +856,114 @@ serve(async (req) => {
     }
 
     // ═══════════════════════════════════════════════════════════
+    // INTENT: ai_search_profile — AI extracts search filters from freetext
+    // ═══════════════════════════════════════════════════════════
+    if (intent === "ai_search_profile") {
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!LOVABLE_API_KEY) {
+        return new Response(
+          JSON.stringify({ success: false, error: "LOVABLE_API_KEY not configured" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const freetext = body.query || "";
+      const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            {
+              role: "system",
+              content: `Du bist ein Immobilien-Suchprofil-Assistent. Extrahiere aus der Beschreibung des Nutzers strukturierte Suchkriterien für die Immobiliensuche auf deutschen Portalen.
+
+Regeln:
+- Preise in EUR (ganze Zahlen)
+- Flächen in m² (ganze Zahlen)
+- Rendite in % (Dezimalzahl)
+- Objektart: MFH, ETW, ZFH, EFH, Gewerbe, Grundstück
+- Wenn unklar ob Warm/Kalt: Annahme Kaltmiete, als Assumption dokumentieren
+- Confidence: 0.0-1.0 pro Feld (wie sicher bist du?)
+- Stelle maximal 1-2 Rückfragen, NUR wenn kritische Ambiguität vorliegt`,
+            },
+            { role: "user", content: freetext },
+          ],
+          tools: [{
+            type: "function",
+            function: {
+              name: "return_search_profile",
+              description: "Return the extracted search profile",
+              parameters: {
+                type: "object",
+                properties: {
+                  canonical: {
+                    type: "object",
+                    properties: {
+                      region: { type: "string", description: "Stadt oder Region" },
+                      price_min: { type: "number", description: "Minimum Kaufpreis EUR" },
+                      price_max: { type: "number", description: "Maximum Kaufpreis EUR" },
+                      area_min: { type: "number", description: "Minimum Wohnfläche m²" },
+                      area_max: { type: "number", description: "Maximum Wohnfläche m²" },
+                      object_types: { type: "array", items: { type: "string" }, description: "Objektarten" },
+                      yield_min: { type: "number", description: "Minimum Bruttorendite %" },
+                      units_min: { type: "number", description: "Minimum Wohneinheiten" },
+                    },
+                  },
+                  confidence: {
+                    type: "object",
+                    description: "Confidence 0-1 pro Feld",
+                    additionalProperties: { type: "number" },
+                  },
+                  assumptions: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Getroffene Annahmen",
+                  },
+                  questions: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Rückfragen bei kritischer Ambiguität (max 2)",
+                  },
+                },
+                required: ["canonical", "confidence", "assumptions"],
+                additionalProperties: false,
+              },
+            },
+          }],
+          tool_choice: { type: "function", function: { name: "return_search_profile" } },
+        }),
+      });
+
+      if (!aiResp.ok) {
+        const errText = await aiResp.text();
+        console.error("AI search profile error:", aiResp.status, errText);
+        return new Response(
+          JSON.stringify({ success: false, error: `AI error ${aiResp.status}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const aiData = await aiResp.json();
+      const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall) {
+        return new Response(
+          JSON.stringify({ success: false, error: "AI returned no profile" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const profile = JSON.parse(toolCall.function.arguments);
+      return new Response(
+        JSON.stringify({ success: true, profile }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════
     // EXISTING INTENTS: find_companies, search_contacts, search_portals
     // ═══════════════════════════════════════════════════════════
     const {

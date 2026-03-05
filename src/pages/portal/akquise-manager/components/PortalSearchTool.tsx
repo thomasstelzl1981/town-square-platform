@@ -14,7 +14,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Search, Building2, ExternalLink, MapPin, Home, TrendingUp, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
-import { usePortalSearch, type PortalSearchResult, type PortalRunDiagnostics } from '@/hooks/useAcqTools';
+import { usePortalSearch, type PortalSearchResult, type PortalRunDiagnostics, type PortalSearchParams } from '@/hooks/useAcqTools';
+import { usePersistSearchResults } from '@/hooks/usePortalListings';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/formatters';
 
 const OBJECT_TYPE_OPTIONS = [
@@ -39,7 +42,11 @@ const PORTAL_COLORS: Record<string, string> = {
   ebay_kleinanzeigen: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
 };
 
-export function PortalSearchTool() {
+interface PortalSearchToolProps {
+  initialParams?: PortalSearchParams | null;
+}
+
+export function PortalSearchTool({ initialParams }: PortalSearchToolProps) {
   const [region, setRegion] = React.useState('');
   const [priceMin, setPriceMin] = React.useState('');
   const [priceMax, setPriceMax] = React.useState('');
@@ -50,22 +57,62 @@ export function PortalSearchTool() {
   const [diagnostics, setDiagnostics] = React.useState<PortalRunDiagnostics | null>(null);
 
   const portalSearch = usePortalSearch();
+  const persistResults = usePersistSearchResults();
+
+  // Fetch tenant context for persistence
+  const { data: userCtx } = useQuery({
+    queryKey: ['portal-search-user-ctx'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('active_tenant_id')
+        .eq('id', user.id)
+        .single();
+      return { userId: user.id, tenantId: profile?.active_tenant_id };
+    },
+  });
+
+  // Apply AI-generated params when they arrive
+  React.useEffect(() => {
+    if (!initialParams) return;
+    if (initialParams.region) setRegion(initialParams.region);
+    if (initialParams.priceMin) setPriceMin(String(initialParams.priceMin));
+    if (initialParams.priceMax) setPriceMax(String(initialParams.priceMax));
+    if (initialParams.areaMin) setAreaMin(String(initialParams.areaMin));
+    if (initialParams.areaMax) setAreaMax(String(initialParams.areaMax));
+    if (initialParams.objectTypes?.[0]) setObjectType(initialParams.objectTypes[0]);
+  }, [initialParams]);
 
   const handleSearch = async () => {
     setResults([]);
     setDiagnostics(null);
-    
-    const searchResult = await portalSearch.mutateAsync({
+
+    const params: PortalSearchParams = {
       region: region || undefined,
       priceMin: priceMin ? parseInt(priceMin) : undefined,
       priceMax: priceMax ? parseInt(priceMax) : undefined,
       areaMin: areaMin ? parseInt(areaMin) : undefined,
       areaMax: areaMax ? parseInt(areaMax) : undefined,
-      objectTypes: objectType ? [objectType] : undefined,
-    });
+      objectTypes: objectType && objectType !== '_all' ? [objectType] : undefined,
+    };
+    
+    const searchResult = await portalSearch.mutateAsync(params);
     
     setResults(searchResult.results || []);
     setDiagnostics(searchResult.diagnostics || null);
+
+    // Persist results to DB (Phase 2)
+    if (searchResult.results.length > 0 && userCtx?.tenantId && userCtx?.userId) {
+      persistResults.mutate({
+        tenantId: userCtx.tenantId,
+        userId: userCtx.userId,
+        searchParams: params,
+        results: searchResult.results,
+        diagnostics: searchResult.diagnostics,
+      });
+    }
   };
 
   return (

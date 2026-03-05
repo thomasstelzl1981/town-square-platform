@@ -8,29 +8,43 @@ import { ChevronDown, Calculator, FolderOpen, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
   PortalSearchTool,
+  PortalSearchInbox,
+  AISearchProfileIntake,
   PropertyResearchTool,
   StandaloneCalculatorPanel,
   AcqDataRoom,
   ExposeDragDropUploader,
 } from './components';
+import type { PortalSearchParams } from '@/hooks/useAcqTools';
 
 export default function AkquiseTools() {
   const [calcOpen, setCalcOpen] = React.useState(false);
   const [dataRoomOpen, setDataRoomOpen] = React.useState(false);
   const [exposeUploadOpen, setExposeUploadOpen] = React.useState(false);
+  const [searchParams, setSearchParams] = React.useState<PortalSearchParams | null>(null);
+
+  const handleAIApply = (params: PortalSearchParams) => {
+    setSearchParams(params);
+  };
 
   return (
     <PageShell>
       <ModulePageHeader title="Akquise-Tools" description="Werkzeuge für Recherche, Bewertung und Kalkulation" />
       
       <div className={DESIGN.SPACING.SECTION}>
-        {/* 1. Portal-Recherche */}
-        <PortalSearchTool />
+        {/* 0. KI-Suchprofil (Phase 3) */}
+        <AISearchProfileIntake onApply={handleAIApply} />
 
-        {/* 2. Immobilienbewertung (inkl. GeoMap + Sprengnetter) */}
+        {/* 1. Portal-Recherche (Phase 1 + 2 Persistierung) */}
+        <PortalSearchTool initialParams={searchParams} />
+
+        {/* 2. Objekt-Inbox (Phase 2) */}
+        <PortalSearchInbox />
+
+        {/* 3. Immobilienbewertung (inkl. GeoMap + Sprengnetter) */}
         <PropertyResearchTool />
 
-        {/* 3. Exposé-Upload & Analyse (persistiert in Objekteingang) */}
+        {/* 4. Exposé-Upload & Analyse (persistiert in Objekteingang) */}
         <Collapsible open={exposeUploadOpen} onOpenChange={setExposeUploadOpen}>
           <CollapsibleTrigger asChild>
             <Button
@@ -54,7 +68,7 @@ export default function AkquiseTools() {
           </CollapsibleContent>
         </Collapsible>
 
-        {/* 4. Standalone-Kalkulator (Collapsible) */}
+        {/* 5. Standalone-Kalkulator (Collapsible) */}
         <Collapsible open={calcOpen} onOpenChange={setCalcOpen}>
           <CollapsibleTrigger asChild>
             <Button
@@ -78,7 +92,7 @@ export default function AkquiseTools() {
           </CollapsibleContent>
         </Collapsible>
 
-        {/* 5. Datenraum (Collapsible) */}
+        {/* 6. Datenraum (Collapsible) */}
         <Collapsible open={dataRoomOpen} onOpenChange={setDataRoomOpen}>
           <CollapsibleTrigger asChild>
             <Button

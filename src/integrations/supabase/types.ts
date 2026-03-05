@@ -16431,6 +16431,180 @@ export type Database = {
         }
         Relationships: []
       }
+      portal_listings: {
+        Row: {
+          address: string | null
+          broker_name: string | null
+          city: string | null
+          cluster_fingerprint: string | null
+          created_at: string
+          first_seen_at: string
+          gross_yield: number | null
+          id: string
+          last_seen_at: string
+          linked_offer_id: string | null
+          living_area_sqm: number | null
+          match_reasons_json: Json | null
+          notes: string | null
+          object_type: string | null
+          plot_area_sqm: number | null
+          price: number | null
+          raw_extract_json: Json | null
+          rooms: number | null
+          run_id: string | null
+          score: number | null
+          source_listing_id: string | null
+          source_portal: string
+          source_url: string | null
+          status: string
+          suppressed: boolean
+          suppression_reason: string | null
+          tags: string[] | null
+          tenant_id: string
+          title: string
+          units_count: number | null
+          updated_at: string
+          year_built: number | null
+          zip_code: string | null
+        }
+        Insert: {
+          address?: string | null
+          broker_name?: string | null
+          city?: string | null
+          cluster_fingerprint?: string | null
+          created_at?: string
+          first_seen_at?: string
+          gross_yield?: number | null
+          id?: string
+          last_seen_at?: string
+          linked_offer_id?: string | null
+          living_area_sqm?: number | null
+          match_reasons_json?: Json | null
+          notes?: string | null
+          object_type?: string | null
+          plot_area_sqm?: number | null
+          price?: number | null
+          raw_extract_json?: Json | null
+          rooms?: number | null
+          run_id?: string | null
+          score?: number | null
+          source_listing_id?: string | null
+          source_portal: string
+          source_url?: string | null
+          status?: string
+          suppressed?: boolean
+          suppression_reason?: string | null
+          tags?: string[] | null
+          tenant_id: string
+          title: string
+          units_count?: number | null
+          updated_at?: string
+          year_built?: number | null
+          zip_code?: string | null
+        }
+        Update: {
+          address?: string | null
+          broker_name?: string | null
+          city?: string | null
+          cluster_fingerprint?: string | null
+          created_at?: string
+          first_seen_at?: string
+          gross_yield?: number | null
+          id?: string
+          last_seen_at?: string
+          linked_offer_id?: string | null
+          living_area_sqm?: number | null
+          match_reasons_json?: Json | null
+          notes?: string | null
+          object_type?: string | null
+          plot_area_sqm?: number | null
+          price?: number | null
+          raw_extract_json?: Json | null
+          rooms?: number | null
+          run_id?: string | null
+          score?: number | null
+          source_listing_id?: string | null
+          source_portal?: string
+          source_url?: string | null
+          status?: string
+          suppressed?: boolean
+          suppression_reason?: string | null
+          tags?: string[] | null
+          tenant_id?: string
+          title?: string
+          units_count?: number | null
+          updated_at?: string
+          year_built?: number | null
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_listings_linked_offer_id_fkey"
+            columns: ["linked_offer_id"]
+            isOneToOne: false
+            referencedRelation: "acq_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_listings_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "portal_search_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_listings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_search_runs: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          metrics_json: Json | null
+          search_params_json: Json
+          status: string
+          tenant_id: string
+          total_found: number | null
+          total_new: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          metrics_json?: Json | null
+          search_params_json?: Json
+          status?: string
+          tenant_id: string
+          total_found?: number | null
+          total_new?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          metrics_json?: Json | null
+          search_params_json?: Json
+          status?: string
+          tenant_id?: string
+          total_found?: number | null
+          total_new?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_search_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posting_categories: {
         Row: {
           accounting_category: string
