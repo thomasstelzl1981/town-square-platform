@@ -24621,6 +24621,7 @@ export type Database = {
         | "sales_partner"
         | "super_user"
         | "client_user"
+        | "super_manager"
       bank_account_category:
         | "privat"
         | "vermietung"
@@ -25133,6 +25134,7 @@ export const Constants = {
         "sales_partner",
         "super_user",
         "client_user",
+        "super_manager",
       ],
       bank_account_category: [
         "privat",
