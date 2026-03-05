@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "updated_at": "2026-03-05T23:30:00.000Z",
+  "description": "SSOT for Zone 1 Admin Desk freeze states. AI MUST check this file before modifying any file in src/pages/admin/desks/* or src/components/admin/desks/*. If a desk is frozen, changes are NOT ALLOWED without explicit unfreeze command 'UNFREEZE DESK-<NAME>'.",
+  "desks": {
+    "DESK-SALES":    { "frozen": false, "path": "src/pages/admin/desks/SalesDesk.tsx, src/components/admin/desks/sales/*",    "reason": "" },
+    "DESK-FINANCE":  { "frozen": false, "path": "src/pages/admin/desks/FinanceDesk.tsx, src/components/admin/desks/finance/*",  "reason": "" },
+    "DESK-ACQUIARY": { "frozen": false, "path": "src/pages/admin/desks/Acquiary.tsx, src/components/admin/desks/acquiary/*",    "reason": "" },
+    "DESK-LEAD":     { "frozen": false, "path": "src/pages/admin/desks/LeadDesk.tsx, src/components/admin/desks/lead/*",        "reason": "" },
+    "DESK-PROJEKT":  { "frozen": false, "path": "src/pages/admin/desks/ProjektDesk.tsx, src/components/admin/desks/projekt/*",  "reason": "" },
+    "DESK-PET":      { "frozen": false, "path": "src/pages/admin/desks/PetmanagerDesk.tsx, src/components/admin/desks/pet/*",   "reason": "" },
+    "DESK-NCORE":    { "frozen": false, "path": "src/pages/admin/desks/NcoreDesk.tsx, src/components/admin/desks/ncore/*",      "reason": "" },
+    "DESK-OTTO":     { "frozen": false, "path": "src/pages/admin/desks/OttoDesk.tsx, src/components/admin/desks/otto/*",        "reason": "" },
+    "DESK-COMMPRO":  { "frozen": true,  "frozen_at": "2026-03-05T23:30:00.000Z", "path": "src/pages/admin/desks/CommProDesk.tsx, src/components/admin/desks/commpro/*", "reason": "Phone system stabilization — ElevenLabs integration fix" },
+    "DESK-PROPERTY": { "frozen": false, "path": "src/pages/admin/desks/PropertyDesk.tsx, src/components/admin/desks/property/*", "reason": "" }
+  }
+}
