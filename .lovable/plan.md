@@ -112,7 +112,7 @@
 5. `UnitBuyerCard.tsx` — Käufer-Zuordnung (~80 Z)
 **Ziel:** Orchestrator ~150 Z
 
-#### R-13: TileCatalog.tsx (646 Z, Admin)
+#### R-13: TileCatalog.tsx (646 Z, Admin) ✅ DONE — 646→~150 Z, 3 neue Dateien in src/components/admin/tilecatalog/
 **Pfad:** `src/pages/admin/TileCatalog.tsx`  
 **Extraktionen → `src/components/admin/tilecatalog/`:**
 1. `tileCatalogTypes.ts` — TileEntry, Category
