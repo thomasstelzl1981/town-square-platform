@@ -2,7 +2,7 @@
  * ACQUISITION TOOLS HOOKS
  * 
  * Standalone tools for MOD-12 AkquiseManager Tools page:
- * - Portal Search (Apify/Firecrawl)
+ * - Portal Search (Firecrawl + AI extraction, all portals parallel)
  * - Property Research (AI + GeoMap)
  * - Quick Calculators
  */
@@ -15,15 +15,13 @@ import { toast } from 'sonner';
 // ============================================================================
 
 export type PortalType = 'immoscout24' | 'immowelt' | 'ebay_kleinanzeigen';
-export type SearchType = 'listings' | 'brokers';
 
 export interface PortalSearchParams {
-  portal: PortalType;
-  searchType: SearchType;
-  query?: string;
   region?: string;
   priceMin?: number;
   priceMax?: number;
+  areaMin?: number;
+  areaMax?: number;
   objectTypes?: string[];
 }
 
@@ -33,17 +31,27 @@ export interface PortalSearchResult {
   price?: number;
   address?: string;
   city?: string;
+  zip_code?: string;
+  object_type?: string;
   units?: number;
   area_sqm?: number;
+  plot_area_sqm?: number;
+  rooms?: number;
+  year_built?: number;
   yield_percent?: number;
   url: string;
   portal: PortalType;
-  scraped_at: string;
-  // Broker-specific fields
   broker_name?: string;
-  broker_company?: string;
-  broker_phone?: string;
-  broker_email?: string;
+  scraped_at: string;
+}
+
+export interface PortalRunDiagnostics {
+  [portal: string]: {
+    status: string;
+    result_count: number;
+    url: string;
+    error?: string;
+  };
 }
 
 export interface StandaloneResearchParams {
@@ -94,29 +102,24 @@ export interface GeoMapResult {
   poi_summary: string[];
 }
 
-// Types moved to src/engines/akquiseCalc/spec.ts — re-exported below
-
 // ============================================================================
-// PORTAL SEARCH HOOK
+// PORTAL SEARCH HOOK — All 3 portals parallel, no broker search
 // ============================================================================
 
-/**
- * Search real estate portals via Apify
- */
 export function usePortalSearch() {
   return useMutation({
     mutationFn: async (params: PortalSearchParams) => {
       const { data, error } = await supabase.functions.invoke('sot-research-engine', {
         body: {
           intent: 'search_portals',
-          query: params.query || 'Immobilien',
+          query: 'Immobilien kaufen',
           location: params.region,
-          max_results: 50,
+          max_results: 20,
           portal_config: {
-            portal: params.portal,
-            search_type: params.searchType,
             price_min: params.priceMin,
             price_max: params.priceMax,
+            area_min: params.areaMin,
+            area_max: params.areaMax,
             object_types: params.objectTypes,
           },
           context: { module: 'akquise' },
@@ -124,27 +127,35 @@ export function usePortalSearch() {
       });
 
       if (error) throw error;
-      
+
       // Map engine results to PortalSearchResult format
       const results: PortalSearchResult[] = (data?.results || []).map((r: any, idx: number) => ({
-        id: `engine_${idx}_${Date.now()}`,
-        title: r.name,
+        id: `portal_${idx}_${Date.now()}`,
+        title: r.name || 'Unbenanntes Objekt',
         price: r.source_refs?.price_raw ? parseInt(r.source_refs.price_raw) : undefined,
         address: r.address || undefined,
-        city: undefined,
+        city: r.source_refs?.city || undefined,
+        zip_code: r.source_refs?.zip_code || undefined,
+        object_type: r.source_refs?.object_type || undefined,
+        units: r.source_refs?.units_count || undefined,
+        area_sqm: r.source_refs?.area_sqm ? parseFloat(r.source_refs.area_sqm) : undefined,
+        rooms: r.source_refs?.rooms ? parseFloat(r.source_refs.rooms) : undefined,
+        year_built: r.source_refs?.year_built || undefined,
+        yield_percent: r.source_refs?.gross_yield || undefined,
         url: r.website || '',
-        portal: params.portal,
-        scraped_at: new Date().toISOString(),
+        portal: r.source_refs?.portal || 'immoscout24',
         broker_name: r.source_refs?.broker_name || undefined,
-        broker_company: r.name,
-        broker_phone: r.phone || undefined,
-        broker_email: r.email || undefined,
+        scraped_at: new Date().toISOString(),
       }));
 
-      return { results, count: results.length };
+      return { 
+        results, 
+        count: results.length,
+        diagnostics: data?.run_diagnostics as PortalRunDiagnostics | undefined,
+      };
     },
     onSuccess: (data) => {
-      toast.success(`${data.count} Ergebnisse gefunden`);
+      toast.success(`${data.count} Objekte gefunden`);
     },
     onError: (error) => {
       toast.error('Portal-Suche fehlgeschlagen: ' + (error as Error).message);
@@ -156,9 +167,6 @@ export function usePortalSearch() {
 // STANDALONE AI RESEARCH HOOK
 // ============================================================================
 
-/**
- * Run AI-powered property research without an existing offer
- */
 export function useStandaloneAIResearch() {
   return useMutation({
     mutationFn: async (params: StandaloneResearchParams) => {
@@ -185,9 +193,6 @@ export function useStandaloneAIResearch() {
 // STANDALONE GEOMAP HOOK
 // ============================================================================
 
-/**
- * Run GeoMap analysis without an existing offer
- */
 export function useStandaloneGeoMap() {
   return useMutation({
     mutationFn: async (address: string) => {
@@ -200,7 +205,6 @@ export function useStandaloneGeoMap() {
 
       if (error) throw error;
       
-      // The edge function returns { success, data } — extract the data
       const result = data?.data || data;
       return result as GeoMapResult;
     },
@@ -217,7 +221,6 @@ export function useStandaloneGeoMap() {
 // QUICK CALCULATORS — Delegated to Engine (SSOT)
 // ============================================================================
 
-// Re-export from central engine for backward compatibility
 export { calcBestandQuick as calculateBestandKPIs, calcAufteilerQuick as calculateAufteilerKPIs } from '@/engines/akquiseCalc/engine';
 export type { BestandQuickResult as BestandCalcResult, AufteilerQuickResult as AufteilerCalcResult } from '@/engines/akquiseCalc/spec';
 export type { BestandQuickParams as BestandCalcParams, AufteilerQuickParams as AufteilerCalcParams } from '@/engines/akquiseCalc/spec';
