@@ -11,8 +11,11 @@ import { WidgetCell } from '@/components/shared/WidgetCell';
 import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDevProjects } from '@/hooks/useDevProjects';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Save } from 'lucide-react';
 import { ProjectDataSheet } from '@/components/projekte/ProjectDataSheet';
 import { StickyCalculatorPanel } from '@/components/projekte/StickyCalculatorPanel';
 import { UnitPreislisteTable } from '@/components/projekte/UnitPreislisteTable';
@@ -46,6 +49,7 @@ interface CalculatedUnit extends DemoUnit {
 export default function PortfolioTab() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const { portfolioRows, isLoadingPortfolio, deleteProject, projects } = useDevProjects();
   
   // Default to first project
@@ -221,6 +225,70 @@ export default function PortfolioTab() {
     setUnitStatusOverrides(prev => ({ ...prev, [unitId]: status }));
   }, []);
 
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = Object.keys(unitOverrides).length > 0 || Object.keys(unitStatusOverrides).length > 0;
+
+  // Reverse status map: frontend → DB
+  const statusToDb = (s: string): string => {
+    switch (s) {
+      case 'sold': return 'verkauft';
+      case 'reserved': return 'reserviert';
+      case 'available': return 'verfügbar';
+      default: return s;
+    }
+  };
+
+  // Save mutation
+  const savePreisliste = useMutation({
+    mutationFn: async () => {
+      const updates: { id: string; list_price?: number; price_per_sqm?: number; status?: string }[] = [];
+
+      // Collect price overrides
+      for (const [unitId, override] of Object.entries(unitOverrides)) {
+        const unit = baseUnits.find(u => u.id === unitId);
+        if (!unit) continue;
+        const newPrice = override.list_price ?? unit.list_price;
+        const newPricePerSqm = unit.area_sqm > 0 ? Math.round(newPrice / unit.area_sqm) : 0;
+        const existing = updates.find(u => u.id === unitId);
+        if (existing) {
+          existing.list_price = newPrice;
+          existing.price_per_sqm = newPricePerSqm;
+        } else {
+          updates.push({ id: unitId, list_price: newPrice, price_per_sqm: newPricePerSqm });
+        }
+      }
+
+      // Collect status overrides
+      for (const [unitId, status] of Object.entries(unitStatusOverrides)) {
+        const existing = updates.find(u => u.id === unitId);
+        if (existing) {
+          existing.status = statusToDb(status);
+        } else {
+          updates.push({ id: unitId, status: statusToDb(status) });
+        }
+      }
+
+      // Execute updates
+      for (const update of updates) {
+        const { id, ...fields } = update;
+        const { error } = await supabase
+          .from('dev_project_units')
+          .update(fields)
+          .eq('id', id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success('Preisliste gespeichert');
+      setUnitOverrides({});
+      setUnitStatusOverrides({});
+      queryClient.invalidateQueries({ queryKey: ['dev_project_units', selectedProjectId] });
+    },
+    onError: (err: any) => {
+      toast.error(`Fehler beim Speichern: ${err.message}`);
+    },
+  });
+
   return (
     <PageShell>
       <ModulePageHeader title="Projekt-Portfolio" description="Übersicht aller Bauträger- und Aufteiler-Projekte" />
@@ -254,36 +322,56 @@ export default function PortfolioTab() {
             <LoadingState />
           ) : (
             <>
-              <div className="flex items-center justify-between gap-4 mb-2">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  Preisliste — {calculatedUnits.length} Einheiten
-                </h3>
-                {!isSelectedDemo && realUnits && realUnits.length > 0 && (
-                  <CreatePropertyFromUnits
-                    projectId={selectedProject.id}
-                    projectName={selectedProject.name}
-                    projectAddress={projects.find(p => p.id === selectedProjectId)?.address || ''}
-                    projectCity={selectedProject.city || ''}
-                    projectPostalCode={selectedProject.postal_code || ''}
-                    projectYearBuilt={((projects.find(p => p.id === selectedProjectId) as any)?.intake_data as any)?.construction_year || undefined}
-                    projectData={{
-                      full_description: (selectedProject as any).full_description,
-                      location_description: (selectedProject as any).location_description,
-                      features: (selectedProject as any).features,
-                      energy_cert_type: (selectedProject as any).energy_cert_type,
-                      energy_cert_value: (selectedProject as any).energy_cert_value,
-                      energy_class: (selectedProject as any).energy_class,
-                      heating_type: (selectedProject as any).heating_type,
-                      energy_source: (selectedProject as any).energy_source,
-                      renovation_year: (selectedProject as any).renovation_year,
-                      parking_type: (selectedProject as any).parking_type,
-                      afa_rate_percent: (projects.find(p => p.id === selectedProjectId) as any)?.afa_rate_percent,
-                      afa_model: (projects.find(p => p.id === selectedProjectId) as any)?.afa_model,
-                      land_share_percent: (projects.find(p => p.id === selectedProjectId) as any)?.land_share_percent,
-                    }}
-                    units={realUnits as any}
-                  />
-                )}
+               <div className="flex items-center justify-between gap-4 mb-2">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Preisliste — {calculatedUnits.length} Einheiten
+                  </h3>
+                  {hasUnsavedChanges && (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-destructive">
+                      <span className="h-2 w-2 rounded-full bg-destructive animate-pulse" />
+                      Ungespeicherte Änderungen
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {hasUnsavedChanges && (
+                    <Button
+                      size="sm"
+                      onClick={() => savePreisliste.mutate()}
+                      disabled={savePreisliste.isPending}
+                    >
+                      <Save className="h-4 w-4 mr-1" />
+                      {savePreisliste.isPending ? 'Speichert…' : 'Preisliste speichern'}
+                    </Button>
+                  )}
+                  {!isSelectedDemo && realUnits && realUnits.length > 0 && (
+                    <CreatePropertyFromUnits
+                      projectId={selectedProject.id}
+                      projectName={selectedProject.name}
+                      projectAddress={projects.find(p => p.id === selectedProjectId)?.address || ''}
+                      projectCity={selectedProject.city || ''}
+                      projectPostalCode={selectedProject.postal_code || ''}
+                      projectYearBuilt={((projects.find(p => p.id === selectedProjectId) as any)?.intake_data as any)?.construction_year || undefined}
+                      projectData={{
+                        full_description: (selectedProject as any).full_description,
+                        location_description: (selectedProject as any).location_description,
+                        features: (selectedProject as any).features,
+                        energy_cert_type: (selectedProject as any).energy_cert_type,
+                        energy_cert_value: (selectedProject as any).energy_cert_value,
+                        energy_class: (selectedProject as any).energy_class,
+                        heating_type: (selectedProject as any).heating_type,
+                        energy_source: (selectedProject as any).energy_source,
+                        renovation_year: (selectedProject as any).renovation_year,
+                        parking_type: (selectedProject as any).parking_type,
+                        afa_rate_percent: (projects.find(p => p.id === selectedProjectId) as any)?.afa_rate_percent,
+                        afa_model: (projects.find(p => p.id === selectedProjectId) as any)?.afa_model,
+                        land_share_percent: (projects.find(p => p.id === selectedProjectId) as any)?.land_share_percent,
+                      }}
+                      units={realUnits as any}
+                    />
+                  )}
+                </div>
               </div>
               <UnitPreislisteTable
                 units={calculatedUnits}
