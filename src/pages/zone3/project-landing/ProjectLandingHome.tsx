@@ -551,8 +551,9 @@ export default function ProjectLandingHome() {
                 <tbody>
                   {availableUnits.map((unit) => {
                     const metrics = metricsCache[unit.id];
-                    const yieldPercent = unit.list_price && unit.rent_net
-                      ? (unit.rent_net * 12 / unit.list_price) * 100 : 0;
+                    const unitRent = unit.rent_net || unit.current_rent || 0;
+                    const yieldPercent = unit.list_price && unitRent
+                      ? (unitRent * 12 / unit.list_price) * 100 : 0;
                     const monthlyTaxEffect = metrics?.yearlyTaxSavings ? metrics.yearlyTaxSavings / 12 : null;
                     const monthlyBurden = metrics?.monthlyBurden ?? null;
                     const status = STATUS_LABELS[unit.status || 'frei'] || STATUS_LABELS.frei;
