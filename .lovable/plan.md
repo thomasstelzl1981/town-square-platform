@@ -1,241 +1,164 @@
 
 
-# Vollstaendige KI-Analyse: Armstrong Workspace & alle KI-Integrationen
+# Armstrong Workspace — Vollständige Systemanalyse Zone 2
 
-## 1. Armstrong Workspace ↔ Orb Integration: Status
-
-Die Integration funktioniert sauber. Der Datenfluss:
+## Architektur-Übersicht (Ist-Zustand)
 
 ```text
-ArmstrongWorkspace.tsx
-  ├── orbState = f(advisor.isLoading, advisor.isExecuting, voice.isSpeaking, docUpload.isParsing)
-  │     → idle | thinking | working | speaking
-  ├── ArmstrongOrb (rein visuell, CSS-Animationen: ping, orbit, pulse)
-  ├── useArmstrongAdvisor → sot-armstrong-advisor (Edge Function, 4446 Zeilen)
-  │     → Gemini 2.5 Pro, 4000 Token, nicht-streaming
-  ├── useArmstrongVoice → sot-armstrong-voice (WebSocket Proxy)
-  │     → OpenAI gpt-4o-realtime (NICHT Lovable AI Gateway!)
-  ├── useArmstrongDocUpload → sot-document-parser (Edge Function)
-  │     → Gemini 2.5 Pro, 32000 Token, Vision
-  └── useArmstrongProjects → armstrong_projects (CRUD)
+┌─────────────────────────────────────────────────────────────────────┐
+│                    ARMSTRONG WORKSPACE (Zone 2)                      │
+├──────────────┬───────────────────────┬──────────────────────────────┤
+│ ProjectsSidebar │    Chat Column       │     ContextPanel            │
+│ ─ Projekte     │ ─ Orb (4 States)     │ ─ Aktiver Kontext           │
+│ ─ Freier Chat  │ ─ SSE Streaming      │ ─ Projekt-Info              │
+│ ─ CRUD         │ ─ Voice (PTT+TTS)    │ ─ EntityLinker              │
+│                │ ─ Doc Upload (50MB)  │ ─ Task-Liste CRUD           │
+│                │ ─ Slash-Commands     │ ─ Memory Snippets CRUD      │
+│                │ ─ Data-Mode Toggle   │ ─ Dashboard Fallback        │
+└──────────────┴───────────────────────┴──────────────────────────────┘
+        │                   │                        │
+        ▼                   ▼                        ▼
+  armstrong_projects   sot-armstrong-advisor    Lokaler State
+  (DB: CRUD)           (Edge: 4541 Zeilen)     (kein DB-Read)
+                            │
+                     ┌──────┴──────┐
+                     │  LÜCKE #1   │
+                     │ Kein Zugriff│
+                     │ auf Project │
+                     │ Memory/Tasks│
+                     └─────────────┘
 ```
 
-**Bewertung**: Orb-States korrekt verdrahtet. Chat-Isolation per Projekt funktioniert (Map-Cache). Data-Mode wird im Request gesendet. SlashCommandPicker greift auf armstrongManifest.
+## Was funktioniert
 
-**Problem identifiziert**: `sot-armstrong-voice` nutzt **OpenAI gpt-4o-realtime** via direkten API-Key (`OPENAI_API_KEY`), NICHT Lovable AI Gateway. Das ist die einzige Funktion die einen externen API-Key direkt nutzt statt des Gateways.
+| Feature | Status | Details |
+|---------|--------|---------|
+| Chat-Isolation per Projekt | ✅ Client | Map-Cache im useRef, wechselt bei Projektwechsel |
+| Chat-Persistenz | ✅ Backend | `armstrong_chat_sessions` mit `project_id` FK |
+| SSE Streaming | ✅ EXPLAIN+DRAFT | Token-by-Token Rendering |
+| Data-Mode Toggle | ✅ Frontend→Backend | `data_mode: tenant/general` im System-Prompt |
+| Project CRUD | ✅ Vollständig | Titel, Ziel, Status, linked_entities, memory, tasks |
+| Memory Snippets | ✅ UI-CRUD | 4 Typen: Entscheidung, Annahme, Präferenz, Notiz |
+| Task-Liste | ✅ UI-CRUD | Add, toggle done, delete |
+| Entity Linker | ✅ UI | Immobilien + Kontakte verknüpfen via Combobox |
+| Slash-Commands | ✅ | Kontextsensitiv nach Modul, greift auf armstrongManifest |
+| Voice (STT) | ✅ | ElevenLabs Scribe + Browser-Fallback via usePushToTalk |
+| Voice (TTS) | ✅ | ElevenLabs via `elevenlabs-tts` + Browser-Fallback |
+| Doc Upload | ✅ | 50MB, 40+ Formate, Magic Intake Detection |
+| Onboarding | ✅ | Zeigt sich bei leerem Chat ohne aktives Projekt |
+| 200+ Actions | ✅ | Intent-Klassifizierung → EXPLAIN/DRAFT/ACTION |
+| Orb-States | ✅ | idle/thinking/working/speaking korrekt verdrahtet |
 
----
+## Kritische Lücken
 
-## 2. VOLLSTAENDIGE KI-BESTANDSAUFNAHME (50 Edge Functions mit AI)
+### LÜCKE 1 — Armstrong hat KEIN Gedächtnis (P0)
 
-### A. DOKUMENTENANALYSE (Schwerpunkt)
+**Das Kernproblem:** Die Edge Function `sot-armstrong-advisor` liest **niemals** die `armstrong_projects`-Tabelle. 
 
-| # | Funktion | Modell | Token | Multimodal | Dateitypen | Extrahierte Felder | Kosten |
-|---|----------|--------|-------|------------|------------|-------------------|--------|
-| 1 | `sot-document-parser` | gemini-2.5-pro | 32.000 | Vision (PDF/Bild) | PDF, JPG, PNG, WEBP, DOCX, XLSX, CSV, XLS | 10 Modi: immobilie (11 Felder), finanzierung (9), versicherung (10), fahrzeugschein (10), pv_anlage (10), vorsorge (10), person (10), haustier (8), kontakt (7), allgemein (auto-detect) | 1 Cr (AI) / 0 Cr (XLSX/CSV direkt) |
-| 2 | `sot-invoice-parse` | gemini-2.5-pro | 32.000 | Vision | PDF, Bild | vendor_name, invoice_number, amounts, VAT, IBAN, NK-Kategorie, property_hints | 1 Cr |
-| 3 | `sot-nk-beleg-parse` | gemini-2.5-pro | 16.000 | Vision | PDF, Bild | provider, amounts, meter readings, consumption, cost_category + Cross-Validation-Modus | 1 Cr |
-| 4 | `sot-weg-abrechnung-parse` | gemini-2.5-pro | 32.000 | Vision | PDF | WEG-Positionen, Umlageschluessel, Einzelabrechnungen, Ruecklagen | 1 Cr |
-| 5 | `sot-storage-extract` | gemini-2.5-pro | 32.000 | Vision | PDF, Bild | Freitext → document_chunks + Embedding | 1 Cr |
-| 6 | `sot-storage-extractor` | gemini-2.5-pro | 32.000 | Vision | PDF, Bild | Variante von storage-extract (Bulk?) | 1 Cr |
-| 7 | `sot-inbound-receive` | gemini-2.5-pro | 32.000 | Nein (Text) | E-Mail-Body | Absender, Betreff, Kategorisierung, Auto-Sortierung | 1 Cr |
-| 8 | `sot-extract-email` | gemini-2.5-pro | 8.000 | Nein | E-Mail-Text | Strukturierte Daten aus E-Mail-Inhalten | 0 Cr |
-| 9 | `sot-extract-offer` | gemini-2.5-pro | 8.000 | Nein | Text | Immobilienangebote → Preis, Fläche, Rendite, Lage | 1 Cr |
-| 10 | `sot-project-intake` | gemini-2.5-pro | 8.000 | Vision | PDF (Exposé) | Projektdaten + Einheitenliste via Tool-Calling | 10 Cr |
-| 11 | `sot-acq-offer-extract` | gemini-2.5-pro | 8.000 | Nein | Text | Akquise-Angebotsdaten | 1 Cr |
-| 12 | `sot-acq-profile-extract` | gemini-2.5-pro | — | Nein | Text | Ankaufsprofil-Extraktion | 1 Cr |
-| 13 | `sot-excel-ai-import` | gemini-2.5-pro | — | Nein | XLSX/CSV | Generischer Excel-Import mit AI-Mapping | 1 Cr |
-| 14 | `sot-embedding-pipeline` | gemini-2.5-pro | — | Nein | Text | 768d Vektoren fuer Hybrid-Suche | — |
+Das bedeutet:
+- **Memory Snippets** → Armstrong weiß NICHTS von gespeicherten Entscheidungen, Annahmen, Präferenzen
+- **Task-Liste** → Armstrong kennt keine offenen Aufgaben des Projekts
+- **Linked Entities** → Armstrong weiß nicht, welche Immobilien/Kontakte zum Projekt gehören
+- **Projekt-Ziel** → Armstrong kennt nicht mal das Projektziel
 
-**Sprache**: Alle Dokumente werden auf Deutsch verarbeitet. Prompts sind Deutsch. Gemischte Dokumente (EN/DE) werden unterstuetzt aber DE priorisiert.
+Der User sieht Memory/Tasks/Entities im ContextPanel (rechte Spalte), aber die KI hat **null Zugriff** darauf. Das `project_id` wird zwar gesendet und geloggt, aber nie genutzt um Projektdaten zu laden.
 
-**Bildanalyse/OCR**: Alle Vision-fähigen Parser nutzen Gemini Vision (base64-encoded images/PDFs). Kein separates OCR — Gemini handhabt gescannte Dokumente nativ.
+**Fix:** In `sot-armstrong-advisor/index.ts` vor dem AI-Call:
+1. `armstrong_projects` laden wo `id = project_id`
+2. `memory_snippets`, `task_list`, `linked_entities`, `goal` in den System-Prompt injizieren
+3. Optional: Linked Entity Details (Immobilien-Adresse, Kontakt-Name) nachladen
 
-**Dual-Path Architektur** (sot-document-parser):
-- **Path A (Deterministisch)**: XLSX/CSV → SheetJS direkt → Fuzzy Column Mapping → 0 Credits
-- **Path B (AI Vision)**: PDF/Bild → Gemini 2.5 Pro Vision → JSON-Extraktion → 1 Credit
-- **Path B+CSV**: PDF mit Tabellen → Gemini Flash → CSV → SheetJS → Enhanced Prompt → 1 Credit
+### LÜCKE 2 — Chat-Historie geht bei Page Reload verloren (P0)
 
-### B. CHAT & BERATUNG
+Die Chat-Isolation nutzt nur einen **In-Memory Map-Cache** (`useRef<Map>`). Bei Page-Reload sind alle Nachrichten weg.
 
-| # | Funktion | Modell | Token | Streaming | Zweck |
-|---|----------|--------|-------|-----------|-------|
-| 1 | `sot-armstrong-advisor` | gemini-2.5-pro | 4.000 | Nur fuer Social-Audit | Haupt-Chat, Intent-Klassifikation, 200+ Actions, E-Mail-Compose, Dokument-Analyse |
-| 2 | `sot-armstrong-website` | gemini-2.5-pro | 2.000 | SSE Streaming | Zone 3 Website-Chat (Kaufy, FutureRoom, etc.) |
-| 3 | `sot-armstrong-voice` | **OpenAI gpt-4o-realtime** | ~300 | WebSocket | Voice-Konversation via OpenAI Realtime API |
+Die Sessions werden zwar in `armstrong_chat_sessions` gespeichert, aber der Frontend-Hook **liest sie nie zurück**. Es gibt keinen `loadSessionMessages(projectId)` Call.
 
-### C. CONTENT & MARKETING
+**Fix:** In `useArmstrongAdvisor.ts`:
+1. Bei Projektwechsel: `armstrong_chat_sessions` abfragen wo `project_id = X`
+2. Messages aus DB laden und in den Cache setzen
+3. Beim Start: letzte Session pro Projekt laden
 
-| # | Funktion | Modell | Token | Zweck |
-|---|----------|--------|-------|-------|
-| 1 | `sot-content-engine` | gemini-2.5-pro | 8.000 | Blog/SEO-Content fuer 7 Brands |
-| 2 | `sot-social-draft-generate` | gemini-2.5-pro | 8.000 | Social-Media-Posts (Tool-Calling) |
-| 3 | `sot-social-draft-rewrite` | gemini-2.5-pro | — | Post-Rewrite/Optimierung |
-| 4 | `sot-social-generate-briefing` | gemini-2.5-pro | — | Content-Briefings |
-| 5 | `sot-social-analyze-performance` | gemini-2.5-pro | 4.000 | KPI-Analyse |
-| 6 | `sot-social-extract-patterns` | gemini-2.5-pro | — | Muster-Erkennung |
-| 7 | `sot-expose-description` | gemini-2.5-pro | 4.000 | Exposé-Texte |
-| 8 | `sot-generate-landing-page` | gemini-2.5-pro | 8.000 | Lagebeschreibungen fuer Projekte |
-| 9 | `sot-project-description` | gemini-2.5-pro | — | Projektbeschreibungen |
-| 10 | `sot-website-ai-generate` | gemini-2.5-pro | 8.000 | Website-Sektionen |
-| 11 | `sot-website-update-section` | gemini-2.5-pro | — | Website-Sektions-Updates |
+### LÜCKE 3 — data_mode hat keine echte Auswirkung (P1)
 
-### D. E-MAIL & KOMMUNIKATION
+`data_mode` wird korrekt gesendet und erscheint im System-Prompt als Text:
+```
+- Datenmodus: Allgemein (kein Zugriff auf Tenant-Daten)
+```
 
-| # | Funktion | Modell | Token | Zweck |
-|---|----------|--------|-------|-------|
-| 1 | `sot-mail-ai-assist` | **gemini-2.5-flash** | 4.000 | Ausformulieren, Qualitätscheck, Kuerzen, Verbessern |
-| 2 | `sot-letter-generate` | gemini-2.5-pro | 8.000 | Briefgenerierung |
-| 3 | `sot-nk-letter-generate` | **gemini-2.5-flash** | — | NK-Abrechnungsbriefe |
+Aber die Edge Function ändert ihr Verhalten **nicht**:
+- Entity-Kontext wird trotzdem geladen (egal ob `general`)
+- DB-Queries für Actions laufen trotzdem
+- Es gibt keine Logik `if (data_mode === 'general') skip entity loading`
 
-### E. FINANZIERUNG & ANALYSE
+**Fix:** In der Edge Function: Entity-Context-Loading und DB-Queries skippen wenn `data_mode === 'general'`.
 
-| # | Funktion | Modell | Token | Zweck |
-|---|----------|--------|-------|-------|
-| 1 | `sot-finance-prepare` | gemini-2.5-pro | 16.000 | Bankenpakete erstellen |
-| 2 | `sot-finance-bank-match` | **gemini-2.5-flash** | 12.000 | Bank-Matching via Tool-Calling |
-| 3 | `sot-transaction-categorize` | gemini-2.5-pro | — | Kontobewegungen kategorisieren |
-| 4 | `sot-investment-engine` | gemini-2.5-pro | — | Investment-Berechnungen |
+### LÜCKE 4 — Kein Wissensabruf aus DMS/StorageX (P1)
 
-### F. AKQUISE & RECHERCHE
+Armstrong kann Dokumente **uploaden und parsen** (via `useArmstrongDocUpload`), aber hat **keinen proaktiven Zugriff** auf bereits gespeicherte Dokumente im DMS.
 
-| # | Funktion | Modell | Token | Zweck |
-|---|----------|--------|-------|-------|
-| 1 | `sot-acq-ai-research` | gemini-2.5-pro | 8.000 | KI-Research fuer Akquise |
-| 2 | `sot-acq-generate-response` | gemini-2.5-pro | 8.000 | Antwort-Generierung |
-| 3 | `sot-acq-contact-enrich` | gemini-2.5-pro | 4.000 | Kontakt-Anreicherung |
-| 4 | `sot-acq-standalone-research` | gemini-2.5-pro | — | Standalone Research |
-| 5 | `sot-research-ai-assist` | gemini-2.5-pro | 8.000 | Filter-Suggestion, Scoring |
-| 6 | `sot-research-engine` | gemini-2.5-pro | 8.000 | Lead-Research |
-| 7 | `sot-dossier-auto-research` | gemini-2.5-pro | — | Auto-Dossier |
-| 8 | `sot-research-strategy-resolver` | gemini-2.5-pro | — | Strategy Resolution |
+Wenn ein Nutzer fragt "Was steht in meinem Mietvertrag?", kann Armstrong:
+- ❌ Nicht im DMS suchen
+- ❌ Nicht auf `document_chunks` zugreifen (Embedding-Suche)
+- ❌ Nicht auf `tenant-documents` Storage zugreifen
 
-### G. LIFECYCLE & AUTOMATION (Cron)
+Die Infrastruktur existiert (`sot-storage-extract`, `sot-embedding-pipeline`), ist aber nicht an den Advisor angebunden.
 
-| # | Funktion | Modell | Token | Zweck |
-|---|----------|--------|-------|-------|
-| 1 | `sot-tenancy-lifecycle` | **gemini-2.5-flash** | 600-800 | TLC: Zahlungserinnerungen, Zusammenfassungen |
-| 2 | `sot-slc-lifecycle` | **gemini-2.5-flash** | 800 | SLC: Sales-Lifecycle |
-| 3 | `sot-flc-lifecycle` | gemini-2.5-pro | — | FLC: Finance-Lifecycle |
-| 4 | `sot-pslc-lifecycle-patrol` | gemini-2.5-pro | — | PSLC: Pet Service Lifecycle |
+### LÜCKE 5 — Proaktive Aufgaben-Erstellung fehlt (P2)
 
-### H. TELEFON & VOICE
+Armstrong kann im Chat Aufgaben vorschlagen, aber **nicht selbst** in die `task_list` des Projekts schreiben. Die Actions `ARM.MOD00.CREATE_TASK` existieren, aber sie schreiben in ein separates Widget-System, nicht in `armstrong_projects.task_list`.
 
-| # | Funktion | Modell | Token | Zweck |
-|---|----------|--------|-------|-------|
-| 1 | `sot-phone-converse` | **gemini-2.5-flash** | 300 | Live-Gesprächssteuerung |
-| 2 | `sot-phone-postcall` | **gemini-2.5-flash** | 2.000 | Nachbearbeitung: Zusammenfassung, Sentiment |
-| 3 | `sot-phone-agent-sync` | gemini-2.5-flash | 300 | Agent-Sync |
-| 4 | `sot-armstrong-voice` | **OpenAI gpt-4o-realtime** | — | WebSocket Voice (NICHT Gateway!) |
+## Dokumentation: Wie Armstrong heute Wissen sammelt
 
-### I. SONSTIGE
+| Wissensquelle | Zugriff | Qualität |
+|---------------|---------|----------|
+| System-Prompt (statisch) | ✅ Immer | Kern-Identität, Governance, Prioritäten |
+| Modul-Kontext (Route) | ✅ Immer | Aktuelles Modul + Entity-Typ |
+| Entity-Daten (DB-Query) | ✅ Bei Entity aktiv | Immobilien-Details, Finance-Case, etc. |
+| Conversation History | ✅ Letzte 10 Msgs | In-Session Memory, geht bei Reload verloren |
+| Knowledge Base (kb_items) | ✅ Falls vorhanden | Brand-spezifisches Wissen (6 Items/Brand) |
+| Projekt-Memory | ❌ FEHLT | Memory Snippets werden nie gelesen |
+| Projekt-Tasks | ❌ FEHLT | Task-Liste wird nie gelesen |
+| Projekt-Entities | ❌ FEHLT | Linked Entities werden nie gelesen |
+| DMS/Dokumente | ❌ FEHLT | Kein Retrieval aus gespeicherten Docs |
+| Persisted Sessions | ❌ FEHLT (Read) | Werden geschrieben, nie geladen |
 
-| # | Funktion | Modell | Token | Zweck |
-|---|----------|--------|-------|-------|
-| 1 | `sot-meeting-summarize` | gemini-2.5-pro | 8.000 | Meeting-Zusammenfassungen |
-| 2 | `sot-renovation-scope-ai` | **gemini-2.5-flash** + pro | 8.000 | Renovierungs-Scoping (3 AI-Calls) |
-| 3 | `sot-market-pulse-report` | gemini-2.5-pro | — | Marktberichte (Streaming) |
-| 4 | `sot-project-market-report` | gemini-2.5-pro | — | Projekt-Marktberichte (Streaming) |
-| 5 | `sot-solar-insights` | gemini-2.5-pro | — | PV-Analyse |
-| 6 | `sot-vv-prefill-check` | gemini-2.5-pro | — | Vorsorge Prefill |
+## Implementierungsplan
 
----
+### Phase 1: Armstrong Gedächtnis aktivieren (P0)
 
-## 3. TECHNISCHE ANALYSE
+**A. Projekt-Kontext in Edge Function laden**
+- Datei: `supabase/functions/sot-armstrong-advisor/index.ts`
+- Neue Funktion: `loadProjectContext(supabase, projectId)`
+- Lädt: `armstrong_projects` → `memory_snippets`, `task_list`, `linked_entities`, `goal`
+- Injiziert als `PROJEKT-KONTEXT:` Block im System-Prompt
+- Für linked_entities: Nachladen der Basis-Details (Adresse, Name) aus `properties`/`contacts`
 
-### Streaming-Funktionen (SSE)
-Nur 4 von ~50 Funktionen nutzen Streaming:
-- `sot-armstrong-website` (Zone 3 Chat)
-- `sot-armstrong-advisor` (nur Social-Audit-Teil)
-- `sot-market-pulse-report`
-- `sot-project-market-report`
+**B. Chat-Historie aus DB laden**
+- Datei: `src/hooks/useArmstrongAdvisor.ts`
+- Neue Funktion: `loadPersistedSession(projectId)`
+- Bei Projektwechsel: `armstrong_chat_sessions` query, Messages in Cache laden
+- Initiale Welcome-Message nur wenn keine persisted Session existiert
 
-**Problem**: Der Haupt-Chat (`sot-armstrong-advisor`) streamt NICHT. Antworten werden komplett generiert und dann gesendet. Bei 4000 Token = 3-8 Sekunden Wartezeit ohne sichtbare Fortschritte.
+### Phase 2: data_mode enforcing (P1)
 
-### Function Calling / Tool Use
-- `sot-social-draft-generate` — Tool: `draft_result`
-- `sot-finance-bank-match` — Tool: `bank_matching_result`
-- `sot-nk-beleg-parse` — Tool: `cross_validation_result`
-- `sot-project-intake` — Tool: `extract_project_data`
-- `sot-armstrong-advisor` — 200+ Action-Definitionen (nicht als AI Tools, sondern als Intent-Mapping)
+**C. General-Mode Skip-Logic**
+- Datei: `supabase/functions/sot-armstrong-advisor/index.ts`
+- Wenn `data_mode === 'general'`: Entity-Context-Loading skippen, keine DB-Queries für Tenant-Daten
+- System-Prompt anpassen: "Du hast in diesem Modus keinen Zugriff auf Nutzerdaten"
 
-### Multimodal (Vision)
-`sot-document-parser`, `sot-invoice-parse`, `sot-nk-beleg-parse`, `sot-weg-abrechnung-parse`, `sot-storage-extract`, `sot-storage-extractor`, `sot-project-intake`
+### Phase 3: DMS-Retrieval anbinden (P2)
 
-### Echtzeit vs. Batch
-- **Echtzeit**: Chat (Advisor, Website), Voice (Phone, Armstrong), Mail-Assist
-- **Batch/Cron**: Lifecycle (TLC/SLC/FLC), Content-Engine, Market Reports
+**D. Embedding-basierte Dokumentensuche**
+- Datei: `supabase/functions/sot-armstrong-advisor/index.ts`
+- Neue Funktion: `searchDocumentChunks(supabase, tenantId, query, limit)`
+- Nutzt `document_chunks` Tabelle mit Embedding-Similarity-Search
+- Wird bei EXPLAIN-Intent getriggert wenn Nachricht auf Dokumente referenziert
 
----
+### Betroffene Dateien
 
-## 4. KOSTENANALYSE
-
-### Modell-Verteilung (nach Memory: Maximum Power Standard)
-
-| Modell | Anzahl Funktionen | Typischer Token-Bereich |
-|--------|-------------------|------------------------|
-| google/gemini-2.5-pro | ~40 | 2.000–32.000 |
-| google/gemini-2.5-flash | ~8 | 300–2.000 |
-| OpenAI gpt-4o-realtime | 1 | WebSocket (extern) |
-
-### Geschaetzte Kosten pro Dokumenttyp
-
-| Dokumenttyp | Input-Tokens (geschaetzt) | Output-Tokens | Gesamtkosten/Dok |
-|-------------|--------------------------|---------------|-----------------|
-| PDF Exposé (10 Seiten) | ~15.000 | ~2.000 | ~$0.06 |
-| PDF Rechnung (1-2 Seiten) | ~3.000 | ~500 | ~$0.01 |
-| XLSX/CSV (direkt) | 0 (kein AI) | 0 | $0.00 |
-| WEG-Abrechnung (20+ Seiten) | ~25.000 | ~5.000 | ~$0.10 |
-| NK-Beleg + Cross-Validation | ~5.000 + ~8.000 | ~1.000 + ~3.000 | ~$0.06 |
-
-### Prognose bei Skalierung
-
-| Szenario | Dokumente/Monat | AI-Calls gesamt | Geschaetzte Kosten |
-|----------|----------------|----------------|-------------------|
-| Aktuell (Test) | ~100 | ~200 | ~$10-20 |
-| 10 Tenants aktiv | ~1.000 | ~2.000 | ~$100-200 |
-| 50 Tenants | ~5.000 | ~10.000 | ~$500-1.000 |
-| 100 Tenants | ~10.000 | ~20.000 | ~$1.000-2.000 |
-
-**Kosten-Treiber #1**: `sot-armstrong-advisor` (haeufigste Aufrufe, 4000 Token pro Antwort)
-**Kosten-Treiber #2**: `sot-document-parser` (32.000 Token, Vision)
-**Kosten-Treiber #3**: `sot-finance-prepare` (16.000 Token, komplexe Bankenpakete)
-
----
-
-## 5. IDENTIFIZIERTE PROBLEME & EMPFEHLUNGEN
-
-### Kritisch
-1. **sot-armstrong-voice nutzt OpenAI direkt** — Einzige Funktion die nicht ueber Lovable AI Gateway geht. Erfordert separaten `OPENAI_API_KEY`. Sollte auf Lovable AI migriert werden oder bewusst als Ausnahme dokumentiert werden.
-2. **Kein Streaming im Haupt-Chat** — `sot-armstrong-advisor` buffert die komplette Antwort (bis 4000 Token), was 3-8s Wartezeit ohne Feedback verursacht.
-3. **Duplikat: sot-storage-extract vs sot-storage-extractor** — Zwei sehr aehnliche Funktionen fuer Datei-Extraktion. Konsolidierungspotential.
-
-### Optimierungspotential
-4. **Modell-Downgrade fuer einfache Tasks** — Folgende Funktionen koennten von gemini-2.5-pro auf gemini-2.5-flash wechseln ohne Qualitaetsverlust:
-   - `sot-expose-description` (Textgenerierung)
-   - `sot-social-analyze-performance` (KPI-Analyse)
-   - `sot-acq-contact-enrich` (simple Anreicherung)
-   - `sot-content-engine` (Blog-Posts)
-   - `sot-extract-email` (einfache Extraktion)
-
-5. **Token-Limits ueberdimensioniert** — Mehrere Funktionen haben 32.000 Token Limit, generieren aber typisch <2.000 Token Output. Reduktion auf 8.000-16.000 wuerde Latenz senken.
-
-6. **Armstrong Advisor hat 4.446 Zeilen** — Monolithisch. Enthaelt Intent-Klassifikation, Action-Execution, E-Mail-Compose, Dokument-Analyse, Social-Audit, Web-Research in einer Datei. Splitting wuerde Wartbarkeit verbessern.
-
-### Fehlende Integration
-7. **data_mode wird gesendet aber nicht verarbeitet** — `useArmstrongAdvisor` sendet `data_mode: 'tenant' | 'general'` im Request, aber `sot-armstrong-advisor` ignoriert dieses Feld im RequestBody-Interface. Die Edge Function hat kein `data_mode` im Interface.
-8. **project_id wird gesendet aber nicht persistiert** — Aehnlich: Client sendet `project_id`, Edge Function speichert es nicht in der Session.
-
----
-
-## 6. NAECHSTE SCHRITTE (Empfehlung)
-
-| Prioritaet | Massnahme | Aufwand |
-|------------|-----------|--------|
-| P0 | `data_mode` + `project_id` in sot-armstrong-advisor verarbeiten | 2h |
-| P0 | Streaming fuer Haupt-Chat aktivieren | 4h |
-| P1 | sot-storage-extract/extractor konsolidieren | 2h |
-| P1 | Modell-Downgrade fuer 5 einfache Funktionen (→ Flash) | 1h |
-| P2 | sot-armstrong-voice auf Lovable AI migrieren oder dokumentieren | 4h |
-| P2 | sot-armstrong-advisor in Sub-Module aufteilen | 8h |
+| Datei | Änderung | Phase |
+|-------|----------|-------|
+| `supabase/functions/sot-armstrong-advisor/index.ts` | Projekt-Kontext laden, data_mode enforcing, DMS-Retrieval | 1, 2, 3 |
+| `src/hooks/useArmstrongAdvisor.ts` | Chat-Sessions aus DB laden bei Projektwechsel | 1 |
 
