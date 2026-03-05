@@ -345,7 +345,6 @@ export default function PortfolioTab() {
                       {savePreisliste.isPending ? 'Speichert…' : 'Preisliste speichern'}
                     </Button>
                   )}
-                  )}
                   {!isSelectedDemo && realUnits && realUnits.length > 0 && (
                     <CreatePropertyFromUnits
                       projectId={selectedProject.id}
