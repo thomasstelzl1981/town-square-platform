@@ -38,6 +38,14 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
   const [matchRunning, setMatchRunning] = useState(false);
   const [matchStep, setMatchStep] = useState(0);
   const [matchResult, setMatchResult] = useState<{ matched: number; arrears: number } | null>(null);
+  const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (stepTimerRef.current) clearInterval(stepTimerRef.current);
+    };
+  }, []);
 
   const { expenses, createExpense: createExpenseMutation, deleteExpense: deleteExpenseMutation } = usePropertyExpenses(propertyId);
 
