@@ -192,6 +192,7 @@ export function InvestmentExposeView({
   const priceColor = textColors?.price || 'text-primary';
   const factsBg = textColors?.factsBg || 'bg-muted/50';
   const factsLabel = textColors?.factsLabel || 'text-muted-foreground';
+  const factsValue = textColors?.factsValue || 'text-foreground';
 
   return (
     <div className="min-h-screen bg-background">
