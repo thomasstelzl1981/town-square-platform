@@ -1,14 +1,14 @@
 /**
  * ProjectLandingHome — Startseite der Projekt-Landing-Page
  * 
- * Hero + Photo Carousel + Object Description + Search Engine + Unit Table
+ * Hero + Photo Carousel + Highlights + Location + Search Engine + Unit Table
  */
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveStorageSignedUrl } from '@/lib/storage-url';
-import { Loader2, Building2, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Building2, MapPin, ChevronLeft, ChevronRight, Star, TrendingUp, Shield, Home, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -70,8 +70,8 @@ async function loadAllProjectImages(projectId: string): Promise<{ hero: string |
       heroUrl = url;
     }
 
-    // Gallery: exterior, interior, surroundings (not hero, not logo)
-    if (['exterior', 'interior', 'surroundings'].includes(slotKey)) {
+    // Gallery: exterior, interior, surroundings + hero as first gallery image
+    if (['hero', 'exterior', 'interior', 'surroundings'].includes(slotKey)) {
       gallery.push({ url, slotKey });
     }
   }
@@ -105,6 +105,8 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   sold: { label: 'Verkauft', className: 'bg-sky-100 text-sky-800' },
 };
 
+const HIGHLIGHT_ICONS = [TrendingUp, Shield, Home, Star, Building2];
+
 export default function ProjectLandingHome() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams, setSearchParams] = useState({
@@ -127,7 +129,7 @@ export default function ProjectLandingHome() {
 
       const { data: lp } = await supabase
         .from('landing_pages')
-        .select('id, project_id, hero_headline, hero_subheadline, about_text, location_description')
+        .select('id, project_id, hero_headline, hero_subheadline, about_text, location_description, highlights_json, imprint_text, footer_company_name, footer_address, contact_email, contact_phone')
         .eq('slug', slug)
         .in('status', ['draft', 'preview', 'active'])
         .maybeSingle();
@@ -136,7 +138,7 @@ export default function ProjectLandingHome() {
 
       const { data: project } = await supabase
         .from('dev_projects')
-        .select('id, name, city, address, postal_code, description, full_description, total_units_count, total_area_sqm, construction_year, afa_model, afa_rate_percent, grest_rate_percent, notary_rate_percent')
+        .select('id, name, city, address, postal_code, description, full_description, location_description, total_units_count, total_area_sqm, construction_year, afa_model, afa_rate_percent, grest_rate_percent, notary_rate_percent')
         .eq('id', lp.project_id)
         .maybeSingle();
 
@@ -229,13 +231,15 @@ export default function ProjectLandingHome() {
 
   const { landingPage, project, heroImageUrl, galleryImages } = projectData;
   const aboutText = (landingPage as any).about_text || landingPage.location_description || project.full_description || project.description || '';
+  const locationText = landingPage.location_description || (project as any).location_description || '';
+  const highlights: string[] = Array.isArray((landingPage as any).highlights_json) ? (landingPage as any).highlights_json : [];
 
   // Gallery carousel
   const galleryCount = galleryImages.length;
   const prevImage = () => setCarouselIndex(i => (i - 1 + galleryCount) % galleryCount);
   const nextImage = () => setCarouselIndex(i => (i + 1) % galleryCount);
 
-  // Summary for table footer
+  // Summary for table
   const totalArea = availableUnits.reduce((s, u) => s + (u.area_sqm || 0), 0);
   const totalPrice = availableUnits.reduce((s, u) => s + (u.list_price || 0), 0);
   const totalRentAnnual = availableUnits.reduce((s, u) => s + (u.rent_net || 0) * 12, 0);
@@ -245,135 +249,255 @@ export default function ProjectLandingHome() {
     ? calculatedUnits.reduce((s, u) => s + (metricsCache[u.id]?.monthlyBurden || 0), 0) / calculatedUnits.length
     : 0;
 
+  // Price range
+  const prices = availableUnits.map(u => u.list_price).filter(Boolean) as number[];
+  const minPrice = prices.length ? Math.min(...prices) : 0;
+  const maxPrice = prices.length ? Math.max(...prices) : 0;
+
   return (
     <div>
-      {/* Hero Section */}
+      {/* ─── Hero Section ─── */}
       <section
-        className="relative h-[400px] flex items-end bg-cover bg-center"
+        className="relative h-[500px] md:h-[560px] flex items-end overflow-hidden"
         style={{
           backgroundImage: heroImageUrl
-            ? `linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.1) 60%), url(${heroImageUrl})`
-            : 'linear-gradient(135deg, hsl(220,20%,15%) 0%, hsl(220,30%,25%) 100%)',
+            ? `url(${heroImageUrl})`
+            : 'linear-gradient(135deg, hsl(220,25%,12%) 0%, hsl(215,30%,22%) 50%, hsl(210,35%,28%) 100%)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center 30%',
         }}
       >
-        <div className="w-full px-6 lg:px-10 pb-10">
-          <h1 className="text-3xl md:text-5xl font-bold text-white mb-3">
+        {/* Cinematic gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
+
+        <div className="relative w-full px-6 lg:px-10 pb-12 md:pb-16 max-w-[1400px] mx-auto">
+          {/* Key facts as floating badges */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            {project.total_units_count && (
+              <span className="px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white text-xs font-medium border border-white/20">
+                {project.total_units_count} Einheiten
+              </span>
+            )}
+            {avgYield > 0 && (
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-sm text-emerald-200 text-xs font-medium border border-emerald-400/30">
+                Ø {avgYield.toFixed(1)}% Rendite
+              </span>
+            )}
+            {prices.length > 0 && (
+              <span className="px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white text-xs font-medium border border-white/20">
+                ab {eur(minPrice)}
+              </span>
+            )}
+          </div>
+
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight max-w-3xl">
             {landingPage.hero_headline || project.name}
           </h1>
-          {landingPage.hero_subheadline && (
-            <p className="text-lg md:text-xl text-white/80 max-w-2xl">
-              {landingPage.hero_subheadline}
+          {(landingPage.hero_subheadline || project.city) && (
+            <p className="text-lg md:text-xl text-white/85 max-w-2xl leading-relaxed">
+              {landingPage.hero_subheadline || `Ihr Investment in ${project.city}`}
             </p>
           )}
           {project.city && (
-            <div className="flex items-center gap-2 mt-4 text-white/70">
+            <div className="flex items-center gap-2 mt-5 text-white/60">
               <MapPin className="h-4 w-4" />
-              <span>{[project.address, project.postal_code, project.city].filter(Boolean).join(', ')}</span>
+              <span className="text-sm">{[project.address, project.postal_code, project.city].filter(Boolean).join(', ')}</span>
             </div>
           )}
+
+          {/* CTA */}
+          <div className="flex flex-wrap gap-3 mt-8">
+            <a href="#investment-rechner">
+              <Button size="lg" className="rounded-full bg-white text-[hsl(220,20%,10%)] hover:bg-white/90 font-semibold px-8 shadow-2xl">
+                Investment berechnen
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </a>
+            <Link to={`/website/projekt/${slug}/beratung`}>
+              <Button size="lg" variant="outline" className="rounded-full border-white/30 text-white hover:bg-white/10 px-8">
+                Beratung anfragen
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* Photo Carousel + Object Description (two-column) */}
-      <section className="px-6 lg:px-10 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* ─── Highlights Strip ─── */}
+      {highlights.length > 0 && (
+        <section className="bg-[hsl(220,20%,10%)] py-6">
+          <div className="max-w-[1400px] mx-auto px-6 lg:px-10">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {highlights.slice(0, 5).map((h, i) => {
+                const Icon = HIGHLIGHT_ICONS[i % HIGHLIGHT_ICONS.length];
+                return (
+                  <div key={i} className="flex items-center gap-3 text-white/90">
+                    <div className="p-2 rounded-lg bg-white/10 shrink-0">
+                      <Icon className="h-4 w-4 text-emerald-400" />
+                    </div>
+                    <span className="text-sm font-medium leading-tight">{h}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ─── Photo Gallery + Description ─── */}
+      <section className="max-w-[1400px] mx-auto px-6 lg:px-10 py-12 md:py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Left: Foto-Carousel */}
-          <div className="relative rounded-2xl overflow-hidden bg-[hsl(210,30%,97%)] aspect-[4/3]">
+          <div className="relative rounded-2xl overflow-hidden bg-[hsl(210,30%,97%)] aspect-[4/3] shadow-lg">
             {galleryCount > 0 ? (
               <>
                 <img
                   src={galleryImages[carouselIndex].url}
                   alt={`Projektbild ${carouselIndex + 1}`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-opacity duration-500"
                 />
                 {galleryCount > 1 && (
                   <>
                     <button
                       onClick={prevImage}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors backdrop-blur-sm"
                     >
                       <ChevronLeft className="h-5 w-5" />
                     </button>
                     <button
                       onClick={nextImage}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors backdrop-blur-sm"
                     >
                       <ChevronRight className="h-5 w-5" />
                     </button>
-                    <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-black/50 text-white text-xs font-medium">
-                      {carouselIndex + 1}/{galleryCount}
+                    {/* Dot indicators */}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+                      {galleryImages.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setCarouselIndex(i)}
+                          className={cn(
+                            "w-2 h-2 rounded-full transition-all",
+                            i === carouselIndex ? "bg-white w-6" : "bg-white/50 hover:bg-white/75"
+                          )}
+                        />
+                      ))}
                     </div>
                   </>
                 )}
               </>
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Building2 className="h-16 w-16 text-[hsl(215,16%,47%)]" />
+              <div className="w-full h-full flex flex-col items-center justify-center gap-3">
+                <Building2 className="h-16 w-16 text-[hsl(215,16%,70%)]" />
+                <p className="text-sm text-[hsl(215,16%,47%)]">Bilder werden geladen...</p>
               </div>
             )}
           </div>
 
           {/* Right: Object Description + Key Facts */}
           <div className="flex flex-col justify-center">
-            <h2 className="text-xl font-bold text-[hsl(220,20%,10%)] mb-3">Objektbeschreibung</h2>
+            <span className="text-xs font-semibold uppercase tracking-widest text-emerald-600 mb-3">Über das Projekt</span>
+            <h2 className="text-2xl md:text-3xl font-bold text-[hsl(220,20%,10%)] mb-5">
+              {project.name}
+            </h2>
             {aboutText ? (
-              <p className="text-sm text-[hsl(215,16%,47%)] leading-relaxed line-clamp-5">
+              <p className="text-[hsl(215,16%,37%)] leading-relaxed text-[15px]">
                 {aboutText}
               </p>
             ) : (
-              <p className="text-sm text-[hsl(215,16%,47%)] italic">Keine Beschreibung verfügbar.</p>
+              <p className="text-[hsl(215,16%,47%)] italic">Beschreibung wird mit KI generiert...</p>
             )}
 
-            {/* Key Facts as inline badges */}
-            <div className="flex flex-wrap gap-2 mt-4">
+            {/* Key Facts Grid */}
+            <div className="grid grid-cols-2 gap-4 mt-8">
               {project.total_units_count && (
-                <Badge variant="secondary" className="text-xs">{project.total_units_count} Einheiten</Badge>
+                <div className="p-4 rounded-xl bg-[hsl(210,30%,97%)] border border-[hsl(214,32%,91%)]">
+                  <p className="text-2xl font-bold text-[hsl(220,20%,10%)]">{project.total_units_count}</p>
+                  <p className="text-xs text-[hsl(215,16%,47%)] mt-1">Wohneinheiten</p>
+                </div>
               )}
               {project.total_area_sqm && (
-                <Badge variant="secondary" className="text-xs">{Math.round(project.total_area_sqm)} m²</Badge>
+                <div className="p-4 rounded-xl bg-[hsl(210,30%,97%)] border border-[hsl(214,32%,91%)]">
+                  <p className="text-2xl font-bold text-[hsl(220,20%,10%)]">{Math.round(project.total_area_sqm)} m²</p>
+                  <p className="text-xs text-[hsl(215,16%,47%)] mt-1">Gesamtfläche</p>
+                </div>
               )}
               {project.construction_year && (
-                <Badge variant="secondary" className="text-xs">Baujahr {project.construction_year}</Badge>
+                <div className="p-4 rounded-xl bg-[hsl(210,30%,97%)] border border-[hsl(214,32%,91%)]">
+                  <p className="text-2xl font-bold text-[hsl(220,20%,10%)]">{project.construction_year}</p>
+                  <p className="text-xs text-[hsl(215,16%,47%)] mt-1">Baujahr</p>
+                </div>
               )}
-              <Badge variant="secondary" className="text-xs">
-                {availableUnits.filter(u => u.status === 'frei').length} verfügbar
-              </Badge>
+              {avgYield > 0 && (
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                  <p className="text-2xl font-bold text-emerald-700">{avgYield.toFixed(1)}%</p>
+                  <p className="text-xs text-emerald-600 mt-1">Ø Bruttorendite</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Search Engine */}
-      <section className="px-6 lg:px-10">
-        <Card className="shadow-xl border-0">
-          <CardContent className="p-6">
-            <h3 className="text-sm font-medium text-[hsl(215,16%,47%)] uppercase tracking-wide mb-4">
-              Investment-Rechner
-            </h3>
+      {/* ─── Location Section ─── */}
+      {locationText && (
+        <section className="bg-[hsl(210,30%,97%)] py-12 md:py-16">
+          <div className="max-w-[1400px] mx-auto px-6 lg:px-10">
+            <div className="max-w-3xl mx-auto text-center">
+              <span className="text-xs font-semibold uppercase tracking-widest text-[hsl(210,80%,55%)] mb-3 block">Standort</span>
+              <h2 className="text-2xl md:text-3xl font-bold text-[hsl(220,20%,10%)] mb-6">
+                Die Lage — {project.city || 'Ihr neuer Standort'}
+              </h2>
+              <div className="flex items-center justify-center gap-2 mb-6 text-[hsl(215,16%,47%)]">
+                <MapPin className="h-4 w-4" />
+                <span className="text-sm">{[project.address, project.postal_code, project.city].filter(Boolean).join(', ')}</span>
+              </div>
+              <p className="text-[hsl(215,16%,37%)] leading-relaxed text-[15px]">
+                {locationText}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ─── Investment-Rechner ─── */}
+      <section id="investment-rechner" className="max-w-[1400px] mx-auto px-6 lg:px-10 py-12 md:py-16">
+        <div className="text-center mb-8">
+          <span className="text-xs font-semibold uppercase tracking-widest text-emerald-600 mb-3 block">Investment-Engine</span>
+          <h2 className="text-2xl md:text-3xl font-bold text-[hsl(220,20%,10%)] mb-3">
+            Ihre persönliche Berechnung
+          </h2>
+          <p className="text-[hsl(215,16%,47%)] max-w-xl mx-auto">
+            Geben Sie Ihr Einkommen und Eigenkapital ein — wir berechnen die monatliche Belastung nach Steuer für jede Einheit.
+          </p>
+        </div>
+
+        <Card className="shadow-xl border-0 max-w-4xl mx-auto">
+          <CardContent className="p-6 md:p-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <div>
-                <label className="text-xs font-medium text-[hsl(215,16%,47%)] mb-1 block">Zu versteuerndes Einkommen</label>
-                <input type="number" value={searchParams.zvE} onChange={(e) => setSearchParams(p => ({ ...p, zvE: parseInt(e.target.value) || 0 }))} className="w-full h-10 px-3 rounded-lg border border-[hsl(214,32%,91%)] bg-white text-sm" />
+                <label className="text-xs font-medium text-[hsl(215,16%,47%)] mb-1.5 block">Zu versteuerndes Einkommen</label>
+                <input type="number" value={searchParams.zvE} onChange={(e) => setSearchParams(p => ({ ...p, zvE: parseInt(e.target.value) || 0 }))} className="w-full h-11 px-3 rounded-xl border border-[hsl(214,32%,91%)] bg-white text-sm focus:ring-2 focus:ring-[hsl(220,20%,10%)] focus:border-transparent outline-none transition" />
               </div>
               <div>
-                <label className="text-xs font-medium text-[hsl(215,16%,47%)] mb-1 block">Eigenkapital</label>
-                <input type="number" value={searchParams.equity} onChange={(e) => setSearchParams(p => ({ ...p, equity: parseInt(e.target.value) || 0 }))} className="w-full h-10 px-3 rounded-lg border border-[hsl(214,32%,91%)] bg-white text-sm" />
+                <label className="text-xs font-medium text-[hsl(215,16%,47%)] mb-1.5 block">Eigenkapital</label>
+                <input type="number" value={searchParams.equity} onChange={(e) => setSearchParams(p => ({ ...p, equity: parseInt(e.target.value) || 0 }))} className="w-full h-11 px-3 rounded-xl border border-[hsl(214,32%,91%)] bg-white text-sm focus:ring-2 focus:ring-[hsl(220,20%,10%)] focus:border-transparent outline-none transition" />
               </div>
               <div>
-                <label className="text-xs font-medium text-[hsl(215,16%,47%)] mb-1 block">Familienstand</label>
-                <select value={searchParams.maritalStatus} onChange={(e) => setSearchParams(p => ({ ...p, maritalStatus: e.target.value as 'single' | 'married' }))} className="w-full h-10 px-3 rounded-lg border border-[hsl(214,32%,91%)] bg-white text-sm">
+                <label className="text-xs font-medium text-[hsl(215,16%,47%)] mb-1.5 block">Familienstand</label>
+                <select value={searchParams.maritalStatus} onChange={(e) => setSearchParams(p => ({ ...p, maritalStatus: e.target.value as 'single' | 'married' }))} className="w-full h-11 px-3 rounded-xl border border-[hsl(214,32%,91%)] bg-white text-sm focus:ring-2 focus:ring-[hsl(220,20%,10%)] focus:border-transparent outline-none transition">
                   <option value="single">Ledig</option>
                   <option value="married">Verheiratet</option>
                 </select>
               </div>
               <div className="flex items-end">
-                <label className="flex items-center gap-2 text-sm cursor-pointer h-10">
+                <label className="flex items-center gap-2 text-sm cursor-pointer h-11">
                   <input type="checkbox" checked={searchParams.hasChurchTax} onChange={(e) => setSearchParams(p => ({ ...p, hasChurchTax: e.target.checked }))} className="rounded" />
                   <span>Kirchensteuer</span>
                 </label>
               </div>
               <div className="flex items-end">
-                <Button onClick={handleSearch} disabled={isCalculating} className="w-full h-10 rounded-lg bg-[hsl(220,20%,10%)] hover:bg-[hsl(220,20%,20%)]">
+                <Button onClick={handleSearch} disabled={isCalculating} className="w-full h-11 rounded-xl bg-[hsl(220,20%,10%)] hover:bg-[hsl(220,20%,20%)] font-semibold">
                   {isCalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Berechnen'}
                 </Button>
               </div>
@@ -382,37 +506,45 @@ export default function ProjectLandingHome() {
         </Card>
       </section>
 
-      {/* Units Table */}
-      <section className="px-6 lg:px-10 py-8 pb-16">
+      {/* ─── Units Table ─── */}
+      <section className="max-w-[1400px] mx-auto px-6 lg:px-10 pb-16">
         <h2 className="text-2xl font-bold text-[hsl(220,20%,10%)] mb-6">
           Verfügbare Einheiten
           <span className="text-base font-normal text-[hsl(215,16%,47%)] ml-2">({availableUnits.length})</span>
         </h2>
 
         {!hasSearched ? (
-          <div className="text-center py-12 bg-[hsl(210,30%,97%)] rounded-2xl">
-            <Building2 className="w-12 h-12 mx-auto text-[hsl(215,16%,47%)] mb-4" />
+          <div className="text-center py-16 bg-[hsl(210,30%,97%)] rounded-2xl border border-[hsl(214,32%,91%)]">
+            <div className="p-4 rounded-2xl bg-white shadow-sm inline-block mb-4">
+              <TrendingUp className="w-8 h-8 text-emerald-600" />
+            </div>
             <h3 className="text-lg font-semibold text-[hsl(220,20%,10%)] mb-2">Investment-Berechnung starten</h3>
-            <p className="text-[hsl(215,16%,47%)] max-w-md mx-auto">
-              Geben Sie Ihr Einkommen und Eigenkapital ein, um die individuelle Monatsbelastung nach Steuer zu berechnen.
+            <p className="text-[hsl(215,16%,47%)] max-w-md mx-auto mb-6">
+              Geben Sie oben Ihr Einkommen und Eigenkapital ein, um die individuelle Monatsbelastung nach Steuer zu berechnen.
             </p>
+            <a href="#investment-rechner">
+              <Button variant="outline" className="rounded-full">
+                Zum Rechner
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </a>
           </div>
         ) : (
-          <div className="rounded-2xl border border-[hsl(214,32%,91%)] bg-white overflow-hidden">
+          <div className="rounded-2xl border border-[hsl(214,32%,91%)] bg-white overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b bg-[hsl(210,30%,97%)]">
-                    <th className="px-3 py-2.5 text-left font-semibold text-[hsl(215,16%,47%)]">WE-Nr</th>
-                    <th className="px-3 py-2.5 text-center font-semibold text-[hsl(215,16%,47%)]">Zimmer</th>
-                    <th className="px-3 py-2.5 text-center font-semibold text-[hsl(215,16%,47%)]">Etage</th>
-                    <th className="px-3 py-2.5 text-right font-semibold text-[hsl(215,16%,47%)]">Fläche m²</th>
-                    <th className="px-3 py-2.5 text-right font-semibold text-[hsl(215,16%,47%)]">Kaufpreis</th>
-                    <th className="px-3 py-2.5 text-right font-semibold text-[hsl(215,16%,47%)]">Miete/Mo</th>
-                    <th className="px-3 py-2.5 text-right font-semibold text-[hsl(215,16%,47%)]">Bruttorendite</th>
-                    <th className="px-3 py-2.5 text-right font-semibold text-[hsl(215,16%,47%)]">Steuereffekt/Mo</th>
-                    <th className="px-3 py-2.5 text-right font-semibold text-[hsl(215,16%,47%)]">Monatsbelastung</th>
-                    <th className="px-3 py-2.5 text-center font-semibold text-[hsl(215,16%,47%)]">Status</th>
+                    <th className="px-3 py-3 text-left font-semibold text-[hsl(215,16%,47%)]">WE-Nr</th>
+                    <th className="px-3 py-3 text-center font-semibold text-[hsl(215,16%,47%)]">Zimmer</th>
+                    <th className="px-3 py-3 text-center font-semibold text-[hsl(215,16%,47%)]">Etage</th>
+                    <th className="px-3 py-3 text-right font-semibold text-[hsl(215,16%,47%)]">Fläche m²</th>
+                    <th className="px-3 py-3 text-right font-semibold text-[hsl(215,16%,47%)]">Kaufpreis</th>
+                    <th className="px-3 py-3 text-right font-semibold text-[hsl(215,16%,47%)]">Miete/Mo</th>
+                    <th className="px-3 py-3 text-right font-semibold text-[hsl(215,16%,47%)]">Bruttorendite</th>
+                    <th className="px-3 py-3 text-right font-semibold text-[hsl(215,16%,47%)]">Steuereffekt/Mo</th>
+                    <th className="px-3 py-3 text-right font-semibold text-[hsl(215,16%,47%)]">Monatsbelastung</th>
+                    <th className="px-3 py-3 text-center font-semibold text-[hsl(215,16%,47%)]">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -430,14 +562,14 @@ export default function ProjectLandingHome() {
                         className="border-b border-[hsl(214,32%,91%)]/50 transition-colors hover:bg-[hsl(210,30%,97%)] cursor-pointer"
                         onClick={() => window.location.href = `/website/projekt/${slug}/einheit/${unit.id}`}
                       >
-                        <td className="px-3 py-2 font-medium text-[hsl(220,20%,10%)]">{unit.unit_number}</td>
-                        <td className="px-3 py-2 text-center">{unit.rooms_count ? `${unit.rooms_count}-Zi` : '—'}</td>
-                        <td className="px-3 py-2 text-center">{formatFloor(unit.floor)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{unit.area_sqm ? `${unit.area_sqm.toFixed(1)} m²` : '—'}</td>
-                        <td className="px-3 py-2 text-right tabular-nums font-semibold">{unit.list_price ? eur(unit.list_price) : '—'}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{unit.rent_net ? eur(unit.rent_net) : '—'}</td>
-                        <td className="px-3 py-2 text-right tabular-nums font-medium">{yieldPercent > 0 ? `${yieldPercent.toFixed(2)} %` : '—'}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">
+                        <td className="px-3 py-2.5 font-medium text-[hsl(220,20%,10%)]">{unit.unit_number}</td>
+                        <td className="px-3 py-2.5 text-center">{unit.rooms_count ? `${unit.rooms_count}-Zi` : '—'}</td>
+                        <td className="px-3 py-2.5 text-center">{formatFloor(unit.floor)}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">{unit.area_sqm ? `${unit.area_sqm.toFixed(1)} m²` : '—'}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums font-semibold">{unit.list_price ? eur(unit.list_price) : '—'}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">{unit.rent_net ? eur(unit.rent_net) : '—'}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums font-medium">{yieldPercent > 0 ? `${yieldPercent.toFixed(2)} %` : '—'}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">
                           {isCalculating ? (
                             <span className="text-[hsl(215,16%,47%)] animate-pulse">···</span>
                           ) : monthlyTaxEffect !== null ? (
@@ -446,7 +578,7 @@ export default function ProjectLandingHome() {
                             <span className="text-[hsl(215,16%,47%)]">—</span>
                           )}
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums">
+                        <td className="px-3 py-2.5 text-right tabular-nums">
                           {isCalculating ? (
                             <span className="text-[hsl(215,16%,47%)] animate-pulse">···</span>
                           ) : monthlyBurden !== null ? (
@@ -460,7 +592,7 @@ export default function ProjectLandingHome() {
                             <span className="text-[hsl(215,16%,47%)]">—</span>
                           )}
                         </td>
-                        <td className="px-3 py-2 text-center">
+                        <td className="px-3 py-2.5 text-center">
                           <span className={cn('inline-block px-2 py-0.5 rounded-full text-[10px] font-medium', status.className)}>
                             {status.label}
                           </span>
@@ -471,34 +603,52 @@ export default function ProjectLandingHome() {
                 </tbody>
                 <tfoot>
                   <tr className="bg-[hsl(210,30%,97%)] font-semibold text-xs">
-                    <td className="px-3 py-2.5">Summe / Ø</td>
-                    <td className="px-3 py-2.5 text-center">{availableUnits.length} WE</td>
-                    <td className="px-3 py-2.5" />
-                    <td className="px-3 py-2.5 text-right tabular-nums">{totalArea.toFixed(1)} m²</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{eur(totalPrice)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{eur(totalRentAnnual / 12)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">Ø {avgYield.toFixed(2)} %</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">
+                    <td className="px-3 py-3">Summe / Ø</td>
+                    <td className="px-3 py-3 text-center">{availableUnits.length} WE</td>
+                    <td className="px-3 py-3" />
+                    <td className="px-3 py-3 text-right tabular-nums">{totalArea.toFixed(1)} m²</td>
+                    <td className="px-3 py-3 text-right tabular-nums">{eur(totalPrice)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums">{eur(totalRentAnnual / 12)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums">Ø {avgYield.toFixed(2)} %</td>
+                    <td className="px-3 py-3 text-right tabular-nums">
                       {hasSearched && calculatedUnits.length > 0 ? (
                         <span className="text-emerald-600">Ø {eurSigned(Math.round(
                           calculatedUnits.reduce((s, u) => s + ((metricsCache[u.id]?.yearlyTaxSavings || 0) / 12), 0) / calculatedUnits.length
                         ))}</span>
                       ) : '—'}
                     </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">
+                    <td className="px-3 py-3 text-right tabular-nums">
                       {hasSearched && calculatedUnits.length > 0 ? (
                         <span className={cn('font-bold', avgBurden >= 0 ? 'text-emerald-600' : 'text-red-600')}>
                           Ø {eurSigned(Math.round(avgBurden))}/Mo
                         </span>
                       ) : '—'}
                     </td>
-                    <td className="px-3 py-2.5" />
+                    <td className="px-3 py-3" />
                   </tr>
                 </tfoot>
               </table>
             </div>
           </div>
         )}
+      </section>
+
+      {/* ─── CTA Section ─── */}
+      <section className="bg-[hsl(220,20%,10%)] py-16">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-10 text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+            Interesse an diesem Projekt?
+          </h2>
+          <p className="text-white/70 max-w-xl mx-auto mb-8">
+            Unsere Berater stehen Ihnen für eine unverbindliche Beratung zur Verfügung. Wir berechnen Ihre individuelle Situation und finden die passende Einheit.
+          </p>
+          <Link to={`/website/projekt/${slug}/beratung`}>
+            <Button size="lg" className="rounded-full bg-white text-[hsl(220,20%,10%)] hover:bg-white/90 font-semibold px-10 shadow-2xl">
+              Beratung anfragen
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
       </section>
     </div>
   );
