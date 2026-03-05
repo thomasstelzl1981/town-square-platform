@@ -154,7 +154,7 @@ export default function AkquiseDashboard() {
         .from('acq_offers')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', activeTenantId)
-        .in('status', ['new', 'in_analysis', 'analyzed']);
+        .in('status', ['new', 'analyzing', 'analyzed']);
       if (error) return 0;
       return count ?? 0;
     },
