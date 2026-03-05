@@ -74,9 +74,11 @@ export interface ResearchResponse {
 // ── Estimate helper ───────────────────────────────────────────────
 
 function estimateDuration(maxResults?: number): number {
-  if (!maxResults || maxResults <= 10) return 30;
-  if (maxResults <= 20) return 45;
-  return 55;
+  if (!maxResults || maxResults <= 5) return 45;
+  if (maxResults <= 10) return 60;
+  if (maxResults <= 25) return 75;
+  if (maxResults <= 50) return 90;
+  return 120;
 }
 
 // ── Hook ───────────────────────────────────────────────────────────

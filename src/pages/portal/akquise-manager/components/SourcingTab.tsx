@@ -26,6 +26,7 @@ import {
   type ContactStaging 
 } from '@/hooks/useAcqContacts';
 import { useResearchEngine } from '@/hooks/useResearchEngine';
+import { SearchProgressIndicator } from '@/components/portal/shared/SearchProgressIndicator';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -409,8 +410,19 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
               </Select>
             </div>
           </div>
+          {researchEngine.isSearching && (
+            <SearchProgressIndicator
+              elapsedSeconds={researchEngine.elapsedSeconds}
+              estimatedDuration={researchEngine.estimatedDuration}
+              phases={[
+                { upTo: 20, label: "Google Places durchsuchen…" },
+                { upTo: 45, label: "Websites nach E-Mails scannen…" },
+                { upTo: 70, label: "Kontakte anreichern…" },
+              ]}
+            />
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSearchDialog(false)}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => setShowSearchDialog(false)} disabled={researchEngine.isSearching}>Abbrechen</Button>
             <Button onClick={handleEngineSearch} disabled={researchEngine.isSearching}>
               {researchEngine.isSearching && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Suchen
@@ -461,8 +473,19 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
               </Select>
             </div>
           </div>
+          {(apifyLoading || researchEngine.isSearching) && (
+            <SearchProgressIndicator
+              elapsedSeconds={researchEngine.elapsedSeconds}
+              estimatedDuration={researchEngine.estimatedDuration}
+              phases={[
+                { upTo: 25, label: "Portal wird gescannt…" },
+                { upTo: 50, label: "Kontakte extrahiert…" },
+                { upTo: 80, label: "Daten bereinigt…" },
+              ]}
+            />
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowApifyDialog(false)}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => setShowApifyDialog(false)} disabled={apifyLoading || researchEngine.isSearching}>Abbrechen</Button>
             <Button onClick={handleApifySearch} disabled={apifyLoading || researchEngine.isSearching}>
               {(apifyLoading || researchEngine.isSearching) && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Job starten

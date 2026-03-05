@@ -2,12 +2,12 @@
  * LennoxDoc — Tiergesundheit, Versicherung, Pet Manager & Gründerin
  * Zone 3 page for Lennox & Friends
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Search, MapPin, Phone, Mail, Navigation, Star,
   Stethoscope, ShieldCheck, Syringe, PawPrint, ArrowRight,
-  Send,
+  Send, Loader2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -58,6 +58,12 @@ export default function LennoxDoc() {
   const [vetResults, setVetResults] = useState<VetResult[]>([]);
   const [vetLoading, setVetLoading] = useState(false);
   const [vetSearched, setVetSearched] = useState(false);
+  const [vetElapsed, setVetElapsed] = useState(0);
+  const vetTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => { if (vetTimerRef.current) clearInterval(vetTimerRef.current); };
+  }, []);
 
   const [insuranceOpen, setInsuranceOpen] = useState(false);
   const [insuranceType, setInsuranceType] = useState('');
@@ -70,7 +76,10 @@ export default function LennoxDoc() {
     if (!vetSearch.trim()) return;
     setVetLoading(true);
     setVetSearched(true);
-    // Use Research Engine via edge function
+    setVetElapsed(0);
+    if (vetTimerRef.current) clearInterval(vetTimerRef.current);
+    vetTimerRef.current = setInterval(() => setVetElapsed(p => p + 1), 1000);
+
     try {
       const { data, error } = await supabase.functions.invoke('sot-research-engine', {
         body: {
@@ -92,14 +101,14 @@ export default function LennoxDoc() {
         open_now: r.open_now ?? null,
       }));
       setVetResults(results);
+      if (results.length === 0) {
+        toast.info('Keine Tierärzte in dieser Region gefunden.');
+      }
     } catch {
-      // Fallback demo results
-      setVetResults([
-        { name: 'Tierklinik Oberbayern', address: 'Hauptstraße 12, 83022 Rosenheim', phone: '+49 8031 123456', email: 'info@tierklinik-oberbayern.de', rating: 4.8, distance: '2.3 km', open_now: true },
-        { name: 'Dr. med. vet. Schneider', address: 'Bahnhofstr. 5, 83024 Rosenheim', phone: '+49 8031 654321', email: 'praxis@dr-schneider-vet.de', rating: 4.6, distance: '3.1 km', open_now: false },
-        { name: 'Tierarztpraxis am Park', address: 'Parkweg 8, 83026 Rosenheim', phone: '+49 8031 789012', email: 'kontakt@tierarzt-park.de', rating: 4.9, distance: '4.7 km', open_now: true },
-      ]);
+      toast.error('Suche fehlgeschlagen — bitte versuche es erneut.');
+      setVetResults([]);
     } finally {
+      if (vetTimerRef.current) { clearInterval(vetTimerRef.current); vetTimerRef.current = null; }
       setVetLoading(false);
     }
   }, [vetSearch]);
@@ -204,8 +213,28 @@ export default function LennoxDoc() {
 
           {/* Results */}
           {vetLoading && (
-            <div className="flex justify-center py-8">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" style={{ borderColor: C.forest }} />
+            <div className="max-w-xl mx-auto py-4 space-y-2">
+              <div className="flex items-center justify-between text-xs" style={{ color: C.barkMuted }}>
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  {vetElapsed < 15 ? 'Tierärzte im Umkreis suchen…' : vetElapsed < 35 ? 'Kontaktdaten prüfen…' : 'Ergebnisse zusammenführen…'}
+                </span>
+                <span className="tabular-nums font-medium">{vetElapsed}s</span>
+              </div>
+              <div className="relative h-2 w-full overflow-hidden rounded-full" style={{ background: `${C.forest}20` }}>
+                <div
+                  className="h-full rounded-full transition-all duration-1000"
+                  style={{
+                    background: C.forest,
+                    width: `${Math.min((vetElapsed / 45) * 100, vetElapsed > 45 ? 98 + 1.5 * (1 - 1 / (1 + (vetElapsed - 45) / 30)) : 98)}%`,
+                  }}
+                />
+              </div>
+              <p className="text-[10px]" style={{ color: C.barkMuted }}>
+                {vetElapsed > 45
+                  ? 'Die Suche dauert etwas länger — Quellen liefern noch Daten.'
+                  : 'Bitte warten — Tierärzte werden aus mehreren Quellen gesucht.'}
+              </p>
             </div>
           )}
 
