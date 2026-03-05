@@ -1,84 +1,102 @@
 
 
-# Analyse: Landing Page Bilder & KI-Qualität — Befund und Verbesserungsplan
+# Fix: Landing Page "Projekt nicht gefunden" — Root Cause & Repair Plan
 
-## Befund: Bilder
+## Root Cause (3 issues)
 
-**Die Bild-Pipeline funktioniert grundsätzlich.** Die Funktion `loadAllProjectImages()` in `ProjectLandingHome.tsx` liest korrekt aus `document_links` (object_type='project') und filtert nach slot_keys:
-- `hero` → Hero-Section Hintergrundbild
-- `exterior`, `interior`, `surroundings` → Foto-Karussell
+### 1. Missing Foreign Key — Breaks JOIN
+`landing_pages.project_id` has **no FK to `dev_projects.id`**. The Supabase client's `dev_projects!inner(...)` syntax requires a FK relationship. Without it, PostgREST cannot resolve the join and the query silently returns null.
+- **Affects:** `ProjectLandingLayout.tsx` (header, footer, logo)
+- **Affects:** `ProjectLandingHome.tsx` uses separate queries but same root issue on `dev_projects`
 
-**Voraussetzung:** Im Projekt-Datenblatt (MOD-13, Tab 1) müssen die 4 Bild-Slots befüllt sein. Sind dort Bilder hochgeladen, erscheinen sie auf der Landing Page. **Das funktioniert bereits.**
+### 2. No Public RLS — Blocks Anonymous & Cross-Tenant Access
+The landing page is a **public website** (Zone 3), but:
+- `dev_projects` — only allows `tenant_id = get_user_tenant_id()` (auth required)
+- `dev_project_units` — same restriction
+- `document_links` — no policy for `object_type = 'project'`
+- `documents` — no public policy for project images
 
-**Was FEHLT:**
-1. **Kein KI-Hero-Enhancement** — Das Hero-Bild wird 1:1 übernommen, keine KI-Optimierung (Belichtung, Zuschnitt, Overlay)
-2. **Kein Fallback-Bild** — Ohne hochgeladene Bilder zeigt die Hero-Section nur einen dunklen Gradient, die Galerie ein leeres Building2-Icon
-3. **Logo-Slot wird ignoriert** — Der `logo`-Slot ist im DataSheet vorhanden, wird aber auf der Landing Page nicht angezeigt
+Even logged-in users see "Projekt nicht gefunden" because the restrictive `tenant_isolation_restrictive` policy blocks unless `get_user_tenant_id()` matches.
 
-## Befund: KI-Website-Qualität — Architektur-Disconnect
+### 3. Existing landing page status is `draft`
+The public RLS policy on `landing_pages` only allows `preview` and `active`. For the portal preview (logged-in user), this works via the org-member policy. But the public path blocks `draft` — this is correct behavior but needs the preview flow to account for it.
 
-**Kritischer Fehler gefunden:** Der "KI-Website optimieren"-Button hat einen **Architektur-Disconnect**:
+## Fix Plan
 
-```text
-Button "KI-Website optimieren"
-  → ruft sot-website-ai-generate auf
-  → generiert website_sections für tenant_websites (Profil-Website-System)
-  → ABER: ProjectLandingHome.tsx liest aus landing_pages + dev_projects
-  → Die generierten Inhalte werden NIRGENDS angezeigt!
+### Migration 1: Add FK + Public RLS Policies
+
+```sql
+-- 1. Add FK from landing_pages to dev_projects
+ALTER TABLE public.landing_pages
+  ADD CONSTRAINT landing_pages_project_id_fkey
+  FOREIGN KEY (project_id) REFERENCES public.dev_projects(id);
+
+-- 2. Public SELECT on dev_projects for projects with active landing pages
+CREATE POLICY "public_read_landing_page_projects"
+ON public.dev_projects FOR SELECT TO anon, authenticated
+USING (
+  id IN (
+    SELECT project_id FROM public.landing_pages
+    WHERE status IN ('draft', 'preview', 'active')
+  )
+);
+
+-- 3. Public SELECT on dev_project_units for those projects
+CREATE POLICY "public_read_landing_page_units"
+ON public.dev_project_units FOR SELECT TO anon, authenticated
+USING (
+  project_id IN (
+    SELECT project_id FROM public.landing_pages
+    WHERE status IN ('draft', 'preview', 'active')
+  )
+);
+
+-- 4. Public SELECT on document_links for project images
+CREATE POLICY "public_read_project_image_links"
+ON public.document_links FOR SELECT TO anon, authenticated
+USING (
+  object_type = 'project'
+  AND object_id IN (
+    SELECT project_id FROM public.landing_pages
+    WHERE status IN ('draft', 'preview', 'active')
+  )
+);
+
+-- 5. Public SELECT on documents for project-linked images
+CREATE POLICY "public_read_project_landing_documents"
+ON public.documents FOR SELECT TO anon, authenticated
+USING (
+  id IN (
+    SELECT dl.document_id FROM public.document_links dl
+    WHERE dl.object_type = 'project'
+    AND dl.object_id IN (
+      SELECT project_id FROM public.landing_pages
+      WHERE status IN ('draft', 'preview', 'active')
+    )
+  )
+);
+
+-- 6. Include 'draft' in landing_pages public policy (for preview from portal)
+DROP POLICY IF EXISTS "Public can view active landing pages" ON public.landing_pages;
+CREATE POLICY "Public can view landing pages"
+ON public.landing_pages FOR SELECT TO anon, authenticated
+USING (status IN ('draft', 'preview', 'active'));
 ```
 
-Das heißt: Die KI-Texte landen in der falschen Tabelle. Die Landing Page zeigt weiterhin nur die Rohdaten aus `dev_projects` und `landing_pages`.
+### No Code Changes Needed
+The existing `ProjectLandingHome.tsx` and `ProjectLandingLayout.tsx` code is correct — the queries will work once the FK and RLS policies are in place.
 
-## Befund: Seiten-Design
+### Security Note
+- Only projects with a `landing_pages` record are exposed publicly
+- The policies are read-only (SELECT)
+- `locked` status pages remain invisible
+- Write operations remain protected by existing org-member policies
 
-Die aktuelle Landing Page ist **funktional solide** (Investment-Engine, Einheitentabelle, Kontaktformular), aber im Vergleich zu den Brand-Websites (Kaufy, SoT) visuell **deutlich einfacher**:
-- Keine animierten Sektionen
-- Kein Logo im Header
-- Kein Impressum/Datenschutz-Link
-- Keine Lagebeschreibung als eigene Sektion
-- Kein Social Proof / Vertrauenselemente
-
-## Verbesserungsplan (3 Stufen)
-
-### Stufe 1: Bilder korrekt einbauen + Fallback
-**Dateien:** `ProjectLandingHome.tsx`
-
-- Logo-Slot im Header anzeigen (wenn vorhanden)
-- Fallback-Hero: KI-generiertes Immobilien-Platzhalterbild über `google/gemini-2.5-flash-image` als Edge Function
-- Hero-Bild mit professionellem CSS-Treatment (Gradient-Overlay, Focal-Point-Crop)
-
-### Stufe 2: KI-Pipeline reparieren
-**Dateien:** `LandingPageTab.tsx`, neue Edge Function `sot-project-landing-ai`
-
-Den "KI-Website optimieren"-Button umleiten: Statt `sot-website-ai-generate` (falsches System) eine neue Edge Function aufrufen, die:
-1. Projektdaten + Einheiten + Developer-Context liest
-2. Per Gemini 2.5 Pro optimierte Texte generiert: Hero-Headline, Subheadline, Projektbeschreibung, Lagebeschreibung, 3-5 Highlights
-3. Die Ergebnisse direkt in `landing_pages` schreibt (hero_headline, hero_subheadline, about_text, location_description, highlights_json)
-4. Optional: Hero-Bild per `gemini-2.5-flash-image` als cinematic Real-Estate-Visual generieren und in Storage ablegen
-
-### Stufe 3: Website-Design aufwerten
-**Datei:** `ProjectLandingHome.tsx`
-
-- Header mit Logo + Navigation (Projekt, Einheiten, Kontakt als Anchor-Links)
-- Hero-Section: Größer (500px), mit animiertem Text-Fade
-- Neue Sektion: Lagebeschreibung mit Karte-Placeholder
-- Neue Sektion: Highlights als Feature-Grid (Icons + Text)
-- Footer mit Impressum-Daten aus `landing_pages.imprint_text`
-- Datenschutz-Link
-- "Powered by KAUFY"-Badge im Footer
-- Responsive Mobile-Optimierung
-
-### Freeze-Check
-
-| Pfad | Bereich | Frozen? |
-|---|---|---|
-| `ProjectLandingHome.tsx` (Zone 3) | ZONE3 | Prüfung nötig |
-| `LandingPageTab.tsx` (MOD-13) | MOD-13 | Nicht frozen |
-| Neue Edge Function | Backend | Frei |
-
-Ich muss vor der Implementierung `spec/current/00_frozen/zone3_freeze.json` prüfen.
-
-### Zusammenfassung
-
-Die Bilder funktionieren technisch — sie müssen nur im Datenblatt hochgeladen sein. Das Hauptproblem ist der **KI-Disconnect**: Der Button generiert Inhalte in die falsche Tabelle. Mit der Reparatur + Design-Upgrade entsteht eine professionelle, durchdachte Landing Page mit voller KI-Power, die automatisch alle Einheiten mit Investment-Engine zeigt.
+### Freeze Check
+| Path | Frozen? |
+|---|---|
+| Database migration | No |
+| `ProjectLandingHome.tsx` (Zone 3, project-landing) | **Not frozen** (not in zone3_freeze.json) |
+| `ProjectLandingLayout.tsx` | **Not frozen** |
+| No code changes needed | N/A |
 
