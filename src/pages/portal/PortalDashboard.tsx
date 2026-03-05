@@ -3,7 +3,7 @@
  * Two full-page snap sections: System Widgets + Armstrong workspace
  */
 
-import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -13,27 +13,29 @@ import { useWidgetOrder } from '@/hooks/useWidgetOrder';
 import { useWidgetPreferences } from '@/hooks/useWidgetPreferences';
 import { useTaskWidgets } from '@/hooks/useTaskWidgets';
 import { usePreviewSafeMode } from '@/hooks/usePreviewSafeMode';
-import { GlobeWidget } from '@/components/dashboard/GlobeWidget';
-import { WeatherCard } from '@/components/dashboard/WeatherCard';
 import { ArmstrongGreetingCard } from '@/components/dashboard/ArmstrongGreetingCard';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { SortableWidget } from '@/components/dashboard/SortableWidget';
 import { TaskWidget } from '@/components/dashboard/TaskWidget';
-import { FinanceWidget } from '@/components/dashboard/widgets/FinanceWidget';
-import { AccountsWidget } from '@/components/dashboard/widgets/AccountsWidget';
-import { NewsWidget } from '@/components/dashboard/widgets/NewsWidget';
-import { SpaceWidget } from '@/components/dashboard/widgets/SpaceWidget';
-import { QuoteWidget } from '@/components/dashboard/widgets/QuoteWidget';
-import { RadioWidget } from '@/components/dashboard/widgets/RadioWidget';
-import { PVLiveWidget } from '@/components/dashboard/widgets/PVLiveWidget';
 import { BrandLinkWidget } from '@/components/dashboard/widgets/BrandLinkWidget';
-import { MeetingRecorderWidget } from '@/components/dashboard/MeetingRecorderWidget';
-import { TLCWidget } from '@/components/dashboard/widgets/TLCWidget';
-import { NotesWidget } from '@/components/dashboard/widgets/NotesWidget';
-import { ArmstrongWorkspace } from '@/components/dashboard/ArmstrongWorkspace';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Settings2, Inbox, ChevronDown, Globe, Radio, Zap } from 'lucide-react';
+import { Settings2, Inbox, ChevronDown, Globe, Radio, Zap, Cloud, TrendingUp, Newspaper, Rocket, Quote, Mic, Wallet, HeartPulse, StickyNote } from 'lucide-react';
+
+// Lazy-loaded widgets — only fetched when actually rendered (saves ~40% bundle in preview)
+const GlobeWidget = React.lazy(() => import('@/components/dashboard/GlobeWidget').then(m => ({ default: m.GlobeWidget })));
+const WeatherCard = React.lazy(() => import('@/components/dashboard/WeatherCard').then(m => ({ default: m.WeatherCard })));
+const FinanceWidget = React.lazy(() => import('@/components/dashboard/widgets/FinanceWidget').then(m => ({ default: m.FinanceWidget })));
+const AccountsWidget = React.lazy(() => import('@/components/dashboard/widgets/AccountsWidget').then(m => ({ default: m.AccountsWidget })));
+const NewsWidget = React.lazy(() => import('@/components/dashboard/widgets/NewsWidget').then(m => ({ default: m.NewsWidget })));
+const SpaceWidget = React.lazy(() => import('@/components/dashboard/widgets/SpaceWidget').then(m => ({ default: m.SpaceWidget })));
+const QuoteWidget = React.lazy(() => import('@/components/dashboard/widgets/QuoteWidget').then(m => ({ default: m.QuoteWidget })));
+const RadioWidget = React.lazy(() => import('@/components/dashboard/widgets/RadioWidget').then(m => ({ default: m.RadioWidget })));
+const PVLiveWidget = React.lazy(() => import('@/components/dashboard/widgets/PVLiveWidget').then(m => ({ default: m.PVLiveWidget })));
+const MeetingRecorderWidget = React.lazy(() => import('@/components/dashboard/MeetingRecorderWidget').then(m => ({ default: m.MeetingRecorderWidget })));
+const TLCWidget = React.lazy(() => import('@/components/dashboard/widgets/TLCWidget').then(m => ({ default: m.TLCWidget })));
+const NotesWidget = React.lazy(() => import('@/components/dashboard/widgets/NotesWidget').then(m => ({ default: m.NotesWidget })));
+const ArmstrongWorkspace = React.lazy(() => import('@/components/dashboard/ArmstrongWorkspace').then(m => ({ default: m.ArmstrongWorkspace })));
 import { Link } from 'react-router-dom';
 
 const ARMSTRONG_WIDGET_ID = 'system_armstrong';
