@@ -8,6 +8,7 @@
     "shared_investment": { "frozen": true, "frozen_at": "2026-03-02T12:00:00.000Z", "path": "src/components/investment/*", "reason": "Production freeze" },
     "shared_listings": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/components/listings/*", "reason": "Production freeze" },
     "edge_functions": { "frozen": true, "frozen_at": "2026-03-05T10:00:00.000Z", "path": "supabase/functions/*", "reason": "Full freeze — All infrastructure locked" },
-    "validation": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/validation/*", "reason": "Production freeze" }
+    "validation": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/validation/*", "reason": "Production freeze" },
+    "commpro_desk": { "frozen": true, "frozen_at": "2026-03-05T23:00:00.000Z", "path": "src/pages/admin/desks/CommProDesk.tsx, src/components/admin/desks/commpro/*", "reason": "Phone system stabilization — ElevenLabs integration fix" }
   }
 }

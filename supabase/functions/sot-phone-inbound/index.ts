@@ -1,17 +1,19 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
- * sot-phone-inbound — Twilio Voice Webhook
- * Called when a call comes in to a provisioned Twilio number.
+ * sot-phone-inbound — Twilio Voice Webhook (FALLBACK PATH)
  *
- * Stage 2: Gather-Loop with LLM conversation
- * - Greeting via <Say>
- * - <Gather input="speech"> captures caller speech
- * - Routes to sot-phone-converse for LLM response
- * - Loop continues until goodbye or max duration
+ * Primary call routing is handled by ElevenLabs Conversational AI after
+ * sot-phone-agent-sync imports the Twilio number. This function only fires
+ * if ElevenLabs is not yet configured or is temporarily unavailable.
+ *
+ * Uses ElevenLabs TTS (via elevenlabs-tts edge function) when available,
+ * falling back to Polly.Vicki (neural) if TTS generation fails.
  *
  * Returns TwiML.
  */
+
+const FALLBACK_VOICE = "Polly.Vicki"; // Neural German voice — fallback only
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -30,7 +32,7 @@ Deno.serve(async (req) => {
     const callSid = formData.get("CallSid") as string;
 
     if (!calledNumber) {
-      return twimlResponse("<Say>Entschuldigung, ein Fehler ist aufgetreten.</Say><Hangup/>");
+      return twimlResponse(`<Say voice="${FALLBACK_VOICE}" language="de-DE">Entschuldigung, ein Fehler ist aufgetreten.</Say><Hangup/>`);
     }
 
     const supabase = createClient(
@@ -49,11 +51,32 @@ Deno.serve(async (req) => {
     if (assistantErr || !assistant) {
       console.error("No assistant found for number:", calledNumber, assistantErr);
       return twimlResponse(
-        "<Say voice='Polly.Marlene' language='de-DE'>Der gewünschte Teilnehmer ist derzeit nicht erreichbar. Bitte versuchen Sie es später erneut.</Say><Hangup/>"
+        `<Say voice="${FALLBACK_VOICE}" language="de-DE">Der gewünschte Teilnehmer ist derzeit nicht erreichbar. Bitte versuchen Sie es später erneut.</Say><Hangup/>`
       );
     }
 
-    // 2. Contact matching — only if assistant has a tenant_id (brand assistants may not)
+    // 1b. If the assistant has an ElevenLabs agent, try to trigger re-sync
+    // (this path means ElevenLabs lost the webhook — attempt recovery)
+    if (assistant.elevenlabs_agent_id && assistant.elevenlabs_phone_number_id) {
+      console.warn("[FALLBACK] Call hit TwiML path despite ElevenLabs config — attempting re-sync");
+      try {
+        const syncUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sot-phone-agent-sync`;
+        // Fire-and-forget: don't block the call
+        fetch(syncUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify({
+            action: "sync",
+            assistant_id: assistant.id,
+          }),
+        }).catch(e => console.warn("[FALLBACK] Re-sync fire-and-forget error:", e));
+      } catch (_) { /* non-critical */ }
+    }
+
+    // 2. Contact matching
     let contactName: string | null = null;
     if (callerNumber && assistant.tenant_id) {
       const normalizedCaller = callerNumber.replace(/\s/g, "");
@@ -69,8 +92,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3. Create call session with empty conversation_turns
-    // Note: user_id may be null for brand-level assistants (Zone 1)
+    // 3. Create call session
     const sessionInsert: Record<string, any> = {
       assistant_id: assistant.id,
       direction: "inbound",
@@ -88,7 +110,6 @@ Deno.serve(async (req) => {
       },
     };
 
-    // Only set user_id if assistant has one (brand assistants don't)
     if (assistant.user_id) {
       sessionInsert.user_id = assistant.user_id;
     }
@@ -101,7 +122,7 @@ Deno.serve(async (req) => {
       console.error("Failed to create call session:", sessionErr);
     }
 
-    // 4. Build TwiML: Greeting + Gather loop
+    // 4. Build greeting
     const config = assistant as Record<string, any>;
     const greeting = config.first_message ||
       "Guten Tag, Sie sprechen mit dem KI-Assistenten. Wie kann ich Ihnen helfen?";
@@ -111,17 +132,26 @@ Deno.serve(async (req) => {
       : greeting;
 
     const rules = config.rules || {};
-    const maxDuration = rules.max_call_seconds || 120;
     const webhookBaseUrl = Deno.env.get("SUPABASE_URL") + "/functions/v1";
 
-    // Gather with speech input → routes to sot-phone-converse
+    // 5. Try ElevenLabs TTS for greeting, fall back to Polly
+    const greetingAudioUrl = await generateElevenLabsTts(
+      personalizedGreeting,
+      (config.voice_settings as any)?.voice_id,
+      supabase
+    );
+
+    const greetingTwiml = greetingAudioUrl
+      ? `<Play>${escapeXml(greetingAudioUrl)}</Play>`
+      : `<Say voice="${FALLBACK_VOICE}" language="de-DE">${escapeXml(personalizedGreeting)}</Say>`;
+
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Marlene" language="de-DE">${escapeXml(personalizedGreeting)}</Say>
+  ${greetingTwiml}
   <Gather input="speech" language="de-DE" speechTimeout="3" timeout="10" action="${webhookBaseUrl}/sot-phone-converse" method="POST">
-    <Say voice="Polly.Marlene" language="de-DE"></Say>
+    <Say voice="${FALLBACK_VOICE}" language="de-DE"></Say>
   </Gather>
-  <Say voice="Polly.Marlene" language="de-DE">Ich habe Sie leider nicht verstanden. Vielen Dank für Ihren Anruf. Auf Wiederhören.</Say>
+  <Say voice="${FALLBACK_VOICE}" language="de-DE">Ich habe Sie leider nicht verstanden. Vielen Dank für Ihren Anruf. Auf Wiederhören.</Say>
   <Hangup/>
 </Response>`;
 
@@ -129,10 +159,84 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("phone-inbound error:", err);
     return twimlResponse(
-      "<Say voice='Polly.Marlene' language='de-DE'>Es ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.</Say><Hangup/>"
+      `<Say voice="${FALLBACK_VOICE}" language="de-DE">Es ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.</Say><Hangup/>`
     );
   }
 });
+
+/**
+ * Generate TTS audio via ElevenLabs API, upload to Supabase storage,
+ * and return a public URL for Twilio's <Play> verb.
+ * Returns null if anything fails (caller should fall back to <Say>).
+ */
+async function generateElevenLabsTts(
+  text: string,
+  voiceId: string | null | undefined,
+  supabase: any
+): Promise<string | null> {
+  const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
+  if (!ELEVENLABS_API_KEY) return null;
+
+  const voice = voiceId || "FGY2WhTYpPnrIDTdsKH5"; // Laura
+
+  try {
+    const res = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voice}/stream?output_format=mp3_44100_128`,
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": ELEVENLABS_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: text.slice(0, 3000),
+          model_id: "eleven_turbo_v2_5",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+            speed: 1.0,
+          },
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      console.warn("[TTS] ElevenLabs failed:", res.status);
+      return null;
+    }
+
+    const audioBytes = new Uint8Array(await res.arrayBuffer());
+    const fileName = `tts/${crypto.randomUUID()}.mp3`;
+
+    // Ensure bucket exists (idempotent)
+    await supabase.storage.createBucket("phone-tts-cache", {
+      public: true,
+      allowedMimeTypes: ["audio/mpeg"],
+      fileSizeLimit: 5 * 1024 * 1024, // 5MB
+    }).catch(() => { /* bucket may already exist */ });
+
+    const { error: uploadErr } = await supabase.storage
+      .from("phone-tts-cache")
+      .upload(fileName, audioBytes, {
+        contentType: "audio/mpeg",
+        upsert: true,
+      });
+
+    if (uploadErr) {
+      console.warn("[TTS] Storage upload failed:", uploadErr);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("phone-tts-cache")
+      .getPublicUrl(fileName);
+
+    return urlData?.publicUrl || null;
+  } catch (e) {
+    console.warn("[TTS] Generation error:", e);
+    return null;
+  }
+}
 
 function twimlResponse(body: string): Response {
   const wrapped = body.startsWith("<?xml")
