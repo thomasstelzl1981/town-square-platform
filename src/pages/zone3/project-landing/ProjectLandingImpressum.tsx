@@ -86,16 +86,10 @@ export default function ProjectLandingImpressum() {
                     <p><strong>Vertretungsberechtigter Geschäftsführer:</strong><br />{devContext.managing_director}</p>
                   )}
                   {devContext.hrb_number && (
-                    <p><strong>Registergericht:</strong> {devContext.register_court || 'Amtsgericht'}, {devContext.hrb_number}</p>
+                    <p><strong>Registergericht:</strong> Amtsgericht, {devContext.hrb_number}</p>
                   )}
                   {devContext.ust_id && (
                     <p><strong>USt-IdNr.:</strong> {devContext.ust_id}</p>
-                  )}
-                  {devContext.email && (
-                    <p><strong>E-Mail:</strong> <a href={`mailto:${devContext.email}`} className="text-[hsl(210,80%,55%)] hover:underline">{devContext.email}</a></p>
-                  )}
-                  {devContext.phone && (
-                    <p><strong>Telefon:</strong> {devContext.phone}</p>
                   )}
                 </div>
               ) : (

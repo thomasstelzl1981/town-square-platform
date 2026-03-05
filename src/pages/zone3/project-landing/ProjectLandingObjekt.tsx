@@ -74,17 +74,30 @@ export default function ProjectLandingObjekt() {
       // Load images from document_links instead of project_images JSONB
       const imageUrls = await loadProjectImages(project.id);
 
-      // Query DMS for exposé files
+      // Query DMS for exposé files via storage_nodes
       let exposeFiles: Array<{ id: string; name: string; storage_path: string }> = [];
-      if ((project as any).project_code) {
-        const projectCode = (project as any).project_code;
-        const { data: nodes } = await (supabase as any)
+      try {
+        // Step 1: Find the exposé folder (name contains '01_expose' or 'expose') for this project
+        const { data: exposeFolders } = await supabase
           .from('storage_nodes')
-          .select('id, name, storage_path')
-          .eq('type', 'file')
-          .ilike('folder_path', `%${projectCode}%01_expose%`)
-          .not('storage_path', 'is', null);
-        exposeFiles = (nodes || []);
+          .select('id')
+          .eq('node_type', 'folder')
+          .eq('dev_project_id', project.id)
+          .ilike('name', '%expose%');
+
+        if (exposeFolders?.length) {
+          const folderIds = exposeFolders.map(f => f.id);
+          // Step 2: Get files inside those folders
+          const { data: files } = await supabase
+            .from('storage_nodes')
+            .select('id, name, storage_path')
+            .eq('node_type', 'file')
+            .in('parent_id', folderIds)
+            .not('storage_path', 'is', null);
+          exposeFiles = (files || []) as any;
+        }
+      } catch (err) {
+        console.warn('[ProjectLandingObjekt] Exposé query failed:', err);
       }
 
       return { landingPage: lp, project, imageUrls, exposeFiles };

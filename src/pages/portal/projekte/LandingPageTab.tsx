@@ -135,7 +135,7 @@ export default function LandingPageTab() {
     if (rawProject?.developer_context_id) {
       const { data } = await supabase
         .from('developer_contexts')
-        .select('name, legal_form, managing_director, street, house_number, postal_code, city, phone, email, hrb_number, ust_id')
+        .select('name, legal_form, managing_director, street, house_number, postal_code, city, hrb_number, ust_id')
         .eq('id', rawProject.developer_context_id as string)
         .maybeSingle();
       devCtx = data;
@@ -151,8 +151,8 @@ export default function LandingPageTab() {
           `${devCtx.postal_code || ''} ${devCtx.city || ''}`.trim(),
         ].filter(Boolean).join(', ')
       : '';
-    const contactEmail = devCtx?.email || '';
-    const contactPhone = devCtx?.phone || '';
+    const contactEmail = '';
+    const contactPhone = '';
 
     // Build imprint text from developer context
     let imprintText = '';

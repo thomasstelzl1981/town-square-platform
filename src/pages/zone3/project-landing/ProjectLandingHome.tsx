@@ -23,6 +23,7 @@ interface ProjectUnit {
   rooms_count: number | null;
   list_price: number | null;
   rent_net: number | null;
+  current_rent: number | null;
   status: string | null;
 }
 
@@ -146,7 +147,7 @@ export default function ProjectLandingHome() {
 
       const { data: units } = await supabase
         .from('dev_project_units')
-        .select('id, unit_number, floor, area_sqm, rooms_count, list_price, rent_net, status')
+        .select('id, unit_number, floor, area_sqm, rooms_count, list_price, rent_net, current_rent, status')
         .eq('project_id', project.id)
         .order('unit_number', { ascending: true });
 
@@ -180,7 +181,7 @@ export default function ProjectLandingHome() {
     await Promise.all(availableUnits.map(async (unit) => {
       const price = unit.list_price;
       if (!price) return;
-      const monthlyRent = unit.rent_net || (price * 0.04 / 12);
+      const monthlyRent = unit.rent_net || unit.current_rent || (price * 0.04 / 12);
 
       const input: CalculationInput = {
         ...defaultInput,
@@ -242,7 +243,7 @@ export default function ProjectLandingHome() {
   // Summary for table
   const totalArea = availableUnits.reduce((s, u) => s + (u.area_sqm || 0), 0);
   const totalPrice = availableUnits.reduce((s, u) => s + (u.list_price || 0), 0);
-  const totalRentAnnual = availableUnits.reduce((s, u) => s + (u.rent_net || 0) * 12, 0);
+  const totalRentAnnual = availableUnits.reduce((s, u) => s + ((u.rent_net || u.current_rent || 0) * 12), 0);
   const avgYield = totalPrice > 0 ? (totalRentAnnual / totalPrice) * 100 : 0;
   const calculatedUnits = availableUnits.filter(u => metricsCache[u.id]);
   const avgBurden = calculatedUnits.length > 0
@@ -550,8 +551,9 @@ export default function ProjectLandingHome() {
                 <tbody>
                   {availableUnits.map((unit) => {
                     const metrics = metricsCache[unit.id];
-                    const yieldPercent = unit.list_price && unit.rent_net
-                      ? (unit.rent_net * 12 / unit.list_price) * 100 : 0;
+                    const unitRent = unit.rent_net || unit.current_rent || 0;
+                    const yieldPercent = unit.list_price && unitRent
+                      ? (unitRent * 12 / unit.list_price) * 100 : 0;
                     const monthlyTaxEffect = metrics?.yearlyTaxSavings ? metrics.yearlyTaxSavings / 12 : null;
                     const monthlyBurden = metrics?.monthlyBurden ?? null;
                     const status = STATUS_LABELS[unit.status || 'frei'] || STATUS_LABELS.frei;
@@ -567,7 +569,7 @@ export default function ProjectLandingHome() {
                         <td className="px-3 py-2.5 text-center">{formatFloor(unit.floor)}</td>
                         <td className="px-3 py-2.5 text-right tabular-nums">{unit.area_sqm ? `${unit.area_sqm.toFixed(1)} m²` : '—'}</td>
                         <td className="px-3 py-2.5 text-right tabular-nums font-semibold">{unit.list_price ? eur(unit.list_price) : '—'}</td>
-                        <td className="px-3 py-2.5 text-right tabular-nums">{unit.rent_net ? eur(unit.rent_net) : '—'}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">{unitRent ? eur(unitRent) : '—'}</td>
                         <td className="px-3 py-2.5 text-right tabular-nums font-medium">{yieldPercent > 0 ? `${yieldPercent.toFixed(2)} %` : '—'}</td>
                         <td className="px-3 py-2.5 text-right tabular-nums">
                           {isCalculating ? (
