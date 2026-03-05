@@ -49,7 +49,7 @@ MOD-09:
   icon: "Handshake"
   main_route: "/portal/vertriebspartner"
   display_order: 9
-  sub_tiles: [katalog, beratung, kunden, network, systemgebuehr]
+  sub_tiles: [katalog, beratung, kunden, network, provisionen]
 ```
 
 ---

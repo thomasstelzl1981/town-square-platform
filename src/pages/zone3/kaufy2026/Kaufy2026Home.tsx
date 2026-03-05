@@ -177,62 +177,8 @@ export default function Kaufy2026Home() {
         .map((item: any) => item.properties?.id)
         .filter(Boolean) as string[];
 
-      const imageMap = new Map<string, string>();
-
-      if (propertyIds.length > 0) {
-        const { data: imageLinks } = await supabase
-          .from('document_links')
-          .select(`
-            object_id,
-            is_title_image,
-            display_order,
-            documents!inner (file_path, mime_type)
-          `)
-          .in('object_id', propertyIds)
-          .eq('object_type', 'property')
-          .order('is_title_image', { ascending: false })
-          .order('display_order', { ascending: true });
-
-        if (imageLinks) {
-          const bestByProperty = new Map<string, { file_path: string; is_title_image: boolean; display_order: number }>();
-
-          for (const link of imageLinks as any[]) {
-            const doc = link.documents as any;
-            if (!doc?.file_path) continue;
-            if (!String(doc?.mime_type || '').startsWith('image/')) continue;
-
-            const candidate = {
-              file_path: doc.file_path as string,
-              is_title_image: !!link.is_title_image,
-              display_order: typeof link.display_order === 'number' ? link.display_order : 0,
-            };
-
-            const current = bestByProperty.get(link.object_id);
-            if (!current) {
-              bestByProperty.set(link.object_id, candidate);
-              continue;
-            }
-
-            if (candidate.is_title_image && !current.is_title_image) {
-              bestByProperty.set(link.object_id, candidate);
-              continue;
-            }
-
-            if (candidate.is_title_image === current.is_title_image && candidate.display_order < current.display_order) {
-              bestByProperty.set(link.object_id, candidate);
-            }
-          }
-
-          await Promise.all(
-            Array.from(bestByProperty.entries()).map(async ([objectId, best]) => {
-              const url = await getCachedSignedUrl(best.file_path);
-              if (url) {
-                imageMap.set(objectId, url);
-              }
-            })
-          );
-        }
-      }
+      // Fetch hero images via shared utility (SSOT)
+      const imageMap = await fetchPropertyImages(propertyIds);
 
       // Query unit counts per property (same pattern as SucheTab)
       const unitCountMap = new Map<string, number>();
