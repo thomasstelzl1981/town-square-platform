@@ -163,35 +163,107 @@ async function searchApify(
   }
 }
 
-// ── Portal Scraper via Firecrawl (ImmoScout24, Immowelt, etc.) ─────────────
+// ── Portal Listing Result (property-focused, not broker) ──────────────────
+interface PortalListingResult {
+  title: string;
+  price: number | null;
+  address: string | null;
+  city: string | null;
+  zip_code: string | null;
+  object_type: string | null;
+  living_area_sqm: number | null;
+  plot_area_sqm: number | null;
+  rooms: number | null;
+  units_count: number | null;
+  year_built: number | null;
+  gross_yield: number | null;
+  url: string | null;
+  portal: string;
+  broker_name: string | null;
+}
 
-async function searchPortalsFirecrawl(
-  query: string,
+// ── Build portal-specific URLs with real filters ──────────────────────────
+function buildPortalUrl(
+  portal: string,
   location: string | undefined,
-  firecrawlKey: string,
-  maxResults: number,
-  portalConfig?: ResearchRequest["portal_config"]
-): Promise<ContactResult[]> {
-  const portal = portalConfig?.portal || "immoscout24";
-  const searchType = portalConfig?.search_type || "listings";
+  priceMin: number | undefined,
+  priceMax: number | undefined,
+  objectTypes: string[] | undefined,
+  areaMin: number | undefined,
+  areaMax: number | undefined
+): string {
+  const loc = location ? encodeURIComponent(location.toLowerCase().replace(/\s+/g, '-')) : '';
 
-  // Build the portal search URL
-  const locationQuery = location ? encodeURIComponent(location) : "";
-  let startUrl = "";
-
-  if (portal === "immoscout24") {
-    if (searchType === "brokers") {
-      startUrl = `https://www.immobilienscout24.de/immobilienmakler/${locationQuery || "deutschland"}.html`;
-    } else {
-      startUrl = `https://www.immobilienscout24.de/Suche/de/${locationQuery || "deutschland"}/wohnung-kaufen`;
-    }
-  } else if (portal === "immowelt") {
-    startUrl = `https://www.immowelt.de/liste/${locationQuery || "deutschland"}/wohnungen/kaufen`;
-  } else {
-    startUrl = `https://www.kleinanzeigen.de/s-immobilien/${locationQuery || ""}/${query ? encodeURIComponent(query) : "immobilien"}/k0c195`;
+  if (portal === 'immoscout24') {
+    // ImmoScout24 URL structure: /Suche/de/{location}/{object-type}
+    const objectSlug = mapObjectTypeToImmoScout(objectTypes);
+    let url = `https://www.immobilienscout24.de/Suche/de/${loc || 'deutschland'}/${objectSlug}`;
+    const params: string[] = [];
+    if (priceMin) params.push(`price=${priceMin}-`);
+    if (priceMax) params.push(`price=-${priceMax}`);
+    if (priceMin && priceMax) params.splice(0, params.length, `price=${priceMin}-${priceMax}`);
+    if (areaMin) params.push(`livingspace=${areaMin}-`);
+    if (areaMax) params.push(`livingspace=-${areaMax}`);
+    if (areaMin && areaMax) params.splice(params.length - 2, 2, `livingspace=${areaMin}-${areaMax}`);
+    if (params.length > 0) url += '?' + params.join('&');
+    return url;
   }
 
-  console.log(`Firecrawl portal scrape: ${startUrl}`);
+  if (portal === 'immowelt') {
+    const objectSlug = mapObjectTypeToImmowelt(objectTypes);
+    let url = `https://www.immowelt.de/liste/${loc || 'deutschland'}/${objectSlug}/kaufen`;
+    const params: string[] = [];
+    if (priceMin) params.push(`pmi=${priceMin}`);
+    if (priceMax) params.push(`pma=${priceMax}`);
+    if (areaMin) params.push(`wfmi=${areaMin}`);
+    if (areaMax) params.push(`wfma=${areaMax}`);
+    if (params.length > 0) url += '?' + params.join('&');
+    return url;
+  }
+
+  // Kleinanzeigen
+  let url = `https://www.kleinanzeigen.de/s-immobilien/${loc || ''}/k0c195`;
+  const params: string[] = [];
+  if (priceMin) params.push(`minPreis=${priceMin}`);
+  if (priceMax) params.push(`maxPreis=${priceMax}`);
+  if (params.length > 0) url += '?' + params.join('&');
+  return url;
+}
+
+function mapObjectTypeToImmoScout(types?: string[]): string {
+  if (!types || types.length === 0) return 'immobilie-kaufen';
+  const t = types[0].toUpperCase();
+  if (t === 'MFH' || t === 'MEHRFAMILIENHAUS') return 'mehrfamilienhaus-kaufen';
+  if (t === 'ETW' || t === 'EIGENTUMSWOHNUNG') return 'wohnung-kaufen';
+  if (t === 'ZFH' || t === 'ZWEIFAMILIENHAUS') return 'haus-kaufen';
+  if (t === 'EFH' || t === 'EINFAMILIENHAUS') return 'einfamilienhaus-kaufen';
+  if (t === 'GEWERBE') return 'gewerbe-kaufen';
+  if (t === 'GRUNDSTÜCK' || t === 'GRUNDSTUECK') return 'grundstueck-kaufen';
+  return 'immobilie-kaufen';
+}
+
+function mapObjectTypeToImmowelt(types?: string[]): string {
+  if (!types || types.length === 0) return 'immobilien';
+  const t = types[0].toUpperCase();
+  if (t === 'MFH' || t === 'MEHRFAMILIENHAUS') return 'mehrfamilienhaeuser';
+  if (t === 'ETW' || t === 'EIGENTUMSWOHNUNG') return 'wohnungen';
+  if (t === 'ZFH' || t === 'ZWEIFAMILIENHAUS') return 'haeuser';
+  if (t === 'EFH' || t === 'EINFAMILIENHAUS') return 'haeuser';
+  if (t === 'GEWERBE') return 'gewerbe';
+  if (t === 'GRUNDSTÜCK' || t === 'GRUNDSTUECK') return 'grundstuecke';
+  return 'immobilien';
+}
+
+// ── Scrape a single portal and extract listings via AI ────────────────────
+async function scrapePortalListings(
+  portal: string,
+  url: string,
+  firecrawlKey: string,
+  lovableApiKey: string,
+  maxResults: number,
+  location: string | undefined
+): Promise<{ portal: string; listings: PortalListingResult[]; status: string; error?: string }> {
+  console.log(`Portal scrape [${portal}]: ${url}`);
 
   try {
     const resp = await fetch("https://api.firecrawl.dev/v1/scrape", {
@@ -201,7 +273,7 @@ async function searchPortalsFirecrawl(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        url: startUrl,
+        url,
         formats: ["markdown", "links"],
         onlyMainContent: true,
         waitFor: 3000,
@@ -209,56 +281,65 @@ async function searchPortalsFirecrawl(
     });
 
     if (!resp.ok) {
-      console.error("Firecrawl portal error:", resp.status, await resp.text());
-      return [];
+      const errText = await resp.text();
+      console.error(`Firecrawl [${portal}] error ${resp.status}:`, errText);
+      const isBlocked = resp.status === 403 || resp.status === 429 || errText.includes('captcha');
+      return { portal, listings: [], status: isBlocked ? 'blocked' : 'error', error: `HTTP ${resp.status}` };
     }
 
     const data = await resp.json();
     const markdown = data.data?.markdown || data.markdown || "";
     const links = data.data?.links || data.links || [];
 
-    if (!markdown) {
-      console.log("Firecrawl returned empty markdown for portal");
-      return [];
+    if (!markdown || markdown.length < 100) {
+      console.log(`[${portal}] Empty or too short markdown (${markdown.length} chars)`);
+      return { portal, listings: [], status: 'empty' };
     }
 
-    // Use AI to extract structured listings from the markdown
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY not available for portal extraction");
-      return [];
-    }
-
-    const extractionPrompt = `Extrahiere aus dem folgenden Immobilienportal-Markdown alle Inserate/Listings.
+    // AI extraction with property-specific schema
+    const extractionPrompt = `Extrahiere aus diesem Immobilienportal-Markdown alle Kauf-Inserate.
 Portal: ${portal}
-Suchtyp: ${searchType}
 Suchort: ${location || "Deutschland"}
 
-Markdown-Inhalt:
-${markdown.slice(0, 15000)}
+Markdown:
+${markdown.slice(0, 18000)}
 
-Verfügbare Links auf der Seite:
-${links.slice(0, 50).join("\n")}
+Verfügbare Links:
+${links.slice(0, 60).join("\n")}
 
-Extrahiere maximal ${maxResults} Ergebnisse.`;
+Extrahiere maximal ${maxResults} Objekte. Für jedes Objekt extrahiere:
+- title: Inseratstitel
+- price: Kaufpreis als Zahl (nur EUR, keine Miete)
+- address: Straße wenn vorhanden
+- city: Stadt
+- zip_code: PLZ
+- object_type: MFH/ETW/ZFH/EFH/Gewerbe/Grundstück
+- living_area_sqm: Wohnfläche in m²
+- plot_area_sqm: Grundstücksfläche in m²
+- rooms: Anzahl Zimmer
+- units_count: Anzahl Wohneinheiten (bei MFH)
+- year_built: Baujahr
+- gross_yield: Bruttorendite in % (wenn angegeben)
+- url: Direkt-Link zum Inserat (vollständige URL)
+- broker_name: Name des Maklers/Anbieters`;
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${lovableApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Du extrahierst strukturierte Daten aus Immobilienportal-Seiten." },
+          { role: "system", content: "Du extrahierst strukturierte Immobilien-Inserate aus Portal-Seiten. Antworte NUR über die tool_call-Funktion." },
           { role: "user", content: extractionPrompt },
         ],
         tools: [{
           type: "function",
           function: {
             name: "return_listings",
-            description: "Return extracted portal listings",
+            description: "Return extracted property listings",
             parameters: {
               type: "object",
               properties: {
@@ -268,14 +349,19 @@ Extrahiere maximal ${maxResults} Ergebnisse.`;
                     type: "object",
                     properties: {
                       title: { type: "string" },
-                      price: { type: "string", description: "Preis als Text" },
+                      price: { type: "number", description: "Kaufpreis in EUR" },
                       address: { type: "string" },
-                      url: { type: "string", description: "Link zum Inserat" },
+                      city: { type: "string" },
+                      zip_code: { type: "string" },
+                      object_type: { type: "string", enum: ["MFH", "ETW", "ZFH", "EFH", "Gewerbe", "Grundstück", "Sonstige"] },
+                      living_area_sqm: { type: "number" },
+                      plot_area_sqm: { type: "number" },
+                      rooms: { type: "number" },
+                      units_count: { type: "number" },
+                      year_built: { type: "number" },
+                      gross_yield: { type: "number", description: "Bruttorendite in %" },
+                      url: { type: "string", description: "Vollständige URL zum Inserat" },
                       broker_name: { type: "string" },
-                      broker_phone: { type: "string" },
-                      broker_email: { type: "string" },
-                      area_sqm: { type: "string" },
-                      rooms: { type: "string" },
                     },
                     required: ["title"],
                   },
@@ -291,45 +377,140 @@ Extrahiere maximal ${maxResults} Ergebnisse.`;
     });
 
     if (!aiResp.ok) {
-      console.error("AI extraction for portal failed:", aiResp.status);
-      return [];
+      console.error(`AI extraction [${portal}] failed:`, aiResp.status);
+      return { portal, listings: [], status: 'ai_error', error: `AI HTTP ${aiResp.status}` };
     }
 
     const aiData = await aiResp.json();
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) return [];
+    if (!toolCall) {
+      return { portal, listings: [], status: 'ai_no_result' };
+    }
 
     const parsed = JSON.parse(toolCall.function.arguments);
-    const listings = parsed.listings || [];
-
-    return listings.map((item: any, idx: number) => ({
-      name: item.title || `Ergebnis ${idx + 1}`,
-      salutation: null,
-      first_name: null,
-      last_name: null,
-      email: item.broker_email || null,
-      phone: item.broker_phone || null,
-      website: item.url
-        ? item.url.startsWith("http") ? item.url : `https://www.immobilienscout24.de${item.url}`
-        : null,
+    const listings: PortalListingResult[] = (parsed.listings || []).map((item: any) => ({
+      title: item.title || 'Unbenanntes Objekt',
+      price: item.price || null,
       address: item.address || null,
-      rating: null,
-      reviews_count: null,
-      confidence: item.broker_email ? 75 : 50,
-      sources: ["firecrawl_portal"],
-      source_refs: {
-        portal,
-        search_type: searchType,
-        price_raw: item.price || null,
-        broker_name: item.broker_name || null,
-        area_sqm: item.area_sqm || null,
-        rooms: item.rooms || null,
-      },
+      city: item.city || null,
+      zip_code: item.zip_code || null,
+      object_type: item.object_type || null,
+      living_area_sqm: item.living_area_sqm || null,
+      plot_area_sqm: item.plot_area_sqm || null,
+      rooms: item.rooms || null,
+      units_count: item.units_count || null,
+      year_built: item.year_built || null,
+      gross_yield: item.gross_yield || null,
+      url: item.url ? (item.url.startsWith('http') ? item.url : `https://www.${portal === 'immoscout24' ? 'immobilienscout24.de' : portal === 'immowelt' ? 'immowelt.de' : 'kleinanzeigen.de'}${item.url}`) : null,
+      portal,
+      broker_name: item.broker_name || null,
     }));
+
+    console.log(`[${portal}] Extracted ${listings.length} listings`);
+    return { portal, listings, status: 'success' };
   } catch (err) {
-    console.error("Firecrawl portal error:", err);
+    console.error(`Portal scrape [${portal}] error:`, err);
+    return { portal, listings: [], status: 'error', error: String(err) };
+  }
+}
+
+// ── Search ALL portals in parallel ────────────────────────────────────────
+async function searchAllPortals(
+  location: string | undefined,
+  firecrawlKey: string,
+  lovableApiKey: string,
+  maxResultsPerPortal: number,
+  portalConfig?: ResearchRequest["portal_config"]
+): Promise<{ results: PortalListingResult[]; run_diagnostics: Record<string, any> }> {
+  const priceMin = portalConfig?.price_min;
+  const priceMax = portalConfig?.price_max;
+  const objectTypes = portalConfig?.object_types;
+  const areaMin = portalConfig?.area_min;
+  const areaMax = portalConfig?.area_max;
+
+  const portals = ['immoscout24', 'immowelt', 'ebay_kleinanzeigen'];
+  const urls = portals.map(p => buildPortalUrl(p, location, priceMin, priceMax, objectTypes, areaMin, areaMax));
+
+  console.log(`Searching all portals in parallel:`, urls);
+
+  const promises = portals.map((portal, idx) =>
+    scrapePortalListings(portal, urls[idx], firecrawlKey, lovableApiKey, maxResultsPerPortal, location)
+  );
+
+  const results = await Promise.allSettled(promises);
+
+  const allListings: PortalListingResult[] = [];
+  const diagnostics: Record<string, any> = {};
+
+  results.forEach((result, idx) => {
+    const portal = portals[idx];
+    if (result.status === 'fulfilled') {
+      const r = result.value;
+      diagnostics[portal] = {
+        status: r.status,
+        result_count: r.listings.length,
+        url: urls[idx],
+        error: r.error || null,
+      };
+      allListings.push(...r.listings);
+    } else {
+      diagnostics[portal] = {
+        status: 'error',
+        result_count: 0,
+        url: urls[idx],
+        error: result.reason?.message || 'Unknown error',
+      };
+    }
+  });
+
+  return { results: allListings, run_diagnostics: diagnostics };
+}
+
+// ── Legacy wrapper for ContactResult compatibility ────────────────────────
+async function searchPortalsFirecrawl(
+  query: string,
+  location: string | undefined,
+  firecrawlKey: string,
+  maxResults: number,
+  portalConfig?: ResearchRequest["portal_config"]
+): Promise<ContactResult[]> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    console.error("LOVABLE_API_KEY not available for portal extraction");
     return [];
   }
+
+  const { results } = await searchAllPortals(location, firecrawlKey, LOVABLE_API_KEY, maxResults, portalConfig);
+
+  // Map to legacy ContactResult format for backward compat
+  return results.map((item) => ({
+    name: item.title,
+    salutation: null,
+    first_name: null,
+    last_name: null,
+    email: null,
+    phone: null,
+    website: item.url,
+    address: item.address,
+    rating: null,
+    reviews_count: null,
+    confidence: item.price ? 70 : 50,
+    sources: ["firecrawl_portal"] as string[],
+    source_refs: {
+      portal: item.portal,
+      search_type: "listings",
+      price_raw: item.price ? String(item.price) : null,
+      broker_name: item.broker_name || null,
+      area_sqm: item.living_area_sqm ? String(item.living_area_sqm) : null,
+      rooms: item.rooms ? String(item.rooms) : null,
+      object_type: item.object_type || null,
+      city: item.city || null,
+      zip_code: item.zip_code || null,
+      units_count: item.units_count || null,
+      year_built: item.year_built || null,
+      gross_yield: item.gross_yield || null,
+    },
+  }));
 }
 
 async function scrapeEmailsFirecrawl(
