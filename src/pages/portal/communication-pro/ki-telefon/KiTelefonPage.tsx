@@ -10,6 +10,7 @@ import { DocumentationCard } from '@/components/communication-pro/phone-assistan
 import { TestPreviewCard } from '@/components/communication-pro/phone-assistant/TestPreviewCard';
 import { CallLogSection } from '@/components/communication-pro/phone-assistant/CallLogSection';
 import { PhoneBillingCard } from '@/components/communication-pro/phone-assistant/PhoneBillingCard';
+import { AgentSyncCard } from '@/components/communication-pro/phone-assistant/AgentSyncCard';
 import { Phone, Mic, FileText } from 'lucide-react';
 
 export default function KiTelefonPage() {
