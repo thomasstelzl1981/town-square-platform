@@ -1,102 +1,76 @@
 
 
-# Fix: Landing Page "Projekt nicht gefunden" — Root Cause & Repair Plan
+# Landing Page = Primary Sales Channel — Feature Parity Plan
 
-## Root Cause (3 issues)
+## Status Quo
 
-### 1. Missing Foreign Key — Breaks JOIN
-`landing_pages.project_id` has **no FK to `dev_projects.id`**. The Supabase client's `dev_projects!inner(...)` syntax requires a FK relationship. Without it, PostgREST cannot resolve the join and the query silently returns null.
-- **Affects:** `ProjectLandingLayout.tsx` (header, footer, logo)
-- **Affects:** `ProjectLandingHome.tsx` uses separate queries but same root issue on `dev_projects`
+The Project Landing Page already has **most** Kaufy features integrated:
 
-### 2. No Public RLS — Blocks Anonymous & Cross-Tenant Access
-The landing page is a **public website** (Zone 3), but:
-- `dev_projects` — only allows `tenant_id = get_user_tenant_id()` (auth required)
-- `dev_project_units` — same restriction
-- `document_links` — no policy for `object_type = 'project'`
-- `documents` — no public policy for project images
+| Feature | Kaufy | Landing Page | Status |
+|---|---|---|---|
+| InvestmentExposeView (40-year projection) | ✅ | ✅ | Done |
+| Calculator on overview page | ✅ | ✅ | Done |
+| Unit detail page with full Exposé | ✅ | ✅ | Done |
+| KaufyFinanceRequestSheet (KDF-Check + Selbstauskunft) | ✅ | ✅ | Done |
+| Submit → sot-futureroom-public-submit → Zone 1 | ✅ | ✅ | Done |
+| Lead capture → Zone 1 pool | ✅ | ✅ | Done (sot-project-landing-lead) |
+| **Document downloads on Exposé** | ✅ | ❌ `showDocuments=false` | **Gap** |
+| **SLC inquiry tracking** | ✅ | ⚠️ Silent fail (no listing in SLC) | **Gap** |
+| **Unit row navigation** | React Router | `window.location.href` (full reload) | **Minor gap** |
+| **"Finanzierung beantragen" from unit table** | N/A (single listing) | Missing CTA column | **Enhancement** |
+| **Finance source attribution** | `zone3_kaufy_expose` | Same source string | **Gap** (needs distinct source) |
 
-Even logged-in users see "Projekt nicht gefunden" because the restrictive `tenant_isolation_restrictive` policy blocks unless `get_user_tenant_id()` matches.
+## Implementation Plan
 
-### 3. Existing landing page status is `draft`
-The public RLS policy on `landing_pages` only allows `preview` and `active`. For the portal preview (logged-in user), this works via the org-member policy. But the public path blocks `draft` — this is correct behavior but needs the preview flow to account for it.
+### 1. Enable Document Visibility on Exposé
+**File:** `ProjectLandingExpose.tsx`
+- Change `showDocuments={false}` to `showDocuments={true}`
+- This uses the existing InvestmentExposeView document tab which reads from `document_links` (already covered by the public RLS policies we added)
 
-## Fix Plan
+### 2. Distinct Source Attribution
+**File:** `ProjectLandingExpose.tsx`
+- The KaufyFinanceRequestSheet submits with `source: 'zone3_kaufy_expose'` hardcoded inside the sheet
+- Need to either: add a `source` prop to KaufyFinanceRequestSheet, or create a wrapper that overrides the source
+- Target source: `zone3_project_landing` so Zone 1 can distinguish Kaufy marketplace leads from project landing page leads
+- This is critical for ROI tracking of social media campaigns
 
-### Migration 1: Add FK + Public RLS Policies
+### 3. Fix Unit Row Navigation (UX)
+**File:** `ProjectLandingHome.tsx` line 565
+- Replace `window.location.href` with React Router `useNavigate` for SPA navigation (no full page reload)
+- Faster transition, preserves scroll state
 
-```sql
--- 1. Add FK from landing_pages to dev_projects
-ALTER TABLE public.landing_pages
-  ADD CONSTRAINT landing_pages_project_id_fkey
-  FOREIGN KEY (project_id) REFERENCES public.dev_projects(id);
+### 4. Add "Finanzierung" Quick-Action in Unit Table
+**File:** `ProjectLandingHome.tsx`
+- Add a small CTA button/icon in each unit row that directly opens the finance request for that specific unit
+- Alternatively: add a dedicated column "Aktion" with a small "Anfragen" button
+- This eliminates the need to first click into the Exposé just to request financing
 
--- 2. Public SELECT on dev_projects for projects with active landing pages
-CREATE POLICY "public_read_landing_page_projects"
-ON public.dev_projects FOR SELECT TO anon, authenticated
-USING (
-  id IN (
-    SELECT project_id FROM public.landing_pages
-    WHERE status IN ('draft', 'preview', 'active')
-  )
-);
+### 5. SLC Event Recording for Project Units
+**File:** `KaufyFinanceRequestSheet.tsx` or new adapter
+- Currently `recordInquiryForListing` expects a `listingId` from the `listings` table
+- For project units, there's no listing record — the call silently fails
+- Fix: Make the SLC recording conditional (skip if source is `zone3_project_landing`) OR create a parallel `recordInquiryForProject` function that logs into `sales_lifecycle_events` with entity_type `project_unit`
+- This ensures Zone 1 has full visibility of all inquiries
 
--- 3. Public SELECT on dev_project_units for those projects
-CREATE POLICY "public_read_landing_page_units"
-ON public.dev_project_units FOR SELECT TO anon, authenticated
-USING (
-  project_id IN (
-    SELECT project_id FROM public.landing_pages
-    WHERE status IN ('draft', 'preview', 'active')
-  )
-);
+### 6. Source Prop on KaufyFinanceRequestSheet
+**File:** `src/components/zone3/KaufyFinanceRequestSheet.tsx`
+- Add optional `source?: string` prop (default: `'zone3_kaufy_expose'`)
+- Pass `source` into the payload instead of hardcoded value
+- ProjectLandingExpose passes `source="zone3_project_landing"`
+- Kaufy2026Expose keeps default
 
--- 4. Public SELECT on document_links for project images
-CREATE POLICY "public_read_project_image_links"
-ON public.document_links FOR SELECT TO anon, authenticated
-USING (
-  object_type = 'project'
-  AND object_id IN (
-    SELECT project_id FROM public.landing_pages
-    WHERE status IN ('draft', 'preview', 'active')
-  )
-);
+## No Database Changes Required
+All necessary RLS policies are already in place from the previous migration.
 
--- 5. Public SELECT on documents for project-linked images
-CREATE POLICY "public_read_project_landing_documents"
-ON public.documents FOR SELECT TO anon, authenticated
-USING (
-  id IN (
-    SELECT dl.document_id FROM public.document_links dl
-    WHERE dl.object_type = 'project'
-    AND dl.object_id IN (
-      SELECT project_id FROM public.landing_pages
-      WHERE status IN ('draft', 'preview', 'active')
-    )
-  )
-);
+## Freeze Check
+- `src/components/zone3/KaufyFinanceRequestSheet.tsx` — Not in any freeze file
+- `src/pages/zone3/project-landing/*` — Not frozen
+- No engine changes needed (ENG-INVEST is used as-is)
 
--- 6. Include 'draft' in landing_pages public policy (for preview from portal)
-DROP POLICY IF EXISTS "Public can view active landing pages" ON public.landing_pages;
-CREATE POLICY "Public can view landing pages"
-ON public.landing_pages FOR SELECT TO anon, authenticated
-USING (status IN ('draft', 'preview', 'active'));
-```
-
-### No Code Changes Needed
-The existing `ProjectLandingHome.tsx` and `ProjectLandingLayout.tsx` code is correct — the queries will work once the FK and RLS policies are in place.
-
-### Security Note
-- Only projects with a `landing_pages` record are exposed publicly
-- The policies are read-only (SELECT)
-- `locked` status pages remain invisible
-- Write operations remain protected by existing org-member policies
-
-### Freeze Check
-| Path | Frozen? |
-|---|---|
-| Database migration | No |
-| `ProjectLandingHome.tsx` (Zone 3, project-landing) | **Not frozen** (not in zone3_freeze.json) |
-| `ProjectLandingLayout.tsx` | **Not frozen** |
-| No code changes needed | N/A |
+## Priority Order
+1. Source attribution (critical for business analytics)
+2. Enable documents on Exposé (1 line change)
+3. Fix navigation to SPA routing (UX)
+4. Quick-action financing from unit table (conversion optimization)
+5. SLC event recording (data completeness)
 
