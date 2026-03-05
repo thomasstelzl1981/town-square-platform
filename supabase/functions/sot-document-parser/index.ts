@@ -632,7 +632,18 @@ serve(async (req) => {
       ];
     }
 
-    // ── Call AI Gateway ───────────────────────────────────────────────
+    // ── Model Tiering: select cheapest adequate model ──
+    const fileSize = fileBytes?.length || resolvedContent.length;
+    const nameLower = filename.toLowerCase();
+    const COMPLEX_KW = ['weg', 'abrechnung', 'teilungserklaerung', 'teilungserklärung', 'hausgeldabrechnung'];
+    let selectedModel = 'google/gemini-2.5-flash'; // default: Flash
+    if (resolvedContentType === 'text/plain' || resolvedContentType === 'text/csv' || fileSize < 100_000) {
+      selectedModel = 'google/gemini-2.5-flash-lite';
+    } else if (COMPLEX_KW.some(kw => nameLower.includes(kw)) || fileSize > 5_000_000) {
+      selectedModel = 'google/gemini-2.5-pro';
+    }
+    console.log(`[parser-engine] Model selected: ${selectedModel} (size: ${fileSize})`);
+
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -640,7 +651,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: selectedModel,
         messages,
         temperature: 0.1,
         max_tokens: maxTokens,

@@ -28,6 +28,45 @@ const CREDITS_PER_DOC = 1;
 const DEFAULT_BATCH_SIZE = 10;
 const MAX_BATCH_SIZE = 20;
 
+// ─── Model Tiering: Select cheapest adequate model ───
+const COMPLEX_KEYWORDS = ['weg', 'abrechnung', 'teilungserklaerung', 'teilungserklärung', 'hausgeldabrechnung', 'wirtschaftsplan'];
+
+function selectModel(file: { name: string; mime_type: string | null; file_size: number | null }): { model: string; tier: string } {
+  const name = (file.name || '').toLowerCase();
+  const size = file.file_size || 0;
+  const mime = file.mime_type || '';
+
+  // Tier 1: Simple text files or very small files → Flash Lite
+  if (mime === 'text/plain' || mime === 'text/csv' || size < 100_000) {
+    return { model: 'google/gemini-2.5-flash-lite', tier: 'lite' };
+  }
+
+  // Tier 3: Complex documents → Pro
+  if (COMPLEX_KEYWORDS.some(kw => name.includes(kw)) || size > 5_000_000) {
+    return { model: 'google/gemini-2.5-pro', tier: 'pro' };
+  }
+
+  // Tier 2: Standard documents → Flash
+  return { model: 'google/gemini-2.5-flash', tier: 'flash' };
+}
+
+// ─── Light Extract Prompt (Stufe 2: first page only) ───
+const LIGHT_EXTRACTION_PROMPT = `Du bist ein Dokumenten-Klassifizierer. Analysiere NUR die ERSTE SEITE und antworte mit:
+{
+  "doc_type": "kaufvertrag|mietvertrag|versicherung|darlehensvertrag|grundbuchauszug|bescheid|kontoauszug|rechnung|brief|expose|sonstiges",
+  "confidence": 0.0-1.0,
+  "summary": "1-2 Sätze Zusammenfassung",
+  "extracted_text": "Text der ersten Seite",
+  "key_data": {
+    "datum": "falls erkannt",
+    "betrag": "falls erkannt",
+    "absender": "falls erkannt",
+    "empfaenger": "falls erkannt",
+    "aktenzeichen": "falls erkannt"
+  }
+}
+Antworte NUR mit validem JSON. Keine structured_fields nötig.`;
+
 const EXTRACTABLE_MIME_TYPES = [
   "application/pdf",
   "image/jpeg", "image/png", "image/webp", "image/gif",
@@ -140,7 +179,8 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, tenant_id, job_id, folder_id, batch_size } = body;
+    const { action, tenant_id, job_id, folder_id, batch_size, extraction_depth } = body;
+    const extractionMode: 'light' | 'full' = extraction_depth === 'light' ? 'light' : 'full';
 
     if (!tenant_id) {
       return new Response(JSON.stringify({ error: "tenant_id required" }), {
@@ -350,10 +390,19 @@ serve(async (req) => {
           }
           base64Content = btoa(base64Content);
 
-          // v2.0: Use structured extraction prompt
+          // v2.1: Model Tiering + Light/Full extraction
+          const isLight = extractionMode === 'light';
+          const activePrompt = isLight ? LIGHT_EXTRACTION_PROMPT : STRUCTURED_EXTRACTION_PROMPT;
+          const { model: selectedModel, tier: modelTier } = isLight
+            ? { model: 'google/gemini-2.5-flash-lite', tier: 'lite' }
+            : selectModel(file);
+          const maxTokens = isLight ? 4000 : 32000;
+
+          console.log(`[STOREX] ${file.name}: model=${selectedModel} (${modelTier}), depth=${extractionMode}`);
+
           const aiMessages = file.mime_type?.startsWith("image") || file.mime_type === "application/pdf"
             ? [
-                { role: "system", content: STRUCTURED_EXTRACTION_PROMPT },
+                { role: "system", content: activePrompt },
                 {
                   role: "user",
                   content: [
@@ -363,10 +412,10 @@ serve(async (req) => {
                 },
               ]
             : [
-                { role: "system", content: STRUCTURED_EXTRACTION_PROMPT },
+                { role: "system", content: activePrompt },
                 {
                   role: "user",
-                  content: `Extrahiere alle Informationen aus: ${file.name}\n\nInhalt:\n${new TextDecoder().decode(fileBuffer).substring(0, 50000)}`,
+                  content: `Extrahiere alle Informationen aus: ${file.name}\n\nInhalt:\n${new TextDecoder().decode(fileBuffer).substring(0, isLight ? 5000 : 50000)}`,
                 },
               ];
 
@@ -377,10 +426,10 @@ serve(async (req) => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "google/gemini-2.5-pro",
+              model: selectedModel,
               messages: aiMessages,
               temperature: 0.1,
-              max_tokens: 32000,
+              max_tokens: maxTokens,
             }),
           });
 
@@ -403,7 +452,7 @@ serve(async (req) => {
 
           const extractedText = parsed.extracted_text || rawContent;
 
-          // Store chunks in document_chunks (existing behavior)
+          // Store chunks in document_chunks (with extraction_depth tracking)
           const chunks = chunkText(extractedText, 500);
           for (let i = 0; i < chunks.length; i++) {
             await supabaseAdmin.from("document_chunks").insert({
@@ -411,12 +460,14 @@ serve(async (req) => {
               source_node_id: file.id,
               chunk_index: i,
               content: chunks[i],
+              extraction_depth: extractionMode,
               metadata: {
                 filename: file.name,
                 mime_type: file.mime_type,
-                extracted_by: "ENG-STOREX-v2",
+                extracted_by: `ENG-STOREX-v2.1-${modelTier}`,
                 doc_type: parsed.doc_type,
                 confidence: parsed.confidence,
+                model_used: selectedModel,
                 extraction_date: new Date().toISOString(),
               },
             });
@@ -560,6 +611,125 @@ serve(async (req) => {
 
       console.log(`[sot-storage-extractor] Job ${job_id} cancelled`);
       return new Response(JSON.stringify({ success: true, job }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // =========================================================================
+    // ACTION: deep-upgrade (on-demand re-extraction from light → full)
+    // =========================================================================
+    if (action === "deep-upgrade") {
+      const { node_ids } = body;
+      if (!node_ids || !Array.isArray(node_ids) || node_ids.length === 0) {
+        return new Response(JSON.stringify({ error: "node_ids required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+
+      let upgraded = 0;
+      for (const nodeId of node_ids.slice(0, 5)) {
+        try {
+          // Load file info
+          const { data: file } = await supabaseAdmin
+            .from("storage_nodes")
+            .select("id, name, mime_type, storage_path, file_size")
+            .eq("id", nodeId)
+            .eq("tenant_id", tenant_id)
+            .single();
+          if (!file) continue;
+
+          // Delete existing light chunks
+          await supabaseAdmin.from("document_chunks")
+            .delete()
+            .eq("source_node_id", nodeId)
+            .eq("tenant_id", tenant_id)
+            .eq("extraction_depth", "light");
+
+          // Download and re-extract at full depth
+          const { data: signedData } = await supabaseAdmin.storage
+            .from("tenant-documents")
+            .createSignedUrl(file.storage_path, 300);
+          if (!signedData?.signedUrl) continue;
+
+          const fileResponse = await fetch(signedData.signedUrl);
+          if (!fileResponse.ok) continue;
+
+          const fileBuffer = await fileResponse.arrayBuffer();
+          const fileBytes = new Uint8Array(fileBuffer);
+          let base64Content = "";
+          const chunkSize = 8192;
+          for (let i = 0; i < fileBytes.length; i += chunkSize) {
+            const chunk = fileBytes.slice(i, i + chunkSize);
+            base64Content += String.fromCharCode(...chunk);
+          }
+          base64Content = btoa(base64Content);
+
+          const { model: selectedModel } = selectModel(file);
+
+          const aiMessages = file.mime_type?.startsWith("image") || file.mime_type === "application/pdf"
+            ? [
+                { role: "system", content: STRUCTURED_EXTRACTION_PROMPT },
+                { role: "user", content: [
+                  { type: "text", text: `Extrahiere alle Informationen aus: ${file.name}` },
+                  { type: "image_url", image_url: { url: `data:${file.mime_type};base64,${base64Content}` } },
+                ] },
+              ]
+            : [
+                { role: "system", content: STRUCTURED_EXTRACTION_PROMPT },
+                { role: "user", content: `Extrahiere alle Informationen aus: ${file.name}\n\nInhalt:\n${new TextDecoder().decode(fileBuffer).substring(0, 50000)}` },
+              ];
+
+          const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ model: selectedModel, messages: aiMessages, temperature: 0.1, max_tokens: 32000 }),
+          });
+
+          if (!aiResponse.ok) continue;
+
+          const aiResult = await aiResponse.json();
+          const rawContent = aiResult.choices?.[0]?.message?.content || "";
+
+          let parsed: any;
+          try {
+            parsed = JSON.parse(rawContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+          } catch {
+            parsed = { extracted_text: rawContent, doc_type: "sonstiges", confidence: 0.3 };
+          }
+
+          const extractedText = parsed.extracted_text || rawContent;
+          const chunks = chunkText(extractedText, 500);
+
+          for (let i = 0; i < chunks.length; i++) {
+            await supabaseAdmin.from("document_chunks").insert({
+              tenant_id,
+              source_node_id: file.id,
+              chunk_index: i,
+              content: chunks[i],
+              extraction_depth: 'full',
+              metadata: {
+                filename: file.name,
+                mime_type: file.mime_type,
+                extracted_by: `ENG-STOREX-v2.1-upgrade`,
+                doc_type: parsed.doc_type,
+                confidence: parsed.confidence,
+                model_used: selectedModel,
+                extraction_date: new Date().toISOString(),
+              },
+            });
+          }
+
+          upgraded++;
+          console.log(`[STOREX] Deep-upgrade completed: ${file.name} → ${selectedModel}`);
+        } catch (err) {
+          console.error(`[STOREX] Deep-upgrade failed for ${nodeId}:`, err);
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true, upgraded }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
