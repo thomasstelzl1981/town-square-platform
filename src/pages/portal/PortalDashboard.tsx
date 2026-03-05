@@ -204,7 +204,7 @@ export default function PortalDashboard() {
   return (
     <div
       ref={scrollRef}
-      className="h-[calc(100dvh-4rem)] overflow-y-auto snap-y snap-mandatory"
+      className={`h-[calc(100dvh-4rem)] overflow-y-auto ${snapReady ? 'snap-y snap-mandatory' : ''}`}
     >
       {/* ===== Section 1: Welcome ===== */}
       <section className="min-h-[calc(100dvh-4rem)] snap-start flex flex-col relative">
