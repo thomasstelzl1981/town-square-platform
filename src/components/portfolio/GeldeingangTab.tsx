@@ -163,13 +163,15 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
   const handleKontenabgleich = useCallback(async () => {
     setMatchRunning(true); setMatchResult(null); setMatchStep(0);
     try {
-      const stepTimer = setInterval(() => setMatchStep(prev => Math.min(prev + 1, 4)), 800);
+      if (stepTimerRef.current) clearInterval(stepTimerRef.current);
+      stepTimerRef.current = setInterval(() => setMatchStep(prev => Math.min(prev + 1, 4)), 800);
       const { data: matchData, error: matchError } = await supabase.functions.invoke('sot-rent-match', { body: { tenant_id: activeTenantId } });
       if (matchError) throw matchError;
       setMatchStep(3);
       const { data: arrearsData, error: arrearsError } = await supabase.functions.invoke('sot-rent-arrears-check');
       if (arrearsError) throw arrearsError;
-      clearInterval(stepTimer); setMatchStep(4);
+      if (stepTimerRef.current) { clearInterval(stepTimerRef.current); stepTimerRef.current = null; }
+      setMatchStep(4);
       const matched = (matchData as any)?.matched || 0;
       const arrears = (arrearsData as any)?.created || 0;
       setMatchResult({ matched, arrears });
