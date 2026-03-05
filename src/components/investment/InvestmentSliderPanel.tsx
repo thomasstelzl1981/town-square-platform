@@ -18,6 +18,8 @@ interface InvestmentSliderPanelProps {
   showAdvanced?: boolean;
   purchasePrice?: number;
   isCommercial?: boolean;
+  /** When true, Gebäudeanteil and AfA are locked (sourced from property accounting) */
+  accountingLocked?: boolean;
 }
 
 const BUNDESLAENDER = [
@@ -46,6 +48,7 @@ export function InvestmentSliderPanel({
   showAdvanced = true,
   purchasePrice,
   isCommercial = false,
+  accountingLocked = false,
 }: InvestmentSliderPanelProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -277,13 +280,18 @@ export function InvestmentSliderPanel({
                     min={50}
                     max={95}
                     step={5}
+                    disabled={accountingLocked}
                   />
+                  {accountingLocked && (
+                    <p className="text-xs text-muted-foreground">Aus Immobilienakte</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>AfA-Modell</Label>
                   <Select
                     value={value.afaModel}
                     onValueChange={(v) => update('afaModel', v as CalculationInput['afaModel'])}
+                    disabled={accountingLocked}
                   >
                     <SelectTrigger className="h-9">
                       <SelectValue />
@@ -295,6 +303,9 @@ export function InvestmentSliderPanel({
                       <SelectItem value="7b">§7b Neubau</SelectItem>
                     </SelectContent>
                   </Select>
+                  {accountingLocked && (
+                    <p className="text-xs text-muted-foreground">Aus Immobilienakte</p>
+                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>
@@ -314,13 +325,18 @@ export function InvestmentSliderPanel({
                   min={50}
                   max={95}
                   step={5}
+                  disabled={accountingLocked}
                 />
+                {accountingLocked && (
+                  <p className="text-xs text-muted-foreground">Aus Immobilienakte</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>AfA-Modell</Label>
                 <Select
                   value={value.afaModel}
                   onValueChange={(v) => update('afaModel', v as CalculationInput['afaModel'])}
+                  disabled={accountingLocked}
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue />
@@ -332,6 +348,9 @@ export function InvestmentSliderPanel({
                     <SelectItem value="7b">§7b Neubau</SelectItem>
                   </SelectContent>
                 </Select>
+                {accountingLocked && (
+                  <p className="text-xs text-muted-foreground">Aus Immobilienakte</p>
+                )}
               </div>
             </>
           )
