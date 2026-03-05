@@ -76,7 +76,10 @@ export default function LennoxDoc() {
     if (!vetSearch.trim()) return;
     setVetLoading(true);
     setVetSearched(true);
-    // Use Research Engine via edge function
+    setVetElapsed(0);
+    if (vetTimerRef.current) clearInterval(vetTimerRef.current);
+    vetTimerRef.current = setInterval(() => setVetElapsed(p => p + 1), 1000);
+
     try {
       const { data, error } = await supabase.functions.invoke('sot-research-engine', {
         body: {
@@ -98,14 +101,14 @@ export default function LennoxDoc() {
         open_now: r.open_now ?? null,
       }));
       setVetResults(results);
+      if (results.length === 0) {
+        toast.info('Keine Tierärzte in dieser Region gefunden.');
+      }
     } catch {
-      // Fallback demo results
-      setVetResults([
-        { name: 'Tierklinik Oberbayern', address: 'Hauptstraße 12, 83022 Rosenheim', phone: '+49 8031 123456', email: 'info@tierklinik-oberbayern.de', rating: 4.8, distance: '2.3 km', open_now: true },
-        { name: 'Dr. med. vet. Schneider', address: 'Bahnhofstr. 5, 83024 Rosenheim', phone: '+49 8031 654321', email: 'praxis@dr-schneider-vet.de', rating: 4.6, distance: '3.1 km', open_now: false },
-        { name: 'Tierarztpraxis am Park', address: 'Parkweg 8, 83026 Rosenheim', phone: '+49 8031 789012', email: 'kontakt@tierarzt-park.de', rating: 4.9, distance: '4.7 km', open_now: true },
-      ]);
+      toast.error('Suche fehlgeschlagen — bitte versuche es erneut.');
+      setVetResults([]);
     } finally {
+      if (vetTimerRef.current) { clearInterval(vetTimerRef.current); vetTimerRef.current = null; }
       setVetLoading(false);
     }
   }, [vetSearch]);
