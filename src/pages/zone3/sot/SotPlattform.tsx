@@ -99,7 +99,7 @@ export default function SotPlattform() {
             </h1>
             <p className="sot-subheadline max-w-3xl mx-auto mb-10">
               Von der Finanzanalyse bis zum Fuhrpark, vom Dokumentenmanagement bis zur KI-Assistenz — 
-              System of a Town bringt alles in ein System. <strong>Powered by Gemini 2.5 Pro & GPT-5.</strong>
+              System of a Town bringt alles in ein System. <strong>Mit Multi-Modell-KI-Intelligenz.</strong>
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Link to="/auth?mode=register&source=sot" className="sot-btn-primary">

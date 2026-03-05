@@ -260,34 +260,34 @@ export default function SotIntelligenz() {
         </div>
       </section>
 
-      {/* Welche KI-Modelle nutzen wir? */}
+      {/* Wie arbeitet Armstrong? — Funktionale Beschreibungen */}
       <section className="py-16 lg:py-24" style={{ backgroundColor: 'hsl(var(--z3-card))' }}>
         <div className="zone3-container max-w-5xl">
-          <h2 className="sot-headline mb-4 text-center">Welche KI-Modelle nutzen wir?</h2>
+          <h2 className="sot-headline mb-4 text-center">Wie arbeitet Armstrong?</h2>
           <p className="sot-subheadline text-center mb-10 max-w-2xl mx-auto">
-            Armstrong kombiniert die stärksten KI-Modelle der Welt — und wählt automatisch 
-            das beste Modell für jede Aufgabe.
+            Armstrong kombiniert mehrere spezialisierte KI-Modelle — und wählt automatisch 
+            das beste für jede Aufgabe.
           </p>
           <div className="grid sm:grid-cols-3 gap-6 mb-10">
             {[
               {
-                name: 'Gemini 2.5 Pro',
-                provider: 'Google',
-                tasks: 'Reasoning, Dokumentanalyse, Multi-Dokument-Vergleiche',
-                detail: '32.000 Token Context — liest ganze Datenräume auf einmal.',
+                name: 'Reasoning Engine',
+                badge: 'Deep Analysis',
+                tasks: 'Dokumentanalyse, Multi-Dokument-Vergleiche, Vertragsanalyse',
+                detail: 'Großes Context-Window — liest ganze Datenräume auf einmal und erkennt Zusammenhänge.',
                 color: 'hsl(210, 100%, 60%)',
               },
               {
-                name: 'GPT-5',
-                provider: 'OpenAI',
-                tasks: 'Textgenerierung, E-Mails, Briefe, Berichte',
+                name: 'Textgenerator',
+                badge: 'Professionelle Texte',
+                tasks: 'E-Mails, Briefe, Berichte, Zusammenfassungen',
                 detail: 'Top-Textqualität auf Deutsch — natürlich, professionell, in Ihrem Tonfall.',
                 color: 'hsl(160, 60%, 45%)',
               },
               {
-                name: 'Gemini 2.5 Flash',
-                provider: 'Google',
-                tasks: 'Schnelle Klassifikation, OCR, Posteingang',
+                name: 'Schnellklassifikator',
+                badge: 'Ultra-schnell',
+                tasks: 'Klassifikation, OCR, Posteingangs-Sortierung',
                 detail: 'Millisekunden-Antworten für Kategorisierung und Belegverarbeitung.',
                 color: 'hsl(30, 100%, 55%)',
               },
@@ -296,7 +296,7 @@ export default function SotIntelligenz() {
                 <div className="absolute top-0 left-0 right-0 h-1" style={{ background: m.color }} />
                 <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase mb-3" 
                   style={{ backgroundColor: `${m.color}20`, color: m.color }}>
-                  {m.provider}
+                  {m.badge}
                 </span>
                 <h3 className="font-bold text-lg mb-1">{m.name}</h3>
                 <p className="text-sm font-medium mb-2" style={{ color: 'hsl(var(--z3-accent))' }}>{m.tasks}</p>
@@ -308,10 +308,10 @@ export default function SotIntelligenz() {
           {/* Key numbers */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { value: '32.000', label: 'Max. Token Context' },
-              { value: '35+', label: 'Edge Functions' },
+              { value: '35+', label: 'KI-Engines' },
               { value: '6', label: 'KI-Kategorien' },
               { value: '< 3s', label: 'Ø Antwortzeit' },
+              { value: '100%', label: 'Transparenz' },
             ].map((s) => (
               <div key={s.label} className="sot-glass-card p-4 text-center">
                 <div className="text-2xl font-black" style={{ color: 'hsl(var(--z3-accent))' }}>{s.value}</div>

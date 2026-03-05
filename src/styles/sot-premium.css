@@ -93,22 +93,61 @@
 }
 
 /* ===========================================================================
-   GLASS EFFECTS
+   GLASS EFFECTS — CI-aligned
    =========================================================================== */
 
 .sot-glass {
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   background: hsl(var(--z3-background) / 0.8);
   border: 1px solid hsl(var(--z3-border) / 0.5);
 }
 
 .sot-glass-card {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  background: hsl(var(--z3-card) / 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: hsl(var(--z3-card));
   border: 1px solid hsl(var(--z3-border) / 0.4);
   border-radius: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+/* Dark mode glass-card enhancements */
+.theme-sot-dark .sot-glass-card,
+:root[data-sot-theme="dark"] .sot-glass-card {
+  box-shadow: var(--z3-shadow-card, 0 4px 24px -6px hsl(0 0% 0% / 0.4));
+}
+
+.theme-sot-dark .sot-glass-card:hover,
+:root[data-sot-theme="dark"] .sot-glass-card:hover {
+  border-color: hsl(var(--z3-accent) / 0.3);
+  box-shadow: var(--z3-shadow-glow, 0 0 30px -8px hsl(217 91% 60% / 0.2));
+  transform: translateY(-2px);
+}
+
+/* Dark mode module card glow */
+.theme-sot-dark .sot-module-card,
+:root[data-sot-theme="dark"] .sot-module-card {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--z3-shadow-card, 0 4px 24px -6px hsl(0 0% 0% / 0.4));
+}
+
+.theme-sot-dark .sot-module-card:hover,
+:root[data-sot-theme="dark"] .sot-module-card:hover {
+  box-shadow: var(--z3-shadow-glow, 0 0 30px -8px hsl(217 91% 60% / 0.25));
+}
+
+/* Ambient layer for dark mode */
+.theme-sot-dark .sot-ambient-layer,
+:root[data-sot-theme="dark"] .sot-ambient-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 100% 50% at 50% 100%, hsl(220 10% 7% / 0.8) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 40% at 50% 0%, hsl(217 91% 60% / 0.03) 0%, transparent 60%);
 }
 
 /* ===========================================================================
