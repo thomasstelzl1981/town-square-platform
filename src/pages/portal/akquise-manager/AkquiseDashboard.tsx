@@ -129,6 +129,37 @@ export default function AkquiseDashboard() {
   const activeCount = activeMandates?.length || 0;
   const pendingCount = pendingMandates?.length || 0;
 
+  // B-2 Fix: Live KPI queries for contacts and pipeline objects
+  const { data: contactsCount } = useQuery({
+    queryKey: ['acq-kpi-contacts', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return 0;
+      const { count, error } = await supabase
+        .from('contact_staging' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', activeTenantId)
+        .eq('status', 'approved');
+      if (error) return 0;
+      return count ?? 0;
+    },
+    enabled: !!activeTenantId,
+  });
+
+  const { data: pipelineCount } = useQuery({
+    queryKey: ['acq-kpi-pipeline', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return 0;
+      const { count, error } = await supabase
+        .from('acq_offers')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', activeTenantId)
+        .in('status', ['new', 'in_analysis', 'analyzed']);
+      if (error) return 0;
+      return count ?? 0;
+    },
+    enabled: !!activeTenantId,
+  });
+
   return (
     <PageShell>
       <ModulePageHeader 
