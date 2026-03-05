@@ -26,6 +26,7 @@ import {
   type ContactStaging 
 } from '@/hooks/useAcqContacts';
 import { useResearchEngine } from '@/hooks/useResearchEngine';
+import { SearchProgressIndicator } from '@/components/portal/shared/SearchProgressIndicator';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
