@@ -13,7 +13,7 @@ export { KaufyShowcaseDialog } from './KaufyShowcaseDialog';
 // Detail Page Sub-Components
 export { ProjectDetailHeader } from './ProjectDetailHeader';
 export { ProjectUnitsTable } from './ProjectUnitsTable';
-export { ProjectInfoTabs } from './ProjectInfoTabs';
+export { ProjectIdentityTab, ProjectLocationTab } from './ProjectInfoTabs';
 
 // Block Components
 export { ProjectPricingBlock } from './blocks/ProjectPricingBlock';

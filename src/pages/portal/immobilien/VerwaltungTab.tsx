@@ -148,3 +148,5 @@ export function VerwaltungTab() {
     </PageShell>
   );
 }
+
+export default VerwaltungTab;
