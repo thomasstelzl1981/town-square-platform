@@ -322,10 +322,29 @@ export default function PortfolioTab() {
             <LoadingState />
           ) : (
             <>
-              <div className="flex items-center justify-between gap-4 mb-2">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  Preisliste — {calculatedUnits.length} Einheiten
-                </h3>
+               <div className="flex items-center justify-between gap-4 mb-2">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Preisliste — {calculatedUnits.length} Einheiten
+                  </h3>
+                  {hasUnsavedChanges && (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                      <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                      Ungespeicherte Änderungen
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {hasUnsavedChanges && (
+                    <Button
+                      size="sm"
+                      onClick={() => savePreisliste.mutate()}
+                      disabled={savePreisliste.isPending}
+                    >
+                      <Save className="h-4 w-4 mr-1" />
+                      {savePreisliste.isPending ? 'Speichert…' : 'Preisliste speichern'}
+                    </Button>
+                  )}
                 {!isSelectedDemo && realUnits && realUnits.length > 0 && (
                   <CreatePropertyFromUnits
                     projectId={selectedProject.id}
