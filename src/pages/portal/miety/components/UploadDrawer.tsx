@@ -62,8 +62,9 @@ export function UploadDrawer({ open, onOpenChange, homeId }: UploadDrawerProps) 
     setAiStep(0);
     let successCount = 0;
 
-    // Animate steps
-    const stepTimer = setInterval(() => {
+    // Animate steps (ref-guarded for unmount safety)
+    if (stepTimerRef.current) clearInterval(stepTimerRef.current);
+    stepTimerRef.current = setInterval(() => {
       setAiStep(prev => Math.min(prev + 1, AI_STEPS.length - 1));
     }, 1000);
 
