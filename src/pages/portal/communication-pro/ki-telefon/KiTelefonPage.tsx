@@ -82,6 +82,7 @@ export default function KiTelefonPage() {
         <StatusForwardingCard config={config} onUpdate={updateConfig} onRefresh={refetchAssistant} />
         <PhoneBillingCard usage={usageSummary} isLoading={usageLoading} hasNumber={hasNumber} />
         <VoiceSettingsCard config={config} onUpdate={updateConfig} />
+        <AgentSyncCard config={config} onRefresh={refetchAssistant} />
         <ContentCard config={config} onUpdate={updateConfig} />
         <RulesCard config={config} onUpdate={updateConfig} />
         <DocumentationCard config={config} onUpdate={updateConfig} />
