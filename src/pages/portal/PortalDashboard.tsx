@@ -58,6 +58,20 @@ const WIDGET_CODE_TO_ID: Record<string, string> = {
   'SYS.TLC.LIFECYCLE': 'system_tlc',
 };
 
+/** Map of widget IDs that are too heavy for the preview environment */
+const PREVIEW_DISABLED_WIDGETS: Record<string, { label: string; icon: React.ElementType }> = {
+  system_globe: { label: 'Globe', icon: Globe },
+  system_radio: { label: 'Radio', icon: Radio },
+  system_pv_live: { label: 'PV Live', icon: Zap },
+  system_weather: { label: 'Wetter', icon: Cloud },
+  system_finance: { label: 'Finanzmärkte', icon: TrendingUp },
+  system_news: { label: 'Nachrichten', icon: Newspaper },
+  system_space: { label: 'Space', icon: Rocket },
+  system_accounts: { label: 'Konten', icon: Wallet },
+  system_meeting_recorder: { label: 'Meeting', icon: Mic },
+  system_tlc: { label: 'TLC', icon: HeartPulse },
+};
+
 /** Placeholder card shown in preview for disabled heavy widgets */
 function PreviewPlaceholderCard({ label, icon: Icon }: { label: string; icon: React.ElementType }) {
   return (
@@ -67,6 +81,19 @@ function PreviewPlaceholderCard({ label, icon: Icon }: { label: string; icon: Re
         <span className="text-xs text-center">{label}<br /><span className="opacity-60">(Preview deaktiviert)</span></span>
       </CardContent>
     </Card>
+  );
+}
+
+/** Suspense wrapper for lazy widgets */
+function LazyWidget({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={
+      <Card className="relative h-[260px] md:h-auto md:aspect-square flex items-center justify-center bg-muted/30 animate-pulse">
+        <CardContent className="text-xs text-muted-foreground">Laden…</CardContent>
+      </Card>
+    }>
+      {children}
+    </Suspense>
   );
 }
 
