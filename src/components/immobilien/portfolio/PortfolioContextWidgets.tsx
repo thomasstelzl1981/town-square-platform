@@ -113,7 +113,7 @@ export function PortfolioContextWidgets({
               <button onClick={() => onContextSelect(ctx.id)}
                 className={cn("w-full h-full flex flex-col justify-between p-5 rounded-xl border text-left transition-all", DESIGN.CARD.BASE, selectedContextId === ctx.id ? "ring-2 ring-primary border-primary shadow-sm" : "hover:border-primary/50 hover:shadow-md")}>
                 <div>
-                  <WidgetHeader icon={Building2} title={ctx.name} badge={ctx.context_type === 'BUSINESS' ? 'GEW' : 'PRIV'} />
+                  <WidgetHeader icon={Building2} title={ctx.name} description={ctx.context_type === 'BUSINESS' ? 'GEW' : 'PRIV'} />
                   <div className="mt-4 space-y-2">
                     <div className="flex justify-between items-center"><span className={DESIGN.TYPOGRAPHY.LABEL}>Objekte</span><span className="text-sm font-semibold">{kpi?.propertyCount || propertyCountByContext[ctx.id] || 0}</span></div>
                     <div className="flex justify-between items-center"><span className={DESIGN.TYPOGRAPHY.LABEL}>Verkehrswert</span><span className="text-sm font-semibold">{kpi?.totalValue ? formatCurrency(kpi.totalValue) : '–'}</span></div>
