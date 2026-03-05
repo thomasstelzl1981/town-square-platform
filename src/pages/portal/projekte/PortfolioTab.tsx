@@ -225,6 +225,70 @@ export default function PortfolioTab() {
     setUnitStatusOverrides(prev => ({ ...prev, [unitId]: status }));
   }, []);
 
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = Object.keys(unitOverrides).length > 0 || Object.keys(unitStatusOverrides).length > 0;
+
+  // Reverse status map: frontend → DB
+  const statusToDb = (s: string): string => {
+    switch (s) {
+      case 'sold': return 'verkauft';
+      case 'reserved': return 'reserviert';
+      case 'available': return 'verfügbar';
+      default: return s;
+    }
+  };
+
+  // Save mutation
+  const savePreisliste = useMutation({
+    mutationFn: async () => {
+      const updates: { id: string; list_price?: number; price_per_sqm?: number; status?: string }[] = [];
+
+      // Collect price overrides
+      for (const [unitId, override] of Object.entries(unitOverrides)) {
+        const unit = baseUnits.find(u => u.id === unitId);
+        if (!unit) continue;
+        const newPrice = override.list_price ?? unit.list_price;
+        const newPricePerSqm = unit.area_sqm > 0 ? Math.round(newPrice / unit.area_sqm) : 0;
+        const existing = updates.find(u => u.id === unitId);
+        if (existing) {
+          existing.list_price = newPrice;
+          existing.price_per_sqm = newPricePerSqm;
+        } else {
+          updates.push({ id: unitId, list_price: newPrice, price_per_sqm: newPricePerSqm });
+        }
+      }
+
+      // Collect status overrides
+      for (const [unitId, status] of Object.entries(unitStatusOverrides)) {
+        const existing = updates.find(u => u.id === unitId);
+        if (existing) {
+          existing.status = statusToDb(status);
+        } else {
+          updates.push({ id: unitId, status: statusToDb(status) });
+        }
+      }
+
+      // Execute updates
+      for (const update of updates) {
+        const { id, ...fields } = update;
+        const { error } = await supabase
+          .from('dev_project_units')
+          .update(fields)
+          .eq('id', id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success('Preisliste gespeichert');
+      setUnitOverrides({});
+      setUnitStatusOverrides({});
+      queryClient.invalidateQueries({ queryKey: ['dev_project_units', selectedProjectId] });
+    },
+    onError: (err: any) => {
+      toast.error(`Fehler beim Speichern: ${err.message}`);
+    },
+  });
+
   return (
     <PageShell>
       <ModulePageHeader title="Projekt-Portfolio" description="Übersicht aller Bauträger- und Aufteiler-Projekte" />
