@@ -564,7 +564,7 @@ export default function ProjectLandingHome() {
                       <tr
                         key={unit.id}
                         className="border-b border-[hsl(214,32%,91%)]/50 transition-colors hover:bg-[hsl(210,30%,97%)] cursor-pointer"
-                        onClick={() => window.location.href = `/website/projekt/${slug}/einheit/${unit.id}`}
+                        onClick={() => navigate(`/website/projekt/${slug}/einheit/${unit.id}`)}
                       >
                         <td className="px-3 py-2.5 font-medium text-[hsl(220,20%,10%)]">{unit.unit_number}</td>
                         <td className="px-3 py-2.5 text-center">{unit.rooms_count ? `${unit.rooms_count}-Zi` : '—'}</td>
