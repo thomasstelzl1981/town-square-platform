@@ -261,7 +261,7 @@ export function useExposeListing({
         afaModel = mapAfaModelToEngine(accountingData?.afa_model);
       } else if (projectAfaFallback) {
         afaRate = projectAfaFallback.afa_rate_percent ?? undefined;
-        const landShare = projectAfaFallback.land_share_percent ?? projectAfaFallback.ground_share_percent ?? 20;
+        const landShare = projectAfaFallback.land_share_percent ?? 20;
         buildingShare = 1 - (landShare / 100);
         afaModel = mapAfaModelToEngine(projectAfaFallback.afa_model);
       }
