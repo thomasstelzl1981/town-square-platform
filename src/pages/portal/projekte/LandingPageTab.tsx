@@ -135,7 +135,7 @@ export default function LandingPageTab() {
     if (rawProject?.developer_context_id) {
       const { data } = await supabase
         .from('developer_contexts')
-        .select('name, legal_form, managing_director, street, house_number, postal_code, city, phone, email, hrb_number, ust_id')
+        .select('name, legal_form, managing_director, street, house_number, postal_code, city, hrb_number, ust_id')
         .eq('id', rawProject.developer_context_id as string)
         .maybeSingle();
       devCtx = data;
