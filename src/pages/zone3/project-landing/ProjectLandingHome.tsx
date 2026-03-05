@@ -639,6 +639,7 @@ export default function ProjectLandingHome() {
                       ) : '—'}
                     </td>
                     <td className="px-3 py-3" />
+                    <td className="px-3 py-3" />
                   </tr>
                 </tfoot>
               </table>

@@ -121,6 +121,8 @@ export default function ProjectLandingExpose() {
               onClose={() => setShowFinanceRequest(false)}
               listing={kaufyListingData}
               engineParams={kaufyEngineParams}
+              source="zone3_project_landing"
+              entityType="project_unit"
             />
           </Suspense>
         ) : null
