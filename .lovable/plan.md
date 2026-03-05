@@ -1,68 +1,84 @@
 
 
-# Analyse: Fehlende Push-Funktion MOD-13 → Downstream
+# Analyse: Landing Page Bilder & KI-Qualität — Befund und Verbesserungsplan
 
-## Aktueller Stand
+## Befund: Bilder
 
-Es gibt **keine Push-/Sync-Funktion** in MOD-13. Der Datenfluss ist aktuell **einmalig und unidirektional**:
+**Die Bild-Pipeline funktioniert grundsätzlich.** Die Funktion `loadAllProjectImages()` in `ProjectLandingHome.tsx` liest korrekt aus `document_links` (object_type='project') und filtert nach slot_keys:
+- `hero` → Hero-Section Hintergrundbild
+- `exterior`, `interior`, `surroundings` → Foto-Karussell
+
+**Voraussetzung:** Im Projekt-Datenblatt (MOD-13, Tab 1) müssen die 4 Bild-Slots befüllt sein. Sind dort Bilder hochgeladen, erscheinen sie auf der Landing Page. **Das funktioniert bereits.**
+
+**Was FEHLT:**
+1. **Kein KI-Hero-Enhancement** — Das Hero-Bild wird 1:1 übernommen, keine KI-Optimierung (Belichtung, Zuschnitt, Overlay)
+2. **Kein Fallback-Bild** — Ohne hochgeladene Bilder zeigt die Hero-Section nur einen dunklen Gradient, die Galerie ein leeres Building2-Icon
+3. **Logo-Slot wird ignoriert** — Der `logo`-Slot ist im DataSheet vorhanden, wird aber auf der Landing Page nicht angezeigt
+
+## Befund: KI-Website-Qualität — Architektur-Disconnect
+
+**Kritischer Fehler gefunden:** Der "KI-Website optimieren"-Button hat einen **Architektur-Disconnect**:
 
 ```text
-MOD-13 (Projekt) ──create──→ properties ──create──→ listings ──create──→ listing_publications
-                     ↑                                                         ↓
-              Einmalig bei                                            MOD-08 / MOD-09 / Zone 3
-              Vertriebsauftrag                                        lesen direkt aus DB
+Button "KI-Website optimieren"
+  → ruft sot-website-ai-generate auf
+  → generiert website_sections für tenant_websites (Profil-Website-System)
+  → ABER: ProjectLandingHome.tsx liest aus landing_pages + dev_projects
+  → Die generierten Inhalte werden NIRGENDS angezeigt!
 ```
 
-### Was passiert bei Änderungen?
+Das heißt: Die KI-Texte landen in der falschen Tabelle. Die Landing Page zeigt weiterhin nur die Rohdaten aus `dev_projects` und `landing_pages`.
 
-| Aktion in MOD-13 | Auswirkung auf Properties/Listings | Sichtbar in MOD-08/09/Z3? |
+## Befund: Seiten-Design
+
+Die aktuelle Landing Page ist **funktional solide** (Investment-Engine, Einheitentabelle, Kontaktformular), aber im Vergleich zu den Brand-Websites (Kaufy, SoT) visuell **deutlich einfacher**:
+- Keine animierten Sektionen
+- Kein Logo im Header
+- Kein Impressum/Datenschutz-Link
+- Keine Lagebeschreibung als eigene Sektion
+- Kein Social Proof / Vertrauenselemente
+
+## Verbesserungsplan (3 Stufen)
+
+### Stufe 1: Bilder korrekt einbauen + Fallback
+**Dateien:** `ProjectLandingHome.tsx`
+
+- Logo-Slot im Header anzeigen (wenn vorhanden)
+- Fallback-Hero: KI-generiertes Immobilien-Platzhalterbild über `google/gemini-2.5-flash-image` als Edge Function
+- Hero-Bild mit professionellem CSS-Treatment (Gradient-Overlay, Focal-Point-Crop)
+
+### Stufe 2: KI-Pipeline reparieren
+**Dateien:** `LandingPageTab.tsx`, neue Edge Function `sot-project-landing-ai`
+
+Den "KI-Website optimieren"-Button umleiten: Statt `sot-website-ai-generate` (falsches System) eine neue Edge Function aufrufen, die:
+1. Projektdaten + Einheiten + Developer-Context liest
+2. Per Gemini 2.5 Pro optimierte Texte generiert: Hero-Headline, Subheadline, Projektbeschreibung, Lagebeschreibung, 3-5 Highlights
+3. Die Ergebnisse direkt in `landing_pages` schreibt (hero_headline, hero_subheadline, about_text, location_description, highlights_json)
+4. Optional: Hero-Bild per `gemini-2.5-flash-image` als cinematic Real-Estate-Visual generieren und in Storage ablegen
+
+### Stufe 3: Website-Design aufwerten
+**Datei:** `ProjectLandingHome.tsx`
+
+- Header mit Logo + Navigation (Projekt, Einheiten, Kontakt als Anchor-Links)
+- Hero-Section: Größer (500px), mit animiertem Text-Fade
+- Neue Sektion: Lagebeschreibung mit Karte-Placeholder
+- Neue Sektion: Highlights als Feature-Grid (Icons + Text)
+- Footer mit Impressum-Daten aus `landing_pages.imprint_text`
+- Datenschutz-Link
+- "Powered by KAUFY"-Badge im Footer
+- Responsive Mobile-Optimierung
+
+### Freeze-Check
+
+| Pfad | Bereich | Frozen? |
 |---|---|---|
-| Preis einer Einheit ändern | **Keine** — `properties.asking_price` und `listings.asking_price` bleiben unverändert | Nein, alter Preis |
-| Projektbeschreibung ändern | **Keine** — `listings.description` bleibt unverändert | Nein, alte Beschreibung |
-| Neue Einheit hinzufügen | **Keine** — kein Property/Listing wird erstellt | Nein, unsichtbar |
-| Einheit entfernen | **Keine** — Property/Listing bleibt bestehen | Ja, weiterhin sichtbar |
+| `ProjectLandingHome.tsx` (Zone 3) | ZONE3 | Prüfung nötig |
+| `LandingPageTab.tsx` (MOD-13) | MOD-13 | Nicht frozen |
+| Neue Edge Function | Backend | Frei |
 
-### Drift Detection (vorhanden, aber ungenutzt)
+Ich muss vor der Implementierung `spec/current/00_frozen/zone3_freeze.json` prüfen.
 
-`computeListingHash` existiert in `src/lib/listingHash.ts` und wird von `useSalesDeskListings` verwendet. Dieses System erkennt Drift zwischen Listing-Daten und Publikationsstatus — aber es gibt **keinen Mechanismus, der Änderungen von `dev_project_units` nach `properties`/`listings` propagiert**.
+### Zusammenfassung
 
-## Empfohlene Lösung: Projekt-Sync-Funktion
-
-### Ansatz
-
-Eine **"Sync"-Aktion** im MOD-13 Vertrieb-Tab, die bei Klick alle Properties und Listings mit den aktuellen Werten aus `dev_project_units` aktualisiert.
-
-### Scope (4 Komponenten)
-
-1. **`src/lib/syncProjectToListings.ts`** (neue Datei, kein Modul — frei editierbar)
-   - Pure Funktion: Liest alle `dev_project_units` mit `property_id`, vergleicht Felder (Preis, Fläche, Miete, Zimmer) mit aktuellen `properties`/`listings`-Werten
-   - Bei Abweichung: Update auf `properties` + `listings` + neuen `expected_hash` auf `listing_publications`
-   - Rückgabe: `{ updated: number, unchanged: number, errors: string[] }`
-
-2. **`SalesApprovalSection.tsx`** (MOD-13, nicht frozen)
-   - Neuer Button "Daten synchronisieren" neben dem Kaufy-Toggle
-   - Nur sichtbar wenn Vertriebsauftrag aktiv
-   - Zeigt Ergebnis als Toast: "5 Listings aktualisiert, 67 unverändert"
-
-3. **Felder die synchronisiert werden:**
-   - `list_price` → `properties.asking_price` + `listings.asking_price`
-   - `area_sqm` → `properties.living_space`
-   - `rooms` → `properties.rooms`
-   - `current_rent` → `properties.current_rent` + `properties.annual_income` (×12)
-   - `unit_number` → `listings.title` (Projektnname + Einheitennr.)
-
-4. **Drift-Flag**: Nach Sync wird `listing_publications.last_synced_hash` aktualisiert, sodass der SLC-Monitor keinen Drift mehr zeigt.
-
-### Was NICHT automatisch passiert (bewusste Entscheidung)
-
-- **Kein Auto-Sync bei Speichern**: Änderungen an Einheiten propagieren nicht automatisch. Der Nutzer muss explizit "Synchronisieren" klicken. Dies verhindert unbeabsichtigte Veröffentlichungen und gibt dem Nutzer Kontrolle.
-- **Keine neuen Properties/Listings**: Sync aktualisiert nur bestehende Verknüpfungen. Neue Einheiten erfordern weiterhin "Vertriebsauftrag aktivieren".
-
-### Betroffene Module / Freeze-Check
-
-| Pfad | Modul/Bereich | Frozen? |
-|---|---|---|
-| `src/lib/syncProjectToListings.ts` | Shared lib | Nein |
-| `src/components/projekte/SalesApprovalSection.tsx` | MOD-13 | Nein |
-| MOD-08, MOD-09, Zone 3 | Nur Leser | Keine Änderung nötig |
+Die Bilder funktionieren technisch — sie müssen nur im Datenblatt hochgeladen sein. Das Hauptproblem ist der **KI-Disconnect**: Der Button generiert Inhalte in die falsche Tabelle. Mit der Reparatur + Design-Upgrade entsteht eine professionelle, durchdachte Landing Page mit voller KI-Power, die automatisch alle Einheiten mit Investment-Engine zeigt.
 
