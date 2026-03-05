@@ -197,6 +197,8 @@ export function SalesApprovalSection({
       .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
       .replace(/[^a-z0-9]+/g, '-');
 
+    const errors: string[] = [];
+    
     for (const unit of units) {
       if (unit.status === 'verkauft') continue;
 
@@ -226,7 +228,10 @@ export function SalesApprovalSection({
           projectData: projectContextData,
         });
 
-        if (!result.success) continue;
+        if (!result.success) {
+          errors.push(`Property für ${unit.unit_number}: ${!result.success && 'error' in result ? result.error : 'Unbekannter Fehler'}`);
+          continue;
+        }
         propertyId = result.propertyId;
       }
 
@@ -247,7 +252,10 @@ export function SalesApprovalSection({
         .select('id')
         .single();
 
-      if (listingError || !listing) continue;
+      if (listingError || !listing) {
+        errors.push(`Listing für ${unit.unit_number}: ${listingError?.message || 'Insert fehlgeschlagen'}`);
+        continue;
+      }
 
       createdListingIds.push(listing.id);
 
@@ -267,6 +275,16 @@ export function SalesApprovalSection({
           published_at: new Date().toISOString(),
         });
     }
+
+    // Surface errors if no listings were created
+    if (createdListingIds.length === 0 && errors.length > 0) {
+      console.error('[SalesApproval] Keine Listings erstellt. Fehler:', errors);
+      toast.error(`Vertriebsauftrag: Keine Listings erstellt. ${errors[0]}`);
+    } else if (errors.length > 0) {
+      console.warn(`[SalesApproval] ${errors.length} Einheiten übersprungen:`, errors);
+      toast.warning(`${createdListingIds.length} Listings erstellt, ${errors.length} Fehler.`);
+    }
+    
     return createdListingIds;
   }
 

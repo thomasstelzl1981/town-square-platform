@@ -17,7 +17,7 @@
     "MOD-10": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-11": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for Europace API integration" },
     "MOD-12": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
-    "MOD-13": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
+    "MOD-13": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for Menden Living sales pipeline fix — RLS + image display" },
     "MOD-14": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },

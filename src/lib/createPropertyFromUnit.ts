@@ -178,6 +178,31 @@ export async function createPropertyFromUnit(
         coa_version: 'SKR04_Starter',
       } as any);
 
+    // 5. Copy project images (document_links) to the new property
+    //    This ensures fetchPropertyImages finds them for MOD-08, MOD-09, Zone 3
+    const { data: projectImageLinks } = await supabase
+      .from('document_links')
+      .select('document_id, slot_key, display_order, is_title_image')
+      .eq('tenant_id', tenantId)
+      .eq('object_id', context.projectId)
+      .eq('object_type', 'project')
+      .eq('link_status', 'linked')
+      .in('slot_key', ['hero', 'exterior', 'interior', 'surroundings', 'floorplan']);
+
+    if (projectImageLinks && projectImageLinks.length > 0) {
+      const imageLinksToInsert = projectImageLinks.map((link, idx) => ({
+        tenant_id: tenantId,
+        document_id: link.document_id,
+        object_id: newProperty.id,
+        object_type: 'property' as const,
+        slot_key: link.slot_key,
+        display_order: link.display_order ?? idx,
+        is_title_image: link.slot_key === 'hero' || link.is_title_image,
+        link_status: 'linked' as const,
+      }));
+      await supabase.from('document_links').insert(imageLinksToInsert);
+    }
+
     return { success: true, propertyId: newProperty.id };
   } catch (err) {
     return {
