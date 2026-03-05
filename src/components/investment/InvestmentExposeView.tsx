@@ -156,6 +156,7 @@ export function InvestmentExposeView({
   textColors,
   isCommercial = false,
   accountingLocked = false,
+  hideAfaSection = false,
 }: InvestmentExposeViewProps) {
   const isMobile = useIsMobile();
 
