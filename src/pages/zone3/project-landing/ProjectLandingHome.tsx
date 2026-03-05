@@ -569,7 +569,7 @@ export default function ProjectLandingHome() {
                         <td className="px-3 py-2.5 text-center">{formatFloor(unit.floor)}</td>
                         <td className="px-3 py-2.5 text-right tabular-nums">{unit.area_sqm ? `${unit.area_sqm.toFixed(1)} m²` : '—'}</td>
                         <td className="px-3 py-2.5 text-right tabular-nums font-semibold">{unit.list_price ? eur(unit.list_price) : '—'}</td>
-                        <td className="px-3 py-2.5 text-right tabular-nums">{unit.rent_net ? eur(unit.rent_net) : '—'}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">{unitRent ? eur(unitRent) : '—'}</td>
                         <td className="px-3 py-2.5 text-right tabular-nums font-medium">{yieldPercent > 0 ? `${yieldPercent.toFixed(2)} %` : '—'}</td>
                         <td className="px-3 py-2.5 text-right tabular-nums">
                           {isCalculating ? (
