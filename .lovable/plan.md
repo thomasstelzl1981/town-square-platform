@@ -2,7 +2,7 @@
 # Refactoring-Masterplan: TSX-Monolithen → Modulare Architektur
 
 > **Datum**: 2026-03-05 (aktualisiert)
-> **Status**: Wave 1 ABGESCHLOSSEN (R-1 bis R-6) — Wave 2 IN ARBEIT (R-7 ✅, R-8–R-10 offen)
+> **Status**: Wave 1 ABGESCHLOSSEN (R-1 bis R-6) — Wave 2 Tranche 1 ABGESCHLOSSEN (R-7–R-10 ✅) — Tranche 2 IN ARBEIT (R-11–R-14)
 > **Methode**: Bewährtes Orchestrator + Sub-Components Pattern
 
 ---
