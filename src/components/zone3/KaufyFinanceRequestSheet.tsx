@@ -75,6 +75,10 @@ interface Props {
   onClose: () => void;
   listing: KaufyListingData;
   engineParams: KaufyEngineParams;
+  /** Override source attribution (default: 'zone3_kaufy_expose') */
+  source?: string;
+  /** Entity type for SLC recording — 'listing' (default) or 'project_unit' */
+  entityType?: 'listing' | 'project_unit';
 }
 
 interface FormData {
