@@ -22,6 +22,7 @@ import {
 import { MandateCaseCard, MandateCaseCardPlaceholder, MandateCaseCardNew } from '@/components/akquise/MandateCaseCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from '@/components/ui/sheet';

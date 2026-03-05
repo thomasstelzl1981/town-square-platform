@@ -152,6 +152,14 @@ export function AcqDataRoom() {
                     {getFileIcon(file.name)}
                     <span className="text-sm flex-1 truncate">{file.name}</span>
                     <span className={DESIGN.TYPOGRAPHY.HINT}>{formatSize(file.metadata?.size)}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0"
+                      onClick={() => handleDownload(folder.folder, file.name)}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 ))}
                 {folder.files.length === 0 && (
