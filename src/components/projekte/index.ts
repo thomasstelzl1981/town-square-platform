@@ -10,6 +10,11 @@ export { StickyCalculatorPanel } from './StickyCalculatorPanel';
 export { SalesApprovalSection } from './SalesApprovalSection';
 export { KaufyShowcaseDialog } from './KaufyShowcaseDialog';
 
+// Detail Page Sub-Components
+export { ProjectDetailHeader } from './ProjectDetailHeader';
+export { ProjectUnitsTable } from './ProjectUnitsTable';
+export { ProjectInfoTabs } from './ProjectInfoTabs';
+
 // Block Components
 export { ProjectPricingBlock } from './blocks/ProjectPricingBlock';
 export { ProjectDocumentsBlock } from './blocks/ProjectDocumentsBlock';
