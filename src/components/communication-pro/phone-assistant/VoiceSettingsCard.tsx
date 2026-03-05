@@ -1,10 +1,21 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Mic, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PhoneAssistantConfig } from '@/hooks/usePhoneAssistant';
+
+const ELEVENLABS_VOICES = [
+  { id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel', desc: 'Deutsch-optimiert, männlich', lang: '🇩🇪' },
+  { id: 'FGY2WhTYpPnrIDTdsKH5', name: 'Laura', desc: 'Warm, weiblich', lang: '🇩🇪' },
+  { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger', desc: 'Professionell, männlich', lang: '🌍' },
+  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', desc: 'Freundlich, weiblich', lang: '🌍' },
+  { id: 'JBFqnCBsd6RMkjVDRZzb', name: 'George', desc: 'Seriös, männlich', lang: '🌍' },
+  { id: 'N2lVS1w4EtoT3dr4eOWO', name: 'Callum', desc: 'Ruhig, männlich', lang: '🌍' },
+  { id: 'Xb7hH8MSUJpSbSDYk0k2', name: 'Alice', desc: 'Klar, weiblich', lang: '🌍' },
+] as const;
 
 const PRESETS = [
   { key: 'professional_warm', label: 'Professionell & Warm', emoji: '🎙️' },
@@ -21,18 +32,25 @@ interface Props {
 }
 
 export function VoiceSettingsCard({ config, onUpdate }: Props) {
-  const vs = config.voice_settings;
+  const vs = config.voice_settings as Record<string, any>;
+  const currentVoiceId = (vs.voice_id as string) || 'FGY2WhTYpPnrIDTdsKH5';
 
   const setVoice = (key: string, val: number) => {
-    onUpdate({ voice_settings: { ...vs, [key]: val } });
+    onUpdate({ voice_settings: { ...vs, [key]: val } as any });
   };
+
+  const setVoiceId = (voiceId: string) => {
+    onUpdate({ voice_settings: { ...vs, voice_id: voiceId } as any });
+  };
+
+  const currentVoice = ELEVENLABS_VOICES.find(v => v.id === currentVoiceId);
 
   return (
     <Card className="glass-card">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Mic className="h-4 w-4 text-primary" />
-          Stimme
+          Stimme & Voice
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -54,10 +72,32 @@ export function VoiceSettingsCard({ config, onUpdate }: Props) {
           </TooltipProvider>
         </div>
 
+        {/* ElevenLabs Voice Selection */}
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">ElevenLabs Stimme</label>
+          <Select value={currentVoiceId} onValueChange={setVoiceId}>
+            <SelectTrigger>
+              <SelectValue>
+                {currentVoice ? `${currentVoice.lang} ${currentVoice.name} — ${currentVoice.desc}` : 'Stimme wählen…'}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {ELEVENLABS_VOICES.map(v => (
+                <SelectItem key={v.id} value={v.id}>
+                  <span className="flex items-center gap-2">
+                    <span>{v.lang}</span>
+                    <span className="font-medium">{v.name}</span>
+                    <span className="text-muted-foreground">— {v.desc}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Presets grid */}
         <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Stimmprofil</label>
-          <p className="text-[10px] text-muted-foreground/70 mb-2">Powered by ElevenLabs — natürlichste KI-Stimmen weltweit.</p>
+          <label className="text-xs text-muted-foreground mb-2 block">Stimmprofil</label>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {PRESETS.map(p => (
               <button
@@ -92,11 +132,19 @@ export function VoiceSettingsCard({ config, onUpdate }: Props) {
               min={0}
               max={100}
               step={1}
-              value={[Number(vs[s.key as keyof typeof vs]) || 0]}
+              value={[Number(vs[s.key as keyof typeof vs]) || 50]}
               onValueChange={([v]) => setVoice(s.key, v)}
             />
           </div>
         ))}
+
+        {/* Sync reminder */}
+        <div className="flex items-start gap-2 rounded-md border border-accent bg-accent/20 p-3">
+          <Info className="h-4 w-4 text-accent-foreground mt-0.5 shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            Änderungen werden automatisch gespeichert. Drücke danach <Badge variant="outline" className="text-[10px] px-1.5 py-0">Agent synchronisieren</Badge> damit ElevenLabs die neuen Einstellungen übernimmt.
+          </p>
+        </div>
 
         {/* Mini preview */}
         {config.first_message && (
