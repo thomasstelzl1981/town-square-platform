@@ -7,16 +7,16 @@
    ATMOSPHERIC BACKGROUNDS — THEME-AWARE
    =========================================================================== */
 
-/* Deep Space + Aurora Atmosphere (Dark Mode) */
+/* Deep Space + Aurora Atmosphere (Dark Mode — Graphite Neutral) */
 .theme-sot-dark .sot-atmosphere,
 :root[data-sot-theme="dark"] .sot-atmosphere {
   background: 
-    radial-gradient(ellipse 80% 60% at 80% 0%, hsl(275 60% 25% / 0.35) 0%, transparent 65%),
-    radial-gradient(ellipse 70% 50% at 20% 10%, hsl(340 50% 22% / 0.25) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 50% at 5% 100%, hsl(275 45% 18% / 0.4) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 60% 80%, hsl(340 45% 18% / 0.2) 0%, transparent 50%),
-    radial-gradient(ellipse 40% 30% at 50% 50%, hsl(180 60% 18% / 0.15) 0%, transparent 45%),
-    linear-gradient(180deg, hsl(222 40% 8%) 0%, hsl(260 35% 6%) 50%, hsl(222 50% 5%) 100%);
+    radial-gradient(ellipse 80% 60% at 80% 0%, hsl(217 60% 18% / 0.3) 0%, transparent 65%),
+    radial-gradient(ellipse 70% 50% at 20% 10%, hsl(275 40% 15% / 0.2) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 5% 100%, hsl(217 45% 12% / 0.3) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 60% 80%, hsl(275 35% 12% / 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, hsl(217 50% 15% / 0.1) 0%, transparent 45%),
+    linear-gradient(180deg, hsl(220 10% 7%) 0%, hsl(220 12% 5%) 50%, hsl(220 10% 4%) 100%);
 }
 
 /* Light Atmosphere (Light Mode) */
