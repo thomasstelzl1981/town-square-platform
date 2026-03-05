@@ -85,7 +85,7 @@ export function UploadDrawer({ open, onOpenChange, homeId }: UploadDrawerProps) 
       }
     }
 
-    clearInterval(stepTimer);
+    if (stepTimerRef.current) { clearInterval(stepTimerRef.current); stepTimerRef.current = null; }
     setAiStep(AI_STEPS.length - 1);
 
     if (successCount > 0) {
