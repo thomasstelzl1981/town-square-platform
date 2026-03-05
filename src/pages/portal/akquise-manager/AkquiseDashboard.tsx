@@ -22,6 +22,7 @@ import {
 import { MandateCaseCard, MandateCaseCardPlaceholder, MandateCaseCardNew } from '@/components/akquise/MandateCaseCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from '@/components/ui/sheet';
@@ -54,7 +55,7 @@ function EditRow({ label, value, onChange, placeholder }: {
 
 export default function AkquiseDashboard() {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, activeTenantId } = useAuth();
   const { data: pendingMandates, isLoading: loadingPending } = useAcqMandatesPending();
   const { data: activeMandates, isLoading: loadingActive } = useAcqMandatesActive();
   const cancelMandate = useCancelAcqMandate();
@@ -129,6 +130,37 @@ export default function AkquiseDashboard() {
   const activeCount = activeMandates?.length || 0;
   const pendingCount = pendingMandates?.length || 0;
 
+  // B-2 Fix: Live KPI queries for contacts and pipeline objects
+  const { data: contactsCount } = useQuery({
+    queryKey: ['acq-kpi-contacts', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return 0;
+      const { count, error } = await supabase
+        .from('contact_staging' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', activeTenantId)
+        .eq('status', 'approved');
+      if (error) return 0;
+      return count ?? 0;
+    },
+    enabled: !!activeTenantId,
+  });
+
+  const { data: pipelineCount } = useQuery({
+    queryKey: ['acq-kpi-pipeline', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return 0;
+      const { count, error } = await supabase
+        .from('acq_offers')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', activeTenantId)
+        .in('status', ['new', 'analyzing', 'analyzed']);
+      if (error) return 0;
+      return count ?? 0;
+    },
+    enabled: !!activeTenantId,
+  });
+
   return (
     <PageShell>
       <ModulePageHeader 
@@ -172,8 +204,8 @@ export default function AkquiseDashboard() {
               {[
                 { label: 'Aktive Mandate', value: String(activeCount), icon: Target },
                 { label: 'Neue Aufträge', value: String(pendingCount), icon: Inbox },
-                { label: 'Kontakte gesamt', value: '—', icon: Users },
-                { label: 'Objekte in Pipeline', value: '—', icon: Briefcase },
+                { label: 'Kontakte gesamt', value: String(contactsCount ?? '—'), icon: Users },
+                { label: 'Objekte in Pipeline', value: String(pipelineCount ?? '—'), icon: Briefcase },
               ].map((kpi) => (
                 <div key={kpi.label} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
                   <div className="flex items-center gap-2">

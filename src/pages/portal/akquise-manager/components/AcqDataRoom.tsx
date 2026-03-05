@@ -9,7 +9,9 @@ import * as React from 'react';
 import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FolderOpen, FileText, File, Image } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, FolderOpen, FileText, File, Image, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -87,6 +89,29 @@ export function AcqDataRoom() {
     return `${(bytes / 1048576).toFixed(1)} MB`;
   };
 
+  const handleDownload = async (folder: string, fileName: string) => {
+    if (!activeTenantId) return;
+    const path = folder === '/' 
+      ? `${activeTenantId}/${fileName}` 
+      : `${activeTenantId}/${folder}/${fileName}`;
+    
+    const { data, error } = await supabase.storage
+      .from('acq-documents')
+      .download(path);
+    
+    if (error || !data) {
+      toast.error('Download fehlgeschlagen');
+      return;
+    }
+    
+    const url = URL.createObjectURL(data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Card className={DESIGN.CARD.BASE}>
       <CardHeader className={DESIGN.CARD.SECTION_HEADER}>
@@ -127,6 +152,14 @@ export function AcqDataRoom() {
                     {getFileIcon(file.name)}
                     <span className="text-sm flex-1 truncate">{file.name}</span>
                     <span className={DESIGN.TYPOGRAPHY.HINT}>{formatSize(file.metadata?.size)}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0"
+                      onClick={() => handleDownload(folder.folder, file.name)}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 ))}
                 {folder.files.length === 0 && (

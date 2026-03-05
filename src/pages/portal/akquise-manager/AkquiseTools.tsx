@@ -4,18 +4,20 @@ import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, Calculator, FolderOpen } from 'lucide-react';
+import { ChevronDown, Calculator, FolderOpen, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
   PortalSearchTool,
   PropertyResearchTool,
   StandaloneCalculatorPanel,
   AcqDataRoom,
+  ExposeDragDropUploader,
 } from './components';
 
 export default function AkquiseTools() {
   const [calcOpen, setCalcOpen] = React.useState(false);
   const [dataRoomOpen, setDataRoomOpen] = React.useState(false);
+  const [exposeUploadOpen, setExposeUploadOpen] = React.useState(false);
 
   return (
     <PageShell>
@@ -27,6 +29,30 @@ export default function AkquiseTools() {
 
         {/* 2. Immobilienbewertung (inkl. GeoMap + Sprengnetter) */}
         <PropertyResearchTool />
+
+        {/* 3. Exposé-Upload & Analyse (persistiert in Objekteingang) */}
+        <Collapsible open={exposeUploadOpen} onOpenChange={setExposeUploadOpen}>
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="ghost"
+              className={cn(
+                'w-full justify-between py-3 px-4 h-auto',
+                DESIGN.CARD.BASE,
+                'hover:bg-muted/30'
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <Upload className="h-4 w-4 text-primary" />
+                <span className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Exposé-Upload & Analyse</span>
+                <span className={DESIGN.TYPOGRAPHY.HINT}>— Exposés hochladen und in Objekteingang speichern</span>
+              </div>
+              <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', exposeUploadOpen && 'rotate-180')} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2">
+            <ExposeDragDropUploader />
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* 4. Standalone-Kalkulator (Collapsible) */}
         <Collapsible open={calcOpen} onOpenChange={setCalcOpen}>
