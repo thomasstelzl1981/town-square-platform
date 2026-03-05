@@ -8,6 +8,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { mapAfaModelToEngine } from '@/lib/mapAfaModel';
 import { getCachedSignedUrl } from '@/lib/imageCache';
 import { Loader2, Building2, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
