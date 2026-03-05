@@ -64,7 +64,7 @@
 8. `usePortfolioData.ts` — Daten-Hook (~60 Z)
 **Ziel:** Orchestrator ~200 Z
 
-#### R-9: BriefTab.tsx (1012 Z, MOD-02)
+#### R-9: BriefTab.tsx (1012 Z, MOD-02) ✅ DONE — 1012→~200 Z, 8 neue Dateien in src/components/office/brief/
 **Pfad:** `src/pages/portal/office/BriefTab.tsx`  
 **Extraktionen → `src/components/office/brief/`:**
 1. `briefTypes.ts` — BriefTemplate, BriefDraft
