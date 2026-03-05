@@ -100,11 +100,73 @@ function parseExtraction(aiData: any) {
   return { extractedData, confidence, tokensUsed: aiData.usage?.total_tokens };
 }
 
-async function readDocumentContent(fileData: Blob, mimeType: string, fileName: string): Promise<string> {
+async function readDocumentContent(fileData: Blob, mimeType: string, fileName: string, apiKey?: string): Promise<string> {
   const isPDF = mimeType === 'application/pdf';
-  if (isPDF) {
-    return `[PDF-Dokument: ${fileName}]\nGröße: ${fileData.size} Bytes\n\nHinweis: Vollständige PDF-Extraktion erfordert OCR-Integration.`;
+  
+  if (isPDF && apiKey) {
+    // Send PDF as base64 to Gemini for native PDF parsing
+    try {
+      const arrayBuffer = await fileData.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      // Convert to base64 in chunks to avoid stack overflow
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+        binary += String.fromCharCode(...chunk);
+      }
+      const base64 = btoa(binary);
+
+      console.log(`Sending PDF to Gemini for extraction: ${fileName} (${fileData.size} bytes)`);
+
+      const pdfResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          max_tokens: 16000,
+          messages: [{
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Extrahiere den vollständigen Text aus diesem PDF-Dokument. Gib den gesamten Textinhalt strukturiert zurück, einschließlich aller Zahlen, Adressen, Preise und Kontaktdaten. Formatiere den Text übersichtlich mit Zeilenumbrüchen.`,
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:application/pdf;base64,${base64}`,
+                },
+              },
+            ],
+          }],
+        }),
+      });
+
+      if (pdfResponse.ok) {
+        const pdfData = await pdfResponse.json();
+        const extractedText = pdfData.choices?.[0]?.message?.content;
+        if (extractedText && extractedText.length > 50) {
+          console.log(`PDF text extracted successfully: ${extractedText.length} chars`);
+          return extractedText;
+        }
+      } else {
+        console.error('Gemini PDF extraction failed:', pdfResponse.status);
+      }
+    } catch (pdfErr) {
+      console.error('PDF extraction error:', pdfErr);
+    }
+    // Fallback if Gemini PDF fails
+    return `[PDF-Dokument: ${fileName}]\nGröße: ${fileData.size} Bytes\nHinweis: PDF-Extraktion fehlgeschlagen.`;
   }
+  
+  if (isPDF) {
+    return `[PDF-Dokument: ${fileName}]\nGröße: ${fileData.size} Bytes`;
+  }
+  
   try {
     return await fileData.text();
   } catch {
@@ -149,7 +211,7 @@ serve(async (req) => {
       // Determine mime type from path
       const fileName = storagePath.split('/').pop() || 'document';
       const mimeType = fileName.endsWith('.pdf') ? 'application/pdf' : 'text/plain';
-      const documentContent = await readDocumentContent(fileData, mimeType, fileName);
+      const documentContent = await readDocumentContent(fileData, mimeType, fileName, LOVABLE_API_KEY);
 
       // AI Extraction
       const prompt = buildExtractionPrompt(documentContent, fileName);
@@ -208,7 +270,7 @@ serve(async (req) => {
       throw new Error('Failed to download document: ' + downloadError?.message);
     }
 
-    const documentContent = await readDocumentContent(fileData, doc.mime_type || '', doc.file_name);
+    const documentContent = await readDocumentContent(fileData, doc.mime_type || '', doc.file_name, LOVABLE_API_KEY);
 
     // AI Extraction
     const prompt = buildExtractionPrompt(documentContent, doc.file_name);
