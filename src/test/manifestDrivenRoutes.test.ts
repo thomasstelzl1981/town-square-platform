@@ -81,7 +81,8 @@ describe('Zone 2: Portal Modules', () => {
     }
   });
 
-  // Current tile counts per manifest (2026-02-18)
+  // Current tile counts per manifest (2026-03-05)
+  // MOD-21 removed (KI-Browser). MOD-22 gained +1 finanzen tile.
   const expectedTileCounts: Record<string, number> = {
     'MOD-00': 0,
     'MOD-01': 5,
@@ -104,8 +105,7 @@ describe('Zone 2: Portal Modules', () => {
     'MOD-18': 10,
     'MOD-19': 4,
     'MOD-20': 4,
-    'MOD-21': 5,
-    'MOD-22': 9,
+    'MOD-22': 10,
   };
 
   describe('Tile Counts', () => {
@@ -237,8 +237,8 @@ describe('Route Counts', () => {
   it('should calculate total Zone 2 tile routes', () => {
     const modules = Object.values(zone2Portal.modules || {});
     const tileCount = modules.reduce((sum, m) => sum + m.tiles.length, 0);
-    // Sum of all tile counts (MOD-21 removed: 111 - 5 = 106, +1 FDC Kontrolle = 107)
-    expect(tileCount).toBe(109);
+    // Total tile count: 110 (MOD-21 removed, MOD-22 gained +1 finanzen tile)
+    expect(tileCount).toBe(110);
   });
 
   it('should calculate total Zone 3 routes', () => {
