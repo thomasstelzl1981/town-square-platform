@@ -149,11 +149,11 @@ export function useProjectUnitExpose({
       year_built: project.construction_year ?? 0,
       monthly_rent: unit.rent_net ?? unit.current_rent ?? 0,
       units_count: 1,
-      hero_image_url: null,
+      hero_image_url: data?.heroImageUrl ?? null,
       heating_type: project.heating_type || null,
       energy_source: project.energy_source || null,
     };
-  }, [unit, project]);
+  }, [unit, project, data?.heroImageUrl]);
 
   // Gross yield
   const grossYield = useMemo(() => {
