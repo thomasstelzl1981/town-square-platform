@@ -91,12 +91,6 @@ export default function ProjectLandingImpressum() {
                   {devContext.ust_id && (
                     <p><strong>USt-IdNr.:</strong> {devContext.ust_id}</p>
                   )}
-                  {devContext.email && (
-                    <p><strong>E-Mail:</strong> <a href={`mailto:${devContext.email}`} className="text-[hsl(210,80%,55%)] hover:underline">{devContext.email}</a></p>
-                  )}
-                  {devContext.phone && (
-                    <p><strong>Telefon:</strong> {devContext.phone}</p>
-                  )}
                 </div>
               ) : (
                 <div className="space-y-3 text-sm text-[hsl(215,16%,47%)]">

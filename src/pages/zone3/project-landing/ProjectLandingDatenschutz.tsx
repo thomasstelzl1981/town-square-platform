@@ -85,7 +85,7 @@ export default function ProjectLandingDatenschutz() {
               <>
                 <br />{[devContext.street, devContext.house_number].filter(Boolean).join(' ')}
                 <br />{[devContext.postal_code, devContext.city].filter(Boolean).join(' ')}
-                {devContext.email && <><br />E-Mail: {devContext.email}</>}
+                
               </>
             )}
           </p>

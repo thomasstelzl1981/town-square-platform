@@ -151,8 +151,8 @@ export default function LandingPageTab() {
           `${devCtx.postal_code || ''} ${devCtx.city || ''}`.trim(),
         ].filter(Boolean).join(', ')
       : '';
-    const contactEmail = devCtx?.email || '';
-    const contactPhone = devCtx?.phone || '';
+    const contactEmail = '';
+    const contactPhone = '';
 
     // Build imprint text from developer context
     let imprintText = '';
