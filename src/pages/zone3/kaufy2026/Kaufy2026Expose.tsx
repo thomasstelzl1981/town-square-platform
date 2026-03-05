@@ -147,7 +147,9 @@ export default function Kaufy2026Expose() {
         price: 'text-[hsl(210,80%,55%)]',
         factsBg: 'bg-[hsl(210,30%,97%)]',
         factsLabel: 'text-[hsl(215,16%,47%)]',
+        factsValue: 'text-[hsl(220,20%,10%)]',
       }}
+      hideAfaSection={true}
       calculatorExtras={calculatorExtras}
       mobileBottomBar={mobileBottomBar}
       afterContent={afterContent}

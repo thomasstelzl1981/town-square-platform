@@ -108,7 +108,10 @@ interface InvestmentExposeViewProps {
     price?: string;
     factsBg?: string;
     factsLabel?: string;
+    factsValue?: string;
   };
+  /** Hide AfA/Gebäudeanteil from Key Facts grid and advanced sliders (for Zone 3 sales view) */
+  hideAfaSection?: boolean;
   /** Whether this is a commercial/business context (disables personal tax effects) */
   isCommercial?: boolean;
   /** Whether AfA/building share are locked from property accounting */
@@ -153,6 +156,7 @@ export function InvestmentExposeView({
   textColors,
   isCommercial = false,
   accountingLocked = false,
+  hideAfaSection = false,
 }: InvestmentExposeViewProps) {
   const isMobile = useIsMobile();
 
@@ -188,6 +192,7 @@ export function InvestmentExposeView({
   const priceColor = textColors?.price || 'text-primary';
   const factsBg = textColors?.factsBg || 'bg-muted/50';
   const factsLabel = textColors?.factsLabel || 'text-muted-foreground';
+  const factsValue = textColors?.factsValue || 'text-foreground';
 
   return (
     <div className="min-h-screen bg-background">
@@ -259,46 +264,50 @@ export function InvestmentExposeView({
               </div>
 
               {/* Key Facts — 8-col grid */}
-              <div className={cn("gap-4 p-4 rounded-xl grid", factsBg, isMobile ? "grid-cols-3" : "grid-cols-2 md:grid-cols-4")}>
+              <div className={cn("gap-4 p-4 rounded-xl grid", factsBg, isMobile ? "grid-cols-2" : "grid-cols-2 md:grid-cols-3")}>
                 <div>
                   <p className={cn("text-sm", factsLabel)}>Wohnfläche</p>
-                  <p className="font-semibold flex items-center gap-1">
+                  <p className={cn("font-semibold flex items-center gap-1", factsValue)}>
                     <Maximize2 className="w-4 h-4" /> {listing.total_area_sqm} m²
                   </p>
                 </div>
                 <div>
                   <p className={cn("text-sm", factsLabel)}>Baujahr</p>
-                  <p className="font-semibold flex items-center gap-1">
+                  <p className={cn("font-semibold flex items-center gap-1", factsValue)}>
                     <Calendar className="w-4 h-4" /> {listing.year_built || '–'}
                   </p>
                 </div>
                 <div>
                   <p className={cn("text-sm", factsLabel)}>Einheiten</p>
-                  <p className="font-semibold">{listing.units_count} WE</p>
+                  <p className={cn("font-semibold", factsValue)}>{listing.units_count} WE</p>
                 </div>
                 <div>
                   <p className={cn("text-sm", factsLabel)}>Miete (kalt)</p>
-                  <p className="font-semibold">{formatCurrency(params.monthlyRent)}/Mo</p>
+                  <p className={cn("font-semibold", factsValue)}>{formatCurrency(params.monthlyRent)}/Mo</p>
                 </div>
                 <div>
                   <p className={cn("text-sm", factsLabel)}>Rendite (brutto)</p>
-                  <p className="font-semibold">{grossYield > 0 ? `${grossYield.toFixed(1)}%` : '–'}</p>
+                  <p className={cn("font-semibold", factsValue)}>{grossYield > 0 ? `${grossYield.toFixed(1)}%` : '–'}</p>
                 </div>
                 <div>
                   <p className={cn("text-sm", factsLabel)}>Heizung</p>
-                  <p className="font-semibold">{listing.heating_type || '–'}</p>
+                  <p className={cn("font-semibold", factsValue)}>{listing.heating_type || '–'}</p>
                 </div>
-                <div>
-                  <p className={cn("text-sm", factsLabel)}>Gebäudeanteil</p>
-                  <p className="font-semibold">{Math.round(params.buildingShare * 100)}%</p>
-                </div>
-                <div>
-                  <p className={cn("text-sm", factsLabel)}>AfA-Satz</p>
-                  <p className="font-semibold">
-                    {params.afaRateOverride ? `${params.afaRateOverride}%` : params.afaModel === 'linear' ? '2%' : params.afaModel === '7i' ? '§7i' : params.afaModel === '7h' ? '§7h' : '§7b'}
-                    {' '}({params.afaModel === 'linear' ? 'Linear' : params.afaModel})
-                  </p>
-                </div>
+                {!hideAfaSection && (
+                  <>
+                    <div>
+                      <p className={cn("text-sm", factsLabel)}>Gebäudeanteil</p>
+                      <p className={cn("font-semibold", factsValue)}>{Math.round(params.buildingShare * 100)}%</p>
+                    </div>
+                    <div>
+                      <p className={cn("text-sm", factsLabel)}>AfA-Satz</p>
+                      <p className={cn("font-semibold", factsValue)}>
+                        {params.afaRateOverride ? `${params.afaRateOverride}%` : params.afaModel === 'linear' ? '2%' : params.afaModel === '7i' ? '§7i' : params.afaModel === '7h' ? '§7h' : '§7b'}
+                        {' '}({params.afaModel === 'linear' ? 'Linear' : params.afaModel})
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
 
               {listing.description && (
@@ -371,7 +380,7 @@ export function InvestmentExposeView({
                 value={params}
                 onChange={onParamsChange}
                 layout="vertical"
-                showAdvanced={false}
+                showAdvanced={hideAfaSection ? false : false}
                 purchasePrice={listing.asking_price}
                 isCommercial={isCommercial}
                 accountingLocked={accountingLocked}
@@ -386,7 +395,7 @@ export function InvestmentExposeView({
                     value={params}
                     onChange={onParamsChange}
                     layout="vertical"
-                    showAdvanced={true}
+                    showAdvanced={hideAfaSection ? false : true}
                     purchasePrice={listing.asking_price}
                     isCommercial={isCommercial}
                     accountingLocked={accountingLocked}
