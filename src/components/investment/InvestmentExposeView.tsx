@@ -108,7 +108,10 @@ interface InvestmentExposeViewProps {
     price?: string;
     factsBg?: string;
     factsLabel?: string;
+    factsValue?: string;
   };
+  /** Hide AfA/Gebäudeanteil from Key Facts grid and advanced sliders (for Zone 3 sales view) */
+  hideAfaSection?: boolean;
   /** Whether this is a commercial/business context (disables personal tax effects) */
   isCommercial?: boolean;
   /** Whether AfA/building share are locked from property accounting */
