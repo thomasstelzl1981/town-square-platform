@@ -430,22 +430,22 @@ export default function Kaufy2026Home() {
           <h2 className="text-2xl md:text-3xl font-bold text-[hsl(220,20%,10%)] mb-4">
             KI-gestützte Renditeberechnung in Sekunden
           </h2>
-          <p className="text-[hsl(215,16%,47%)] max-w-2xl mx-auto mb-10">
-            Unsere Investment-Engine analysiert jedes Objekt mit Gemini 2.5 Pro & GPT-5 — 
-            Steueroptimierung, 30-Jahres-Cashflow und Standortbewertung inklusive.
+          <p className="text-[hsl(215,16%,47%)] max-w-2xl mx-auto mb-10" style={{ lineHeight: 1.6 }}>
+            Unsere Investment-Engine analysiert jedes Objekt mit modernster KI — 
+            Steueroptimierung, 40-Jahres-Cashflow und individuelle Belastungsberechnung inklusive.
           </p>
           <div className="grid gap-6 md:grid-cols-3">
             {[
-              { label: 'Gemini 2.5 Pro', desc: 'Dokumentanalyse & Objektbewertung mit 32.000 Token Context', badge: 'Google' },
-              { label: 'GPT-5', desc: 'Exposé-Texterstellung & Investment-Zusammenfassungen', badge: 'OpenAI' },
-              { label: '35+ KI-Engines', desc: 'Rendite, Steuer, AfA, Standort, Cashflow — alles automatisiert', badge: 'SoT' },
+              { label: 'Dokumentanalyse', desc: 'Exposés und Preislisten werden automatisch ausgelesen und strukturiert aufbereitet.', badge: 'KI' },
+              { label: 'Investment-Engine', desc: 'Individuelle Renditeberechnung mit Steuereffekten, Tilgung und Cashflow-Prognose.', badge: 'Engine' },
+              { label: '40+ Kennzahlen', desc: 'Rendite, Steuer, AfA, Standort, Cashflow — alles automatisiert berechnet.', badge: 'Analyse' },
             ].map(item => (
               <div key={item.label} className="bg-white rounded-2xl p-6 shadow-sm border border-[hsl(210,20%,92%)]">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-3" style={{ background: 'hsl(210 80% 55% / 0.1)', color: 'hsl(210 80% 45%)' }}>
                   {item.badge}
                 </div>
                 <h3 className="font-bold text-[hsl(220,20%,10%)] mb-2">{item.label}</h3>
-                <p className="text-sm text-[hsl(215,16%,47%)]">{item.desc}</p>
+                <p className="text-sm text-[hsl(215,16%,47%)]" style={{ lineHeight: 1.5 }}>{item.desc}</p>
               </div>
             ))}
           </div>

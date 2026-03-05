@@ -1,5 +1,7 @@
 /**
- * Kaufy2026Vermieter — Landlord Landing Page (Redesigned)
+ * Kaufy2026Vermieter — Landlord Landing Page
+ * 
+ * Professional tone, consistent "Sie" form, improved spacing & content.
  */
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -13,18 +15,18 @@ import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import vermieterHero from '@/assets/kaufy2026/vermieter-hero.jpg';
 
 const features = [
-  { icon: FileText, title: 'Digitale Nebenkostenabrechnung', description: 'Automatisierte Erstellung und Versand der jährlichen Abrechnung.' },
-  { icon: Users, title: 'Mieterkommunikation', description: 'KI-gestützte Antworten auf Mieteranfragen. 24/7 erreichbar.' },
-  { icon: TrendingUp, title: 'Mieteingang-Tracking', description: 'Automatische Überwachung und Mahnung bei Zahlungsverzug.' },
-  { icon: Building2, title: 'Objektverwaltung', description: 'Alle Dokumente, Verträge und Daten an einem Ort.' },
+  { icon: FileText, title: 'Digitale Nebenkostenabrechnung', description: 'Automatisierte Erstellung und Versand der jährlichen Abrechnung — rechtssicher und effizient.' },
+  { icon: Users, title: 'Mieterkommunikation', description: 'KI-gestützte Antworten auf Mieteranfragen. 24/7 erreichbar, professionell formuliert.' },
+  { icon: TrendingUp, title: 'Mieteingang-Tracking', description: 'Automatische Überwachung und Mahnung bei Zahlungsverzug — damit Sie nichts übersehen.' },
+  { icon: Building2, title: 'Objektverwaltung', description: 'Alle Dokumente, Verträge und Daten Ihrer Immobilien — strukturiert an einem Ort.' },
 ];
 
 const benefits = [
-  'Zeitersparnis von 80% bei Verwaltungsaufgaben',
-  'Rechtssichere Dokumentenvorlagen',
-  'Automatische Indexanpassung',
-  'Integrierte Handwerkersuche',
-  'Steuerexport für Ihren Berater',
+  'Zeitersparnis von bis zu 80% bei Verwaltungsaufgaben',
+  'Rechtssichere Dokumentenvorlagen nach aktueller Gesetzeslage',
+  'Automatische Indexanpassung Ihrer Mietverträge',
+  'Integrierte Handwerkersuche für Instandhaltungsmaßnahmen',
+  'Steuerexport für Ihren Steuerberater auf Knopfdruck',
 ];
 
 export default function Kaufy2026Vermieter() {
@@ -34,12 +36,12 @@ export default function Kaufy2026Vermieter() {
         brand="kaufy"
         page={{
           title: 'Für Vermieter — Digitale Mietverwaltung',
-          description: 'Digitale Nebenkostenabrechnung, Mieterkommunikation und Objektverwaltung. Sparen Sie 80% Zeit bei der Vermietung Ihrer Kapitalanlage.',
+          description: 'Digitale Nebenkostenabrechnung, Mieterkommunikation und Objektverwaltung. Sparen Sie bis zu 80% Zeit bei der Verwaltung Ihrer Kapitalanlage.',
           path: '/vermieter',
         }}
         services={[{
           name: 'Digitale Mietverwaltung',
-          description: 'Automatisierte Nebenkostenabrechnung, Mieteingang-Tracking und Mieterkommunikation für private Vermieter.',
+          description: 'Automatisierte Nebenkostenabrechnung, Mieteingang-Tracking und Mieterkommunikation für private Vermieter und Bestandshalter.',
         }]}
       />
       {/* Hero */}
@@ -65,7 +67,7 @@ export default function Kaufy2026Vermieter() {
                   <feature.icon style={{ width: 24, height: 24, color: 'hsl(210,80%,55%)' }} />
                 </div>
                 <h3 style={{ fontWeight: 600, color: 'hsl(220,20%,10%)', marginBottom: 8 }}>{feature.title}</h3>
-                <p style={{ fontSize: '0.875rem', color: 'hsl(215,16%,47%)' }}>{feature.description}</p>
+                <p style={{ fontSize: '0.875rem', color: 'hsl(215,16%,47%)', lineHeight: 1.6 }}>{feature.description}</p>
               </CardContent>
             </Card>
           ))}
@@ -80,9 +82,9 @@ export default function Kaufy2026Vermieter() {
           </h2>
           <ul className="space-y-4 text-left max-w-md mx-auto">
             {benefits.map((benefit) => (
-              <li key={benefit} className="flex items-center gap-3">
-                <CheckCircle2 style={{ width: 20, height: 20, color: 'hsl(142,71%,45%)', flexShrink: 0 }} />
-                <span style={{ color: 'hsl(220,20%,10%)' }}>{benefit}</span>
+              <li key={benefit} className="flex items-start gap-3">
+                <CheckCircle2 style={{ width: 20, height: 20, color: 'hsl(142,71%,45%)', flexShrink: 0, marginTop: 2 }} />
+                <span style={{ color: 'hsl(220,20%,10%)', lineHeight: 1.5 }}>{benefit}</span>
               </li>
             ))}
           </ul>
@@ -95,8 +97,8 @@ export default function Kaufy2026Vermieter() {
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white', marginBottom: 12 }}>
             Bereit, Ihre Vermietung zu digitalisieren?
           </h2>
-          <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 24 }}>
-            Kostenlos registrieren und sofort starten.
+          <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 24, lineHeight: 1.6 }}>
+            Kostenlos registrieren und sofort starten — ohne Kreditkarte.
           </p>
           <Link to="/auth">
             <Button size="lg" className="rounded-full bg-white text-[hsl(220,20%,10%)] hover:bg-white/90 px-8">
