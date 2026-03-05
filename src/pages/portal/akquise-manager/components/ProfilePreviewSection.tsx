@@ -12,6 +12,8 @@ interface Props {
   previewTextLong: string;
   clientName: string;
   onGeneratePdf: () => void;
+  logoUrl?: string;
+  companyName?: string;
   // Consent
   profileGenerated: boolean;
   mandateCreated: boolean;
@@ -28,6 +30,7 @@ interface Props {
 
 export function ProfilePreviewSection({
   previewData, previewTextLong, clientName, onGeneratePdf,
+  logoUrl, companyName,
   profileGenerated, mandateCreated, mandateCode,
   acqConsentData, setAcqConsentData,
   acqConsentResearch, setAcqConsentResearch,
@@ -63,6 +66,8 @@ export function ProfilePreviewSection({
             clientName={clientName}
             profileData={previewData}
             profileTextLong={previewTextLong}
+            logoUrl={logoUrl}
+            companyName={companyName}
           />
         </CardContent>
       </Card>

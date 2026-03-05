@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { freeText } = await req.json();
+    const { freeText, clientName, steeringParams } = await req.json();
     if (!freeText || typeof freeText !== "string") {
       return new Response(JSON.stringify({ error: "freeText is required" }), {
         status: 400,
@@ -20,9 +20,44 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = `Du bist ein Experte für Immobilien-Akquise in Deutschland. Analysiere die folgende Freitext-Beschreibung eines Ankaufsprofils und extrahiere strukturierte Daten.
+    // ── Build steering block from structured params ──
+    const steeringLines: string[] = [];
+    if (steeringParams) {
+      if (steeringParams.region) steeringLines.push(`Suchgebiet: ${steeringParams.region}`);
+      if (steeringParams.assetFocus?.length) steeringLines.push(`Asset-Fokus: ${steeringParams.assetFocus.join(', ')}`);
+      if (steeringParams.priceMin || steeringParams.priceMax) {
+        const fmtPrice = (n: number) => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)} Mio. EUR` : `${(n / 1_000).toFixed(0)} Tsd. EUR`;
+        const parts = [];
+        if (steeringParams.priceMin) parts.push(`ab ${fmtPrice(steeringParams.priceMin)}`);
+        if (steeringParams.priceMax) parts.push(`bis ${fmtPrice(steeringParams.priceMax)}`);
+        steeringLines.push(`Investitionsrahmen: ${parts.join(' – ')}`);
+      }
+      if (steeringParams.yieldTarget) steeringLines.push(`Zielrendite: ${steeringParams.yieldTarget}%`);
+      if (steeringParams.exclusions) steeringLines.push(`Ausschlüsse: ${steeringParams.exclusions}`);
+    }
+    if (clientName) steeringLines.push(`Mandantenname: ${clientName}`);
+
+    const steeringBlock = steeringLines.length > 0
+      ? `\n\n═══ VERBINDLICHE LEITPARAMETER (überschreiben ggf. widersprüchliche Angaben im Freitext) ═══\n${steeringLines.join('\n')}\n═══ ENDE LEITPARAMETER ═══`
+      : '';
+
+    const systemPrompt = `Du bist ein Senior-Immobilienberater mit über 20 Jahren Erfahrung in der gewerblichen Immobilien-Akquise in Deutschland. Du erstellst professionelle Ankaufsprofile für institutionelle und semi-professionelle Investoren.
+
+AUFGABE:
+Analysiere den folgenden Freitext (und ggf. die VERBINDLICHEN LEITPARAMETER) und extrahiere ein strukturiertes Ankaufsprofil. Die LEITPARAMETER haben Vorrang vor widersprüchlichen Angaben im Freitext.
+
+REGELN FÜR profile_text_long:
+- Verfasse einen professionellen Fließtext (4-6 Sätze), der als Akquise-Anschreiben an Makler und Bestandshalter geeignet ist.
+- Verwende gehobene Maklersprache, keine Aufzählungen, keine Bulletpoints.
+- Nenne konkret: Investitionsvolumen, Zielregion, Asset-Klassen, Renditeerwartung und ggf. Ausschlüsse.
+- Der Text muss sofort einsatzbereit sein — kein Platzhalter, keine Lücken.
+
+QUALITÄTSBEISPIEL für profile_text_long:
+"Im Auftrag eines familiengeführten Investmenthauses suchen wir Wohn- und Geschäftshäuser sowie Mehrfamilienhäuser im Großraum München mit einem Investitionsvolumen von 2,0 bis 8,0 Mio. EUR. Der Fokus liegt auf Bestandsobjekten mit einer nachhaltigen Anfangsrendite ab 4,0 % und Wertsteigerungspotenzial durch moderate Repositionierung. Bevorzugt werden gepflegte Objekte in etablierten Wohnlagen mit guter ÖPNV-Anbindung. Denkmalgeschützte Objekte sowie Erbbaurechtsgrundstücke sind ausgeschlossen. Wir freuen uns über die Zusendung von Exposés und stehen für eine kurzfristige Prüfung und Besichtigung zur Verfügung."
 
 Antworte NUR mit dem Tool-Call, keine zusätzliche Erklärung.`;
+
+    const userMessage = freeText + steeringBlock;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -34,7 +69,7 @@ Antworte NUR mit dem Tool-Call, keine zusätzliche Erklärung.`;
         model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: freeText },
+          { role: "user", content: userMessage },
         ],
         tools: [
           {
@@ -83,7 +118,7 @@ Antworte NUR mit dem Tool-Call, keine zusätzliche Erklärung.`;
                   },
                   profile_text_long: {
                     type: "string",
-                    description: "Aufbereitetes Ankaufsprofil als zusammenhängender Fließtext (2-4 Sätze), professionell formuliert für die Verwendung in E-Mails an Makler.",
+                    description: "Professioneller Fließtext (4-6 Sätze) als fertiges Akquise-Anschreiben in gehobener Maklersprache. Muss Investitionsvolumen, Region, Asset-Klassen und Renditeerwartung konkret benennen. Sofort einsatzbereit für Makler-Kommunikation.",
                   },
                 },
                 required: ["asset_focus", "profile_text_long"],

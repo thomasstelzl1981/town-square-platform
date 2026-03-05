@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
@@ -37,6 +38,7 @@ import { useResearchEngine } from '@/hooks/useResearchEngine';
 import { formatPriceRange } from '@/components/akquise/ProfileRow';
 import { generateAcqPdf } from '@/components/akquise/acqPdfExport';
 import type { ExtractedProfile } from './components/types';
+import { resolveStorageSignedUrl } from '@/lib/storage-url';
 
 // Sub-components
 import { ProfileExtractionCard } from './components/ProfileExtractionCard';
@@ -52,6 +54,27 @@ export default function AkquiseMandate() {
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-AKQUISE-MANDAT');
   const researchEngine = useResearchEngine();
+
+  // ── Tenant branding from profile ──
+  const { data: profileBranding } = useQuery({
+    queryKey: ['profile-branding'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('letterhead_logo_url, letterhead_company_line')
+        .eq('id', user.id)
+        .maybeSingle();
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const brandLogoUrl = profileBranding?.letterhead_logo_url
+    ? resolveStorageSignedUrl(profileBranding.letterhead_logo_url)
+    : undefined;
+  const brandCompanyName = profileBranding?.letterhead_company_line || undefined;
 
   const [isSplitView, setIsSplitView] = useState(false);
 
@@ -362,7 +385,8 @@ export default function AkquiseMandate() {
       <ProfilePreviewSection
         previewData={previewData} previewTextLong={previewTextLong}
         clientName={clientName}
-        onGeneratePdf={() => profileData && generateAcqPdf(profileData, clientName, profileTextLong)}
+        logoUrl={brandLogoUrl} companyName={brandCompanyName}
+        onGeneratePdf={() => profileData && generateAcqPdf(profileData, clientName, profileTextLong, { logoUrl: brandLogoUrl, companyName: brandCompanyName })}
         profileGenerated={profileGenerated} mandateCreated={mandateCreated} mandateCode={activeMandateCode}
         acqConsentData={acqConsentData} setAcqConsentData={setAcqConsentData}
         acqConsentResearch={acqConsentResearch} setAcqConsentResearch={setAcqConsentResearch}

@@ -1,6 +1,5 @@
 import { getJsPDF } from '@/lib/lazyJspdf';
 import { formatPriceRange } from './ProfileRow';
-import logoLight from '@/assets/logos/armstrong_logo_light.png';
 import { toast } from 'sonner';
 
 export interface AcqProfileForPdf {
@@ -12,20 +11,48 @@ export interface AcqProfileForPdf {
   exclusions?: string;
 }
 
+export interface AcqPdfOptions {
+  logoUrl?: string;
+  companyName?: string;
+}
+
+async function fetchImageAsBase64(url: string): Promise<{ data: string; format: string } | null> {
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    const format = blob.type.includes('png') ? 'PNG' : 'JPEG';
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve({ data: reader.result as string, format });
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function generateAcqPdf(
   profileData: AcqProfileForPdf,
   clientName: string,
   profileTextLong: string,
+  options?: AcqPdfOptions,
 ) {
   const jsPDF = await getJsPDF();
   const doc = new jsPDF('p', 'mm', 'a4');
   const margin = 20;
   let y = margin;
 
-  // Logo (top right)
-  try {
-    doc.addImage(logoLight, 'PNG', 150, margin, 40, 14);
-  } catch { /* logo optional */ }
+  // Logo (top right) — only if logoUrl provided
+  if (options?.logoUrl) {
+    const img = await fetchImageAsBase64(options.logoUrl);
+    if (img) {
+      try {
+        doc.addImage(img.data, img.format, 150, margin, 40, 14);
+      } catch { /* logo rendering failed, skip */ }
+    }
+  }
 
   // Header
   doc.setFontSize(18);
@@ -83,6 +110,12 @@ export async function generateAcqPdf(
     const textLines = doc.splitTextToSize(profileTextLong, 170);
     doc.text(textLines, margin, y);
   }
+
+  // Footer
+  const footerText = options?.companyName ? `${options.companyName} · Vertraulich` : 'Vertraulich';
+  doc.setFontSize(7);
+  doc.setTextColor(180);
+  doc.text(footerText, 105, 285, { align: 'center' });
 
   doc.save(`Ankaufsprofil_${clientName?.replace(/\s/g, '_') || 'Profil'}.pdf`);
   toast.success('PDF exportiert');
