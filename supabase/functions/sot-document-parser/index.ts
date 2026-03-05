@@ -633,6 +633,8 @@ serve(async (req) => {
     }
 
     // ── Model Tiering: select cheapest adequate model ──
+    // callerContext: 'index' = ceiling at Flash (no Pro), 'engine' = full power (default)
+    const callerContext: 'index' | 'engine' = (body as any).callerContext === 'index' ? 'index' : 'engine';
     const fileSize = fileBytes?.length || resolvedContent.length;
     const nameLower = filename.toLowerCase();
     const COMPLEX_KW = ['weg', 'abrechnung', 'teilungserklaerung', 'teilungserklärung', 'hausgeldabrechnung'];
@@ -642,7 +644,12 @@ serve(async (req) => {
     } else if (COMPLEX_KW.some(kw => nameLower.includes(kw)) || fileSize > 5_000_000) {
       selectedModel = 'google/gemini-2.5-pro';
     }
-    console.log(`[parser-engine] Model selected: ${selectedModel} (size: ${fileSize})`);
+    // PURPOSE-AWARE CEILING: When called for indexing, cap at Flash (no Pro)
+    if (callerContext === 'index' && selectedModel === 'google/gemini-2.5-pro') {
+      selectedModel = 'google/gemini-2.5-flash';
+      console.log(`[parser-engine] Model downgraded from Pro → Flash (callerContext: index)`);
+    }
+    console.log(`[parser-engine] Model selected: ${selectedModel} (size: ${fileSize}, context: ${callerContext})`);
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
