@@ -328,8 +328,8 @@ export default function PortfolioTab() {
                     Preisliste — {calculatedUnits.length} Einheiten
                   </h3>
                   {hasUnsavedChanges && (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-                      <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-destructive">
+                      <span className="h-2 w-2 rounded-full bg-destructive animate-pulse" />
                       Ungespeicherte Änderungen
                     </span>
                   )}
