@@ -97,7 +97,7 @@ const KatalogTab = () => {
       const { data: publications, error: pubError } = await supabase
         .from('listing_publications')
         .select('listing_id')
-        .eq('channel', 'partner_network')
+        .eq('channel', 'kaufy')
         .eq('status', 'active');
 
       if (pubError) throw pubError;

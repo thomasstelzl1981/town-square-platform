@@ -94,7 +94,22 @@ export default function SucheTab() {
   const { data: listings = [], isLoading: isLoadingListings, refetch } = useQuery({
     queryKey: ['public-listings-search', cityFilter, priceMax, areaMin],
     queryFn: async () => {
-      // Fetch listings
+      // First get listing IDs with active kaufy publication
+      const { data: kaufyPubs, error: kaufyError } = await supabase
+        .from('listing_publications')
+        .select('listing_id')
+        .eq('channel', 'kaufy')
+        .eq('status', 'active');
+
+      if (kaufyError) {
+        console.error('Kaufy publications query error:', kaufyError);
+        return [];
+      }
+
+      const kaufyListingIds = kaufyPubs?.map(p => p.listing_id) || [];
+      if (kaufyListingIds.length === 0) return [];
+
+      // Fetch only kaufy-published listings
       let query = supabase
         .from('listings')
         .select(`
@@ -113,6 +128,7 @@ export default function SucheTab() {
           )
         `)
         .eq('status', 'active')
+        .in('id', kaufyListingIds)
         .order('created_at', { ascending: false })
         .limit(50);
 
