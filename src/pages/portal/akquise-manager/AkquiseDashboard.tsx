@@ -203,8 +203,8 @@ export default function AkquiseDashboard() {
               {[
                 { label: 'Aktive Mandate', value: String(activeCount), icon: Target },
                 { label: 'Neue Aufträge', value: String(pendingCount), icon: Inbox },
-                { label: 'Kontakte gesamt', value: '—', icon: Users },
-                { label: 'Objekte in Pipeline', value: '—', icon: Briefcase },
+                { label: 'Kontakte gesamt', value: String(contactsCount ?? '—'), icon: Users },
+                { label: 'Objekte in Pipeline', value: String(pipelineCount ?? '—'), icon: Briefcase },
               ].map((kpi) => (
                 <div key={kpi.label} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
                   <div className="flex items-center gap-2">
