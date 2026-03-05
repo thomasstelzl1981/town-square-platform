@@ -1,24 +1,102 @@
 
 
-# Kaufy Login-Überarbeitung: Registrierung entfernen
+# Fix: Landing Page "Projekt nicht gefunden" — Root Cause & Repair Plan
 
-## Befund
+## Root Cause (3 issues)
 
-In `Kaufy2026Layout.tsx` gibt es aktuell **zwei Buttons** im Header:
-- **Desktop** (Zeilen 117-126): "Anmelden" + "Registrieren" — beide verlinken auf `/auth`
-- **Mobile** (Zeilen 158-164): "Anmelden" + "Registrieren" — beide verlinken auf `/auth`
+### 1. Missing Foreign Key — Breaks JOIN
+`landing_pages.project_id` has **no FK to `dev_projects.id`**. The Supabase client's `dev_projects!inner(...)` syntax requires a FK relationship. Without it, PostgREST cannot resolve the join and the query silently returns null.
+- **Affects:** `ProjectLandingLayout.tsx` (header, footer, logo)
+- **Affects:** `ProjectLandingHome.tsx` uses separate queries but same root issue on `dev_projects`
 
-Beide führen zur Portal-Auth-Seite, wo man sich sowohl einloggen als auch registrieren kann.
+### 2. No Public RLS — Blocks Anonymous & Cross-Tenant Access
+The landing page is a **public website** (Zone 3), but:
+- `dev_projects` — only allows `tenant_id = get_user_tenant_id()` (auth required)
+- `dev_project_units` — same restriction
+- `document_links` — no policy for `object_type = 'project'`
+- `documents` — no public policy for project images
 
-## Plan
+Even logged-in users see "Projekt nicht gefunden" because the restrictive `tenant_isolation_restrictive` policy blocks unless `get_user_tenant_id()` matches.
 
-### Datei: `src/pages/zone3/kaufy2026/Kaufy2026Layout.tsx`
+### 3. Existing landing page status is `draft`
+The public RLS policy on `landing_pages` only allows `preview` and `active`. For the portal preview (logged-in user), this works via the org-member policy. But the public path blocks `draft` — this is correct behavior but needs the preview flow to account for it.
 
-1. **"Registrieren"-Button entfernen** — sowohl Desktop (Zeilen 122-126) als auch Mobile (Zeilen 162-164)
-2. **"Anmelden"-Button beibehalten** — weiterhin Link auf `/auth`, aber als einziger Auth-Button
-3. **Desktop**: Den verbleibenden "Anmelden"-Button als primären Button stylen (ausgefüllt statt ghost), damit er sichtbar bleibt
-4. **Mobile**: Nur einen "Anmelden"-Button im Mobile-Menü belassen
+## Fix Plan
 
-### Kein weiterer Änderungsbedarf
-- Die `/auth`-Seite selbst ist die Portal-Login-Seite — dort kann man sich bereits anmelden. Ob dort auch ein Registrierungs-Tab existiert, ist eine separate Frage. Auf der Kaufy-Seite selbst wird der Registrierungs-Einstiegspunkt aber entfernt.
+### Migration 1: Add FK + Public RLS Policies
+
+```sql
+-- 1. Add FK from landing_pages to dev_projects
+ALTER TABLE public.landing_pages
+  ADD CONSTRAINT landing_pages_project_id_fkey
+  FOREIGN KEY (project_id) REFERENCES public.dev_projects(id);
+
+-- 2. Public SELECT on dev_projects for projects with active landing pages
+CREATE POLICY "public_read_landing_page_projects"
+ON public.dev_projects FOR SELECT TO anon, authenticated
+USING (
+  id IN (
+    SELECT project_id FROM public.landing_pages
+    WHERE status IN ('draft', 'preview', 'active')
+  )
+);
+
+-- 3. Public SELECT on dev_project_units for those projects
+CREATE POLICY "public_read_landing_page_units"
+ON public.dev_project_units FOR SELECT TO anon, authenticated
+USING (
+  project_id IN (
+    SELECT project_id FROM public.landing_pages
+    WHERE status IN ('draft', 'preview', 'active')
+  )
+);
+
+-- 4. Public SELECT on document_links for project images
+CREATE POLICY "public_read_project_image_links"
+ON public.document_links FOR SELECT TO anon, authenticated
+USING (
+  object_type = 'project'
+  AND object_id IN (
+    SELECT project_id FROM public.landing_pages
+    WHERE status IN ('draft', 'preview', 'active')
+  )
+);
+
+-- 5. Public SELECT on documents for project-linked images
+CREATE POLICY "public_read_project_landing_documents"
+ON public.documents FOR SELECT TO anon, authenticated
+USING (
+  id IN (
+    SELECT dl.document_id FROM public.document_links dl
+    WHERE dl.object_type = 'project'
+    AND dl.object_id IN (
+      SELECT project_id FROM public.landing_pages
+      WHERE status IN ('draft', 'preview', 'active')
+    )
+  )
+);
+
+-- 6. Include 'draft' in landing_pages public policy (for preview from portal)
+DROP POLICY IF EXISTS "Public can view active landing pages" ON public.landing_pages;
+CREATE POLICY "Public can view landing pages"
+ON public.landing_pages FOR SELECT TO anon, authenticated
+USING (status IN ('draft', 'preview', 'active'));
+```
+
+### No Code Changes Needed
+The existing `ProjectLandingHome.tsx` and `ProjectLandingLayout.tsx` code is correct — the queries will work once the FK and RLS policies are in place.
+
+### Security Note
+- Only projects with a `landing_pages` record are exposed publicly
+- The policies are read-only (SELECT)
+- `locked` status pages remain invisible
+- Write operations remain protected by existing org-member policies
+
+### Freeze Check
+| Path | Frozen? |
+|---|---|
+| Database migration | No |
+| `ProjectLandingHome.tsx` (Zone 3, project-landing) | **Not frozen** (not in zone3_freeze.json) |
+| `ProjectLandingLayout.tsx` | **Not frozen** |
+| No code changes needed | N/A |
 
