@@ -12,7 +12,7 @@ import { WorkspaceOnboarding } from './WorkspaceOnboarding';
 import type { ChatMessage } from '@/hooks/useArmstrongAdvisor';
 
 interface Props {
-  messages: Message[];
+  messages: ChatMessage[];
   showOnboarding: boolean;
   orbState: OrbState;
   orbStepLabel?: string;
