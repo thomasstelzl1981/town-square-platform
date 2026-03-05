@@ -121,7 +121,7 @@
 4. `TileCatalogFilter.tsx` — Such-/Filterleiste (~60 Z)
 **Ziel:** Orchestrator ~150 Z
 
-#### R-14: ManagerFreischaltung.tsx (635 Z, Admin)
+#### R-14: ManagerFreischaltung.tsx (635 Z, Admin) ✅ DONE — 635→~140 Z, 3 neue Dateien in src/components/admin/freischaltung/
 **Pfad:** `src/pages/admin/ManagerFreischaltung.tsx`  
 **Extraktionen → `src/components/admin/freischaltung/`:**
 1. `freischaltungTypes.ts` — ManagerRequest, ApprovalPayload
