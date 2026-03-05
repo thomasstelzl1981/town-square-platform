@@ -174,6 +174,12 @@ export default function PortalDashboard() {
   const isLoading = locationLoading || weatherLoading || eventsLoading;
 
   const renderWidget = (widgetId: string) => {
+    // In preview mode, show placeholders for all heavy widgets
+    if (isPreview && PREVIEW_DISABLED_WIDGETS[widgetId]) {
+      const { label, icon } = PREVIEW_DISABLED_WIDGETS[widgetId];
+      return <PreviewPlaceholderCard label={label} icon={icon} />;
+    }
+
     if (widgetId === 'system_armstrong') {
       return (
         <ArmstrongGreetingCard
@@ -185,31 +191,21 @@ export default function PortalDashboard() {
         />
       );
     }
-    if (widgetId === 'system_weather') {
-      return <WeatherCard latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} />;
-    }
-    if (widgetId === 'system_globe') {
-      return <GlobeWidget latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} />;
-    }
-    if (widgetId === 'system_finance') return <FinanceWidget />;
-    if (widgetId === 'system_accounts') return <AccountsWidget />;
-    if (widgetId === 'system_news') return <NewsWidget />;
-    if (widgetId === 'system_space') return <SpaceWidget />;
-    if (widgetId === 'system_quote') return <QuoteWidget />;
-    if (widgetId === 'system_radio') {
-      if (!allowHeavyWidgets) return <PreviewPlaceholderCard label="Radio" icon={Radio} />;
-      return <RadioWidget />;
-    }
-    if (widgetId === 'system_pv_live') {
-      if (!allowHeavyWidgets) return <PreviewPlaceholderCard label="PV Live" icon={Zap} />;
-      return <PVLiveWidget />;
-    }
-    if (widgetId === 'system_meeting_recorder') return <MeetingRecorderWidget />;
+    if (widgetId === 'system_weather') return <LazyWidget><WeatherCard latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} /></LazyWidget>;
+    if (widgetId === 'system_globe') return <LazyWidget><GlobeWidget latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} /></LazyWidget>;
+    if (widgetId === 'system_finance') return <LazyWidget><FinanceWidget /></LazyWidget>;
+    if (widgetId === 'system_accounts') return <LazyWidget><AccountsWidget /></LazyWidget>;
+    if (widgetId === 'system_news') return <LazyWidget><NewsWidget /></LazyWidget>;
+    if (widgetId === 'system_space') return <LazyWidget><SpaceWidget /></LazyWidget>;
+    if (widgetId === 'system_quote') return <LazyWidget><QuoteWidget /></LazyWidget>;
+    if (widgetId === 'system_radio') return <LazyWidget><RadioWidget /></LazyWidget>;
+    if (widgetId === 'system_pv_live') return <LazyWidget><PVLiveWidget /></LazyWidget>;
+    if (widgetId === 'system_meeting_recorder') return <LazyWidget><MeetingRecorderWidget /></LazyWidget>;
     if (widgetId === 'system_brand_kaufy') return <BrandLinkWidget code="SYS.BRAND.KAUFY" />;
     if (widgetId === 'system_brand_futureroom') return <BrandLinkWidget code="SYS.BRAND.FUTUREROOM" />;
     if (widgetId === 'system_brand_sot') return <BrandLinkWidget code="SYS.BRAND.SOT" />;
     if (widgetId === 'system_brand_acquiary') return <BrandLinkWidget code="SYS.BRAND.ACQUIARY" />;
-    if (widgetId === 'system_tlc') return <TLCWidget />;
+    if (widgetId === 'system_tlc') return <LazyWidget><TLCWidget /></LazyWidget>;
 
     const taskWidget = taskWidgets.find(w => w.id === widgetId);
     if (taskWidget) {
