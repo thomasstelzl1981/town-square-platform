@@ -613,6 +613,7 @@ export function SalesApprovalSection({
       setShowKaufyDialog(false);
       queryClient.invalidateQueries({ queryKey: ['dev-project-kaufy', projectId] });
       queryClient.invalidateQueries({ queryKey: ['dev-project-units-showcase', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['sales-desk-request', projectId] });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Fehler');
     }

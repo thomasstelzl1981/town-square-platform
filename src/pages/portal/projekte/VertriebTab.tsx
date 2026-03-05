@@ -256,7 +256,7 @@ export default function VertriebTab() {
         projectAddress={activeProjectData?.address || ''}
         projectCity={activeProjectData?.city || ''}
         projectPostalCode={activeProjectData?.postal_code || undefined}
-        projectYearBuilt={(activeProjectData as any)?.year_built || undefined}
+        projectYearBuilt={(activeProjectData as any)?.construction_year || (activeProjectData as any)?.year_built || undefined}
         projectData={{
           heating_type: (activeProjectData as any)?.heating_type || undefined,
           energy_source: (activeProjectData as any)?.energy_source || undefined,
