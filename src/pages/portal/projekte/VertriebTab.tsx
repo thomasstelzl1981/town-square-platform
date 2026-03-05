@@ -5,7 +5,7 @@
  * NEVER shows EmptyState only — KPIs always visible, Freigabe section at bottom.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,8 +30,15 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 export default function VertriebTab() {
   const navigate = useNavigate();
   const { portfolioRows, isLoadingPortfolio, projects } = useDevProjects();
-  const [selectedProject, setSelectedProject] = useState<string>(projects[0]?.id || '');
+  const [selectedProject, setSelectedProject] = useState<string>('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+
+  // Sync: sobald Projekte geladen, erstes Projekt vorauswählen
+  useEffect(() => {
+    if (!selectedProject && projects.length > 0) {
+      setSelectedProject(projects[0].id);
+    }
+  }, [projects, selectedProject]);
 
   const isSelectedDemo = isDemoId(selectedProject);
   const activeProjectId = selectedProject;
