@@ -391,12 +391,62 @@ Deno.serve(async (req) => {
         console.error("DB update failed:", updateErr);
       }
 
+      // ── AUTO-SYNC: Activate ElevenLabs Agent after purchase ──
+      // ElevenLabs Conversational AI takes over Twilio's webhook once the
+      // number is imported and assigned to an agent. This eliminates the slow
+      // Polly TwiML path and routes calls through ElevenLabs directly.
+      let agentSyncResult: any = null;
+      try {
+        const syncUrl = `${webhookBaseUrl}/sot-phone-agent-sync`;
+        console.log("[AUTO-SYNC] Triggering ElevenLabs agent sync for", isBrandMode ? `brand:${brand_key}` : `user:${userId}`);
+        
+        const syncBody: Record<string, any> = { action: "sync" };
+        if (isBrandMode) {
+          syncBody.brand_key = brand_key;
+        } else {
+          // For personal assistants, look up the assistant_id first
+          let assistantQuery = supabase
+            .from("commpro_phone_assistants")
+            .select("id")
+            .eq(lookupFilter.column, lookupFilter.value);
+          if (lookupFilter.nullFilter) {
+            assistantQuery = assistantQuery.is(lookupFilter.nullFilter, null);
+          }
+          const { data: assistantRow } = await assistantQuery.single();
+          if (assistantRow?.id) {
+            syncBody.assistant_id = assistantRow.id;
+          }
+        }
+
+        const syncRes = await fetch(syncUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify(syncBody),
+        });
+
+        if (syncRes.ok) {
+          agentSyncResult = await syncRes.json();
+          console.log("[AUTO-SYNC] Success:", JSON.stringify(agentSyncResult));
+        } else {
+          const errText = await syncRes.text();
+          console.warn("[AUTO-SYNC] Failed (non-fatal):", syncRes.status, errText);
+          agentSyncResult = { warning: "Agent sync failed, fallback TwiML active", status: syncRes.status };
+        }
+      } catch (syncErr) {
+        console.warn("[AUTO-SYNC] Error (non-fatal):", syncErr);
+        agentSyncResult = { warning: "Agent sync error, fallback TwiML active" };
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
           phone_number: buyData.phone_number,
           sid: buyData.sid,
           friendly_name: buyData.friendly_name,
+          agent_sync: agentSyncResult,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
