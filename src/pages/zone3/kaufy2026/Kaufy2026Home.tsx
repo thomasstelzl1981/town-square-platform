@@ -83,7 +83,39 @@ export default function Kaufy2026Home() {
 
   const { calculate } = useInvestmentEngine();
 
-  // Fetch listings query
+  // Shared helper: batch-fetch property_accounting for AfA SSOT (mirrors MOD-08 SucheTab)
+  const fetchAccountingMap = useCallback(async (listingsToProcess: PublicListing[]) => {
+    const propertyIds = listingsToProcess.map(l => l.property_id).filter(Boolean) as string[];
+    const map = new Map<string, { afa_rate_percent: number | null; afa_model: string | null; building_share_percent: number | null }>();
+    if (propertyIds.length > 0) {
+      const { data: accountingRows } = await supabase
+        .from('property_accounting')
+        .select('property_id, afa_rate_percent, afa_model, building_share_percent')
+        .in('property_id', propertyIds);
+      for (const row of (accountingRows || [])) {
+        map.set(row.property_id, row);
+      }
+    }
+    return map;
+  }, []);
+
+  // Build CalculationInput with AfA from property_accounting (SSOT), default 80% / linear
+  const buildCalcInput = useCallback((listing: PublicListing, params: SearchParams, accountingMap: Map<string, any>): CalculationInput => {
+    const monthlyRent = listing.monthly_rent_total || (listing.asking_price * 0.04 / 12);
+    const acct = listing.property_id ? accountingMap.get(listing.property_id) : undefined;
+    return {
+      ...defaultInput,
+      purchasePrice: listing.asking_price,
+      monthlyRent,
+      equity: params.equity,
+      taxableIncome: params.zvE,
+      maritalStatus: params.maritalStatus,
+      hasChurchTax: params.hasChurchTax,
+      afaRateOverride: acct?.afa_rate_percent ?? undefined,
+      buildingShare: acct?.building_share_percent ? acct.building_share_percent / 100 : 0.8,
+      afaModel: mapAfaModelToEngine(acct?.afa_model),
+    };
+  }, []);
   const { data: listings = [], isLoading: isLoadingListings, refetch } = useQuery({
     queryKey: ['kaufy2026-listings', classicParams.city, classicParams.maxPrice],
     queryFn: async () => {
