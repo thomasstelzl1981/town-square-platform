@@ -1,102 +1,83 @@
 
 
-# Fix: Landing Page "Projekt nicht gefunden" — Root Cause & Repair Plan
+# Refactoring-Plan: AkquiseMandate.tsx (B-4)
 
-## Root Cause (3 issues)
+## Ist-Zustand
 
-### 1. Missing Foreign Key — Breaks JOIN
-`landing_pages.project_id` has **no FK to `dev_projects.id`**. The Supabase client's `dev_projects!inner(...)` syntax requires a FK relationship. Without it, PostgREST cannot resolve the join and the query silently returns null.
-- **Affects:** `ProjectLandingLayout.tsx` (header, footer, logo)
-- **Affects:** `ProjectLandingHome.tsx` uses separate queries but same root issue on `dev_projects`
+Die Datei hat **885 Zeilen** und enthält 6 klar trennbare Bereiche in einer einzigen Komponente:
 
-### 2. No Public RLS — Blocks Anonymous & Cross-Tenant Access
-The landing page is a **public website** (Zone 3), but:
-- `dev_projects` — only allows `tenant_id = get_user_tenant_id()` (auth required)
-- `dev_project_units` — same restriction
-- `document_links` — no policy for `object_type = 'project'`
-- `documents` — no public policy for project images
+| Bereich | Zeilen | Beschreibung |
+|---------|--------|-------------|
+| Imports + Configs | 1–108 | 3 Config-Objekte (SOURCE, MSG_STATUS, CONTACT_STATUS), Types |
+| State + Hooks | 109–177 | ~25 useState-Deklarationen, ~10 Hook-Aufrufe |
+| Handler-Funktionen | 178–447 | 7 Funktionen (Extract, PDF, CreateMandate, ApplyProfile, ContactBookImport, SendEmails, Helpers) |
+| JSX: Widget-Grid + Kachel 1+2 | 451–637 | Mandate-Cards, KI-Erfassung, Ankaufsprofil |
+| JSX: CI-Vorschau + Consent + Kachel 3+4 | 640–813 | CI-Preview, Mandatserteilung, SourcingTab (bereits extrahiert), E-Mail-Fenster |
+| JSX: Sentbox + Dialog + Helpers | 815–885 | Dokumentation-Liste, ContactBookDialog, ProfileRow, formatPriceRange |
 
-Even logged-in users see "Projekt nicht gefunden" because the restrictive `tenant_isolation_restrictive` policy blocks unless `get_user_tenant_id()` matches.
+**Kachel 3 (SourcingTab)** ist bereits als eigene Komponente extrahiert — das war das richtige Pattern. Die restlichen 5 Sektionen sind noch inline.
 
-### 3. Existing landing page status is `draft`
-The public RLS policy on `landing_pages` only allows `preview` and `active`. For the portal preview (logged-in user), this works via the org-member policy. But the public path blocks `draft` — this is correct behavior but needs the preview flow to account for it.
+## Refactoring-Plan: 5 Extraktionen
 
-## Fix Plan
+### 1. `ProfileExtractionCard.tsx` (Kachel 1)
+**Zeilen 506–572** (~65 Zeilen JSX + Steuerfelder-Logik)
 
-### Migration 1: Add FK + Public RLS Policies
+Extrahiert: Freitext-Eingabe, DictationButton, optionale Steuerparameter (Preis, Region, Asset-Fokus, Rendite, Ausschlüsse), "Generieren"-Button.
 
-```sql
--- 1. Add FK from landing_pages to dev_projects
-ALTER TABLE public.landing_pages
-  ADD CONSTRAINT landing_pages_project_id_fkey
-  FOREIGN KEY (project_id) REFERENCES public.dev_projects(id);
+Props: `freeText, setFreeText, steerParams (object), onToggleAsset, onExtract, isExtracting`
 
--- 2. Public SELECT on dev_projects for projects with active landing pages
-CREATE POLICY "public_read_landing_page_projects"
-ON public.dev_projects FOR SELECT TO anon, authenticated
-USING (
-  id IN (
-    SELECT project_id FROM public.landing_pages
-    WHERE status IN ('draft', 'preview', 'active')
-  )
-);
+### 2. `ProfileOutputCard.tsx` (Kachel 2)
+**Zeilen 574–637** (~63 Zeilen JSX)
 
--- 3. Public SELECT on dev_project_units for those projects
-CREATE POLICY "public_read_landing_page_units"
-ON public.dev_project_units FOR SELECT TO anon, authenticated
-USING (
-  project_id IN (
-    SELECT project_id FROM public.landing_pages
-    WHERE status IN ('draft', 'preview', 'active')
-  )
-);
+Extrahiert: Mandanten-Eingabe, strukturierte Profil-Anzeige (ProfileRow), editierbare Zusammenfassung, "Übernehmen"-Button.
 
--- 4. Public SELECT on document_links for project images
-CREATE POLICY "public_read_project_image_links"
-ON public.document_links FOR SELECT TO anon, authenticated
-USING (
-  object_type = 'project'
-  AND object_id IN (
-    SELECT project_id FROM public.landing_pages
-    WHERE status IN ('draft', 'preview', 'active')
-  )
-);
+Props: `profileData, profileGenerated, clientName, setClientName, profileTextLong, setProfileTextLong, onApplyProfile, onOpenContactBook`
 
--- 5. Public SELECT on documents for project-linked images
-CREATE POLICY "public_read_project_landing_documents"
-ON public.documents FOR SELECT TO anon, authenticated
-USING (
-  id IN (
-    SELECT dl.document_id FROM public.document_links dl
-    WHERE dl.object_type = 'project'
-    AND dl.object_id IN (
-      SELECT project_id FROM public.landing_pages
-      WHERE status IN ('draft', 'preview', 'active')
-    )
-  )
-);
+### 3. `ProfilePreviewSection.tsx` (CI-Vorschau + Consent + Mandate-Erstellung)
+**Zeilen 640–714** (~75 Zeilen JSX)
 
--- 6. Include 'draft' in landing_pages public policy (for preview from portal)
-DROP POLICY IF EXISTS "Public can view active landing pages" ON public.landing_pages;
-CREATE POLICY "Public can view landing pages"
-ON public.landing_pages FOR SELECT TO anon, authenticated
-USING (status IN ('draft', 'preview', 'active'));
+Extrahiert: CI-Vorschau mit PDF/Druck-Buttons, Consent-Checkboxen, Mandat-erstellen-Button, Mandate-Badge.
+
+Props: `previewData, previewTextLong, clientName, onGeneratePdf, consents, onCreateMandate, mandateCreated, mandateCode`
+
+### 4. `EmailComposeCard.tsx` (Kachel 4)
+**Zeilen 731–813** (~82 Zeilen JSX)
+
+Extrahiert: Empfänger-Chips, Betreff, Nachricht (mit Diktat), Anhang-Anzeige, Senden-Button, letzte Nachrichten.
+
+Props: `selectedContacts, emailSubject, emailBody, setEmailSubject, setEmailBody, onToggleContact, onSend, isSending, profileGenerated, clientName, sentMessages`
+
+### 5. `SentMessagesLog.tsx` (Dokumentation-Bereich)
+**Zeilen 822–856** (~34 Zeilen JSX)
+
+Extrahiert: Vollbreite Dokumentations-Card mit Status-Icons und Zeitstempel.
+
+Props: `messages`
+
+### Zusätzlich: Config + Helpers auslagern
+
+- `SOURCE_CONFIG`, `MSG_STATUS_CONFIG`, `CONTACT_STATUS_CONFIG` → nach `src/components/akquise/acqConfigs.ts`
+- `ProfileRow`, `formatPriceRange` → nach `src/components/akquise/ProfileRow.tsx`
+- `generatePdf` → nach `src/components/akquise/acqPdfExport.ts` (pure function, nimmt profileData + clientName)
+
+## Ergebnis nach Refactoring
+
+```text
+AkquiseMandate.tsx (~180 Zeilen)
+├── State-Deklarationen + Hooks (~70 Zeilen)
+├── Handler orchestrieren Sub-Komponenten (~60 Zeilen)
+└── JSX: WidgetGrid + 5 Komponenten + Dialog (~50 Zeilen)
+
+Neue Dateien:
+├── components/ProfileExtractionCard.tsx (~90 Zeilen)
+├── components/ProfileOutputCard.tsx (~85 Zeilen)
+├── components/ProfilePreviewSection.tsx (~95 Zeilen)
+├── components/EmailComposeCard.tsx (~100 Zeilen)
+├── components/SentMessagesLog.tsx (~50 Zeilen)
+├── src/components/akquise/acqConfigs.ts (~30 Zeilen)
+├── src/components/akquise/acqPdfExport.ts (~70 Zeilen)
+└── src/components/akquise/ProfileRow.tsx (~20 Zeilen)
 ```
 
-### No Code Changes Needed
-The existing `ProjectLandingHome.tsx` and `ProjectLandingLayout.tsx` code is correct — the queries will work once the FK and RLS policies are in place.
-
-### Security Note
-- Only projects with a `landing_pages` record are exposed publicly
-- The policies are read-only (SELECT)
-- `locked` status pages remain invisible
-- Write operations remain protected by existing org-member policies
-
-### Freeze Check
-| Path | Frozen? |
-|---|---|
-| Database migration | No |
-| `ProjectLandingHome.tsx` (Zone 3, project-landing) | **Not frozen** (not in zone3_freeze.json) |
-| `ProjectLandingLayout.tsx` | **Not frozen** |
-| No code changes needed | N/A |
+**AkquiseMandate.tsx schrumpft von 885 auf ~180 Zeilen** (80% Reduktion). Alle neuen Dateien landen im bestehenden `components/`-Verzeichnis unter `src/pages/portal/akquise-manager/components/` (Kachel-Komponenten) bzw. `src/components/akquise/` (shared helpers). Kein neues Routing, keine DB-Änderungen, kein Freeze-Bruch bei anderen Modulen.
 
