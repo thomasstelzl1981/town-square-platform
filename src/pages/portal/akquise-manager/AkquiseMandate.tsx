@@ -63,7 +63,7 @@ export default function AkquiseMandate() {
       if (!user) return null;
       const { data } = await supabase
         .from('profiles')
-        .select('letterhead_logo_url, company_name')
+        .select('letterhead_logo_url, letterhead_company_line')
         .eq('id', user.id)
         .maybeSingle();
       return data;
@@ -74,7 +74,7 @@ export default function AkquiseMandate() {
   const brandLogoUrl = profileBranding?.letterhead_logo_url
     ? resolveStorageSignedUrl(profileBranding.letterhead_logo_url)
     : undefined;
-  const brandCompanyName = profileBranding?.company_name || undefined;
+  const brandCompanyName = profileBranding?.letterhead_company_line || undefined;
 
   const [isSplitView, setIsSplitView] = useState(false);
 
