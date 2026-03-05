@@ -53,17 +53,18 @@ export default function ProjectLandingBeratung() {
 
     setIsSubmitting(true);
     try {
-      const tenantId = data?.project?.tenant_id || data?.landingPage?.organization_id;
-      const { error } = await supabase.from('leads').insert({
-        source: `project_landing_${slug}`,
-        notes: `[Projekt-Landing: ${data?.project?.name || slug}]\nName: ${formData.name}\nE-Mail: ${formData.email}${formData.phone ? `\nTelefon: ${formData.phone}` : ''}${formData.message ? `\nNachricht: ${formData.message}` : ''}`,
-        status: 'new',
-        tenant_id: tenantId,
-        interest_type: 'kaufinteresse',
-        zone1_pool: true,
-      } as any);
+      const { data: result, error } = await supabase.functions.invoke('sot-project-landing-lead', {
+        body: {
+          slug,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone || undefined,
+          message: formData.message || undefined,
+        },
+      });
 
       if (error) throw error;
+      if (result?.error) throw new Error(result.error);
       setSubmitted(true);
       toast.success('Ihre Anfrage wurde gesendet!');
     } catch (err) {
