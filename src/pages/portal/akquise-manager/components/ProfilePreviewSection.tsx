@@ -12,6 +12,8 @@ interface Props {
   previewTextLong: string;
   clientName: string;
   onGeneratePdf: () => void;
+  logoUrl?: string;
+  companyName?: string;
   // Consent
   profileGenerated: boolean;
   mandateCreated: boolean;
