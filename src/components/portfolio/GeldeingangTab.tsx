@@ -2,7 +2,7 @@
  * ZahlungsverkehrTab Orchestrator (MOD-04) — R-10 Refactored
  * Reduced from 1018 → ~200 lines via Orchestrator + Sub-components Pattern
  */
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';

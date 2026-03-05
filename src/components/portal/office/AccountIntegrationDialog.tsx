@@ -340,6 +340,7 @@ export function AccountIntegrationDialog({ open, onOpenChange }: AccountIntegrat
         window.removeEventListener('message', handleMessage);
         window.removeEventListener('storage', handleStorage);
         clearInterval(pollTimer);
+        pollCleanupRef.current = null;
       };
 
       // 3a. Listen for postMessage from popup callback
