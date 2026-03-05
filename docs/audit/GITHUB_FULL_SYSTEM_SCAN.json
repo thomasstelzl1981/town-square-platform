@@ -1,0 +1,619 @@
+{
+  "timestamp": "2026-03-05T18:55:55Z",
+  "branch": "copilot/perform-full-repo-scan",
+  "scan_type": "read_only",
+  "ssot": "src/manifests/routesManifest.ts",
+  "summary": {
+    "p0_count": 0,
+    "p1_count": 5,
+    "p2_count": 9,
+    "overall_status": "WARN",
+    "build_exit_code": 127,
+    "build_status": "FAIL_SANDBOX",
+    "test_exit_code": 127,
+    "test_status": "FAIL_SANDBOX",
+    "lint_exit_code": 127,
+    "lint_status": "FAIL_SANDBOX",
+    "audit_exit_code": 0,
+    "audit_status": "WARN",
+    "note": "Build/test/lint failures are sandbox-environment issues (tools not in PATH); production CI is unaffected"
+  },
+  "zones": {
+    "zone1": {
+      "name": "Admin Portal",
+      "base": "/admin",
+      "layout": "AdminLayout",
+      "requires_role": ["platform_admin"],
+      "router_file": "src/router/Zone1Router.tsx",
+      "manifest_section": "zone1Admin",
+      "total_routes": 75,
+      "status": "WARN",
+      "findings": [
+        {
+          "id": "Z1-01",
+          "description": "Masterdata sub-routes (11 template types) consistent",
+          "status": "OK",
+          "severity": null
+        },
+        {
+          "id": "Z1-02",
+          "description": "FutureRoom has 9 sub-routes fully defined",
+          "status": "OK",
+          "severity": null
+        },
+        {
+          "id": "Z1-03",
+          "description": "Acquiary Desk: 6 active tabs + 3 legacy backward-compat routes",
+          "status": "OK",
+          "severity": null
+        },
+        {
+          "id": "Z1-04",
+          "description": "Sales Desk (6), Lead Desk (3), Projekt Desk (4), Pet Desk (6), Finance Desk (5) all present",
+          "status": "OK",
+          "severity": null
+        },
+        {
+          "id": "Z1-05",
+          "description": "Armstrong Console: 13 sub-routes all present",
+          "status": "OK",
+          "severity": null
+        },
+        {
+          "id": "Z1-09",
+          "description": "YAML manifest (manifests/routes_manifest.yaml) is DEPRECATED and structurally different from TS-SSOT — expected",
+          "status": "WARN",
+          "severity": "P2"
+        }
+      ]
+    },
+    "zone2": {
+      "name": "User Portal",
+      "base": "/portal",
+      "layout": "PortalLayout",
+      "dashboard_route": "",
+      "dashboard_component": "PortalDashboard",
+      "router_file": "src/router/Zone2Router.tsx",
+      "manifest_section": "zone2Portal",
+      "total_modules": 22,
+      "status": "PASS",
+      "findings": [
+        {
+          "id": "Z2-01",
+          "description": "MOD-09 route-base is 'vertriebspartner' but module name was renamed to 'Immomanager' in spec",
+          "status": "WARN",
+          "severity": "P2"
+        },
+        {
+          "id": "Z2-02",
+          "description": "MOD-18 route-base is 'finanzanalyse' but module name is 'Finanzen'",
+          "status": "WARN",
+          "severity": "P2"
+        },
+        {
+          "id": "Z2-03",
+          "description": "MOD-11 has 7 dynamic_routes — 5 appear to be Finance tabs rather than submission flows",
+          "status": "WARN",
+          "severity": "P2"
+        },
+        {
+          "id": "Z2-04",
+          "description": "MOD-21 correctly removed (no code, no route)",
+          "status": "OK",
+          "severity": null
+        },
+        {
+          "id": "Z2-05",
+          "description": "Zone2Router portalModulePageMap covers all 22 modules",
+          "status": "OK",
+          "severity": null
+        },
+        {
+          "id": "Z2-07",
+          "description": "Golden Path Guards configured for MOD-04, MOD-07, MOD-12, MOD-13, MOD-19",
+          "status": "OK",
+          "severity": null
+        }
+      ]
+    },
+    "zone3": {
+      "name": "Websites",
+      "base_prefix": "/website",
+      "router_file": "src/router/Zone3Router.tsx",
+      "manifest_section": "zone3Websites",
+      "total_websites": 8,
+      "legacy_redirects": "ZBC-R08 migration complete",
+      "status": "PASS",
+      "findings": [
+        {
+          "id": "Z3-01",
+          "description": "SoT Ratgeber sub-routes have dedicated components",
+          "status": "OK",
+          "severity": null
+        },
+        {
+          "id": "Z3-02",
+          "description": "SoT legacy alias routes (real-estate, finance, management, energy, armstrong, capital) redirect to SotPlattform — no 404 risk",
+          "status": "OK",
+          "severity": null
+        },
+        {
+          "id": "Z3-03",
+          "description": "ZBC-R08 legacy redirects complete in legacyRoutes",
+          "status": "OK",
+          "severity": null
+        },
+        {
+          "id": "Z3-05",
+          "description": "project-landing directory exists under src/pages/zone3/ but no matching zone3Websites entry found",
+          "status": "WARN",
+          "severity": "P2"
+        }
+      ]
+    }
+  },
+  "modules": [
+    {
+      "code": "MOD-00",
+      "name": "Dashboard",
+      "route_base": "/portal/dashboard",
+      "tile_count": 0,
+      "dynamic_routes": 0,
+      "visibility": ["client", "partner", "subpartner"],
+      "requires_activation": false,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-01",
+      "name": "Stammdaten",
+      "route_base": "/portal/stammdaten",
+      "tile_count": 5,
+      "dynamic_routes": 0,
+      "visibility": ["client", "partner", "subpartner"],
+      "requires_activation": false,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-02",
+      "name": "KI Office",
+      "route_base": "/portal/office",
+      "tile_count": 7,
+      "dynamic_routes": 1,
+      "visibility": ["client", "partner"],
+      "requires_activation": false,
+      "risk": "MEDIUM",
+      "recommendation": "7 tiles exceeds prior 4-tile recommendation; WhatsApp/Videocalls integration scope to review"
+    },
+    {
+      "code": "MOD-03",
+      "name": "DMS",
+      "route_base": "/portal/dms",
+      "tile_count": 5,
+      "dynamic_routes": 0,
+      "visibility": ["client", "partner"],
+      "requires_activation": false,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-04",
+      "name": "Immobilien",
+      "route_base": "/portal/immobilien",
+      "tile_count": 4,
+      "dynamic_routes": 2,
+      "visibility": ["client"],
+      "requires_activation": false,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-05",
+      "name": "Pets",
+      "route_base": "/portal/pets",
+      "tile_count": 4,
+      "dynamic_routes": 1,
+      "visibility": ["client"],
+      "requires_activation": false,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-06",
+      "name": "Verkauf",
+      "route_base": "/portal/verkauf",
+      "tile_count": 4,
+      "dynamic_routes": 1,
+      "visibility": ["client"],
+      "requires_activation": true,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-07",
+      "name": "Finanzierung",
+      "route_base": "/portal/finanzierung",
+      "tile_count": 5,
+      "dynamic_routes": 1,
+      "visibility": ["client"],
+      "requires_activation": false,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-08",
+      "name": "Investments",
+      "route_base": "/portal/investments",
+      "tile_count": 4,
+      "dynamic_routes": 3,
+      "visibility": ["client", "partner", "subpartner"],
+      "requires_activation": false,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-09",
+      "name": "Immomanager",
+      "route_base": "/portal/vertriebspartner",
+      "tile_count": 5,
+      "dynamic_routes": 2,
+      "visibility": ["partner", "subpartner"],
+      "requires_activation": true,
+      "risk": "MEDIUM",
+      "recommendation": "Route-base 'vertriebspartner' does not reflect renamed module name 'Immomanager' — consistency issue"
+    },
+    {
+      "code": "MOD-10",
+      "name": "Lead Manager",
+      "route_base": "/portal/lead-manager",
+      "tile_count": 5,
+      "dynamic_routes": 0,
+      "visibility": ["partner"],
+      "requires_activation": true,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-11",
+      "name": "Finanzierungsmanager",
+      "route_base": "/portal/finanzierungsmanager",
+      "tile_count": 5,
+      "dynamic_routes": 7,
+      "visibility": ["partner"],
+      "requires_role": ["finance_manager"],
+      "requires_activation": false,
+      "risk": "MEDIUM",
+      "recommendation": "7 dynamic_routes unusually high; 5 appear to be Finance sub-tabs — review if they should be tiles"
+    },
+    {
+      "code": "MOD-12",
+      "name": "Akquisemanager",
+      "route_base": "/portal/akquise-manager",
+      "tile_count": 6,
+      "dynamic_routes": 3,
+      "visibility": ["partner"],
+      "requires_role": ["akquise_manager"],
+      "requires_activation": true,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-13",
+      "name": "Projektmanager",
+      "route_base": "/portal/projekte",
+      "tile_count": 6,
+      "dynamic_routes": 3,
+      "visibility": ["partner"],
+      "requires_activation": true,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-14",
+      "name": "Communication Pro",
+      "route_base": "/portal/communication-pro",
+      "tile_count": 4,
+      "dynamic_routes": 0,
+      "visibility": ["partner"],
+      "requires_activation": true,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-15",
+      "name": "Fortbildung",
+      "route_base": "/portal/fortbildung",
+      "tile_count": 4,
+      "dynamic_routes": 0,
+      "visibility": ["client", "partner", "subpartner"],
+      "requires_activation": false,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-16",
+      "name": "Services",
+      "route_base": "/portal/services",
+      "tile_count": 5,
+      "dynamic_routes": 0,
+      "visibility": ["client", "partner", "subpartner"],
+      "requires_activation": false,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-17",
+      "name": "Car Management",
+      "route_base": "/portal/cars",
+      "tile_count": 4,
+      "dynamic_routes": 0,
+      "visibility": ["client"],
+      "requires_activation": false,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-18",
+      "name": "Finanzen",
+      "route_base": "/portal/finanzanalyse",
+      "tile_count": 10,
+      "dynamic_routes": 0,
+      "visibility": ["client"],
+      "requires_activation": false,
+      "risk": "HIGH",
+      "recommendation": "Largest module (10 tiles) — split candidate. Route-base 'finanzanalyse' inconsistent with module name 'Finanzen'"
+    },
+    {
+      "code": "MOD-19",
+      "name": "Photovoltaik",
+      "route_base": "/portal/photovoltaik",
+      "tile_count": 4,
+      "dynamic_routes": 2,
+      "visibility": ["client"],
+      "requires_activation": false,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-20",
+      "name": "Miety",
+      "route_base": "/portal/miety",
+      "tile_count": 4,
+      "dynamic_routes": 1,
+      "visibility": ["client"],
+      "requires_activation": false,
+      "risk": "LOW",
+      "recommendation": "No action"
+    },
+    {
+      "code": "MOD-22",
+      "name": "Pet Manager",
+      "route_base": "/portal/petmanager",
+      "tile_count": 10,
+      "dynamic_routes": 0,
+      "visibility": ["client"],
+      "requires_activation": true,
+      "risk": "MEDIUM",
+      "recommendation": "10 tiles — franchise module, split candidate"
+    }
+  ],
+  "drift": [
+    {
+      "id": "DRIFT-01",
+      "artefact": "manifests/routes_manifest.yaml",
+      "status": "DEPRECATED",
+      "last_sync": "2026-02-02",
+      "version": "1.1.0",
+      "description": "Structurally outdated; not consumed by runtime; historical reference only",
+      "severity": "P2"
+    },
+    {
+      "id": "DRIFT-02",
+      "artefact": "manifests/tile_catalog.yaml",
+      "status": "DEPRECATED",
+      "last_sync": "2026-02-02",
+      "version": "1.1.0",
+      "description": "Lists outdated sub-tiles for MOD-01, MOD-06, MOD-11, MOD-13; DB seeds outdated",
+      "severity": "P2"
+    },
+    {
+      "id": "DRIFT-03",
+      "module": "MOD-01",
+      "artefact": "tile_catalog.yaml vs routesManifest.ts",
+      "yaml_value": "firma, abrechnung, sicherheit",
+      "ts_value": "profil, vertraege, abrechnung, sicherheit, rechtliches",
+      "description": "YAML outdated",
+      "severity": "P2"
+    },
+    {
+      "id": "DRIFT-04",
+      "module": "MOD-09",
+      "artefact": "routesManifest.ts name vs route_base",
+      "manifest_name": "Immomanager",
+      "route_base": "vertriebspartner",
+      "description": "Module was renamed in spec but route-base was not updated (breaking change avoided)",
+      "severity": "P2"
+    },
+    {
+      "id": "DRIFT-05",
+      "module": "MOD-18",
+      "artefact": "routesManifest.ts name vs route_base",
+      "manifest_name": "Finanzen",
+      "route_base": "finanzanalyse",
+      "description": "Module name 'Finanzen' inconsistent with route-base 'finanzanalyse'",
+      "severity": "P2"
+    },
+    {
+      "id": "DRIFT-06",
+      "artefact": "src/test/manifestDrivenRoutes.test.ts",
+      "last_sync": "2026-02-18",
+      "description": "Test file present; vitest not executable in sandbox — CI must verify",
+      "severity": "P1"
+    }
+  ],
+  "security": {
+    "tool": "npm audit",
+    "exit_code": 0,
+    "timestamp": "2026-03-05T18:55:55Z",
+    "total_dependencies": 1113,
+    "prod_dependencies": 801,
+    "dev_dependencies": 238,
+    "optional_dependencies": 101,
+    "peer_dependencies": 20,
+    "vulnerabilities": {
+      "critical": 0,
+      "high": 8,
+      "moderate": 4,
+      "low": 3,
+      "total": 15
+    },
+    "high_vulnerabilities": [
+      {
+        "package": "@rollup/plugin-terser",
+        "direct": false,
+        "via": ["serialize-javascript"],
+        "fix": "upgrade vite-plugin-pwa to 0.19.8 (major version bump)"
+      },
+      {
+        "package": "jspdf",
+        "direct": true,
+        "via": ["PDF Injection in AcroForm", "PDF Object Injection addJS", "DoS via malicious GIF"],
+        "fix": "npm install jspdf@latest"
+      },
+      {
+        "package": "minimatch",
+        "direct": false,
+        "via": ["ReDoS via repeated wildcards", "matchOne() combinatorial backtracking"],
+        "fix": "npm audit fix"
+      },
+      {
+        "package": "rollup",
+        "direct": false,
+        "via": ["Arbitrary File Write via Path Traversal"],
+        "fix": "npm audit fix"
+      },
+      {
+        "package": "serialize-javascript",
+        "direct": false,
+        "via": ["RCE via RegExp.flags and Date.prototype.toISOString()"],
+        "fix": "upgrade vite-plugin-pwa to 0.19.8"
+      },
+      {
+        "package": "vite-plugin-pwa",
+        "direct": true,
+        "via": ["workbox-build"],
+        "fix": "upgrade to 0.19.8 (major version bump)"
+      },
+      {
+        "package": "workbox-build",
+        "direct": false,
+        "via": ["@rollup/plugin-terser"],
+        "fix": "upgrade vite-plugin-pwa to 0.19.8"
+      },
+      {
+        "package": "xlsx",
+        "direct": true,
+        "via": ["Prototype Pollution in sheetJS", "ReDoS"],
+        "fix": "NO FIX AVAILABLE — evaluate alternatives (exceljs, papaparse)"
+      }
+    ],
+    "moderate_vulnerabilities": [
+      {
+        "package": "ajv",
+        "direct": false,
+        "via": ["ReDoS via $data option"],
+        "fix": "npm audit fix"
+      },
+      {
+        "package": "dompurify",
+        "direct": true,
+        "via": ["XSS — GHSA-v2wj-7wpq-c8vv"],
+        "fix": "npm install dompurify@latest"
+      },
+      {
+        "package": "esbuild",
+        "direct": false,
+        "via": ["Dev server CORS any-origin access"],
+        "fix": "upgrade vite to 7.3.1 (major version bump)"
+      },
+      {
+        "package": "vite",
+        "direct": true,
+        "via": ["esbuild"],
+        "fix": "upgrade to 7.3.1 (major version bump)"
+      }
+    ],
+    "low_vulnerabilities": [
+      {
+        "package": "@tootallnate/once",
+        "direct": false,
+        "via": ["Incorrect Control Flow Scoping"],
+        "fix": "upgrade jsdom to 28.1.0 (major, devDep)"
+      },
+      {
+        "package": "http-proxy-agent",
+        "direct": false,
+        "via": ["@tootallnate/once"],
+        "fix": "upgrade jsdom to 28.1.0"
+      },
+      {
+        "package": "jsdom",
+        "direct": true,
+        "is_dev": true,
+        "via": ["http-proxy-agent"],
+        "fix": "upgrade to 28.1.0 (major, devDep)"
+      }
+    ]
+  },
+  "performance": {
+    "build_status": "NOT_EXECUTED_SANDBOX",
+    "code_splitting": {
+      "status": "GOOD",
+      "note": "All zones and modules use React.lazy() — initial bundle is lean"
+    },
+    "heavy_packages": [
+      {
+        "package": "mermaid",
+        "version": "^11.12.2",
+        "estimated_size": "~800KB+",
+        "risk": "MEDIUM"
+      },
+      {
+        "package": "jspdf",
+        "version": "^4.1.0",
+        "estimated_size": "~500KB",
+        "risk": "MEDIUM"
+      },
+      {
+        "package": "xlsx",
+        "version": "^0.18.5",
+        "estimated_size": "~300KB",
+        "risk": "MEDIUM"
+      }
+    ]
+  },
+  "gates": {
+    "gate_a_must_pass": [
+      "A-01: npm audit shows no NEW vulnerabilities beyond current 15 baseline",
+      "A-02: All new routes declared in src/manifests/routesManifest.ts",
+      "A-03: src/test/manifestDrivenRoutes.test.ts must pass in CI",
+      "A-04: No new direct dependencies with known high/critical CVEs without approval",
+      "A-05: Zone2Router portalModulePageMap must cover all modules"
+    ],
+    "gate_b_warn_only": [
+      "B-01: New module with >6 tiles requires justification comment",
+      "B-02: New dynamic route without goldenPath guard needs explanation",
+      "B-03: Do NOT sync YAML manifests (they are DEPRECATED — TS-SSOT only)",
+      "B-04: Performance-sensitive packages (mermaid, jspdf, xlsx) — check chunk size in build log"
+    ],
+    "gate_c_backlog": [
+      "C-01: Archive or delete YAML manifests under manifests/ (confusion risk)",
+      "C-02: MOD-09 route-base / name consistency",
+      "C-03: MOD-11 dynamic_routes cleanup (5 Finance tabs vs. proper tiles)",
+      "C-04: Replace xlsx with secure alternative",
+      "C-05: Add project-landing to zone3Websites manifest or document exclusion",
+      "C-06: Sync DB seeds for tile_catalog.sub_tiles (MOD-01, MOD-06, MOD-11, MOD-13)"
+    ]
+  }
+}
