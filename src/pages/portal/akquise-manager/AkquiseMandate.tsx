@@ -23,14 +23,11 @@ import { toast } from 'sonner';
 import {
   useContactStaging,
   useBulkCreateStagingContacts,
-  useAcqOutboundMessages,
-  useEmailTemplates,
-  useBulkSendOutreach,
 } from '@/hooks/useAcqContacts';
 import {
-  useAcqOutboundMessages as useOutboundMsgs,
-  useBulkSendOutreach as useBulkSend2,
-  useEmailTemplates as useTemplates2,
+  useAcqOutboundMessages,
+  useBulkSendOutreach,
+  useEmailTemplates,
 } from '@/hooks/useAcqOutbound';
 import { ContactBookDialog } from '@/components/akquise/ContactBookDialog';
 import { SourcingTab } from './components/SourcingTab';
