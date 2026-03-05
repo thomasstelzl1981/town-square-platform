@@ -378,6 +378,9 @@ export function AccountIntegrationDialog({ open, onOpenChange }: AccountIntegrat
           }, 1500);
         }
       }, 1000);
+
+      // Store cleanup ref for unmount safety
+      pollCleanupRef.current = cleanup;
     } catch (error: any) {
       toast.error('Google-Verbindung fehlgeschlagen: ' + error.message);
       setIsConnecting(false);
