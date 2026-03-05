@@ -2,7 +2,7 @@
  * SOT-SPRENGNETTER-VALUATION
  * 
  * Property valuation via Sprengnetter API.
- * Falls back to AI-based estimation if API keys are not configured.
+ * Falls back to AI-based estimation (Gemini) if API keys are not configured.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -62,20 +62,90 @@ serve(async (req) => {
       );
     }
 
-    // Fallback: AI-based estimation
-    console.log("Sprengnetter API not configured, using AI fallback");
+    // Fallback: AI-based estimation using Lovable AI Gateway
+    console.log("Sprengnetter API not configured, using AI-based valuation");
 
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
-    const geminiKey = Deno.env.get("GEMINI_API_KEY");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    let estimatedValue = 0;
-    let confidence = "low";
-    let method = "fallback_estimate";
+    if (LOVABLE_API_KEY) {
+      const area = areaSqm || 100;
+      const prompt = `Du bist ein Immobilienbewertungs-Experte für den deutschen Markt.
+Bewerte folgende Immobilie und gib eine fundierte Schätzung ab.
 
-    // Simple heuristic fallback
-    const basePrice = 2500; // €/m² default
+Adresse: ${address}
+Objekttyp: ${propertyType || "Mehrfamilienhaus"}
+Baujahr: ${yearBuilt || "unbekannt"}
+Fläche: ${area} m²
+
+Antworte AUSSCHLIESSLICH als JSON-Objekt mit dieser Struktur:
+{
+  "estimatedValue": <Gesamtwert in Euro als Zahl>,
+  "pricePerSqm": <Preis pro m² als Zahl>,
+  "confidence": "medium",
+  "priceRange": { "min": <Zahl>, "max": <Zahl> },
+  "marketTrend": "stable" | "rising" | "falling",
+  "comparables": "<Kurzbeschreibung vergleichbarer Objekte>",
+  "reasoning": "<Begründung der Bewertung in 2-3 Sätzen>"
+}`;
+
+      try {
+        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              { role: "system", content: "Du bist ein deutscher Immobilienbewertungs-Experte. Antworte nur mit validem JSON." },
+              { role: "user", content: prompt },
+            ],
+          }),
+        });
+
+        if (!aiResponse.ok) {
+          const errText = await aiResponse.text();
+          console.error("AI Gateway error:", aiResponse.status, errText);
+          throw new Error("AI Gateway error");
+        }
+
+        const aiData = await aiResponse.json();
+        const content = aiData.choices?.[0]?.message?.content || "";
+        
+        // Extract JSON from response
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          return new Response(
+            JSON.stringify({
+              success: true,
+              source: "ai_valuation",
+              isEstimate: true,
+              valuation: {
+                estimatedValue: parsed.estimatedValue || 0,
+                pricePerSqm: parsed.pricePerSqm || 0,
+                confidence: parsed.confidence || "medium",
+                priceRange: parsed.priceRange || null,
+                marketTrend: parsed.marketTrend || "stable",
+                comparables: parsed.comparables || "",
+                reasoning: parsed.reasoning || "",
+                address,
+                note: "KI-gestützte Bewertung — kein Gutachten. Sprengnetter-API nicht konfiguriert.",
+              },
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch (aiErr) {
+        console.error("AI valuation failed, falling back to heuristic:", aiErr);
+      }
+    }
+
+    // Last resort: Simple heuristic fallback
+    const basePrice = 2500;
     const area = areaSqm || 100;
-    estimatedValue = basePrice * area;
+    let estimatedValue = basePrice * area;
     
     if (yearBuilt && yearBuilt > 2000) {
       estimatedValue *= 1.2;
@@ -86,14 +156,15 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        source: "ai_fallback",
+        source: "heuristic_fallback",
+        isEstimate: true,
         valuation: {
           estimatedValue: Math.round(estimatedValue),
           pricePerSqm: Math.round(estimatedValue / area),
-          confidence,
-          method,
+          confidence: "low",
+          method: "heuristic",
           address,
-          note: "Sprengnetter API nicht konfiguriert. Schätzwert basierend auf Durchschnittswerten.",
+          note: "Grobe Schätzung — weder Sprengnetter-API noch KI verfügbar.",
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

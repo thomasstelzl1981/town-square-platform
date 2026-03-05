@@ -25,11 +25,8 @@ export default function AkquiseTools() {
         {/* 1. Portal-Recherche */}
         <PortalSearchTool />
 
-        {/* 2. Immobilienbewertung */}
+        {/* 2. Immobilienbewertung (inkl. GeoMap + Sprengnetter) */}
         <PropertyResearchTool />
-
-        {/* 3. GeoMap-Analyse */}
-        <GeoMapTool />
 
         {/* 4. Standalone-Kalkulator (Collapsible) */}
         <Collapsible open={calcOpen} onOpenChange={setCalcOpen}>
