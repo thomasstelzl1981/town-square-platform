@@ -547,6 +547,7 @@ export default function ProjectLandingHome() {
                     <th className="px-3 py-3 text-right font-semibold text-[hsl(215,16%,47%)]">Steuereffekt/Mo</th>
                     <th className="px-3 py-3 text-right font-semibold text-[hsl(215,16%,47%)]">Monatsbelastung</th>
                     <th className="px-3 py-3 text-center font-semibold text-[hsl(215,16%,47%)]">Status</th>
+                    <th className="px-3 py-3 text-center font-semibold text-[hsl(215,16%,47%)]">Aktion</th>
                   </tr>
                 </thead>
                 <tbody>
