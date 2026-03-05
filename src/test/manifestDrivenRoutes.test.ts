@@ -105,7 +105,7 @@ describe('Zone 2: Portal Modules', () => {
     'MOD-19': 4,
     'MOD-20': 4,
     'MOD-21': 5,
-    'MOD-22': 9,
+    'MOD-22': 10,
   };
 
   describe('Tile Counts', () => {
