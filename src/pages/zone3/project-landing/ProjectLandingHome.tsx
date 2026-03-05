@@ -181,7 +181,7 @@ export default function ProjectLandingHome() {
     await Promise.all(availableUnits.map(async (unit) => {
       const price = unit.list_price;
       if (!price) return;
-      const monthlyRent = unit.rent_net || (price * 0.04 / 12);
+      const monthlyRent = unit.rent_net || unit.current_rent || (price * 0.04 / 12);
 
       const input: CalculationInput = {
         ...defaultInput,
