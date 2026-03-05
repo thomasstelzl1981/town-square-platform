@@ -87,6 +87,7 @@ export async function recordInquiryForProjectUnit(opts: {
 
     // Find or create SLC case for this project unit
     const slcCase = await findOrCreateCase({
+      listingId: opts.unitId, // Use unitId as listingId stand-in for project units
       assetType: 'project_unit',
       assetId: opts.unitId,
       tenantId,
