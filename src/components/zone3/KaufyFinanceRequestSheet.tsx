@@ -196,7 +196,7 @@ export default function KaufyFinanceRequestSheet({ open, onClose, listing, engin
 
     try {
       const payload = {
-        source: 'zone3_kaufy_expose',
+        source,
         contact: {
           firstName: form.firstName,
           lastName: form.lastName,
