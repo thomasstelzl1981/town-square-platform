@@ -55,6 +55,27 @@ export default function AkquiseMandate() {
   const demoEnabled = isEnabled('GP-AKQUISE-MANDAT');
   const researchEngine = useResearchEngine();
 
+  // ── Tenant branding from profile ──
+  const { data: profileBranding } = useQuery({
+    queryKey: ['profile-branding'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('letterhead_logo_url, company_name')
+        .eq('id', user.id)
+        .maybeSingle();
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const brandLogoUrl = profileBranding?.letterhead_logo_url
+    ? resolveStorageSignedUrl(profileBranding.letterhead_logo_url)
+    : undefined;
+  const brandCompanyName = profileBranding?.company_name || undefined;
+
   const [isSplitView, setIsSplitView] = useState(false);
 
   // Active mandate
