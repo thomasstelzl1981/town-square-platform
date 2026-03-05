@@ -2,7 +2,7 @@
 # Refactoring-Masterplan: TSX-Monolithen → Modulare Architektur
 
 > **Datum**: 2026-03-05 (aktualisiert)
-> **Status**: Wave 1 ABGESCHLOSSEN (R-1 bis R-6) — Wave 2 IN ARBEIT (R-7 ✅, R-8–R-10 offen)
+> **Status**: Wave 1 ABGESCHLOSSEN (R-1 bis R-6) — Wave 2 Tranche 1 ✅ (R-7–R-10) — Tranche 2 ✅ (R-11–R-14) — Tranche 3 OFFEN (R-15–R-24)
 > **Methode**: Bewährtes Orchestrator + Sub-Components Pattern
 
 ---
@@ -51,7 +51,7 @@
 10. `useEmailQueries.ts` — React-Query Hooks (~80 Z)
 **Ziel:** Orchestrator ~180 Z
 
-#### R-8: PortfolioTab.tsx (1511 Z, MOD-04)
+#### R-8: PortfolioTab.tsx (1511 Z, MOD-04) ✅ DONE — 1511→~200 Z, 7 neue Dateien in src/components/immobilien/portfolio/
 **Pfad:** `src/pages/portal/immobilien/PortfolioTab.tsx`  
 **Extraktionen → `src/components/immobilien/portfolio/`:**
 1. `portfolioTypes.ts` — PropertySummary, FilterState
@@ -64,7 +64,7 @@
 8. `usePortfolioData.ts` — Daten-Hook (~60 Z)
 **Ziel:** Orchestrator ~200 Z
 
-#### R-9: BriefTab.tsx (1012 Z, MOD-02)
+#### R-9: BriefTab.tsx (1012 Z, MOD-02) ✅ DONE — 1012→~200 Z, 8 neue Dateien in src/components/office/brief/
 **Pfad:** `src/pages/portal/office/BriefTab.tsx`  
 **Extraktionen → `src/components/office/brief/`:**
 1. `briefTypes.ts` — BriefTemplate, BriefDraft
@@ -76,7 +76,7 @@
 7. `BriefAddressBlock.tsx` — Adressblock-Formular (~80 Z)
 **Ziel:** Orchestrator ~180 Z
 
-#### R-10: GeldeingangTab.tsx (1018 Z, MOD-04)
+#### R-10: GeldeingangTab.tsx (1018 Z, MOD-04) ✅ DONE — 1018→~200 Z, 7 neue Dateien in src/components/portfolio/geldeingang/
 **Pfad:** `src/components/portfolio/GeldeingangTab.tsx`  
 **Extraktionen → `src/components/portfolio/geldeingang/`:**
 1. `geldeingangTypes.ts` — Transaction, MatchResult
@@ -91,7 +91,7 @@
 
 ### Tranche 2: Hohe Monolithen (700-904 Zeilen)
 
-#### R-11: TenancyTab.tsx (904 Z, MOD-04)
+#### R-11: TenancyTab.tsx (904 Z, MOD-04) ✅ DONE — 904→~200 Z, 5 neue Dateien in src/components/portfolio/tenancy/
 **Pfad:** `src/components/portfolio/TenancyTab.tsx`  
 **Extraktionen → `src/components/portfolio/tenancy/`:**
 1. `tenancyTypes.ts` — TenancyContract, TenantInfo
@@ -102,7 +102,7 @@
 6. `TenancyKPIRow.tsx` — Leerstandsquote, Soll-Ist (~60 Z)
 **Ziel:** Orchestrator ~180 Z
 
-#### R-12: UnitDetailPage.tsx (708 Z, MOD-13)
+#### R-12: UnitDetailPage.tsx (708 Z, MOD-13) ✅ DONE — 708→~150 Z, 6 neue Dateien in src/components/projekte/unit/
 **Pfad:** `src/pages/portal/projekte/UnitDetailPage.tsx`  
 **Extraktionen → `src/components/projekte/unit/`:**
 1. `unitTypes.ts` — UnitData, PricingInfo
@@ -112,7 +112,7 @@
 5. `UnitBuyerCard.tsx` — Käufer-Zuordnung (~80 Z)
 **Ziel:** Orchestrator ~150 Z
 
-#### R-13: TileCatalog.tsx (646 Z, Admin)
+#### R-13: TileCatalog.tsx (646 Z, Admin) ✅ DONE — 646→~150 Z, 3 neue Dateien in src/components/admin/tilecatalog/
 **Pfad:** `src/pages/admin/TileCatalog.tsx`  
 **Extraktionen → `src/components/admin/tilecatalog/`:**
 1. `tileCatalogTypes.ts` — TileEntry, Category
@@ -121,7 +121,7 @@
 4. `TileCatalogFilter.tsx` — Such-/Filterleiste (~60 Z)
 **Ziel:** Orchestrator ~150 Z
 
-#### R-14: ManagerFreischaltung.tsx (635 Z, Admin)
+#### R-14: ManagerFreischaltung.tsx (635 Z, Admin) ✅ DONE — 635→~140 Z, 3 neue Dateien in src/components/admin/freischaltung/
 **Pfad:** `src/pages/admin/ManagerFreischaltung.tsx`  
 **Extraktionen → `src/components/admin/freischaltung/`:**
 1. `freischaltungTypes.ts` — ManagerRequest, ApprovalPayload
