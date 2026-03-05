@@ -89,6 +89,29 @@ export function AcqDataRoom() {
     return `${(bytes / 1048576).toFixed(1)} MB`;
   };
 
+  const handleDownload = async (folder: string, fileName: string) => {
+    if (!activeTenantId) return;
+    const path = folder === '/' 
+      ? `${activeTenantId}/${fileName}` 
+      : `${activeTenantId}/${folder}/${fileName}`;
+    
+    const { data, error } = await supabase.storage
+      .from('acq-documents')
+      .download(path);
+    
+    if (error || !data) {
+      toast.error('Download fehlgeschlagen');
+      return;
+    }
+    
+    const url = URL.createObjectURL(data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Card className={DESIGN.CARD.BASE}>
       <CardHeader className={DESIGN.CARD.SECTION_HEADER}>
