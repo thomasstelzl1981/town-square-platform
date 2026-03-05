@@ -380,7 +380,7 @@ export function InvestmentExposeView({
                 value={params}
                 onChange={onParamsChange}
                 layout="vertical"
-                showAdvanced={false}
+                showAdvanced={hideAfaSection ? false : false}
                 purchasePrice={listing.asking_price}
                 isCommercial={isCommercial}
                 accountingLocked={accountingLocked}
@@ -395,7 +395,7 @@ export function InvestmentExposeView({
                     value={params}
                     onChange={onParamsChange}
                     layout="vertical"
-                    showAdvanced={true}
+                    showAdvanced={hideAfaSection ? false : true}
                     purchasePrice={listing.asking_price}
                     isCommercial={isCommercial}
                     accountingLocked={accountingLocked}
