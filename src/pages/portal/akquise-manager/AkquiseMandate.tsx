@@ -38,6 +38,7 @@ import { useResearchEngine } from '@/hooks/useResearchEngine';
 import { formatPriceRange } from '@/components/akquise/ProfileRow';
 import { generateAcqPdf } from '@/components/akquise/acqPdfExport';
 import type { ExtractedProfile } from './components/types';
+import { resolveStorageSignedUrl } from '@/lib/storage-url';
 
 // Sub-components
 import { ProfileExtractionCard } from './components/ProfileExtractionCard';
