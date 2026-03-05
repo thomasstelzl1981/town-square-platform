@@ -601,6 +601,16 @@ export default function ProjectLandingHome() {
                             {status.label}
                           </span>
                         </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <Link
+                            to={`/website/projekt/${slug}/einheit/${unit.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[10px] font-semibold transition-colors whitespace-nowrap"
+                          >
+                            Anfragen
+                            <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        </td>
                       </tr>
                     );
                   })}
