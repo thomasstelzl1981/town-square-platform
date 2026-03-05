@@ -1010,6 +1010,9 @@ async function handleStrategyStep(
           searchQuery, location, FIRECRAWL_API_KEY, 10,
           body.portal_config || { portal: "immoscout24", search_type: "brokers" }
         );
+        costEur = 0.01;
+        fieldsFound = results.length > 0 ? ["name", "address"] : [];
+      }
     }
 
     // ── ihk_scrape — Apify web-scraper against vermittlerregister.info ──
