@@ -86,7 +86,7 @@ export default function ProjectLandingExpose() {
         to: `/website/projekt/${slug}`,
         label: 'Zurück zur Übersicht',
       }}
-      showDocuments={false}
+      showDocuments={true}
       showFavorite={false}
       headerClassName="bg-white"
       textColors={{
@@ -121,6 +121,8 @@ export default function ProjectLandingExpose() {
               onClose={() => setShowFinanceRequest(false)}
               listing={kaufyListingData}
               engineParams={kaufyEngineParams}
+              source="zone3_project_landing"
+              entityType="project_unit"
             />
           </Suspense>
         ) : null

@@ -4,7 +4,7 @@
  * Hero + Photo Carousel + Highlights + Location + Search Engine + Unit Table
  */
 import { useState, useCallback, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveStorageSignedUrl } from '@/lib/storage-url';
@@ -110,6 +110,7 @@ const HIGHLIGHT_ICONS = [TrendingUp, Shield, Home, Star, Building2];
 
 export default function ProjectLandingHome() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useState({
     zvE: 60000,
     equity: 50000,
@@ -546,6 +547,7 @@ export default function ProjectLandingHome() {
                     <th className="px-3 py-3 text-right font-semibold text-[hsl(215,16%,47%)]">Steuereffekt/Mo</th>
                     <th className="px-3 py-3 text-right font-semibold text-[hsl(215,16%,47%)]">Monatsbelastung</th>
                     <th className="px-3 py-3 text-center font-semibold text-[hsl(215,16%,47%)]">Status</th>
+                    <th className="px-3 py-3 text-center font-semibold text-[hsl(215,16%,47%)]">Aktion</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -562,7 +564,7 @@ export default function ProjectLandingHome() {
                       <tr
                         key={unit.id}
                         className="border-b border-[hsl(214,32%,91%)]/50 transition-colors hover:bg-[hsl(210,30%,97%)] cursor-pointer"
-                        onClick={() => window.location.href = `/website/projekt/${slug}/einheit/${unit.id}`}
+                        onClick={() => navigate(`/website/projekt/${slug}/einheit/${unit.id}`)}
                       >
                         <td className="px-3 py-2.5 font-medium text-[hsl(220,20%,10%)]">{unit.unit_number}</td>
                         <td className="px-3 py-2.5 text-center">{unit.rooms_count ? `${unit.rooms_count}-Zi` : '—'}</td>
@@ -599,6 +601,16 @@ export default function ProjectLandingHome() {
                             {status.label}
                           </span>
                         </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <Link
+                            to={`/website/projekt/${slug}/einheit/${unit.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[10px] font-semibold transition-colors whitespace-nowrap"
+                          >
+                            Anfragen
+                            <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        </td>
                       </tr>
                     );
                   })}
@@ -626,6 +638,7 @@ export default function ProjectLandingHome() {
                         </span>
                       ) : '—'}
                     </td>
+                    <td className="px-3 py-3" />
                     <td className="px-3 py-3" />
                   </tr>
                 </tfoot>

@@ -41,7 +41,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { recordInquiryForListing } from '@/hooks/useSLCInquiry';
+import { recordInquiryForListing, recordInquiryForProjectUnit } from '@/hooks/useSLCInquiry';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -75,6 +75,10 @@ interface Props {
   onClose: () => void;
   listing: KaufyListingData;
   engineParams: KaufyEngineParams;
+  /** Override source attribution (default: 'zone3_kaufy_expose') */
+  source?: string;
+  /** Entity type for SLC recording — 'listing' (default) or 'project_unit' */
+  entityType?: 'listing' | 'project_unit';
 }
 
 interface FormData {
@@ -139,7 +143,7 @@ const fmt = (v: number) =>
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export default function KaufyFinanceRequestSheet({ open, onClose, listing, engineParams }: Props) {
+export default function KaufyFinanceRequestSheet({ open, onClose, listing, engineParams, source = 'zone3_kaufy_expose', entityType = 'listing' }: Props) {
   const [form, setForm] = useState<FormData>(initialFormData);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -192,7 +196,7 @@ export default function KaufyFinanceRequestSheet({ open, onClose, listing, engin
 
     try {
       const payload = {
-        source: 'zone3_kaufy_expose',
+        source,
         contact: {
           firstName: form.firstName,
           lastName: form.lastName,
@@ -248,13 +252,23 @@ export default function KaufyFinanceRequestSheet({ open, onClose, listing, engin
       toast.success('Finanzierungsanfrage erfolgreich eingereicht!');
 
       // Record SLC inquiry event (fire-and-forget)
-      recordInquiryForListing({
-        listingId: listing.id,
-        propertyId: listing.property_id,
-        source: 'zone3_kaufy_expose',
-        contactEmail: form.email,
-        contactName: `${form.firstName} ${form.lastName}`.trim(),
-      });
+      // For project units there's no listing record — use recordInquiryForProjectUnit
+      if (entityType === 'project_unit') {
+        recordInquiryForProjectUnit({
+          unitId: listing.id,
+          source,
+          contactEmail: form.email,
+          contactName: `${form.firstName} ${form.lastName}`.trim(),
+        });
+      } else {
+        recordInquiryForListing({
+          listingId: listing.id,
+          propertyId: listing.property_id,
+          source,
+          contactEmail: form.email,
+          contactName: `${form.firstName} ${form.lastName}`.trim(),
+        });
+      }
     } catch (err: unknown) {
       console.error('Submit error:', err);
       toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler bei der Einreichung');
