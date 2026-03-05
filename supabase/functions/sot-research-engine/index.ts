@@ -757,12 +757,9 @@ serve(async (req) => {
           portal_config
         )
       );
-    } else if (isPortalSearch && APIFY_API_TOKEN) {
-      // Legacy Apify fallback — kept for backward compat but Firecrawl preferred
-      providersUsed.push("apify_portal");
-      providerPromises.push(
-        searchPortalsFirecrawl(query, location, FIRECRAWL_API_KEY || "", max_results, portal_config)
-      );
+    } else if (isPortalSearch) {
+      // No Firecrawl available — portal search not possible
+      providersUsed.push("none");
     } else {
       if (activeProviders.includes("google_places") && GOOGLE_MAPS_API_KEY) {
         providersUsed.push("google_places");
