@@ -62,7 +62,7 @@ export default function SucheTab() {
   // Search mode
   const [searchMode, setSearchMode] = useState<SearchMode>('investment');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  
   const [hasSearched, setHasSearched] = useState(searchParams.get('searched') === '1');
 
   // Investment search params — restore from URL if available
