@@ -335,16 +335,15 @@ export default function PortfolioTab() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {hasUnsavedChanges && (
-                    <Button
-                      size="sm"
-                      onClick={() => savePreisliste.mutate()}
-                      disabled={savePreisliste.isPending}
-                    >
-                      <Save className="h-4 w-4 mr-1" />
-                      {savePreisliste.isPending ? 'Speichert…' : 'Preisliste speichern'}
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    variant={hasUnsavedChanges ? "default" : "outline"}
+                    onClick={() => savePreisliste.mutate()}
+                    disabled={!hasUnsavedChanges || savePreisliste.isPending}
+                  >
+                    <Save className="h-4 w-4 mr-1" />
+                    {savePreisliste.isPending ? 'Speichert…' : 'Preisliste speichern'}
+                  </Button>
                   {!isSelectedDemo && realUnits && realUnits.length > 0 && (
                     <CreatePropertyFromUnits
                       projectId={selectedProject.id}
