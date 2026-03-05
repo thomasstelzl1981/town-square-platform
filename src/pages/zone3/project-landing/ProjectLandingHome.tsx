@@ -4,7 +4,7 @@
  * Hero + Photo Carousel + Highlights + Location + Search Engine + Unit Table
  */
 import { useState, useCallback, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveStorageSignedUrl } from '@/lib/storage-url';
