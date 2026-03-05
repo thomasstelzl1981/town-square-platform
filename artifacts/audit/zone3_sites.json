@@ -1,36 +1,15 @@
 {
-  "generated_at": "2026-02-28T12:00:00Z",
-  "total_count": 6,
+  "generated_at": "2026-03-05T12:00:00Z",
+  "total_count": 9,
   "sites": [
-    {
-      "name": "kaufy",
-      "base": "/website/kaufy",
-      "layout": "Kaufy2026Layout"
-    },
-    {
-      "name": "futureroom",
-      "base": "/website/futureroom",
-      "layout": "FutureRoomLayout"
-    },
-    {
-      "name": "sot",
-      "base": "/website/sot",
-      "layout": "SotLayout"
-    },
-    {
-      "name": "acquiary",
-      "base": "/website/acquiary",
-      "layout": "AcquiaryLayout"
-    },
-    {
-      "name": "lennox",
-      "base": "/website/tierservice",
-      "layout": "LennoxLayout"
-    },
-    {
-      "name": "zlwohnbau",
-      "base": "/website/zl-wohnbau",
-      "layout": "ZLWohnbauLayout"
-    }
+    { "name": "kaufy", "base": "/website/kaufy", "layout": "Kaufy2026Layout", "route_count": 11 },
+    { "name": "futureroom", "base": "/website/futureroom", "layout": "FutureRoomLayout", "route_count": 11 },
+    { "name": "sot", "base": "/website/sot", "layout": "SotLayout", "route_count": 22 },
+    { "name": "acquiary", "base": "/website/acquiary", "layout": "AcquiaryLayout", "route_count": 11 },
+    { "name": "lennox", "base": "/website/tierservice", "layout": "LennoxLayout", "route_count": 14 },
+    { "name": "project-landing", "base": "/website/projekt", "layout": "ProjectLandingLayout", "route_count": 6 },
+    { "name": "ncore", "base": "/website/ncore", "layout": "NcoreLayout", "route_count": 11 },
+    { "name": "otto", "base": "/website/otto-advisory", "layout": "OttoAdvisoryLayout", "route_count": 10 },
+    { "name": "zlwohnbau", "base": "/website/zl-wohnbau", "layout": "ZLWohnbauLayout", "route_count": 8 }
   ]
 }

@@ -837,7 +837,7 @@ export const legacyRoutes: LegacyRoute[] = [
   { path: "/portal/leads", redirect_to: "/portal/lead-manager", reason: "MOD-10 legacy leads path" },
   { path: "/portal/leads/*", redirect_to: "/portal/lead-manager", reason: "MOD-10 legacy leads path" },
   // Legacy MOD-09 Selfie Ads → Lead Manager
-  { path: "/portal/vertriebspartner/leads", redirect_to: "/portal/lead-manager/leads", reason: "MOD-09 leads moved to MOD-10" },
+  { path: "/portal/vertriebspartner/leads", redirect_to: "/portal/lead-manager", reason: "MOD-09 leads moved to MOD-10" },
   { path: "/portal/vertriebspartner/selfie-ads", redirect_to: "/portal/lead-manager/studio", reason: "Selfie Ads moved to Lead Manager" },
   { path: "/portal/vertriebspartner/selfie-ads-planen", redirect_to: "/portal/lead-manager/studio/planen", reason: "Selfie Ads moved to Lead Manager" },
   { path: "/portal/vertriebspartner/selfie-ads-summary", redirect_to: "/portal/lead-manager/studio/summary", reason: "Selfie Ads moved to Lead Manager" },
