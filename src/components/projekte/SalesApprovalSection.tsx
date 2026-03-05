@@ -30,6 +30,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createPropertyFromUnit } from '@/lib/createPropertyFromUnit';
 import { findOrCreateCase } from '@/hooks/useSLCEventRecorder';
+import { KaufyShowcaseDialog } from './KaufyShowcaseDialog';
 
 interface SalesApprovalSectionProps {
   projectId?: string;
@@ -118,6 +119,7 @@ export function SalesApprovalSection({
     commissionRate: [7],
   });
   const [isActivating, setIsActivating] = useState(false);
+  const [showKaufyDialog, setShowKaufyDialog] = useState(false);
 
   // Fetch existing request
   const { data: request } = useQuery({
@@ -157,6 +159,21 @@ export function SalesApprovalSection({
   });
 
   const isKaufyActive = projectData?.kaufy_listed ?? false;
+
+  // Fetch units for Kaufy showcase dialog
+  const { data: projectUnits } = useQuery({
+    queryKey: ['dev-project-units-showcase', projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      const { data } = await supabase
+        .from('dev_project_units')
+        .select('id, unit_number, area_sqm, list_price, status, kaufy_showcase, unit_id')
+        .eq('project_id', projectId)
+        .order('unit_number');
+      return data ?? [];
+    },
+    enabled: !!projectId && !isDemo,
+  });
 
   const allAgreementsAccepted = useMemo(() => {
     return agreementState.dataAccuracy && agreementState.salesMandate && agreementState.systemFee;
@@ -452,9 +469,17 @@ export function SalesApprovalSection({
     setIsActivating(false);
   }
 
-  // ─── Kaufy Toggle ───
+  // ─── Kaufy Toggle — opens dialog for selection ───
   async function handleKaufyToggle(enabled: boolean) {
     if (!projectId || !tenantId) return;
+
+    if (enabled) {
+      // Open showcase dialog instead of publishing all
+      setShowKaufyDialog(true);
+      return;
+    }
+
+    // Deactivate: remove all Kaufy publications + reset showcase flags
     setIsActivating(true);
     try {
       const { data: units } = await supabase
@@ -473,49 +498,121 @@ export function SalesApprovalSection({
           .eq('status', 'active');
 
         if (listings?.length) {
-          for (const listing of listings) {
-            if (enabled) {
-              const { data: existing } = await supabase
-                .from('listing_publications')
-                .select('id')
-                .eq('listing_id', listing.id)
-                .eq('channel', 'kaufy')
-                .maybeSingle();
+          const listingIds = listings.map(l => l.id);
+          await supabase
+            .from('listing_publications')
+            .delete()
+            .in('listing_id', listingIds)
+            .eq('channel', 'kaufy');
+        }
+      }
 
-              if (existing) {
-                await supabase
-                  .from('listing_publications')
-                  .update({ status: 'active', published_at: new Date().toISOString() })
-                  .eq('id', existing.id);
-              } else {
-                await supabase
-                  .from('listing_publications')
-                  .insert({
-                    listing_id: listing.id,
-                    tenant_id: tenantId,
-                    channel: 'kaufy',
-                    status: 'active',
-                    published_at: new Date().toISOString(),
-                  });
-              }
-            } else {
+      // Reset all showcase flags
+      await supabase
+        .from('dev_project_units')
+        .update({ kaufy_showcase: false })
+        .eq('project_id', projectId);
+
+      await supabase
+        .from('dev_projects')
+        .update({ kaufy_listed: false })
+        .eq('id', projectId);
+
+      toast.success('Von Kaufy entfernt');
+      queryClient.invalidateQueries({ queryKey: ['dev-project-kaufy', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['dev-project-units-showcase', projectId] });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Fehler');
+    }
+    setIsActivating(false);
+  }
+
+  // ─── Kaufy Showcase confirm — publish selected units ───
+  async function handleKaufyShowcaseConfirm(selectedUnitIds: string[]) {
+    if (!projectId || !tenantId) return;
+    setIsActivating(true);
+    try {
+      // 1. Reset all showcase flags, then set selected
+      await supabase
+        .from('dev_project_units')
+        .update({ kaufy_showcase: false })
+        .eq('project_id', projectId);
+
+      for (const unitId of selectedUnitIds) {
+        await supabase
+          .from('dev_project_units')
+          .update({ kaufy_showcase: true })
+          .eq('id', unitId);
+      }
+
+      // 2. Get property_ids for selected units
+      const { data: selectedUnits } = await supabase
+        .from('dev_project_units')
+        .select('property_id')
+        .in('id', selectedUnitIds)
+        .not('property_id', 'is', null);
+
+      if (selectedUnits?.length) {
+        const propertyIds = selectedUnits.map(u => u.property_id!).filter(Boolean);
+
+        // Get listings for these properties
+        const { data: listings } = await supabase
+          .from('listings')
+          .select('id')
+          .in('property_id', propertyIds)
+          .eq('tenant_id', tenantId)
+          .eq('status', 'active');
+
+        if (listings?.length) {
+          // Remove old kaufy publications for this project first
+          const { data: allUnits } = await supabase
+            .from('dev_project_units')
+            .select('property_id')
+            .eq('project_id', projectId)
+            .not('property_id', 'is', null);
+
+          if (allUnits?.length) {
+            const allPropertyIds = allUnits.map(u => u.property_id!).filter(Boolean);
+            const { data: allListings } = await supabase
+              .from('listings')
+              .select('id')
+              .in('property_id', allPropertyIds)
+              .eq('tenant_id', tenantId);
+
+            if (allListings?.length) {
               await supabase
                 .from('listing_publications')
-                .update({ status: 'paused' })
-                .eq('listing_id', listing.id)
+                .delete()
+                .in('listing_id', allListings.map(l => l.id))
                 .eq('channel', 'kaufy');
             }
+          }
+
+          // Create kaufy publications only for selected
+          for (const listing of listings) {
+            await supabase
+              .from('listing_publications')
+              .insert({
+                listing_id: listing.id,
+                tenant_id: tenantId,
+                channel: 'kaufy',
+                status: 'active',
+                published_at: new Date().toISOString(),
+              });
           }
         }
       }
 
+      // 3. Mark project as kaufy-listed
       await supabase
         .from('dev_projects')
-        .update({ kaufy_listed: enabled })
+        .update({ kaufy_listed: true })
         .eq('id', projectId);
 
-      toast.success(enabled ? 'Auf Kaufy veröffentlicht' : 'Von Kaufy entfernt');
+      toast.success(`${selectedUnitIds.length} Einheit${selectedUnitIds.length !== 1 ? 'en' : ''} auf Kaufy veröffentlicht`);
+      setShowKaufyDialog(false);
       queryClient.invalidateQueries({ queryKey: ['dev-project-kaufy', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['dev-project-units-showcase', projectId] });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Fehler');
     }
@@ -781,6 +878,15 @@ export function SalesApprovalSection({
           </CardContent>
         </Card>
       )}
+
+      {/* Kaufy Showcase Selection Dialog */}
+      <KaufyShowcaseDialog
+        open={showKaufyDialog}
+        onOpenChange={setShowKaufyDialog}
+        units={projectUnits ?? []}
+        isLoading={isActivating}
+        onConfirm={handleKaufyShowcaseConfirm}
+      />
     </div>
   );
 }
