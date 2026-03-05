@@ -1,15 +1,18 @@
 {
-  "generated_at": "2026-02-19T04:00:00Z",
-  "total_count": 99,
-  "note": "Zone 1 Admin routes from routesManifest.ts. website-hosting REMOVED (redundant with Projekt Desk Landing Pages). Includes: Dashboard, Orgs, Users, Delegations, Masterdata (7), KI-Office (3), Tiles, Integrations, Oversight, Audit, Agreements, Partner-Verification, Roles, Support, FutureRoom (9), Acquiary (9), Sales-Desk (5), Lead-Desk (5), Projekt-Desk (4), Pet-Desk (5), Finance-Desk (5), Armstrong (11), Fortbildung, Compliance.",
+  "generated_at": "2026-03-05T12:00:00Z",
+  "total_count": 94,
+  "note": "Zone 1 Admin routes from routesManifest.ts (SSOT). Includes: Dashboard, Orgs, Users, Delegations, Masterdata (11), KI-Office (3), Tiles, Integrations, Oversight, Audit, Agreements, Partner-Verification, Manager-Freischaltung, Roles, Support, FutureRoom (9), Acquiary (9), Sales-Desk (6), Lead-Desk (3), Projekt-Desk (4), Pet-Desk (6), Finance-Desk (5), Armstrong (13), Fortbildung, Service-Desk, Ncore-Desk (3), Otto-Desk (4), CommPro-Desk, Compliance.",
   "sections": [
-    { "group": "Core", "count": 12, "routes": ["", "organizations", "organizations/:id", "users", "delegations", "masterdata (+6 sub)", "tiles", "integrations", "oversight", "audit", "agreements", "partner-verification", "roles", "support"] },
+    { "group": "Core", "count": 17, "routes": ["", "organizations", "organizations/:id", "users", "delegations", "masterdata (+10 sub)", "tiles", "integrations", "oversight", "audit", "agreements", "partner-verification", "manager-freischaltung", "roles", "support"] },
     { "group": "KI-Office", "count": 3, "routes": ["ki-office/recherche", "ki-office/kontakte", "ki-office/email"] },
-    { "group": "FutureRoom", "count": 9, "routes": ["futureroom (+8 sub)"] },
-    { "group": "Acquiary", "count": 9, "routes": ["acquiary (+8 sub, inkl. legacy)"] },
-    { "group": "Operative Desks", "count": 19, "routes": ["sales-desk (5)", "lead-desk (5)", "projekt-desk (4)", "pet-desk (5)"] },
-    { "group": "Finance Desk", "count": 5, "routes": ["finance-desk (+4 sub)"] },
-    { "group": "Armstrong", "count": 11, "routes": ["armstrong (+10 sub)"] },
-    { "group": "Other", "count": 2, "routes": ["fortbildung", "compliance"] }
+    { "group": "FutureRoom", "count": 9, "routes": ["futureroom (+8 sub: inbox, zuweisung, finanzierungsmanager, bankkontakte, monitoring, vorlagen, website-leads, contracts)"] },
+    { "group": "Acquiary", "count": 9, "routes": ["acquiary (+8 sub: kontakte, datenbank, mandate, needs-routing, monitor, inbox, assignments, audit)"] },
+    { "group": "Sales Desk", "count": 6, "routes": ["sales-desk (+5 sub: kontakte, veroeffentlichungen, inbox, partner, audit)"] },
+    { "group": "Lead Desk", "count": 3, "routes": ["lead-desk (+2 sub: kampagnen, templates)"] },
+    { "group": "Projekt Desk", "count": 4, "routes": ["projekt-desk (+3 sub: projekte, listings, landing-pages)"] },
+    { "group": "Pet Desk", "count": 6, "routes": ["pet-desk (+5 sub: kontakte, vorgaenge, kunden, shop, billing)"] },
+    { "group": "Finance Desk", "count": 5, "routes": ["finance-desk (+4 sub: kontakte, inbox, faelle, monitor)"] },
+    { "group": "Armstrong", "count": 13, "routes": ["armstrong (+12 sub: actions, logs, billing, knowledge, policies, test, integrations, engines, golden-paths, costs, health, review)"] },
+    { "group": "Other Desks", "count": 9, "routes": ["fortbildung", "service-desk", "ncore-desk (+2 sub)", "otto-desk (+3 sub)", "commpro-desk", "compliance"] }
   ]
 }
