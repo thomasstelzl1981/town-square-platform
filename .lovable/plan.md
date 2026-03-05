@@ -1,35 +1,38 @@
 
 
-# Fix: "Vertrieb aktivieren" Toggle funktioniert nicht
+# Fix: Properties INSERT schlaegt fehl — RLS-Blockade durch Trigger
 
 ## Root Cause
 
-In `VertriebTab.tsx` Zeile 33:
+Beim INSERT in `properties` feuert der Datenbank-Trigger `trg_property_create_default_unit`, der automatisch eine `units`-Zeile erstellt:
 
-```tsx
-const [selectedProject, setSelectedProject] = useState<string>(projects[0]?.id || '');
+```sql
+INSERT INTO units (tenant_id, property_id, unit_number, area_sqm)
+VALUES (NEW.tenant_id, NEW.id, 'MAIN', NEW.total_area_sqm);
 ```
 
-`projects` wird asynchron geladen. Beim ersten Render ist `projects` ein leeres Array (`[]`), also wird `selectedProject` auf `''` initialisiert. Wenn die Daten spaeter geladen werden, bleibt `selectedProject` trotzdem `''` — React `useState` aktualisiert den Initialwert nicht.
+Dieser Trigger laeuft im RLS-Kontext des Users. Die INSERT-Policy auf `units` erlaubt aber nur die Rollen `org_admin` und `internal_ops`. Der aktuelle User hat die Rolle `super_manager` — die zwar Properties erstellen darf, aber nicht Units.
 
-Dadurch ist `activeProjectId = ''`, was `SalesApprovalSection` als `projectId=""` erhaelt. Da `!!""` = `false`, ist `hasProject = false` und der Switch ist **disabled**.
+Ergebnis: Jeder Property-INSERT schlaegt mit 403 fehl, obwohl der Fehler eigentlich vom `units`-Trigger kommt. Daher die verwirrende Fehlermeldung "violates row-level security policy for table **units**" bei einem Request an `/properties`.
 
 ## Loesung
 
-In `VertriebTab.tsx`:
+Eine DB-Migration, die die Trigger-Funktion `create_default_unit` auf `SECURITY DEFINER` setzt. Dadurch laeuft der Trigger mit den Rechten des Funktions-Owners (postgres) und umgeht RLS — was korrekt ist, da es sich um eine interne System-Aktion handelt.
 
-1. `selectedProject` mit einem `useEffect` synchronisieren, der den Wert setzt, sobald `projects` geladen sind und noch kein Projekt ausgewaehlt ist:
-
-```tsx
-const [selectedProject, setSelectedProject] = useState<string>('');
-
-// Sync: sobald Projekte geladen, erstes Projekt vorauswaehlen
-useEffect(() => {
-  if (!selectedProject && projects.length > 0) {
-    setSelectedProject(projects[0].id);
-  }
-}, [projects, selectedProject]);
+```sql
+CREATE OR REPLACE FUNCTION create_default_unit()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO units (tenant_id, property_id, unit_number, area_sqm)
+  VALUES (NEW.tenant_id, NEW.id, 'MAIN', NEW.total_area_sqm);
+  RETURN NEW;
+END;
+$$;
 ```
 
-Das ist eine reine UI-Korrektur in einer einzelnen Datei (`VertriebTab.tsx`). Keine DB-Aenderung noetig.
+Keine Code-Aenderung noetig — nur die eine Migration. Danach funktioniert der Vertriebsauftrag-Flow und erstellt die 72 Properties + Listings korrekt.
 
