@@ -36,7 +36,7 @@
 
 ### Tranche 1: Kritische Monolithen (>1000 Zeilen)
 
-#### R-7: EmailTab.tsx (1506 Z, MOD-02)
+#### R-7: EmailTab.tsx (1506 Z, MOD-02) ✅ DONE — 1506→~180 Z, 8 neue Dateien in src/components/office/email/
 **Pfad:** `src/pages/portal/office/EmailTab.tsx`  
 **Extraktionen → `src/components/office/email/`:**
 1. `emailTypes.ts` — Thread, Message, DraftMessage Interfaces
