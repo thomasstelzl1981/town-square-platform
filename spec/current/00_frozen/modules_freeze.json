@@ -8,7 +8,7 @@
     "MOD-01": { "frozen": true, "frozen_at": "2026-03-05T10:00:00.000Z", "reason": "Full freeze — All modules locked" },
     "MOD-02": { "frozen": true, "frozen_at": "2026-03-05T10:00:00.000Z", "reason": "Full freeze — All modules locked" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
-    "MOD-04": { "frozen": true, "frozen_at": "2026-03-05T22:00:00.000Z", "reason": "Re-frozen after R-4 refactoring: KontexteTab.tsx split into ContextCardView + ContextCardEdit + kontexteTypes.ts" },
+    "MOD-04": { "frozen": true, "frozen_at": "2026-03-05T23:00:00.000Z", "reason": "Re-frozen after R-30: VerwaltungTab split into VerwaltungContextGrid + VerwaltungPropertyAccordion + VerwaltungGesamtergebnis" },
     "MOD-05": { "frozen": true, "frozen_at": "2026-03-05T10:00:00.000Z", "reason": "Full freeze — All modules locked" },
     "MOD-06": { "frozen": true, "frozen_at": "2026-03-05T22:00:00.000Z", "reason": "Re-frozen after R-2 refactoring: ExposeDetail.tsx split into 5 sub-components + exposeTypes.ts" },
     "MOD-07": { "frozen": true, "frozen_at": "2026-03-05T22:00:00.000Z", "reason": "Re-frozen after R-5 refactoring: AnfrageFormV2.tsx split into 4 FormSections + Footer + anfrageFormTypes.ts + anfrageFormPrimitives.tsx" },
