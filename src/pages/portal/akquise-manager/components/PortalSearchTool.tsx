@@ -14,7 +14,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Search, Building2, ExternalLink, MapPin, Home, TrendingUp, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
-import { usePortalSearch, type PortalSearchResult, type PortalRunDiagnostics } from '@/hooks/useAcqTools';
+import { usePortalSearch, type PortalSearchResult, type PortalRunDiagnostics, type PortalSearchParams } from '@/hooks/useAcqTools';
+import { usePersistSearchResults } from '@/hooks/usePortalListings';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/formatters';
 
 const OBJECT_TYPE_OPTIONS = [
