@@ -168,6 +168,14 @@ export function AccountIntegrationDialog({ open, onOpenChange }: AccountIntegrat
   const [activeTab, setActiveTab] = useState<'accounts' | 'add'>('accounts');
   const [addProvider, setAddProvider] = useState<string>('google');
   const [isConnecting, setIsConnecting] = useState(false);
+  const pollCleanupRef = useRef<(() => void) | null>(null);
+
+  // Cleanup poll timer on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (pollCleanupRef.current) pollCleanupRef.current();
+    };
+  }, []);
 
   // Fetch all mail accounts
   const { data: accounts = [], isLoading } = useQuery({
