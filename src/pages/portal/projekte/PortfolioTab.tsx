@@ -49,6 +49,7 @@ interface CalculatedUnit extends DemoUnit {
 export default function PortfolioTab() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const { portfolioRows, isLoadingPortfolio, deleteProject, projects } = useDevProjects();
   
   // Default to first project
