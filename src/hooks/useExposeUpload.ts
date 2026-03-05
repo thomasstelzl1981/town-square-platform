@@ -45,7 +45,7 @@ export function useExposeUpload() {
       setProgress(20);
 
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(UPLOAD_BUCKET)
+        .from('acq-documents')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
