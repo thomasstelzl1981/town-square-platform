@@ -46,8 +46,8 @@ const creditCategories = [
 ];
 
 const comparisonItems = [
-  { tool: 'ChatGPT', method: 'Manuell hochladen, jedes Mal neu', limit: 'Keine Verbindung zu Ihren Daten' },
-  { tool: 'Microsoft Copilot', method: 'Abo + Einschränkungen', limit: 'Nur Microsoft-Ökosystem' },
+  { tool: 'Andere KI-Tools', method: 'Manuell hochladen, jedes Mal neu', limit: 'Keine Verbindung zu Ihren Daten' },
+  { tool: 'Abo-Modelle', method: 'Monatliche Fixkosten + Einschränkungen', limit: 'Nur ein Ökosystem' },
   { tool: 'Armstrong', method: 'Einmal aktivieren, dauerhaft nutzen', limit: 'Ihr gesamter Datenraum, Pay per Use' },
 ];
 
