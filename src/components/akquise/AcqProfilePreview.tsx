@@ -3,9 +3,9 @@
  * 
  * Immer sichtbar: Zeigt leeren CI-Grundentwurf wenn keine Daten vorhanden,
  * wird befüllt wenn Daten über "Ankaufsprofil übernehmen" übertragen werden.
+ * 
+ * Logo: Dynamisch aus Profil (letterhead_logo_url). Kein Logo = kein Bild.
  */
-
-import logoLight from '@/assets/logos/armstrong_logo_light.png';
 
 interface ProfileData {
   region?: string;
@@ -21,6 +21,7 @@ interface AcqProfilePreviewProps {
   profileData: ProfileData | null;
   profileTextLong: string;
   logoUrl?: string;
+  companyName?: string;
 }
 
 function formatPrice(val?: number | null): string {
@@ -48,11 +49,11 @@ function DataRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function AcqProfilePreview({ clientName, profileData, profileTextLong, logoUrl }: AcqProfilePreviewProps) {
-  const logo = logoUrl || logoLight;
+export function AcqProfilePreview({ clientName, profileData, profileTextLong, logoUrl, companyName }: AcqProfilePreviewProps) {
   const today = new Date().toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
-
   const hasData = !!profileData;
+
+  const footerText = companyName ? `${companyName} · Vertraulich` : 'Vertraulich';
 
   return (
     <div
@@ -63,16 +64,17 @@ export function AcqProfilePreview({ clientName, profileData, profileTextLong, lo
         fontFamily: "'D-DIN', 'DIN', ui-sans-serif, system-ui, sans-serif",
       }}
     >
-      {/* Inner padding simulating DIN-A4 margins */}
       <div className="relative h-full w-full px-[48px] py-[40px] flex flex-col">
 
-        {/* ── Logo (top right) ── */}
-        <div className="flex justify-end mb-[24px]">
-          <img
-            src={logo}
-            alt="Armstrong"
-            className="h-[36px] w-auto object-contain"
-          />
+        {/* ── Logo (top right) — only if provided ── */}
+        <div className="flex justify-end mb-[24px] min-h-[36px]">
+          {logoUrl && (
+            <img
+              src={logoUrl}
+              alt="Firmenlogo"
+              className="h-[36px] w-auto object-contain"
+            />
+          )}
         </div>
 
         {/* ── Title ── */}
@@ -115,11 +117,11 @@ export function AcqProfilePreview({ clientName, profileData, profileTextLong, lo
           )}
         </p>
 
-        {/* ── Footer spacer ── */}
+        {/* ── Footer ── */}
         <div className="mt-auto pt-[24px]">
           <div className="w-full h-[1px] bg-gray-100" />
           <p className="text-[7px] text-gray-300 mt-[6px] text-center tracking-wider">
-            Armstrong Advisory · Vertraulich
+            {footerText}
           </p>
         </div>
       </div>

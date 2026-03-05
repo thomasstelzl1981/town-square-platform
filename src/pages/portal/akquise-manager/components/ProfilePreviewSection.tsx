@@ -66,6 +66,8 @@ export function ProfilePreviewSection({
             clientName={clientName}
             profileData={previewData}
             profileTextLong={previewTextLong}
+            logoUrl={logoUrl}
+            companyName={companyName}
           />
         </CardContent>
       </Card>
