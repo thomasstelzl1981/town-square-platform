@@ -25,10 +25,12 @@ interface ResearchRequest {
   };
   // Portal-specific params (intent: search_portals)
   portal_config?: {
-    portal?: string; // immoscout24, immowelt, ebay_kleinanzeigen
-    search_type?: string; // listings, brokers
+    portal?: string; // legacy — ignored, all portals searched
+    search_type?: string; // legacy — always 'listings'
     price_min?: number;
     price_max?: number;
+    area_min?: number;
+    area_max?: number;
     object_types?: string[];
   };
 }
