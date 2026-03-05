@@ -1,102 +1,118 @@
 
 
-# Fix: Landing Page "Projekt nicht gefunden" — Root Cause & Repair Plan
+# Audit: SLC-Kette (MOD-13 → MOD-08 → MOD-09 → Zone 3 Kaufy) — Rechner, Bilder, Buttons
 
-## Root Cause (3 issues)
+## Zusammenfassung der Befunde
 
-### 1. Missing Foreign Key — Breaks JOIN
-`landing_pages.project_id` has **no FK to `dev_projects.id`**. The Supabase client's `dev_projects!inner(...)` syntax requires a FK relationship. Without it, PostgREST cannot resolve the join and the query silently returns null.
-- **Affects:** `ProjectLandingLayout.tsx` (header, footer, logo)
-- **Affects:** `ProjectLandingHome.tsx` uses separate queries but same root issue on `dev_projects`
+### 1. Investment Engine — Alle Module nutzen dieselbe Engine ✅
 
-### 2. No Public RLS — Blocks Anonymous & Cross-Tenant Access
-The landing page is a **public website** (Zone 3), but:
-- `dev_projects` — only allows `tenant_id = get_user_tenant_id()` (auth required)
-- `dev_project_units` — same restriction
-- `document_links` — no policy for `object_type = 'project'`
-- `documents` — no public policy for project images
+Alle vier Kontexte rufen `sot-investment-engine` über denselben Hook `useInvestmentEngine` auf:
 
-Even logged-in users see "Projekt nicht gefunden" because the restrictive `tenant_isolation_restrictive` policy blocks unless `get_user_tenant_id()` matches.
+| Kontext | Hook | Engine-Call |
+|---------|------|-------------|
+| MOD-13 InvestEngine Tab | `useInvestmentEngine` direkt | ✅ `sot-investment-engine` |
+| MOD-13 Expose | `useProjectUnitExpose` → `useInvestmentEngine` | ✅ |
+| MOD-08 Expose | `useExposeListing` → `useInvestmentEngine` | ✅ |
+| MOD-09 Expose | `useExposeListing` → `useInvestmentEngine` | ✅ |
+| Zone 3 Kaufy | `useExposeListing` → `useInvestmentEngine` | ✅ |
+| Zone 3 ProjectLanding | `useProjectUnitExpose` → `useInvestmentEngine` | ✅ |
 
-### 3. Existing landing page status is `draft`
-The public RLS policy on `landing_pages` only allows `preview` and `active`. For the portal preview (logged-in user), this works via the org-member policy. But the public path blocks `draft` — this is correct behavior but needs the preview flow to account for it.
+**Ergebnis: Identische Engine. Kein Duplikat.**
 
-## Fix Plan
+---
 
-### Migration 1: Add FK + Public RLS Policies
+### 2. AfA + Gebäudeanteil — INKONSISTENZ GEFUNDEN ⚠️
 
-```sql
--- 1. Add FK from landing_pages to dev_projects
-ALTER TABLE public.landing_pages
-  ADD CONSTRAINT landing_pages_project_id_fkey
-  FOREIGN KEY (project_id) REFERENCES public.dev_projects(id);
+**Problem:** Die AfA-Parameter kommen aus **zwei verschiedenen Quellen**, je nach Pfad:
 
--- 2. Public SELECT on dev_projects for projects with active landing pages
-CREATE POLICY "public_read_landing_page_projects"
-ON public.dev_projects FOR SELECT TO anon, authenticated
-USING (
-  id IN (
-    SELECT project_id FROM public.landing_pages
-    WHERE status IN ('draft', 'preview', 'active')
-  )
-);
+**Pfad A — MOD-13 (Projekte):** `useProjectUnitExpose` und `InvestEngineTab`
+- Liest `afa_model`, `land_share_percent`, `afa_rate_percent` direkt aus `dev_projects`
+- Diese Werte werden im Projekt-Datenblatt gepflegt
+- ✅ Korrekt: Projekt-spezifische Werte
 
--- 3. Public SELECT on dev_project_units for those projects
-CREATE POLICY "public_read_landing_page_units"
-ON public.dev_project_units FOR SELECT TO anon, authenticated
-USING (
-  project_id IN (
-    SELECT project_id FROM public.landing_pages
-    WHERE status IN ('draft', 'preview', 'active')
-  )
-);
+**Pfad B — MOD-08, MOD-09, Kaufy:** `useExposeListing`
+- Liest AfA-Overrides aus `property_accounting` (Zeile 177-188)
+- Lookup: `property_accounting.property_id = listing.property_id`
+- **Problem:** Wenn für das Listing keine `property_accounting`-Einträge existieren, fallen die Werte auf **Defaults** zurück (`buildingShare: 0.8`, `afaModel: 'linear'`)
+- Diese Defaults stimmen möglicherweise **NICHT** mit den Projekt-Datenblatt-Werten überein
 
--- 4. Public SELECT on document_links for project images
-CREATE POLICY "public_read_project_image_links"
-ON public.document_links FOR SELECT TO anon, authenticated
-USING (
-  object_type = 'project'
-  AND object_id IN (
-    SELECT project_id FROM public.landing_pages
-    WHERE status IN ('draft', 'preview', 'active')
-  )
-);
+**Konkretes Szenario:** Ein Projekt hat `afa_model: '7b'` und `land_share_percent: 15` im Datenblatt. Wenn über MOD-13 → Vertrieb Listings erstellt werden, aber kein `property_accounting`-Eintrag angelegt wird, zeigen MOD-08/09/Kaufy die falschen AfA-Werte (linear statt 7b, 80% statt 85% Gebäudeanteil).
 
--- 5. Public SELECT on documents for project-linked images
-CREATE POLICY "public_read_project_landing_documents"
-ON public.documents FOR SELECT TO anon, authenticated
-USING (
-  id IN (
-    SELECT dl.document_id FROM public.document_links dl
-    WHERE dl.object_type = 'project'
-    AND dl.object_id IN (
-      SELECT project_id FROM public.landing_pages
-      WHERE status IN ('draft', 'preview', 'active')
-    )
-  )
-);
+**Fix:** `useExposeListing` muss einen Fallback auf `dev_projects`-Daten implementieren, wenn das Listing aus einem Projekt stammt. Alternativ: Die `CreatePropertyFromUnits`-Funktion muss zwingend `property_accounting` befüllen.
 
--- 6. Include 'draft' in landing_pages public policy (for preview from portal)
-DROP POLICY IF EXISTS "Public can view active landing pages" ON public.landing_pages;
-CREATE POLICY "Public can view landing pages"
-ON public.landing_pages FOR SELECT TO anon, authenticated
-USING (status IN ('draft', 'preview', 'active'));
+---
+
+### 3. Bilder in MOD-08 / MOD-09 — DEFEKT ⚠️
+
+**Problem:** Die `ExposeImageGallery` sucht Bilder über:
+```
+document_links WHERE object_type = 'property' AND object_id = propertyId
 ```
 
-### No Code Changes Needed
-The existing `ProjectLandingHome.tsx` and `ProjectLandingLayout.tsx` code is correct — the queries will work once the FK and RLS policies are in place.
+**Für Projekt-Units:** `useProjectUnitExpose` setzt `property_id: unit.property_id || unit.id`. Wenn `unit.property_id` `null` ist (Einheit hat noch keine verknüpfte Property), wird `unit.id` verwendet — aber es gibt keine `document_links` mit `object_id = unit.id`.
 
-### Security Note
-- Only projects with a `landing_pages` record are exposed publicly
-- The policies are read-only (SELECT)
-- `locked` status pages remain invisible
-- Write operations remain protected by existing org-member policies
+**Für Listings (MOD-08/09/Kaufy):** `useExposeListing` nutzt `listing.property_id` aus der `listings`-Tabelle. Die Bilder werden nur gefunden, wenn:
+1. Das Listing eine korrekte `property_id` hat
+2. Für diese Property `document_links` mit `object_type = 'property'` existieren
 
-### Freeze Check
-| Path | Frozen? |
-|---|---|
-| Database migration | No |
-| `ProjectLandingHome.tsx` (Zone 3, project-landing) | **Not frozen** (not in zone3_freeze.json) |
-| `ProjectLandingLayout.tsx` | **Not frozen** |
-| No code changes needed | N/A |
+**Wahrscheinliche Ursache:** Wenn Listings über `CreatePropertyFromUnits` aus Projekt-Einheiten erstellt werden, werden die Bilder möglicherweise nicht als `document_links` für die neue Property migriert. Die Bilder liegen wahrscheinlich als `document_links` mit `object_type = 'project'` oder `object_type = 'dev_project_unit'` vor.
+
+**Fix:** Entweder:
+- a) `ExposeImageGallery` erweitern: Fallback-Query auf `document_links WHERE object_type = 'project' AND object_id = projectId`
+- b) `CreatePropertyFromUnits` fixen: Bilder beim Erstellen der Property als `document_links` kopieren
+- c) Beide Ansätze kombinieren
+
+---
+
+### 4. Speichern-Button MOD-13 Preisliste ✅
+
+Die `savePreisliste`-Mutation (PortfolioTab.tsx, Zeile 242-290) ist korrekt implementiert:
+- Sammelt Price- und Status-Overrides
+- Schreibt per `supabase.from('dev_project_units').update()` in die DB
+- Invalidiert den Query-Cache nach Erfolg
+- Button ist jetzt immer sichtbar (unser Fix) mit `disabled={!hasUnsavedChanges}`
+
+---
+
+### 5. Analyse-Button MOD-13 InvestEngine ✅
+
+Der "Berechnen"-Button (InvestEngineTab.tsx, Zeile 103-152) ist korrekt:
+- Iteriert über alle Units des Projekts
+- Ruft für jede Unit `calculate()` mit Projekt-spezifischen AfA-Werten auf
+- Setzt `invest_engine_analyzed: true` Flag in `dev_projects`
+- Caching der Ergebnisse in `metricsCache`
+
+---
+
+## Implementierungsplan
+
+### Fix 1: AfA-Konsistenz in `useExposeListing` (KRITISCH)
+
+**Datei:** `src/hooks/useExposeListing.ts`
+
+Wenn `property_accounting` keine Daten liefert, prüfen ob das Listing aus einem Projekt stammt (über `dev_project_units` → `dev_projects`) und die AfA-Werte von dort laden.
+
+Konkret: Nach dem `accountingData`-Query (Zeile 177-188) einen weiteren Fallback-Query einbauen, der über die `listings`-Tabelle → `properties` → `dev_project_units` → `dev_projects` die Projekt-Werte holt.
+
+### Fix 2: Bilder für Projekt-Listings (KRITISCH)
+
+**Datei:** `src/components/investment/ExposeImageGallery.tsx`
+
+Erweitern um:
+- Neuen optionalen Prop `projectId?: string`
+- Wenn keine Bilder über `property`-Links gefunden werden, Fallback-Query: `document_links WHERE object_type = 'project' AND object_id = projectId`
+
+**Dateien:** `src/hooks/useExposeListing.ts` + `src/hooks/useProjectUnitExpose.ts`
+- `projectId` aus der Datenquelle durchreichen an `ExposeListingData`
+- `InvestmentExposeView` muss `projectId` an `ExposeImageGallery` weitergeben
+
+### Betroffene Module (Freeze-Check)
+- `src/components/investment/*` → INFRA (muss geprüft werden in `infra_freeze.json`)
+- `src/hooks/useExposeListing.ts` → Shared Hook, kein Modul-Pfad → frei editierbar
+- `src/hooks/useProjectUnitExpose.ts` → Shared Hook → frei editierbar
+
+### Nicht betroffen (funktioniert korrekt)
+- Speichern-Button MOD-13 ✅
+- Analyse-Button MOD-13 ✅
+- Engine-Konsistenz (alle nutzen `sot-investment-engine`) ✅
 
