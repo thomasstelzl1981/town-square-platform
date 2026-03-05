@@ -23,6 +23,7 @@ export default function InvestmentExposePage() {
     grossYield,
     isFavorite,
     setIsFavorite,
+    accountingLocked,
   } = useExposeListing({
     publicId,
     useUrlParams: true,
@@ -60,6 +61,7 @@ export default function InvestmentExposePage() {
       showFavorite={true}
       isFavorite={isFavorite}
       onToggleFavorite={toggleFavorite}
+      accountingLocked={accountingLocked}
     />
   );
 }

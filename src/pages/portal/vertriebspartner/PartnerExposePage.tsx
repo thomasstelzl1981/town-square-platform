@@ -22,6 +22,7 @@ export default function PartnerExposePage() {
     grossYield,
     isFavorite,
     setIsFavorite,
+    accountingLocked,
   } = useExposeListing({
     publicId,
     useUrlParams: true,
@@ -48,6 +49,7 @@ export default function PartnerExposePage() {
       showFavorite={true}
       isFavorite={isFavorite}
       onToggleFavorite={toggleFavorite}
+      accountingLocked={accountingLocked}
     />
   );
 }

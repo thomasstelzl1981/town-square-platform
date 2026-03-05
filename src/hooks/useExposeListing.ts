@@ -214,6 +214,8 @@ export function useExposeListing({
     ? ((params.monthlyRent * 12) / listing.asking_price) * 100
     : 0;
 
+  const accountingLocked = !!(accountingData?.afa_rate_percent || accountingData?.building_share_percent);
+
   return {
     listing,
     isLoading,
@@ -225,5 +227,6 @@ export function useExposeListing({
     isFavorite,
     setIsFavorite,
     calculate,
+    accountingLocked,
   };
 }

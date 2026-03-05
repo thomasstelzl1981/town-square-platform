@@ -31,6 +31,7 @@ export default function Kaufy2026Expose() {
     grossYield,
     isFavorite,
     setIsFavorite,
+    accountingLocked,
   } = useExposeListing({
     publicId,
     useUrlParams: true,
@@ -151,6 +152,7 @@ export default function Kaufy2026Expose() {
       mobileBottomBar={mobileBottomBar}
       afterContent={afterContent}
       notFoundContent={notFoundContent}
+      accountingLocked={accountingLocked}
     />
     </>
   );

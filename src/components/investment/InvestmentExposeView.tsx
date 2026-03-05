@@ -111,6 +111,8 @@ interface InvestmentExposeViewProps {
   };
   /** Whether this is a commercial/business context (disables personal tax effects) */
   isCommercial?: boolean;
+  /** Whether AfA/building share are locked from property accounting */
+  accountingLocked?: boolean;
 }
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
@@ -150,6 +152,7 @@ export function InvestmentExposeView({
   headerClassName,
   textColors,
   isCommercial = false,
+  accountingLocked = false,
 }: InvestmentExposeViewProps) {
   const isMobile = useIsMobile();
 
@@ -255,8 +258,8 @@ export function InvestmentExposeView({
                 </p>
               </div>
 
-              {/* Key Facts — 6-col grid */}
-              <div className={cn("gap-4 p-4 rounded-xl grid", factsBg, isMobile ? "grid-cols-3" : "grid-cols-2 md:grid-cols-6")}>
+              {/* Key Facts — 8-col grid */}
+              <div className={cn("gap-4 p-4 rounded-xl grid", factsBg, isMobile ? "grid-cols-3" : "grid-cols-2 md:grid-cols-4")}>
                 <div>
                   <p className={cn("text-sm", factsLabel)}>Wohnfläche</p>
                   <p className="font-semibold flex items-center gap-1">
@@ -284,6 +287,17 @@ export function InvestmentExposeView({
                 <div>
                   <p className={cn("text-sm", factsLabel)}>Heizung</p>
                   <p className="font-semibold">{listing.heating_type || '–'}</p>
+                </div>
+                <div>
+                  <p className={cn("text-sm", factsLabel)}>Gebäudeanteil</p>
+                  <p className="font-semibold">{Math.round(params.buildingShare * 100)}%</p>
+                </div>
+                <div>
+                  <p className={cn("text-sm", factsLabel)}>AfA-Satz</p>
+                  <p className="font-semibold">
+                    {params.afaRateOverride ? `${params.afaRateOverride}%` : params.afaModel === 'linear' ? '2%' : params.afaModel === '7i' ? '§7i' : params.afaModel === '7h' ? '§7h' : '§7b'}
+                    {' '}({params.afaModel === 'linear' ? 'Linear' : params.afaModel})
+                  </p>
                 </div>
               </div>
 
@@ -360,6 +374,7 @@ export function InvestmentExposeView({
                 showAdvanced={false}
                 purchasePrice={listing.asking_price}
                 isCommercial={isCommercial}
+                accountingLocked={accountingLocked}
               />
               {calculatorExtras}
             </div>
@@ -374,6 +389,7 @@ export function InvestmentExposeView({
                     showAdvanced={true}
                     purchasePrice={listing.asking_price}
                     isCommercial={isCommercial}
+                    accountingLocked={accountingLocked}
                   />
                   {calculatorExtras}
                 </div>
