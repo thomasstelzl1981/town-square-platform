@@ -2,10 +2,9 @@
  * UploadDrawer — Drawer for document upload in MOD-20 (Miety/Zuhause)
  * Upgraded: SmartDropZone + AIProcessingOverlay for ChatGPT-style feedback
  */
-import { useCallback } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import { DetailDrawer } from '@/components/shared/DetailDrawer';
 import { useLegalConsent } from '@/hooks/useLegalConsent';
-import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { sanitizeFileName, UPLOAD_BUCKET } from '@/config/storageManifest';
@@ -31,6 +30,14 @@ export function UploadDrawer({ open, onOpenChange, homeId }: UploadDrawerProps) 
   const [uploading, setUploading] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
   const [aiStep, setAiStep] = useState(0);
+  const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (stepTimerRef.current) clearInterval(stepTimerRef.current);
+    };
+  }, []);
 
   // Block opening if consent not given
   useEffect(() => {
@@ -54,8 +61,9 @@ export function UploadDrawer({ open, onOpenChange, homeId }: UploadDrawerProps) 
     setAiStep(0);
     let successCount = 0;
 
-    // Animate steps
-    const stepTimer = setInterval(() => {
+    // Animate steps (ref-guarded for unmount safety)
+    if (stepTimerRef.current) clearInterval(stepTimerRef.current);
+    stepTimerRef.current = setInterval(() => {
       setAiStep(prev => Math.min(prev + 1, AI_STEPS.length - 1));
     }, 1000);
 
@@ -76,7 +84,7 @@ export function UploadDrawer({ open, onOpenChange, homeId }: UploadDrawerProps) 
       }
     }
 
-    clearInterval(stepTimer);
+    if (stepTimerRef.current) { clearInterval(stepTimerRef.current); stepTimerRef.current = null; }
     setAiStep(AI_STEPS.length - 1);
 
     if (successCount > 0) {

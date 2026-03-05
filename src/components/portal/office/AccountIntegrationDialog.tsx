@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -168,6 +168,14 @@ export function AccountIntegrationDialog({ open, onOpenChange }: AccountIntegrat
   const [activeTab, setActiveTab] = useState<'accounts' | 'add'>('accounts');
   const [addProvider, setAddProvider] = useState<string>('google');
   const [isConnecting, setIsConnecting] = useState(false);
+  const pollCleanupRef = useRef<(() => void) | null>(null);
+
+  // Cleanup poll timer on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (pollCleanupRef.current) pollCleanupRef.current();
+    };
+  }, []);
 
   // Fetch all mail accounts
   const { data: accounts = [], isLoading } = useQuery({
@@ -332,6 +340,7 @@ export function AccountIntegrationDialog({ open, onOpenChange }: AccountIntegrat
         window.removeEventListener('message', handleMessage);
         window.removeEventListener('storage', handleStorage);
         clearInterval(pollTimer);
+        pollCleanupRef.current = null;
       };
 
       // 3a. Listen for postMessage from popup callback
@@ -369,6 +378,9 @@ export function AccountIntegrationDialog({ open, onOpenChange }: AccountIntegrat
           }, 1500);
         }
       }, 1000);
+
+      // Store cleanup ref for unmount safety
+      pollCleanupRef.current = cleanup;
     } catch (error: any) {
       toast.error('Google-Verbindung fehlgeschlagen: ' + error.message);
       setIsConnecting(false);
