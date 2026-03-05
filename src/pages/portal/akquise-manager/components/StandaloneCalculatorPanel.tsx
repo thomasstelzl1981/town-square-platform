@@ -124,8 +124,9 @@ export function StandaloneCalculatorPanel() {
       const { data: extractResult, error: extractError } = await supabase.functions
         .invoke('sot-acq-offer-extract', {
           body: {
-            documentPath: result.storagePath,
             standaloneMode: true,
+            storagePath: result.storagePath,
+            bucketName: 'tenant-documents',
           },
         });
 

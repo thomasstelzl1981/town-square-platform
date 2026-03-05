@@ -2,6 +2,9 @@
  * SOT-ACQ-OFFER-EXTRACT
  * 
  * Extract structured property data from uploaded documents (Exposés) using AI
+ * Supports two modes:
+ *   1. Standard: offerId + documentId → reads from acq_offer_documents, updates DB
+ *   2. Standalone: standaloneMode + storagePath + bucketName → reads file directly, no DB writes
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
@@ -10,6 +13,104 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// AI Extraction Prompt (shared between both modes)
+const buildExtractionPrompt = (documentContent: string, fileName: string) => `
+Du bist ein Exposé-Analyst. Extrahiere strukturierte Immobiliendaten aus dem folgenden Dokument.
+
+**Dokument:** ${fileName}
+**Dokumentinhalt:**
+${documentContent.slice(0, 10000)}
+
+Extrahiere alle verfügbaren Informationen und antworte NUR mit einem JSON-Objekt:
+
+{
+  "title": "Objektbezeichnung",
+  "address": "Vollständige Adresse",
+  "postal_code": "PLZ",
+  "city": "Stadt",
+  "price_asking": null oder Zahl,
+  "yield_indicated": null oder Prozent als Zahl,
+  "noi_indicated": null oder Zahl (Netto-Mieteinnahmen p.a.),
+  "units_count": null oder Anzahl,
+  "area_sqm": null oder Fläche in m²,
+  "year_built": null oder Baujahr,
+  "property_type": "MFH|ETW|EFH|ZFH|WGH|GEW|unbekannt",
+  "floors": null oder Anzahl Etagen,
+  "parking_spaces": null oder Anzahl Stellplätze,
+  "heating_type": "Gas|Öl|Fernwärme|Wärmepumpe|unbekannt",
+  "energy_class": "A+|A|B|C|D|E|F|G|H|unbekannt",
+  "renovation_status": "saniert|teilsaniert|unsaniert|neubau|unbekannt",
+  "monthly_rent_current": null oder aktuelle Monatsmiete,
+  "monthly_rent_potential": null oder Mietpotenzial,
+  "vacancy_rate": null oder Leerstand in Prozent,
+  "contact_broker": {
+    "name": null oder Name,
+    "company": null oder Firma,
+    "phone": null oder Telefon,
+    "email": null oder E-Mail
+  },
+  "highlights": ["Highlight 1", "Highlight 2"],
+  "notes": "Weitere wichtige Informationen"
+}
+
+Wenn ein Wert nicht gefunden wird, setze null.
+`;
+
+async function callAI(prompt: string, apiKey: string) {
+  const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      max_tokens: 8000,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!aiResponse.ok) {
+    throw new Error(`AI API error: ${aiResponse.status}`);
+  }
+
+  return aiResponse.json();
+}
+
+function parseExtraction(aiData: any) {
+  const content = aiData.choices?.[0]?.message?.content;
+  let extractedData: Record<string, unknown> = {};
+  let confidence = 50;
+
+  if (content) {
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        extractedData = JSON.parse(jsonMatch[0]);
+        const filledFields = Object.values(extractedData).filter(v => v !== null && v !== 'unbekannt').length;
+        confidence = Math.min(95, 30 + filledFields * 5);
+      }
+    } catch {
+      console.error('Failed to parse extraction:', content);
+      extractedData = { raw_response: content, parse_error: true };
+    }
+  }
+
+  return { extractedData, confidence, tokensUsed: aiData.usage?.total_tokens };
+}
+
+async function readDocumentContent(fileData: Blob, mimeType: string, fileName: string): Promise<string> {
+  const isPDF = mimeType === 'application/pdf';
+  if (isPDF) {
+    return `[PDF-Dokument: ${fileName}]\nGröße: ${fileData.size} Bytes\n\nHinweis: Vollständige PDF-Extraktion erfordert OCR-Integration.`;
+  }
+  try {
+    return await fileData.text();
+  } catch {
+    return `[Binärdatei: ${fileName}]`;
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -26,7 +127,45 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { offerId, documentId } = await req.json();
+    const body = await req.json();
+
+    // ── STANDALONE MODE ──
+    if (body.standaloneMode === true) {
+      const { storagePath, bucketName } = body;
+      
+      if (!storagePath || !bucketName) {
+        throw new Error('standaloneMode requires storagePath and bucketName');
+      }
+
+      // Download file directly from the specified bucket
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from(bucketName)
+        .download(storagePath);
+
+      if (downloadError || !fileData) {
+        throw new Error('Failed to download document: ' + downloadError?.message);
+      }
+
+      // Determine mime type from path
+      const fileName = storagePath.split('/').pop() || 'document';
+      const mimeType = fileName.endsWith('.pdf') ? 'application/pdf' : 'text/plain';
+      const documentContent = await readDocumentContent(fileData, mimeType, fileName);
+
+      // AI Extraction
+      const prompt = buildExtractionPrompt(documentContent, fileName);
+      const aiData = await callAI(prompt, LOVABLE_API_KEY);
+      const { extractedData, confidence } = parseExtraction(aiData);
+
+      console.log('Standalone extraction complete:', { storagePath, confidence });
+
+      return new Response(
+        JSON.stringify({ success: true, extractedData, confidence }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ── STANDARD MODE (offerId + documentId) ──
+    const { offerId, documentId } = body;
 
     // Get document
     const { data: doc, error: docError } = await supabase
@@ -69,114 +208,12 @@ serve(async (req) => {
       throw new Error('Failed to download document: ' + downloadError?.message);
     }
 
-    // For PDF extraction, we need the text content
-    // In a real implementation, you'd use a PDF parsing library
-    // For now, we'll try to extract what we can or note it's a PDF
+    const documentContent = await readDocumentContent(fileData, doc.mime_type || '', doc.file_name);
 
-    let documentContent = '';
-    const isPDF = doc.mime_type === 'application/pdf';
-
-    if (isPDF) {
-      // Note: Actual PDF parsing would require additional libraries
-      // For demo, we'll note the limitation
-      documentContent = `[PDF-Dokument: ${doc.file_name}]\n` +
-        `Größe: ${doc.file_size} Bytes\n` +
-        `Typ: ${doc.document_type}\n` +
-        `\nHinweis: Vollständige PDF-Extraktion erfordert OCR-Integration.`;
-    } else {
-      // Try to read as text
-      try {
-        documentContent = await fileData.text();
-      } catch {
-        documentContent = `[Binärdatei: ${doc.file_name}]`;
-      }
-    }
-
-    // AI Extraction Prompt
-    const extractionPrompt = `
-Du bist ein Exposé-Analyst. Extrahiere strukturierte Immobiliendaten aus dem folgenden Dokument.
-
-**Dokumentinhalt:**
-${documentContent.slice(0, 10000)}
-
-Extrahiere alle verfügbaren Informationen und antworte NUR mit einem JSON-Objekt:
-
-{
-  "title": "Objektbezeichnung",
-  "address": "Vollständige Adresse",
-  "postal_code": "PLZ",
-  "city": "Stadt",
-  "price_asking": null oder Zahl,
-  "yield_indicated": null oder Prozent als Zahl,
-  "noi_indicated": null oder Zahl (Netto-Mieteinnahmen p.a.),
-  "units_count": null oder Anzahl,
-  "area_sqm": null oder Fläche in m²,
-  "year_built": null oder Baujahr,
-  "property_type": "MFH|ETW|EFH|ZFH|WGH|GEW|unbekannt",
-  "floors": null oder Anzahl Etagen,
-  "parking_spaces": null oder Anzahl Stellplätze,
-  "heating_type": "Gas|Öl|Fernwärme|Wärmepumpe|unbekannt",
-  "energy_class": "A+|A|B|C|D|E|F|G|H|unbekannt",
-  "renovation_status": "saniert|teilsaniert|unsaniert|neubau|unbekannt",
-  "monthly_rent_current": null oder aktuelle Monatsmiete,
-  "monthly_rent_potential": null oder Mietpotenzial,
-  "vacancy_rate": null oder Leerstand in Prozent,
-  "contact_broker": {
-    "name": null oder Name,
-    "company": null oder Firma,
-    "phone": null oder Telefon,
-    "email": null oder E-Mail
-  },
-  "highlights": ["Highlight 1", "Highlight 2"],
-  "notes": "Weitere wichtige Informationen"
-}
-
-Wenn ein Wert nicht gefunden wird, setze null.
-`;
-
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
-        max_tokens: 8000,
-        messages: [
-          {
-            role: 'user',
-            content: extractionPrompt,
-          },
-        ],
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      throw new Error(`AI API error: ${aiResponse.status}`);
-    }
-
-    const aiData = await aiResponse.json();
-    const content = aiData.choices?.[0]?.message?.content;
-
-    let extractedData: Record<string, unknown> = {};
-    let confidence = 50;
-
-    if (content) {
-      try {
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          extractedData = JSON.parse(jsonMatch[0]);
-          
-          // Calculate confidence based on filled fields
-          const filledFields = Object.values(extractedData).filter(v => v !== null && v !== 'unbekannt').length;
-          confidence = Math.min(95, 30 + filledFields * 5);
-        }
-      } catch (parseError) {
-        console.error('Failed to parse extraction:', content);
-        extractedData = { raw_response: content, parse_error: true };
-      }
-    }
+    // AI Extraction
+    const prompt = buildExtractionPrompt(documentContent, doc.file_name);
+    const aiData = await callAI(prompt, LOVABLE_API_KEY);
+    const { extractedData, confidence, tokensUsed } = parseExtraction(aiData);
 
     // Update document with extracted text
     await supabase
@@ -190,8 +227,8 @@ Wenn ein Wert nicht gefunden wird, setze null.
       .update({
         status: 'completed',
         output_data: extractedData,
-        model_used: 'google/gemini-2.5-pro',
-        tokens_used: aiData.usage?.total_tokens,
+        model_used: 'google/gemini-2.5-flash',
+        tokens_used: tokensUsed,
         completed_at: new Date().toISOString(),
       })
       .eq('id', run?.id);
@@ -203,7 +240,6 @@ Wenn ein Wert nicht gefunden wird, setze null.
       updated_at: new Date().toISOString(),
     };
 
-    // Auto-fill empty offer fields
     if (extractedData.title && !offer) offerUpdates.title = extractedData.title;
     if (extractedData.address) offerUpdates.address = extractedData.address;
     if (extractedData.postal_code) offerUpdates.postal_code = extractedData.postal_code;
