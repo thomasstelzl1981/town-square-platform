@@ -8,6 +8,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { mapAfaModelToEngine } from '@/lib/mapAfaModel';
 import { getCachedSignedUrl } from '@/lib/imageCache';
 import { Loader2, Building2, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -82,7 +83,39 @@ export default function Kaufy2026Home() {
 
   const { calculate } = useInvestmentEngine();
 
-  // Fetch listings query
+  // Shared helper: batch-fetch property_accounting for AfA SSOT (mirrors MOD-08 SucheTab)
+  const fetchAccountingMap = useCallback(async (listingsToProcess: PublicListing[]) => {
+    const propertyIds = listingsToProcess.map(l => l.property_id).filter(Boolean) as string[];
+    const map = new Map<string, { afa_rate_percent: number | null; afa_model: string | null; building_share_percent: number | null }>();
+    if (propertyIds.length > 0) {
+      const { data: accountingRows } = await supabase
+        .from('property_accounting')
+        .select('property_id, afa_rate_percent, afa_model, building_share_percent')
+        .in('property_id', propertyIds);
+      for (const row of (accountingRows || [])) {
+        map.set(row.property_id, row);
+      }
+    }
+    return map;
+  }, []);
+
+  // Build CalculationInput with AfA from property_accounting (SSOT), default 80% / linear
+  const buildCalcInput = useCallback((listing: PublicListing, params: SearchParams, accountingMap: Map<string, any>): CalculationInput => {
+    const monthlyRent = listing.monthly_rent_total || (listing.asking_price * 0.04 / 12);
+    const acct = listing.property_id ? accountingMap.get(listing.property_id) : undefined;
+    return {
+      ...defaultInput,
+      purchasePrice: listing.asking_price,
+      monthlyRent,
+      equity: params.equity,
+      taxableIncome: params.zvE,
+      maritalStatus: params.maritalStatus,
+      hasChurchTax: params.hasChurchTax,
+      afaRateOverride: acct?.afa_rate_percent ?? undefined,
+      buildingShare: acct?.building_share_percent ? acct.building_share_percent / 100 : 0.8,
+      afaModel: mapAfaModelToEngine(acct?.afa_model),
+    };
+  }, []);
   const { data: listings = [], isLoading: isLoadingListings, refetch } = useQuery({
     queryKey: ['kaufy2026-listings', classicParams.city, classicParams.maxPrice],
     queryFn: async () => {
@@ -252,18 +285,11 @@ export default function Kaufy2026Home() {
     const runCalc = async () => {
       setIsSearching(true);
       const newCache: Record<string, InvestmentMetrics> = {};
+      const batch = allListings.slice(0, 20);
+      const accountingMap = await fetchAccountingMap(batch);
 
-      await Promise.all(allListings.slice(0, 20).map(async (listing: any) => {
-        const monthlyRent = listing.monthly_rent_total || (listing.asking_price * 0.04 / 12);
-        const input: CalculationInput = {
-          ...defaultInput,
-          purchasePrice: listing.asking_price,
-          monthlyRent,
-          equity: searchParams.equity,
-          taxableIncome: searchParams.zvE,
-          maritalStatus: searchParams.maritalStatus,
-          hasChurchTax: searchParams.hasChurchTax,
-        };
+      await Promise.all(batch.map(async (listing: any) => {
+        const input = buildCalcInput(listing, searchParams, accountingMap);
         const result = await calculate(input);
         if (result) {
           newCache[listing.listing_id] = {
@@ -282,7 +308,7 @@ export default function Kaufy2026Home() {
     };
 
     runCalc();
-  }, [hasSearched, allListings, metricsCache, searchParams, calculate]);
+  }, [hasSearched, allListings, metricsCache, searchParams, calculate, fetchAccountingMap, buildCalcInput]);
 
   // Investment search handler
   const handleInvestmentSearch = useCallback(async (params: SearchParams) => {
@@ -310,20 +336,10 @@ export default function Kaufy2026Home() {
     }
 
     const newCache: Record<string, InvestmentMetrics> = {};
+    const accountingMap = await fetchAccountingMap(listingsToProcess as PublicListing[]);
 
     await Promise.all(listingsToProcess.map(async (listing: PublicListing) => {
-      const monthlyRent = listing.monthly_rent_total || (listing.asking_price * 0.04 / 12);
-
-      const input: CalculationInput = {
-        ...defaultInput,
-        purchasePrice: listing.asking_price,
-        monthlyRent,
-        equity: params.equity,
-        taxableIncome: params.zvE,
-        maritalStatus: params.maritalStatus,
-        hasChurchTax: params.hasChurchTax,
-      };
-
+      const input = buildCalcInput(listing, params, accountingMap);
       const result = await calculate(input);
       if (result) {
         newCache[listing.listing_id] = {
@@ -339,7 +355,7 @@ export default function Kaufy2026Home() {
 
     setMetricsCache(newCache);
     setIsSearching(false);
-  }, [calculate, refetch, setUrlParams]);
+  }, [calculate, refetch, setUrlParams, fetchAccountingMap, buildCalcInput, demoListings]);
 
   // Classic search handler
   const handleClassicSearch = useCallback(async (params: ClassicSearchParams) => {
