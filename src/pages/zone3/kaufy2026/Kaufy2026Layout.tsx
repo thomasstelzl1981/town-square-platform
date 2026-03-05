@@ -115,13 +115,8 @@ export default function Kaufy2026Layout() {
             {/* Right side: Auth buttons only (Armstrong toggle removed from header) */}
             <div className="hidden md:flex items-center gap-3">
               <Link to="/auth">
-                <Button variant="ghost" size="sm" className="text-[hsl(220,20%,10%)]">
-                  Anmelden
-                </Button>
-              </Link>
-              <Link to="/auth">
                 <Button size="sm" className="rounded-full bg-[hsl(220,20%,10%)] hover:bg-[hsl(220,20%,20%)]">
-                  Registrieren
+                  Anmelden
                 </Button>
               </Link>
             </div>
