@@ -1,157 +1,98 @@
 
 
-# Kostenoptimierung Dokumentenverarbeitung — Neue Denkrichtung
+# Kontextbasiertes Modell-Routing: Indexierung vs. Engine-Verarbeitung
 
-## Das eigentliche Problem
+## Analyse: Was fehlt aktuell?
 
-Aktuell wird **jedes Dokument** mit dem teuersten Modell verarbeitet: **Gemini 2.5 Pro** ($1.25/M Input, $5.00/M Output). Das ist so, als wuerde man fuer jeden Brief den teuersten Anwalt engagieren — egal ob es eine Werbebroschure oder ein Kaufvertrag ist.
-
-DeepSeek faellt wegen DSGVO aus. Aber es gibt **zwei Hebel**, die zusammen fast die gleiche Ersparnis bringen — und DSGVO-konform bleiben:
-
----
-
-## Hebel 1: Modell-Tiering (sofort umsetzbar, -85% bis -95%)
-
-Das Lovable AI Gateway bietet **drei Gemini-Stufen**, alle EU-konform:
-
-| Modell | Input/M | Output/M | Faktor vs. Pro | Geeignet fuer |
-|--------|---------|----------|---------------|---------------|
-| **Gemini 2.5 Pro** | $1.25 | $5.00 | 1x (teuer) | Komplexe WEG-Abrechnungen, 50-Seiten-Vertraege |
-| **Gemini 2.5 Flash** | $0.15 | $0.60 | ~8x guenstiger | Standard-Dokumente (Rechnungen, Policen, Mietvertraege) |
-| **Gemini 2.5 Flash Lite** | $0.04 | $0.15 | ~30x guenstiger | Einfache Briefe, E-Mails, Kontoauszuege |
-
-### Kostenvergleich fuer 70.000 PDFs
-
-| Strategie | Kosten | Ersparnis vs. aktuell |
-|-----------|--------|-----------------------|
-| **Aktuell**: Alles mit Pro | ~$2.000 | — |
-| **Tiered**: 10% Pro, 60% Flash, 30% Flash Lite | ~$280 | **-86%** |
-| **DeepSeek** (hypothetisch) | ~$186 | -91% |
-
-**Das Tiering bringt fast die gleiche Ersparnis wie DeepSeek — ohne DSGVO-Risiko.**
-
-### Wie funktioniert das Routing?
-
-Der Extractor prueft vor dem AI-Call:
-- **Dateigröße < 100KB** oder **MIME = text/plain** → Flash Lite
-- **Dateiname enthaelt** "WEG", "Abrechnung", "Teilungserklaerung", ">20 Seiten" → Pro
-- **Alles andere** (Rechnungen, Policen, Standard-Vertraege) → Flash
-
-Das ist eine reine Konfigurations-Aenderung in `sot-storage-extractor` und `sot-document-parser` — keine neue Architektur noetig.
-
----
-
-## Hebel 2: Lazy Extraction (On-Demand statt Bulk)
-
-Aktuell: Alle 70.000 PDFs werden sofort komplett ausgelesen. Aber ein Kunde arbeitet typischerweise nur mit 10-20% seiner Dokumente aktiv.
-
-### Neues Konzept: Dreistufige Indexierung
+Das aktuelle Modell-Tiering waehlt das AI-Modell basierend auf **Dateieigenschaften** (Groesse, Dateiname). Es fehlt eine zweite Dimension: **Wozu wird das Dokument verarbeitet?**
 
 ```text
-Stufe 1: METADATA-SCAN (kostenlos, sofort)
-─────────────────────────────────────────
-Dateiname, Dateityp, Groesse, Ordnerstruktur
-→ Reicht fuer Sortierung und Uebersicht
-→ Armstrong weiss: "Im Ordner Immobilien/Berlin liegen 47 PDFs"
+AKTUELL (eindimensional):                    NEU (zweidimensional):
 
-Stufe 2: LIGHT-EXTRACT (Flash Lite, ~$0.001/Dok)
-─────────────────────────────────────────
-Nur erste Seite lesen → Dokumenttyp + 3-5 Schluesselfelder
-→ Armstrong weiss: "Das ist ein Mietvertrag, Mieter Mueller, 850€ kalt"
-→ Kostet fuer 70.000 Docs: ~$70 statt ~$2.000
-
-Stufe 3: DEEP-EXTRACT (Flash/Pro, on-demand)
-─────────────────────────────────────────
-Komplette Extraktion — nur wenn User/Armstrong es braucht
-→ Trigger: User oeffnet Dokument, Armstrong braucht Details
-→ Kostet pro Dok: $0.003-$0.029 je nach Komplexitaet
+Datei → selectModel(size, name) → Modell     Datei + ZWECK → selectModel() → Modell
+                                              
+Klein  → Flash Lite                          Indexierung + Klein  → Flash Lite ✓
+Normal → Flash                               Indexierung + Normal → Flash Lite (!)
+Komplex → Pro                                Indexierung + Komplex → Flash (!)
+                                              
+                                              Engine + Klein  → Flash
+                                              Engine + Normal → Flash
+                                              Engine + Komplex → Pro
 ```
+
+## Die zwei Verarbeitungspfade
+
+| Pfad | Zweck | Beispiel | Modell-Bedarf |
+|------|-------|----------|--------------|
+| **INDEX** | Armstrong findet und versteht Dokumente | Datenraum-Scan, Posteingang-Klassifizierung, Cloud-Sync | Flash Lite / Flash genuegt |
+| **ENGINE** | Aktive Verarbeitung in Engines/Golden Paths | Immobilien-Parser, Finanzierungs-Extraktion, NK-Beleg-Parsing, Invoice-Parsing | Flash / Pro noetig |
 
 ### Warum das funktioniert
 
-Wenn ein Kunde 70.000 PDFs hat, wird er in den ersten Monaten vielleicht 5.000-10.000 davon aktiv nutzen. Die restlichen 60.000 brauchen nur Stufe 1+2 (Metadaten + Typ-Erkennung).
+Beim **Indexieren** braucht Armstrong nur: Dokumenttyp, 5 Schluesselfelder, Zusammenfassung. Das kann Flash Lite zuverlaessig. Wenn Armstrong spaeter tiefere Details braucht, triggert er den On-Demand Deep-Extract (bereits implementiert).
 
-**Kosten-Szenario mit Lazy Extraction:**
+Bei **Engine-Verarbeitung** (z.B. `sot-document-parser` mit parseMode `immobilie` oder `finanzierung`) muessen 15-30 strukturierte Felder praezise extrahiert werden — hier ist Flash oder Pro unverzichtbar.
 
-| Phase | Dokumente | Methode | Kosten |
-|-------|-----------|---------|--------|
-| Sofort: Alle 70.000 scannen | 70.000 | Stufe 1 (Metadaten) | $0 |
-| Sofort: Alle 70.000 light-extracten | 70.000 | Stufe 2 (Flash Lite, 1 Seite) | ~$70 |
-| Laufend: Aktiv genutzte Docs | ~10.000 | Stufe 3 (Flash/Pro) | ~$40-100 |
-| **Gesamt im ersten Monat** | | | **~$110-170** |
+## Technische Umsetzung
 
-Verglichen mit aktuell ~$2.000 fuer sofortige Komplett-Extraktion.
+### 1. `sot-storage-extractor`: purpose-Parameter einfuehren
 
----
+Der Extractor erhaelt einen neuen Parameter `purpose: 'index' | 'engine'` (Default: `'index'`).
 
-## Technische Umsetzung — Was sich aendert
+- **`purpose: 'index'`** (Datenraum-Scan, Cloud-Sync, Posteingang-Erstklassifizierung):
+  - `selectModel()` stuft alles eine Stufe herunter: Normal → Flash Lite, Komplex → Flash
+  - Kein Pro-Modell fuer reine Indexierung
+  - Maximal Flash fuer die schwierigsten Faelle
 
-### 1. Model-Router in `sot-storage-extractor` und `sot-document-parser`
+- **`purpose: 'engine'`** (On-Demand Deep-Extract, gezielte Verarbeitung):
+  - Bisheriges Verhalten: Flash Lite / Flash / Pro je nach Komplexitaet
 
-Statt hardcoded `model: "google/gemini-2.5-pro"` eine Funktion:
+Aenderung in: `sot-storage-extractor/index.ts` — `selectModel()` erhaelt zweiten Parameter, `process-batch` und `deep-upgrade` Actions nutzen ihn.
 
-```text
-selectModel(file) → {
-  if textOnly oder < 100KB         → "google/gemini-2.5-flash-lite"
-  if complex (WEG, >20 Seiten)     → "google/gemini-2.5-pro"
-  else                              → "google/gemini-2.5-flash"
-}
-```
+### 2. `sot-document-parser`: callerContext-Parameter
 
-Aenderung in: `sot-storage-extractor/index.ts` (Zeile 380: model-Parameter), `sot-document-parser/index.ts`
+Der Parser wird von verschiedenen Stellen aufgerufen:
+- Vom Storage-Extractor (Indexierung) → kann guenstiger
+- Von der UI (User laedt Immobilie/Finanzierung hoch) → braucht volle Power
+- Vom Intake-System (Posteingang) → Zweistufig: erst klassifizieren (guenstig), dann parsen (voll)
 
-### 2. Light-Extract-Modus fuer Stufe 2
+Neuer optionaler Parameter `callerContext: 'index' | 'engine'` (Default: `'engine'` — bestehende Aufrufe behalten volle Power).
 
-Neuer Parameter `extractionDepth: "light" | "full"`:
-- **light**: Nur erste Seite senden, verkuerzter Prompt ("Nenne Dokumenttyp und 5 Schluesselfelder"), Flash Lite
-- **full**: Wie bisher, komplettes Dokument
+Wenn `callerContext === 'index'`: Model-Ceiling auf Flash (kein Pro).
 
-Aenderung in: `sot-storage-extractor/index.ts` (process-batch Action)
+Aenderung in: `sot-document-parser/index.ts` — Model-Tiering-Block (Zeile 635-644) erhaelt Ceiling-Logik.
 
-### 3. On-Demand Deep-Extract Trigger
+### 3. Posteingang (`sot-inbound-receive`): Zweistufiger Flow
 
-Wenn Armstrong ein Dokument braucht und nur Stufe-2-Daten vorliegen → automatischer Deep-Extract:
+Aktuell verarbeitet der Posteingang jedes Attachment sofort mit voller Power. Neuer Flow:
 
-```text
-Armstrong fragt: "Was steht im Mietvertrag Mueller?"
-→ searchDocumentChunks() findet Light-Extract
-→ Wenn nur Stufe 2: automatisch Stufe 3 triggern
-→ Ergebnis in document_chunks speichern
-→ Naechste Anfrage: Daten sofort da (kein erneuter AI-Call)
-```
+1. **Stufe 1 — Klassifizierung** (Flash Lite): Dokumenttyp erkennen, Prioritaet bestimmen
+2. **Stufe 2 — Engine-Parsing** (Flash/Pro): Nur wenn das Dokument einem aktiven Golden Path oder einer Engine zugeordnet wird (z.B. offene Finanzierung, aktiver Mietvertrag)
 
-Aenderung in: `sot-armstrong-advisor/index.ts` (DMS-Search-Logik)
+Aenderung in: `sot-inbound-receive/index.ts` — Zweistufige Verarbeitung mit purpose-Flag.
 
-### 4. extraction_depth Feld in document_chunks
+### 4. Armstrong Deep-Upgrade: Automatisch `purpose: 'engine'`
 
-Neues Feld `extraction_depth: 'metadata' | 'light' | 'full'` um zu tracken, welche Stufe ein Dokument hat.
+Der bereits implementierte On-Demand Deep-Extract in `sot-armstrong-advisor` triggert den Extractor mit `purpose: 'engine'` — wenn Armstrong tiefere Infos braucht, bekommt er die volle KI-Power.
 
-Aenderung: DB-Migration (neues Feld)
+Aenderung in: `sot-armstrong-advisor/index.ts` — Deep-Upgrade-Call erhaelt `purpose: 'engine'`.
 
----
+## Kostenauswirkung
 
-## Zusammenfassung: Beides kombiniert
+| Szenario: 70.000 PDFs | Aktuell (Tiering v1) | Neu (Purpose-aware) |
+|------------------------|---------------------|---------------------|
+| Datenraum-Scan (alle 70k) | ~$280 (Flash/Pro Mix) | ~$100 (Flash Lite/Flash, kein Pro) |
+| Davon Engine-Verarbeitung (10k aktiv) | Im Scan enthalten | ~$40-80 (Flash/Pro on-demand) |
+| **Gesamt** | **~$280** | **~$140-180** |
 
-| Massnahme | Einsparung | DSGVO | Aufwand |
-|-----------|-----------|-------|---------|
-| **Modell-Tiering** (Flash/Flash Lite statt Pro) | -85% bis -95% | Konform (Lovable Gateway) | 1 Tag |
-| **Lazy Extraction** (Light + On-Demand) | -90% bis -95% | Konform | 2-3 Tage |
-| **Beides kombiniert** | **-95% bis -98%** | Konform | 3-4 Tage |
-
-**70.000 PDFs: Von ~$2.000 auf ~$70-170 — ohne DeepSeek, ohne DSGVO-Risiko.**
-
-Armstrong wird trotzdem alles verstehen: Stufe 2 gibt ihm genuegend Kontext fuer die meisten Fragen, und Stufe 3 wird automatisch nachgeladen wenn er tiefere Details braucht.
-
----
+Die weitere Ersparnis ist ~40-50% gegenueber dem bereits implementierten Tiering, weil kein einziger Pro-Call fuer reine Indexierung verschwendet wird.
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `supabase/functions/sot-storage-extractor/index.ts` | Model-Router + Light-Extract-Modus |
-| `supabase/functions/sot-document-parser/index.ts` | Model-Router (Flash/Pro/Lite Auswahl) |
-| `supabase/functions/sot-armstrong-advisor/index.ts` | On-Demand Deep-Extract bei fehlender Tiefe |
-| DB-Migration | `extraction_depth` Feld in `document_chunks` |
-| `supabase/functions/sot-invoice-parse/index.ts` | Model → Flash statt Pro |
-| `supabase/functions/sot-nk-beleg-parse/index.ts` | Model → Flash statt Pro |
+| `supabase/functions/sot-storage-extractor/index.ts` | `selectModel()` erhaelt `purpose`-Parameter, Model-Ceiling fuer Index-Modus |
+| `supabase/functions/sot-document-parser/index.ts` | `callerContext`-Parameter, Model-Ceiling bei `'index'` |
+| `supabase/functions/sot-inbound-receive/index.ts` | Zweistufiger Flow: Klassifizierung (Lite) → Engine-Parsing (Flash/Pro) |
+| `supabase/functions/sot-armstrong-advisor/index.ts` | Deep-Upgrade-Call mit `purpose: 'engine'` |
 
