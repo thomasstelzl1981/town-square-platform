@@ -1002,14 +1002,14 @@ async function handleStrategyStep(
     }
 
     // ── portal_scrape (Apify) ──
-    else if (step_id === "portal_scrape" && APIFY_API_TOKEN) {
-      provider = "apify_portal";
-      results = await searchApifyPortals(
-        searchQuery, location, APIFY_API_TOKEN, 10,
-        body.portal_config || { portal: "immoscout24", search_type: "brokers" }
-      );
-      costEur = 0.02;
-      fieldsFound = results.length > 0 ? ["name", "address"] : [];
+    else if (step_id === "portal_scrape") {
+      const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+      if (FIRECRAWL_API_KEY) {
+        provider = "firecrawl_portal";
+        results = await searchPortalsFirecrawl(
+          searchQuery, location, FIRECRAWL_API_KEY, 10,
+          body.portal_config || { portal: "immoscout24", search_type: "brokers" }
+        );
     }
 
     // ── ihk_scrape — Apify web-scraper against vermittlerregister.info ──
