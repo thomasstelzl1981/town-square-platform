@@ -45,7 +45,7 @@ export function useExposeUpload() {
       setProgress(20);
 
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(UPLOAD_BUCKET)
+        .from('acq-documents')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
@@ -71,7 +71,7 @@ export function useExposeUpload() {
       setProgress(50);
 
       // 3. Link document
-      await supabase.from('acq_offer_documents').insert({
+      const { data: doc, error: docError } = await supabase.from('acq_offer_documents').insert({
         offer_id: offer.id,
         storage_path: uploadData.path,
         file_name: file.name,
@@ -79,7 +79,9 @@ export function useExposeUpload() {
         mime_type: file.type,
         file_size: file.size,
         tenant_id: activeTenantId!,
-      });
+      }).select('id').single();
+
+      if (docError) throw docError;
       setProgress(60);
 
       // 4. Trigger AI extraction
@@ -88,7 +90,7 @@ export function useExposeUpload() {
 
       const { error: extractError } = await supabase.functions.invoke(
         'sot-acq-offer-extract',
-        { body: { offerId: offer.id, documentPath: uploadData.path } }
+        { body: { offerId: offer.id, documentId: doc.id } }
       );
 
       if (extractError) {
