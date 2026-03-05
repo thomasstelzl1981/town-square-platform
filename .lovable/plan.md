@@ -1,102 +1,102 @@
 
 
-# Komplettanalyse AkquiseManager (MOD-12) — UI, UX & Funktionalität
+# Fix: Landing Page "Projekt nicht gefunden" — Root Cause & Repair Plan
 
-## Status-Übersicht aller 6 Sub-Pages
+## Root Cause (3 issues)
 
-| Seite | UI/UX | Funktional | Details |
-|-------|-------|-----------|---------|
-| Dashboard | OK | OK | Visitenkarte, KPI-Karten, Mandate-Cards laden korrekt |
-| Mandate | OK | Teilweise | 4-Kachel-Workflow lädt, KI-Erfassung nutzt `sot-acq-profile-extract` (funktioniert), Kontaktrecherche nutzt `sot-research-engine` (Firecrawl-Pfad jetzt implementiert) |
-| Objekteingang | OK | OK (leer) | Liste + Detail laden, keine Daten vorhanden |
-| Tools | OK | **3 von 5 kaputt** | Siehe Detailanalyse unten |
-| Datenbank | OK | OK (leer) | Excel-artige Tabelle, leer |
-| Provisionen | OK | OK (leer) | Provisions-Übersicht, keine Daten |
+### 1. Missing Foreign Key — Breaks JOIN
+`landing_pages.project_id` has **no FK to `dev_projects.id`**. The Supabase client's `dev_projects!inner(...)` syntax requires a FK relationship. Without it, PostgREST cannot resolve the join and the query silently returns null.
+- **Affects:** `ProjectLandingLayout.tsx` (header, footer, logo)
+- **Affects:** `ProjectLandingHome.tsx` uses separate queries but same root issue on `dev_projects`
 
----
+### 2. No Public RLS — Blocks Anonymous & Cross-Tenant Access
+The landing page is a **public website** (Zone 3), but:
+- `dev_projects` — only allows `tenant_id = get_user_tenant_id()` (auth required)
+- `dev_project_units` — same restriction
+- `document_links` — no policy for `object_type = 'project'`
+- `documents` — no public policy for project images
 
-## Tools-Seite — Detailanalyse
+Even logged-in users see "Projekt nicht gefunden" because the restrictive `tenant_isolation_restrictive` policy blocks unless `get_user_tenant_id()` matches.
 
-### 1. Portal-Recherche — FUNKTIONSFÄHIG (nach letztem Fix)
-- **Implementierung:** `sot-research-engine` mit `intent: search_portals` → ruft jetzt `searchPortalsFirecrawl()` auf
-- **Voraussetzung:** `FIRECRAWL_API_KEY` ist konfiguriert (Connector aktiv)
-- **Status:** Sollte funktionieren. Firecrawl scrapt Portal-URL, AI extrahiert Listings.
-- **UI:** Sauber — Portal-Dropdown, Suchbegriff, Region, Preisspanne, Ergebnis-Cards mit Links
+### 3. Existing landing page status is `draft`
+The public RLS policy on `landing_pages` only allows `preview` and `active`. For the portal preview (logged-in user), this works via the org-member policy. But the public path blocks `draft` — this is correct behavior but needs the preview flow to account for it.
 
-### 2. Immobilienbewertung (KI-Recherche) — FUNKTIONSFÄHIG
-- **Implementierung:** `sot-acq-standalone-research` → Gemini 2.5 Flash
-- **Voraussetzung:** `LOVABLE_API_KEY` (vorhanden)
-- **Status:** Funktioniert — KI generiert strukturierte Standort/Markt/Risiko/Empfehlungsdaten
-- **UI:** Tabs (Standort, Markt, Risiken, Empfehlung) — gut strukturiert
+## Fix Plan
 
-### 3. GeoMap-Analyse — FUNKTIONSFÄHIG (nach letztem Fix)
-- **Implementierung:** `sot-geomap-snapshot` mit `standalone: true` → AI-basiert
-- **Voraussetzung:** `LOVABLE_API_KEY` (vorhanden) — **KEINE externe GeoMap-API nötig**
-- **Frage des Users "ob das schon funktioniert ohne API":** **JA.** Die GeoMap nutzt **keine externe GeoMap-API**. Sie verwendet Gemini AI um Standortdaten zu schätzen (Mietniveau, Kaufpreis, Infrastruktur, Hochwasser, Lärm etc.). Das ist ein AI-Schätzwert, keine echte Geodaten-API. Die Datenqualität ist "plausibel aber nicht verifiziert".
-- **UI:** Score-Cards, Detail-Grid, POI-Badges — gut
+### Migration 1: Add FK + Public RLS Policies
 
-### 4. Sprengnetter-Bewertung — FALLBACK-MODUS
-- **Status:** `SPRENGNETTER_API_KEY` und `SPRENGNETTER_CUSTOMER_ID` sind **NICHT konfiguriert**
-- **Was passiert:** Die Edge Function `sot-sprengnetter-valuation` fällt auf einen simplen Heuristik-Fallback zurück: `2.500 €/m² × Fläche × Baujahr-Faktor`. Das ist kein AI-Schätzwert, sondern eine primitive Formel.
-- **Empfehlung:** Entweder (a) Sprengnetter-API-Keys beschaffen, oder (b) den Fallback durch eine AI-basierte Bewertung ersetzen (wie bei GeoMap), oder (c) den Button deaktivieren mit Hinweis "Sprengnetter nicht konfiguriert".
+```sql
+-- 1. Add FK from landing_pages to dev_projects
+ALTER TABLE public.landing_pages
+  ADD CONSTRAINT landing_pages_project_id_fkey
+  FOREIGN KEY (project_id) REFERENCES public.dev_projects(id);
 
-### 5. Standalone-Kalkulator (Exposé-Upload) — TEILWEISE FUNKTIONSFÄHIG
-- **Upload:** Geht über `useUniversalUpload` in Bucket `tenant-documents` — sollte nach RLS-Fix funktionieren
-- **PDF-Extraktion:** `sot-acq-offer-extract` sendet PDF als Base64 an Gemini für Textextraktion, dann zweiter AI-Call für strukturierte Daten. **Funktioniert theoretisch**, aber:
-  - Große PDFs (>5MB) können beim Base64-Encoding im Edge Function Memory-Limit scheitern
-  - Gemini's `image_url` mit `data:application/pdf;base64,...` ist experimentell
-- **Kalkulatoren (Bestand/Aufteiler):** Rein client-seitig, Engine-basiert — **funktionieren korrekt**
-- **UI:** SmartDropZone, AIProcessingOverlay, Input-Felder, Tabs — gut
+-- 2. Public SELECT on dev_projects for projects with active landing pages
+CREATE POLICY "public_read_landing_page_projects"
+ON public.dev_projects FOR SELECT TO anon, authenticated
+USING (
+  id IN (
+    SELECT project_id FROM public.landing_pages
+    WHERE status IN ('draft', 'preview', 'active')
+  )
+);
 
-### 6. Datenraum — WAHRSCHEINLICH LEER
-- Zeigt Dateien aus `acq-documents` Bucket — nach RLS-Fix sollten neue Uploads sichtbar werden
+-- 3. Public SELECT on dev_project_units for those projects
+CREATE POLICY "public_read_landing_page_units"
+ON public.dev_project_units FOR SELECT TO anon, authenticated
+USING (
+  project_id IN (
+    SELECT project_id FROM public.landing_pages
+    WHERE status IN ('draft', 'preview', 'active')
+  )
+);
 
----
+-- 4. Public SELECT on document_links for project images
+CREATE POLICY "public_read_project_image_links"
+ON public.document_links FOR SELECT TO anon, authenticated
+USING (
+  object_type = 'project'
+  AND object_id IN (
+    SELECT project_id FROM public.landing_pages
+    WHERE status IN ('draft', 'preview', 'active')
+  )
+);
 
-## UI/UX-Bewertung
+-- 5. Public SELECT on documents for project-linked images
+CREATE POLICY "public_read_project_landing_documents"
+ON public.documents FOR SELECT TO anon, authenticated
+USING (
+  id IN (
+    SELECT dl.document_id FROM public.document_links dl
+    WHERE dl.object_type = 'project'
+    AND dl.object_id IN (
+      SELECT project_id FROM public.landing_pages
+      WHERE status IN ('draft', 'preview', 'active')
+    )
+  )
+);
 
-### Positiv
-- Konsistente Nutzung von `DESIGN` Manifest (Spacing, Typography, Cards)
-- `PageShell` + `ModulePageHeader` Pattern überall korrekt
-- Dashboard: `ManagerVisitenkarte` + KPI-Widget + Mandate-Cards — sauberes Layout
-- Tools: Klare Trennung in 5 Sektionen, Collapsible für Kalkulator und Datenraum
-- Responsive: `isMobile` Check im Kalkulator
+-- 6. Include 'draft' in landing_pages public policy (for preview from portal)
+DROP POLICY IF EXISTS "Public can view active landing pages" ON public.landing_pages;
+CREATE POLICY "Public can view landing pages"
+ON public.landing_pages FOR SELECT TO anon, authenticated
+USING (status IN ('draft', 'preview', 'active'));
+```
 
-### Verbesserungspotenzial
-- **Kein Fehler-Feedback bei fehlender API:** Der Sprengnetter-Button zeigt keine Warnung, dass die API nicht konfiguriert ist. User klickt, wartet, bekommt einen Schätzwert ohne Kontext.
-- **Doppelte GeoMap:** GeoMap existiert als eigenständige Card UND als Button in der Immobilienbewertung — beide rufen dieselbe Edge Function auf. Redundant.
-- **Kalkulatoren:** Die Collapsible-Section "Standalone-Kalkulatoren" ist standardmäßig geschlossen — könnte prominent sein, da es der Hauptnutzen der Tools-Seite ist.
+### No Code Changes Needed
+The existing `ProjectLandingHome.tsx` and `ProjectLandingLayout.tsx` code is correct — the queries will work once the FK and RLS policies are in place.
 
----
+### Security Note
+- Only projects with a `landing_pages` record are exposed publicly
+- The policies are read-only (SELECT)
+- `locked` status pages remain invisible
+- Write operations remain protected by existing org-member policies
 
-## Zusammenfassung: Was braucht APIs und was nicht?
-
-| Feature | Benötigte API | Status | Funktioniert ohne API? |
-|---------|--------------|--------|----------------------|
-| Portal-Recherche | Firecrawl | **Konfiguriert** | Nein |
-| KI-Recherche | Lovable AI (Gemini) | **Konfiguriert** | — (AI IST die API) |
-| GeoMap-Analyse | Lovable AI (Gemini) | **Konfiguriert** | — (AI IST die API) |
-| Sprengnetter | Sprengnetter API | **NICHT konfiguriert** | Ja, aber nur primitiver Fallback |
-| PDF-Extraktion | Lovable AI (Gemini) | **Konfiguriert** | — (AI IST die API) |
-| Kalkulatoren | Keine | — | Ja, rein client-seitig |
-
----
-
-## Empfohlene Fixes (Priorisiert)
-
-### P1: Sprengnetter Fallback verbessern
-- Den primitiven `2500 €/m² × Fläche`-Fallback durch eine AI-Bewertung ersetzen (Gemini, analog zu GeoMap)
-- Oder: Button mit Hinweis-Badge "Schätzwert" versehen, damit der User weiß, dass es kein echtes Gutachten ist
-
-### P2: Doppelte GeoMap konsolidieren
-- Die standalone `GeoMapTool` Card und den "GeoMap-Analyse" Button in `PropertyResearchTool` zeigen dasselbe
-- Empfehlung: GeoMap-Card entfernen, da die Immobilienbewertung bereits GeoMap integriert hat
-
-### P3: Sprengnetter-Button UX
-- Wenn keine API-Keys konfiguriert sind: Button mit Tooltip/Badge "Schätzwert — Sprengnetter nicht verbunden" anzeigen statt still einen Fallback-Wert zu liefern
-
-### Betroffene Dateien
-1. `supabase/functions/sot-sprengnetter-valuation/index.ts` — AI-Fallback statt Heuristik
-2. `src/pages/portal/akquise-manager/AkquiseTools.tsx` — GeoMap-Card entfernen (optional)
-3. `src/pages/portal/akquise-manager/components/PropertyResearchTool.tsx` — Sprengnetter-Button UX
+### Freeze Check
+| Path | Frozen? |
+|---|---|
+| Database migration | No |
+| `ProjectLandingHome.tsx` (Zone 3, project-landing) | **Not frozen** (not in zone3_freeze.json) |
+| `ProjectLandingLayout.tsx` | **Not frozen** |
+| No code changes needed | N/A |
 

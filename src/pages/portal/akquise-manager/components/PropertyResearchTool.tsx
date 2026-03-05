@@ -101,9 +101,10 @@ export function PropertyResearchTool() {
               )}
               GeoMap-Analyse
             </Button>
-            <Button variant="outline" onClick={handleSprengnetter} disabled={isLoading || !query.trim()}>
+            <Button variant="outline" onClick={handleSprengnetter} disabled={isLoading || !query.trim()} className="relative">
               <Shield className="h-4 w-4 mr-2" />
               Sprengnetter
+              <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">Schätzwert</Badge>
             </Button>
           </div>
         </div>
