@@ -30,6 +30,7 @@ interface Props {
 
 export function ProfilePreviewSection({
   previewData, previewTextLong, clientName, onGeneratePdf,
+  logoUrl, companyName,
   profileGenerated, mandateCreated, mandateCode,
   acqConsentData, setAcqConsentData,
   acqConsentResearch, setAcqConsentResearch,
