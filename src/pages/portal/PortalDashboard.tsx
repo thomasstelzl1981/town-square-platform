@@ -3,7 +3,7 @@
  * Two full-page snap sections: System Widgets + Armstrong workspace
  */
 
-import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -13,27 +13,29 @@ import { useWidgetOrder } from '@/hooks/useWidgetOrder';
 import { useWidgetPreferences } from '@/hooks/useWidgetPreferences';
 import { useTaskWidgets } from '@/hooks/useTaskWidgets';
 import { usePreviewSafeMode } from '@/hooks/usePreviewSafeMode';
-import { GlobeWidget } from '@/components/dashboard/GlobeWidget';
-import { WeatherCard } from '@/components/dashboard/WeatherCard';
 import { ArmstrongGreetingCard } from '@/components/dashboard/ArmstrongGreetingCard';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { SortableWidget } from '@/components/dashboard/SortableWidget';
 import { TaskWidget } from '@/components/dashboard/TaskWidget';
-import { FinanceWidget } from '@/components/dashboard/widgets/FinanceWidget';
-import { AccountsWidget } from '@/components/dashboard/widgets/AccountsWidget';
-import { NewsWidget } from '@/components/dashboard/widgets/NewsWidget';
-import { SpaceWidget } from '@/components/dashboard/widgets/SpaceWidget';
-import { QuoteWidget } from '@/components/dashboard/widgets/QuoteWidget';
-import { RadioWidget } from '@/components/dashboard/widgets/RadioWidget';
-import { PVLiveWidget } from '@/components/dashboard/widgets/PVLiveWidget';
 import { BrandLinkWidget } from '@/components/dashboard/widgets/BrandLinkWidget';
-import { MeetingRecorderWidget } from '@/components/dashboard/MeetingRecorderWidget';
-import { TLCWidget } from '@/components/dashboard/widgets/TLCWidget';
-import { NotesWidget } from '@/components/dashboard/widgets/NotesWidget';
-import { ArmstrongWorkspace } from '@/components/dashboard/ArmstrongWorkspace';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Settings2, Inbox, ChevronDown, Globe, Radio, Zap } from 'lucide-react';
+import { Settings2, Inbox, ChevronDown, Globe, Radio, Zap, Cloud, TrendingUp, Newspaper, Rocket, Quote, Mic, Wallet, HeartPulse, StickyNote } from 'lucide-react';
+
+// Lazy-loaded widgets — only fetched when actually rendered (saves ~40% bundle in preview)
+const GlobeWidget = React.lazy(() => import('@/components/dashboard/GlobeWidget').then(m => ({ default: m.GlobeWidget })));
+const WeatherCard = React.lazy(() => import('@/components/dashboard/WeatherCard').then(m => ({ default: m.WeatherCard })));
+const FinanceWidget = React.lazy(() => import('@/components/dashboard/widgets/FinanceWidget').then(m => ({ default: m.FinanceWidget })));
+const AccountsWidget = React.lazy(() => import('@/components/dashboard/widgets/AccountsWidget').then(m => ({ default: m.AccountsWidget })));
+const NewsWidget = React.lazy(() => import('@/components/dashboard/widgets/NewsWidget').then(m => ({ default: m.NewsWidget })));
+const SpaceWidget = React.lazy(() => import('@/components/dashboard/widgets/SpaceWidget').then(m => ({ default: m.SpaceWidget })));
+const QuoteWidget = React.lazy(() => import('@/components/dashboard/widgets/QuoteWidget').then(m => ({ default: m.QuoteWidget })));
+const RadioWidget = React.lazy(() => import('@/components/dashboard/widgets/RadioWidget').then(m => ({ default: m.RadioWidget })));
+const PVLiveWidget = React.lazy(() => import('@/components/dashboard/widgets/PVLiveWidget').then(m => ({ default: m.PVLiveWidget })));
+const MeetingRecorderWidget = React.lazy(() => import('@/components/dashboard/MeetingRecorderWidget').then(m => ({ default: m.MeetingRecorderWidget })));
+const TLCWidget = React.lazy(() => import('@/components/dashboard/widgets/TLCWidget').then(m => ({ default: m.TLCWidget })));
+const NotesWidget = React.lazy(() => import('@/components/dashboard/widgets/NotesWidget').then(m => ({ default: m.NotesWidget })));
+const ArmstrongWorkspace = React.lazy(() => import('@/components/dashboard/ArmstrongWorkspace').then(m => ({ default: m.ArmstrongWorkspace })));
 import { Link } from 'react-router-dom';
 
 const ARMSTRONG_WIDGET_ID = 'system_armstrong';
@@ -56,6 +58,20 @@ const WIDGET_CODE_TO_ID: Record<string, string> = {
   'SYS.TLC.LIFECYCLE': 'system_tlc',
 };
 
+/** Map of widget IDs that are too heavy for the preview environment */
+const PREVIEW_DISABLED_WIDGETS: Record<string, { label: string; icon: React.ElementType }> = {
+  system_globe: { label: 'Globe', icon: Globe },
+  system_radio: { label: 'Radio', icon: Radio },
+  system_pv_live: { label: 'PV Live', icon: Zap },
+  system_weather: { label: 'Wetter', icon: Cloud },
+  system_finance: { label: 'Finanzmärkte', icon: TrendingUp },
+  system_news: { label: 'Nachrichten', icon: Newspaper },
+  system_space: { label: 'Space', icon: Rocket },
+  system_accounts: { label: 'Konten', icon: Wallet },
+  system_meeting_recorder: { label: 'Meeting', icon: Mic },
+  system_tlc: { label: 'TLC', icon: HeartPulse },
+};
+
 /** Placeholder card shown in preview for disabled heavy widgets */
 function PreviewPlaceholderCard({ label, icon: Icon }: { label: string; icon: React.ElementType }) {
   return (
@@ -65,6 +81,19 @@ function PreviewPlaceholderCard({ label, icon: Icon }: { label: string; icon: Re
         <span className="text-xs text-center">{label}<br /><span className="opacity-60">(Preview deaktiviert)</span></span>
       </CardContent>
     </Card>
+  );
+}
+
+/** Suspense wrapper for lazy widgets */
+function LazyWidget({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={
+      <Card className="relative h-[260px] md:h-auto md:aspect-square flex items-center justify-center bg-muted/30 animate-pulse">
+        <CardContent className="text-xs text-muted-foreground">Laden…</CardContent>
+      </Card>
+    }>
+      {children}
+    </Suspense>
   );
 }
 
@@ -145,6 +174,12 @@ export default function PortalDashboard() {
   const isLoading = locationLoading || weatherLoading || eventsLoading;
 
   const renderWidget = (widgetId: string) => {
+    // In preview mode, show placeholders for all heavy widgets
+    if (isPreview && PREVIEW_DISABLED_WIDGETS[widgetId]) {
+      const { label, icon } = PREVIEW_DISABLED_WIDGETS[widgetId];
+      return <PreviewPlaceholderCard label={label} icon={icon} />;
+    }
+
     if (widgetId === 'system_armstrong') {
       return (
         <ArmstrongGreetingCard
@@ -156,31 +191,21 @@ export default function PortalDashboard() {
         />
       );
     }
-    if (widgetId === 'system_weather') {
-      return <WeatherCard latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} />;
-    }
-    if (widgetId === 'system_globe') {
-      return <GlobeWidget latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} />;
-    }
-    if (widgetId === 'system_finance') return <FinanceWidget />;
-    if (widgetId === 'system_accounts') return <AccountsWidget />;
-    if (widgetId === 'system_news') return <NewsWidget />;
-    if (widgetId === 'system_space') return <SpaceWidget />;
-    if (widgetId === 'system_quote') return <QuoteWidget />;
-    if (widgetId === 'system_radio') {
-      if (!allowHeavyWidgets) return <PreviewPlaceholderCard label="Radio" icon={Radio} />;
-      return <RadioWidget />;
-    }
-    if (widgetId === 'system_pv_live') {
-      if (!allowHeavyWidgets) return <PreviewPlaceholderCard label="PV Live" icon={Zap} />;
-      return <PVLiveWidget />;
-    }
-    if (widgetId === 'system_meeting_recorder') return <MeetingRecorderWidget />;
+    if (widgetId === 'system_weather') return <LazyWidget><WeatherCard latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} /></LazyWidget>;
+    if (widgetId === 'system_globe') return <LazyWidget><GlobeWidget latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} /></LazyWidget>;
+    if (widgetId === 'system_finance') return <LazyWidget><FinanceWidget /></LazyWidget>;
+    if (widgetId === 'system_accounts') return <LazyWidget><AccountsWidget /></LazyWidget>;
+    if (widgetId === 'system_news') return <LazyWidget><NewsWidget /></LazyWidget>;
+    if (widgetId === 'system_space') return <LazyWidget><SpaceWidget /></LazyWidget>;
+    if (widgetId === 'system_quote') return <LazyWidget><QuoteWidget /></LazyWidget>;
+    if (widgetId === 'system_radio') return <LazyWidget><RadioWidget /></LazyWidget>;
+    if (widgetId === 'system_pv_live') return <LazyWidget><PVLiveWidget /></LazyWidget>;
+    if (widgetId === 'system_meeting_recorder') return <LazyWidget><MeetingRecorderWidget /></LazyWidget>;
     if (widgetId === 'system_brand_kaufy') return <BrandLinkWidget code="SYS.BRAND.KAUFY" />;
     if (widgetId === 'system_brand_futureroom') return <BrandLinkWidget code="SYS.BRAND.FUTUREROOM" />;
     if (widgetId === 'system_brand_sot') return <BrandLinkWidget code="SYS.BRAND.SOT" />;
     if (widgetId === 'system_brand_acquiary') return <BrandLinkWidget code="SYS.BRAND.ACQUIARY" />;
-    if (widgetId === 'system_tlc') return <TLCWidget />;
+    if (widgetId === 'system_tlc') return <LazyWidget><TLCWidget /></LazyWidget>;
 
     const taskWidget = taskWidgets.find(w => w.id === widgetId);
     if (taskWidget) {
@@ -262,7 +287,9 @@ export default function PortalDashboard() {
       {/* ===== Section 2: Armstrong Workspace ===== */}
       <section className="min-h-[calc(100dvh-4rem)] snap-start flex flex-col">
         <div className="max-w-7xl mx-auto w-full px-2 py-3 md:p-6 lg:p-8 flex-1 flex flex-col">
-          <ArmstrongWorkspace />
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">Armstrong lädt…</div>}>
+            <ArmstrongWorkspace />
+          </Suspense>
         </div>
       </section>
     </div>
