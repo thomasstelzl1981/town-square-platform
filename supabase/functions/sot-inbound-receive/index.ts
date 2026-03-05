@@ -866,6 +866,11 @@ PRIORITÄTS-REGELN:
 
 invoice_data NUR befüllen wenn is_invoice === true.`;
 
+    // TWO-STAGE FLOW: Stage 1 uses Flash for classification + extraction
+    // Stage 2 (engine-level Pro) only triggered later when document is assigned to an active Golden Path
+    const classificationModel = 'google/gemini-2.5-flash';
+    console.log(`[auto-trigger] Stage 1 classification: ${filename} → ${classificationModel} (purpose: index)`);
+
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -873,7 +878,7 @@ invoice_data NUR befüllen wenn is_invoice === true.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: classificationModel,
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -885,7 +890,7 @@ invoice_data NUR befüllen wenn is_invoice === true.`;
           },
         ],
         temperature: 0.1,
-        max_tokens: 32000,
+        max_tokens: 16000,
       }),
     });
 
@@ -945,7 +950,7 @@ invoice_data NUR befüllen wenn is_invoice === true.`;
         extraction_key_data: parsed.key_data,
         extracted_at: new Date().toISOString(),
         pages_extracted: pages.length,
-        model: "google/gemini-2.5-pro",
+        model: classificationModel,
         // Runde 2: Priority + Invoice Detection
         priority: parsed.priority || "normal",
         priority_reason: parsed.priority_reason || null,

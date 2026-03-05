@@ -358,6 +358,7 @@ async function searchDocumentChunks(
               action: 'deep-upgrade',
               tenant_id: tenantId,
               node_ids: lightOnlyNodeIds.slice(0, 3),
+              purpose: 'engine', // Deep-upgrade always uses full engine power
             }),
           }).catch(err => console.error('[Armstrong] Deep-extract trigger failed:', err));
         }

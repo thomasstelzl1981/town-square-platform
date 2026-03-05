@@ -96,3 +96,4 @@ Die weitere Ersparnis ist ~40-50% gegenueber dem bereits implementierten Tiering
 | `supabase/functions/sot-inbound-receive/index.ts` | Zweistufiger Flow: Klassifizierung (Lite) → Engine-Parsing (Flash/Pro) |
 | `supabase/functions/sot-armstrong-advisor/index.ts` | Deep-Upgrade-Call mit `purpose: 'engine'` |
 
+## STATUS: ✅ IMPLEMENTIERT (2026-03-05)

@@ -31,23 +31,36 @@ const MAX_BATCH_SIZE = 20;
 // ─── Model Tiering: Select cheapest adequate model ───
 const COMPLEX_KEYWORDS = ['weg', 'abrechnung', 'teilungserklaerung', 'teilungserklärung', 'hausgeldabrechnung', 'wirtschaftsplan'];
 
-function selectModel(file: { name: string; mime_type: string | null; file_size: number | null }): { model: string; tier: string } {
+type ProcessingPurpose = 'index' | 'engine';
+
+function selectModel(file: { name: string; mime_type: string | null; file_size: number | null }, purpose: ProcessingPurpose = 'index'): { model: string; tier: string } {
   const name = (file.name || '').toLowerCase();
   const size = file.file_size || 0;
   const mime = file.mime_type || '';
 
-  // Tier 1: Simple text files or very small files → Flash Lite
+  // Base tier selection by file properties
+  let model: string;
+  let tier: string;
+
   if (mime === 'text/plain' || mime === 'text/csv' || size < 100_000) {
-    return { model: 'google/gemini-2.5-flash-lite', tier: 'lite' };
+    model = 'google/gemini-2.5-flash-lite'; tier = 'lite';
+  } else if (COMPLEX_KEYWORDS.some(kw => name.includes(kw)) || size > 5_000_000) {
+    model = 'google/gemini-2.5-pro'; tier = 'pro';
+  } else {
+    model = 'google/gemini-2.5-flash'; tier = 'flash';
   }
 
-  // Tier 3: Complex documents → Pro
-  if (COMPLEX_KEYWORDS.some(kw => name.includes(kw)) || size > 5_000_000) {
-    return { model: 'google/gemini-2.5-pro', tier: 'pro' };
+  // PURPOSE-AWARE CEILING: Indexing never needs Pro, downgrades one tier
+  if (purpose === 'index') {
+    if (tier === 'pro') {
+      model = 'google/gemini-2.5-flash'; tier = 'flash';
+    } else if (tier === 'flash') {
+      model = 'google/gemini-2.5-flash-lite'; tier = 'lite';
+    }
+    // lite stays lite
   }
 
-  // Tier 2: Standard documents → Flash
-  return { model: 'google/gemini-2.5-flash', tier: 'flash' };
+  return { model, tier };
 }
 
 // ─── Light Extract Prompt (Stufe 2: first page only) ───
@@ -179,8 +192,9 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, tenant_id, job_id, folder_id, batch_size, extraction_depth } = body;
+    const { action, tenant_id, job_id, folder_id, batch_size, extraction_depth, purpose: rawPurpose } = body;
     const extractionMode: 'light' | 'full' = extraction_depth === 'light' ? 'light' : 'full';
+    const purpose: ProcessingPurpose = rawPurpose === 'engine' ? 'engine' : 'index';
 
     if (!tenant_id) {
       return new Response(JSON.stringify({ error: "tenant_id required" }), {
@@ -395,7 +409,7 @@ serve(async (req) => {
           const activePrompt = isLight ? LIGHT_EXTRACTION_PROMPT : STRUCTURED_EXTRACTION_PROMPT;
           const { model: selectedModel, tier: modelTier } = isLight
             ? { model: 'google/gemini-2.5-flash-lite', tier: 'lite' }
-            : selectModel(file);
+            : selectModel(file, purpose);
           const maxTokens = isLight ? 4000 : 32000;
 
           console.log(`[STOREX] ${file.name}: model=${selectedModel} (${modelTier}), depth=${extractionMode}`);
@@ -667,7 +681,8 @@ serve(async (req) => {
           }
           base64Content = btoa(base64Content);
 
-          const { model: selectedModel } = selectModel(file);
+          // Deep-upgrade always uses ENGINE purpose for full AI power
+          const { model: selectedModel } = selectModel(file, 'engine');
 
           const aiMessages = file.mime_type?.startsWith("image") || file.mime_type === "application/pdf"
             ? [
