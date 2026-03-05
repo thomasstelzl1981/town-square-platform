@@ -2,10 +2,9 @@
  * UploadDrawer — Drawer for document upload in MOD-20 (Miety/Zuhause)
  * Upgraded: SmartDropZone + AIProcessingOverlay for ChatGPT-style feedback
  */
-import { useCallback } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import { DetailDrawer } from '@/components/shared/DetailDrawer';
 import { useLegalConsent } from '@/hooks/useLegalConsent';
-import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { sanitizeFileName, UPLOAD_BUCKET } from '@/config/storageManifest';
