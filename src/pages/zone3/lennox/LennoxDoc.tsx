@@ -2,12 +2,12 @@
  * LennoxDoc — Tiergesundheit, Versicherung, Pet Manager & Gründerin
  * Zone 3 page for Lennox & Friends
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Search, MapPin, Phone, Mail, Navigation, Star,
   Stethoscope, ShieldCheck, Syringe, PawPrint, ArrowRight,
-  Send,
+  Send, Loader2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
