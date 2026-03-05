@@ -148,6 +148,36 @@ export function useExposeListing({
         .select('id', { count: 'exact', head: true })
         .eq('property_id', propertyId);
 
+      // Fallback hero image: check project-level document_links if no property images exist
+      let heroImageUrl: string | null = DEMO_PROPERTY_IMAGE_MAP[propertyId] || null;
+      if (!heroImageUrl) {
+        // Check if this property comes from a project and fetch project hero image
+        const { data: unitLink } = await supabase
+          .from('dev_project_units')
+          .select('project_id')
+          .eq('property_id', propertyId)
+          .maybeSingle();
+
+        if (unitLink?.project_id) {
+          const { data: projectImageLinks } = await supabase
+            .from('document_links')
+            .select('documents!inner (file_path, mime_type)')
+            .eq('object_type', 'project')
+            .eq('object_id', unitLink.project_id)
+            .order('is_title_image', { ascending: false })
+            .order('display_order', { ascending: true })
+            .limit(1);
+
+          if (projectImageLinks?.length) {
+            const doc = (projectImageLinks[0] as any).documents;
+            if (doc?.file_path && String(doc.mime_type || '').startsWith('image/')) {
+              const { getCachedSignedUrl } = await import('@/lib/imageCache');
+              heroImageUrl = await getCachedSignedUrl(doc.file_path);
+            }
+          }
+        }
+      }
+
       return {
         id: row.id,
         public_id: row.public_id,
@@ -167,7 +197,7 @@ export function useExposeListing({
         heating_type: props?.heating_type ?? null,
         monthly_rent: annualIncome > 0 ? annualIncome / 12 : 0,
         units_count: (unitsCount && unitsCount > 0) ? unitsCount : 1,
-        hero_image_url: DEMO_PROPERTY_IMAGE_MAP[propertyId] || null,
+        hero_image_url: heroImageUrl,
       };
     },
     enabled: !!publicId,
