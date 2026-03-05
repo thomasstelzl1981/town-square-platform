@@ -1,14 +1,7 @@
 /**
- * ZahlenSektion — Minimalist Table Layout
+ * ZahlenSektion — Minimalist metric display
  * 
- * Design (nach Vorlage):
- * ┌───────────────────────────────────────────────────────────────────────┐
- * │              Immobilien sind Zahlen.                                  │
- * │              Kaufy macht sie verständlich.                            │
- * │                                                                       │
- * │  │ Cashflow        │ Schulden        │ Zinsbindung   │ Netto-Bel.    │
- * │  │ monatlich       │ strukturiert    │ transparent   │ entscheidend  │
- * └───────────────────────────────────────────────────────────────────────┘
+ * Design: Dark section with structured metric columns, refined typography.
  */
 
 interface MetricItem {
@@ -17,10 +10,10 @@ interface MetricItem {
 }
 
 const metrics: MetricItem[] = [
-  { label: 'Cashflow', value: 'monatlich' },
-  { label: 'Schulden', value: 'strukturiert' },
-  { label: 'Zinsbindung', value: 'transparent' },
-  { label: 'Netto-Belastung', value: 'entscheidend' },
+  { label: 'Cashflow', value: 'monatlich berechnet' },
+  { label: 'Schulden', value: 'strukturiert dargestellt' },
+  { label: 'Zinsbindung', value: 'transparent verglichen' },
+  { label: 'Netto-Belastung', value: 'individuell ermittelt' },
 ];
 
 export function ZahlenSektion() {
@@ -33,7 +26,7 @@ export function ZahlenSektion() {
             Immobilien sind Zahlen.
           </h2>
           <p className="text-lg md:text-xl text-white/70">
-            Kaufy macht sie verständlich.
+            KAUFY macht sie verständlich.
           </p>
         </div>
 
@@ -44,7 +37,7 @@ export function ZahlenSektion() {
               key={metric.label} 
               className="bg-[hsl(220,20%,10%)] p-6 text-center relative"
             >
-              {/* Left accent bar (visible on first of each row) */}
+              {/* Left accent bar */}
               {(index === 0 || index === 2) && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-8 bg-[hsl(210,80%,55%)] hidden md:block" />
               )}
