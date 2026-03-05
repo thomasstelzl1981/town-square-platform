@@ -1,0 +1,1 @@
+export { AkteKaufySearch } from './AkteKaufySearch';
