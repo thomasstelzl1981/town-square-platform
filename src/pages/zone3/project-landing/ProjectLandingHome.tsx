@@ -147,7 +147,7 @@ export default function ProjectLandingHome() {
 
       const { data: units } = await supabase
         .from('dev_project_units')
-        .select('id, unit_number, floor, area_sqm, rooms_count, list_price, rent_net, status')
+        .select('id, unit_number, floor, area_sqm, rooms_count, list_price, rent_net, current_rent, status')
         .eq('project_id', project.id)
         .order('unit_number', { ascending: true });
 
