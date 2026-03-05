@@ -160,7 +160,7 @@ PRÜFE:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-pro",
+          model: "google/gemini-2.5-flash",
           messages: [
             { role: "system", content: "Du bist ein NK-Kreuzprüfer. Antworte NUR mit dem tool_call." },
             { role: "user", content: crossValidationPrompt },
@@ -339,7 +339,7 @@ PRÜFE:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "google/gemini-2.5-flash",
         messages,
         temperature: 0.1,
         max_tokens: 16000,

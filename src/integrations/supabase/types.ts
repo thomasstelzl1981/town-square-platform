@@ -7247,6 +7247,7 @@ export type Database = {
           created_at: string
           document_id: string
           embedding: string | null
+          extraction_depth: string
           id: string
           metadata: Json | null
           page_number: number | null
@@ -7260,6 +7261,7 @@ export type Database = {
           created_at?: string
           document_id: string
           embedding?: string | null
+          extraction_depth?: string
           id?: string
           metadata?: Json | null
           page_number?: number | null
@@ -7273,6 +7275,7 @@ export type Database = {
           created_at?: string
           document_id?: string
           embedding?: string | null
+          extraction_depth?: string
           id?: string
           metadata?: Json | null
           page_number?: number | null

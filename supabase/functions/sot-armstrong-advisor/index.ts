@@ -310,7 +310,6 @@ async function searchDocumentChunks(
   limit: number = 5
 ): Promise<string> {
   try {
-    // Use text search via RPC if available, fallback to ilike
     const searchTerms = query
       .replace(/[^a-zA-ZäöüÄÖÜß\s]/g, '')
       .split(/\s+/)
@@ -323,18 +322,56 @@ async function searchDocumentChunks(
     
     const { data: chunks, error } = await supabase
       .from("document_chunks")
-      .select("text, document_id")
+      .select("text, document_id, source_node_id, extraction_depth")
       .eq("tenant_id", tenantId)
       .or(orFilter)
       .limit(limit);
 
     if (error || !chunks || chunks.length === 0) return "";
 
-    const contextParts = chunks.map((c: any, i: number) => 
-      `[Dokument-Auszug ${i + 1}]: ${(c.text || '').substring(0, 500)}`
-    );
+    // Check if any matched chunks are light-only and could benefit from deep extraction
+    const lightOnlyNodeIds = [...new Set(
+      chunks
+        .filter((c: any) => c.extraction_depth === 'light' && c.source_node_id)
+        .map((c: any) => c.source_node_id)
+    )];
 
-    return `\nDOKUMENTEN-KONTEXT (aus dem DMS):\n${contextParts.join('\n\n')}`;
+    let upgradeHint = '';
+    if (lightOnlyNodeIds.length > 0) {
+      upgradeHint = `\n⚠️ HINWEIS: ${lightOnlyNodeIds.length} Dokument(e) haben nur eine Light-Extraktion (Stufe 2). Für detailliertere Informationen kann eine Voll-Extraktion angefordert werden.`;
+      
+      // Trigger on-demand deep extraction for the first match
+      try {
+        const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        if (LOVABLE_API_KEY && lightOnlyNodeIds.length <= 3) {
+          console.log(`[Armstrong] Triggering on-demand deep extract for ${lightOnlyNodeIds.length} light-only docs`);
+          // Fire-and-forget: call sot-storage-extractor to re-process these nodes at full depth
+          // This runs async — results will be available on next query
+          fetch(`${supabaseUrl}/functions/v1/sot-storage-extractor`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              action: 'deep-upgrade',
+              tenant_id: tenantId,
+              node_ids: lightOnlyNodeIds.slice(0, 3),
+            }),
+          }).catch(err => console.error('[Armstrong] Deep-extract trigger failed:', err));
+        }
+      } catch (e) {
+        console.error('[Armstrong] On-demand deep extract error:', e);
+      }
+    }
+
+    const contextParts = chunks.map((c: any, i: number) => {
+      const depthLabel = c.extraction_depth === 'light' ? ' [Light-Scan]' : '';
+      return `[Dokument-Auszug ${i + 1}${depthLabel}]: ${(c.text || '').substring(0, 500)}`;
+    });
+
+    return `\nDOKUMENTEN-KONTEXT (aus dem DMS):\n${contextParts.join('\n\n')}${upgradeHint}`;
   } catch (err) {
     console.error("[Armstrong] Document search error:", err);
     return "";
