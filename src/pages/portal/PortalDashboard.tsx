@@ -84,6 +84,18 @@ export default function PortalDashboard() {
   // Scroll indicator visibility
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollHint, setShowScrollHint] = useState(true);
+  const [snapReady, setSnapReady] = useState(false);
+
+  // Force scroll-to-top on fresh mount (ensures widgets section visible after login)
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) {
+      el.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+    // Delay snap activation so async widget loading doesn't jump to section 2
+    const timer = setTimeout(() => setSnapReady(true), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const el = scrollRef.current;
