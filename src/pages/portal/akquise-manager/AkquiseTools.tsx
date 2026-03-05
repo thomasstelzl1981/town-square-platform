@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils';
 import { 
   PortalSearchTool,
   PropertyResearchTool,
-  GeoMapTool,
   StandaloneCalculatorPanel,
   AcqDataRoom,
 } from './components';
