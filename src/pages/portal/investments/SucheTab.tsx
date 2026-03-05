@@ -7,7 +7,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDemoListings, DEMO_PROPERTY_IMAGE_MAP } from '@/hooks/useDemoListings';
-import { getCachedSignedUrl } from '@/lib/imageCache';
+import { fetchPropertyImages } from '@/lib/fetchPropertyImages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
