@@ -1,19 +1,11 @@
 /**
  * PerspektivenKarten — 3-card grid for target groups
  * 
- * Design (nach Vorlage):
- * ┌─────────────────────────────────────┐
- * │                              [🏠]   │  ← Icon oben rechts
- * │  VERMIETER                          │  ← Kategorie (Großbuchstaben)
- * │                                     │
- * │  Vermieten. Verstehen. Optimieren.  │  ← Slogan
- * │                                     │
- * │  Alles, was zählt –                 │  ← Beschreibung
- * │  auf einen Blick.                   │
- * └─────────────────────────────────────┘
+ * Design: Refined cards with hover effects and improved typography.
+ * Uses "Sie" (formal) consistently.
  */
 import { useNavigate } from 'react-router-dom';
-import { Building2, Tag, Handshake } from 'lucide-react';
+import { Building2, Tag, Handshake, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PerspektiveCard {
@@ -29,21 +21,21 @@ const perspektiven: PerspektiveCard[] = [
     icon: Building2,
     category: 'VERMIETER',
     slogan: ['Vermieten.', 'Verstehen.', 'Optimieren.'],
-    description: 'Alles, was zählt – auf einen Blick.',
+    description: 'Digitale Mietsonderverwaltung – alles Wichtige auf einen Blick.',
     link: '/website/kaufy/vermieter',
   },
   {
     icon: Tag,
     category: 'VERKÄUFER',
     slogan: ['Inserieren.', 'Erreichen.', 'Verkaufen.'],
-    description: 'Tausende vorab qualifizierte Investoren.',
+    description: 'Tausende vorab qualifizierte Investoren mit konkretem Kaufinteresse.',
     link: '/website/kaufy/verkaeufer',
   },
   {
     icon: Handshake,
     category: 'PARTNER',
-    slogan: ['Beraten.', 'Vermitteln.', 'Verdienen.'],
-    description: 'Zugang zum exklusiven Objektkatalog.',
+    slogan: ['Beraten.', 'Vermitteln.', 'Wachsen.'],
+    description: 'Exklusiver Objektkatalog und digitale Tools für Ihren Vertrieb.',
     link: '/website/kaufy/vertrieb',
   },
 ];
@@ -58,7 +50,7 @@ export function PerspektivenKarten() {
           Eine Plattform. Drei Perspektiven.
         </h2>
         <p className="text-center text-[hsl(215,16%,47%)] mb-12 max-w-2xl mx-auto">
-          Kaufy passt sich deiner Rolle an – nicht umgekehrt.
+          KAUFY passt sich Ihrer Rolle an — nicht umgekehrt.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -96,9 +88,14 @@ export function PerspektivenKarten() {
               </div>
 
               {/* Description */}
-              <p className="text-sm text-[hsl(215,16%,47%)]">
+              <p className="text-sm text-[hsl(215,16%,47%)] mb-3">
                 {p.description}
               </p>
+
+              {/* Subtle arrow indicator */}
+              <div className="flex items-center gap-1 text-xs font-medium text-[hsl(210,80%,55%)] opacity-0 group-hover:opacity-100 transition-opacity">
+                Mehr erfahren <ArrowRight className="w-3 h-3" />
+              </div>
             </div>
           ))}
         </div>

@@ -2,21 +2,19 @@
  * Kaufy2026Layout — Zone 3 Website Layout
  * 
  * Design: 1400px centered container with rounded corners
- * Header: Logo + Nav + Armstrong Toggle + Auth buttons
- * Footer: 5-column grid
- * Armstrong: Floating AI chat widget with header toggle
+ * Header: Logo + Nav + KI-Assistent Toggle + Auth buttons
+ * Footer: 4-column grid
+ * Armstrong: Floating AI chat widget (always on, no visible toggle in header)
  */
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Sparkles } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Menu, X } from 'lucide-react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { KaufyArmstrongWidget } from '@/components/zone3/kaufy2026/KaufyArmstrongWidget';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
 import { useZone3Setting } from '@/hooks/useZone3Settings';
 import { SEOHead } from '@/components/zone3/shared/SEOHead';
-
-const ARMSTRONG_STORAGE_KEY = 'kaufy_armstrong_enabled';
 
 export default function Kaufy2026Layout() {
   const location = useLocation();
@@ -24,18 +22,6 @@ export default function Kaufy2026Layout() {
   const [pinVerified, setPinVerified] = useState(() => sessionStorage.getItem('kaufy_pin_verified') === 'true');
   const { data: pinGateValue, isLoading: pinGateLoading } = useZone3Setting('pin_gate_enabled');
   const pinGateEnabled = pinGateValue === 'true';
-  
-  // Armstrong toggle — default ON, persisted in localStorage
-  const [armstrongEnabled, setArmstrongEnabled] = useState(() => {
-    const saved = localStorage.getItem(ARMSTRONG_STORAGE_KEY);
-    return saved === null ? true : saved === 'true';
-  });
-
-  useEffect(() => {
-    localStorage.setItem(ARMSTRONG_STORAGE_KEY, String(armstrongEnabled));
-  }, [armstrongEnabled]);
-
-  // SEOHead rendered in JSX below
 
   if (pinGateLoading) {
     return <div className="min-h-screen flex items-center justify-center"><div className="h-6 w-6 border-2 border-current border-t-transparent rounded-full animate-spin" /></div>;
@@ -103,12 +89,9 @@ export default function Kaufy2026Layout() {
         {/* Header */}
         <header className="kaufy2026-header">
           <div className="flex items-center justify-between h-16 px-6 lg:px-10">
-            {/* Logo */}
+            {/* Logo — clean, no beta badge */}
             <Link to="/website/kaufy" className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-[hsl(220,20%,10%)]">KAUFY</span>
-              <span className="text-xs font-medium text-[hsl(210,80%,55%)] bg-[hsl(210,80%,55%,0.1)] px-2 py-0.5 rounded-full">
-                beta
-              </span>
+              <span className="text-2xl font-bold tracking-tight text-[hsl(220,20%,10%)]">KAUFY</span>
             </Link>
 
             {/* Desktop Nav */}
@@ -129,32 +112,8 @@ export default function Kaufy2026Layout() {
               ))}
             </nav>
 
-            {/* Right side: Armstrong Toggle + Auth */}
+            {/* Right side: Auth buttons only (Armstrong toggle removed from header) */}
             <div className="hidden md:flex items-center gap-3">
-              {/* Armstrong Toggle */}
-              <button
-                onClick={() => setArmstrongEnabled(!armstrongEnabled)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all',
-                  armstrongEnabled
-                    ? 'bg-[hsl(210,80%,55%,0.12)] text-[hsl(210,80%,40%)]'
-                    : 'bg-[hsl(210,20%,92%)] text-[hsl(215,16%,55%)]'
-                )}
-                aria-label={armstrongEnabled ? 'Armstrong deaktivieren' : 'Armstrong aktivieren'}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>Armstrong</span>
-                <div className={cn(
-                  'relative h-4 w-7 rounded-full transition-colors',
-                  armstrongEnabled ? 'bg-[hsl(210,80%,55%)]' : 'bg-[hsl(210,20%,82%)]'
-                )}>
-                  <div className={cn(
-                    'absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform shadow-sm',
-                    armstrongEnabled ? 'translate-x-3.5' : 'translate-x-0.5'
-                  )} />
-                </div>
-              </button>
-
               <Link to="/auth">
                 <Button variant="ghost" size="sm" className="text-[hsl(220,20%,10%)]">
                   Anmelden
@@ -167,28 +126,8 @@ export default function Kaufy2026Layout() {
               </Link>
             </div>
 
-            {/* Mobile: Armstrong Toggle + Menu */}
+            {/* Mobile: Menu only */}
             <div className="flex md:hidden items-center gap-2">
-              <button
-                onClick={() => setArmstrongEnabled(!armstrongEnabled)}
-                className={cn(
-                  'flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all',
-                  armstrongEnabled
-                    ? 'bg-[hsl(210,80%,55%,0.12)] text-[hsl(210,80%,40%)]'
-                    : 'bg-[hsl(210,20%,92%)] text-[hsl(215,16%,55%)]'
-                )}
-              >
-                <Sparkles className="h-3 w-3" />
-                <div className={cn(
-                  'relative h-3.5 w-6 rounded-full transition-colors',
-                  armstrongEnabled ? 'bg-[hsl(210,80%,55%)]' : 'bg-[hsl(210,20%,82%)]'
-                )}>
-                  <div className={cn(
-                    'absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white transition-transform shadow-sm',
-                    armstrongEnabled ? 'translate-x-3' : 'translate-x-0.5'
-                  )} />
-                </div>
-              </button>
               <button
                 className="p-2"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -239,19 +178,19 @@ export default function Kaufy2026Layout() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               {/* Logo + Claim */}
               <div className="md:col-span-1">
-                <span className="text-2xl font-bold text-[hsl(220,20%,10%)]">KAUFY</span>
+                <span className="text-2xl font-bold tracking-tight text-[hsl(220,20%,10%)]">KAUFY</span>
                 <p className="mt-3 text-sm text-[hsl(215,16%,47%)] leading-relaxed">
-                  Die KI-Plattform für Kapitalanlage.
+                  Die KI-Plattform für Kapitalanlageimmobilien.
                 </p>
                 <p className="mt-2 text-sm text-[hsl(215,16%,47%)] leading-relaxed">
-                  Vermarktung, Beratung und Verwaltung – auf einer Plattform.
+                  Marktplatz, Beratung und Verwaltung — auf einer Plattform.
                 </p>
               </div>
 
               {/* Plattform */}
               <div>
                 <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Plattform</h4>
-                <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
+                <ul className="space-y-2.5 text-sm text-[hsl(215,16%,47%)]">
                   <li><Link to="/website/kaufy" className="hover:text-[hsl(220,20%,10%)] transition-colors">Investment-Suche</Link></li>
                   <li><Link to="/website/kaufy/vermieter" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Vermieter</Link></li>
                   <li><Link to="/website/kaufy/verkaeufer" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Anbieter</Link></li>
@@ -262,7 +201,7 @@ export default function Kaufy2026Layout() {
               {/* Rechtliches */}
               <div>
                 <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Rechtliches</h4>
-                <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
+                <ul className="space-y-2.5 text-sm text-[hsl(215,16%,47%)]">
                   <li><Link to="/website/kaufy/faq" className="hover:text-[hsl(220,20%,10%)] transition-colors">FAQ</Link></li>
                   <li><Link to="/website/kaufy/impressum" className="hover:text-[hsl(220,20%,10%)] transition-colors">Impressum</Link></li>
                   <li><Link to="/website/kaufy/datenschutz" className="hover:text-[hsl(220,20%,10%)] transition-colors">Datenschutz</Link></li>
@@ -272,10 +211,9 @@ export default function Kaufy2026Layout() {
               {/* Kontakt */}
               <div>
                 <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Kontakt</h4>
-                <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
+                <ul className="space-y-2.5 text-sm text-[hsl(215,16%,47%)]">
                   <li><a href="mailto:info@kaufy.immo" className="hover:text-[hsl(220,20%,10%)] transition-colors">info@kaufy.immo</a></li>
                   <li><a href="tel:+498941432270" className="hover:text-[hsl(220,20%,10%)] transition-colors">+49 89 4143 2270</a></li>
-                  <li className="text-xs opacity-70">Armstrong KI-Assistent erreichbar</li>
                   <li><Link to="/website/kaufy/kontakt" className="hover:text-[hsl(220,20%,10%)] transition-colors">Kontaktformular</Link></li>
                 </ul>
               </div>
@@ -297,8 +235,8 @@ export default function Kaufy2026Layout() {
         </footer>
       </div>
 
-      {/* Armstrong Chat Widget */}
-      <KaufyArmstrongWidget enabled={armstrongEnabled} />
+      {/* Armstrong Chat Widget — always active, no header toggle */}
+      <KaufyArmstrongWidget enabled={true} />
     </div>
   );
 }
