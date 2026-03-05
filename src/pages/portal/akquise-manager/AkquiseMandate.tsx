@@ -385,7 +385,8 @@ export default function AkquiseMandate() {
       <ProfilePreviewSection
         previewData={previewData} previewTextLong={previewTextLong}
         clientName={clientName}
-        onGeneratePdf={() => profileData && generateAcqPdf(profileData, clientName, profileTextLong)}
+        logoUrl={brandLogoUrl} companyName={brandCompanyName}
+        onGeneratePdf={() => profileData && generateAcqPdf(profileData, clientName, profileTextLong, { logoUrl: brandLogoUrl, companyName: brandCompanyName })}
         profileGenerated={profileGenerated} mandateCreated={mandateCreated} mandateCode={activeMandateCode}
         acqConsentData={acqConsentData} setAcqConsentData={setAcqConsentData}
         acqConsentResearch={acqConsentResearch} setAcqConsentResearch={setAcqConsentResearch}
