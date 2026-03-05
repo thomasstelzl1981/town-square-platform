@@ -243,7 +243,7 @@ export default function ProjectLandingHome() {
   // Summary for table
   const totalArea = availableUnits.reduce((s, u) => s + (u.area_sqm || 0), 0);
   const totalPrice = availableUnits.reduce((s, u) => s + (u.list_price || 0), 0);
-  const totalRentAnnual = availableUnits.reduce((s, u) => s + (u.rent_net || 0) * 12, 0);
+  const totalRentAnnual = availableUnits.reduce((s, u) => s + ((u.rent_net || u.current_rent || 0) * 12), 0);
   const avgYield = totalPrice > 0 ? (totalRentAnnual / totalPrice) * 100 : 0;
   const calculatedUnits = availableUnits.filter(u => metricsCache[u.id]);
   const avgBurden = calculatedUnits.length > 0
