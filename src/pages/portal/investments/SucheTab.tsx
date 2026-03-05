@@ -7,7 +7,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDemoListings, DEMO_PROPERTY_IMAGE_MAP } from '@/hooks/useDemoListings';
-import { getCachedSignedUrl } from '@/lib/imageCache';
+import { fetchPropertyImages } from '@/lib/fetchPropertyImages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -62,7 +62,7 @@ export default function SucheTab() {
   // Search mode
   const [searchMode, setSearchMode] = useState<SearchMode>('investment');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  
   const [hasSearched, setHasSearched] = useState(searchParams.get('searched') === '1');
 
   // Investment search params — restore from URL if available
@@ -155,73 +155,8 @@ export default function SucheTab() {
         .map((item: any) => item.properties?.id)
         .filter(Boolean) as string[];
 
-      // Pick best image per property:
-      // 1) is_title_image=true
-      // 2) lowest display_order
-      const imageMap = new Map<string, string>();
-
-      if (propertyIds.length > 0) {
-        const { data: imageLinks, error: linksError } = await supabase
-          .from('document_links')
-          .select(`
-            object_id,
-            is_title_image,
-            display_order,
-            documents!inner (file_path, mime_type)
-          `)
-          .in('object_id', propertyIds)
-          .eq('object_type', 'property')
-          .order('is_title_image', { ascending: false })
-          .order('display_order', { ascending: true })
-          .order('created_at', { ascending: true });
-
-        if (linksError) {
-          console.warn('Title image lookup error:', linksError);
-        } else {
-          const bestByProperty = new Map<
-            string,
-            { file_path: string; is_title_image: boolean; display_order: number }
-          >();
-
-          for (const link of (imageLinks || []) as any[]) {
-            const doc = link.documents as any;
-            if (!doc?.file_path) continue;
-            if (!String(doc?.mime_type || '').startsWith('image/')) continue;
-
-            const candidate = {
-              file_path: doc.file_path as string,
-              is_title_image: !!link.is_title_image,
-              display_order: typeof link.display_order === 'number' ? link.display_order : 0,
-            };
-
-            const current = bestByProperty.get(link.object_id);
-            if (!current) {
-              bestByProperty.set(link.object_id, candidate);
-              continue;
-            }
-
-            // Prefer explicit title image
-            if (candidate.is_title_image && !current.is_title_image) {
-              bestByProperty.set(link.object_id, candidate);
-              continue;
-            }
-
-            // Otherwise, prefer lower display_order
-            if (candidate.is_title_image === current.is_title_image && candidate.display_order < current.display_order) {
-              bestByProperty.set(link.object_id, candidate);
-            }
-          }
-
-          await Promise.all(
-            Array.from(bestByProperty.entries()).map(async ([objectId, best]) => {
-              const url = await getCachedSignedUrl(best.file_path);
-              if (url) {
-                imageMap.set(objectId, url);
-              }
-            })
-          );
-        }
-      }
+      // Fetch hero images via shared utility (SSOT)
+      const imageMap = await fetchPropertyImages(propertyIds);
       // Query unit counts per property
       const unitCountMap = new Map<string, number>();
       if (propertyIds.length > 0) {

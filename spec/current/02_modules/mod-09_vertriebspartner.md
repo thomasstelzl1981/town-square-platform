@@ -36,7 +36,7 @@ ohne Provisionsdaten, eine Kundenverwaltung, ein Partnernetzwerk und die Systemg
 | Beratung | `/portal/vertriebspartner/beratung` | Kundenfreundliche Ansicht ohne Provision |
 | Kunden | `/portal/vertriebspartner/kunden` | CRM für Partner-Kunden |
 | Netzwerk | `/portal/vertriebspartner/network` | Partner-Netzwerk und Vermittlungen |
-| Provisionen | `/portal/vertriebspartner/systemgebuehr` | Systemgebühr-Vereinbarung und Provisionsübersicht |
+| Provisionen | `/portal/vertriebspartner/provisionen` | Systemgebühr-Vereinbarung und Provisionsübersicht |
 
 ---
 
@@ -49,7 +49,7 @@ MOD-09:
   icon: "Handshake"
   main_route: "/portal/vertriebspartner"
   display_order: 9
-  sub_tiles: [katalog, beratung, kunden, network, systemgebuehr]
+  sub_tiles: [katalog, beratung, kunden, network, provisionen]
 ```
 
 ---

@@ -153,7 +153,8 @@ const BeratungTab = () => {
           )
         `)
         .in('id', listingIds)
-        .in('status', ['active', 'reserved']);
+        .in('status', ['active', 'reserved'])
+        .limit(50);
 
       if (listingsError) throw listingsError;
       if (!listingsData?.length) return [];
