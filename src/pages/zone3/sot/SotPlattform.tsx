@@ -10,7 +10,7 @@ import * as Icons from 'lucide-react';
 
 /* Modules that are KI-powered with what the KI does */
 const KI_MODULES: Record<string, string> = {
-  'MOD-02': 'E-Mails & Texte generieren mit GPT-5',
+  'MOD-02': 'Textgenerierung & E-Mail-Automatisierung',
   'MOD-03': 'Dokumentenerkennung & Auto-Kategorisierung',
   'MOD-04': 'Exposé-Extraktion & Objektanalyse',
   'MOD-07': 'Selbstauskunft automatisch befüllen',
