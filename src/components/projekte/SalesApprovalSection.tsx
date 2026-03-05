@@ -23,6 +23,7 @@ import {
   Lock,
   Loader2,
   ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,6 +31,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createPropertyFromUnit } from '@/lib/createPropertyFromUnit';
 import { findOrCreateCase } from '@/hooks/useSLCEventRecorder';
+import { syncProjectToListings } from '@/lib/syncProjectToListings';
 import { KaufyShowcaseDialog } from './KaufyShowcaseDialog';
 
 interface SalesApprovalSectionProps {
@@ -119,6 +121,7 @@ export function SalesApprovalSection({
     commissionRate: [7],
   });
   const [isActivating, setIsActivating] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [showKaufyDialog, setShowKaufyDialog] = useState(false);
 
   // Fetch existing request
@@ -635,6 +638,28 @@ export function SalesApprovalSection({
     }
   }
 
+  // ─── Sync project data to listings ───
+  async function handleSyncToListings() {
+    if (!projectId || !tenantId) return;
+    setIsSyncing(true);
+    try {
+      const syncResult = await syncProjectToListings(projectId, tenantId, projectName);
+      if (syncResult.errors.length > 0) {
+        toast.warning(`${syncResult.updated} aktualisiert, ${syncResult.errors.length} Fehler`, {
+          description: syncResult.errors[0],
+        });
+      } else if (syncResult.updated > 0) {
+        toast.success(`${syncResult.updated} Listing${syncResult.updated !== 1 ? 's' : ''} aktualisiert, ${syncResult.unchanged} unverändert`);
+      } else {
+        toast.info('Alle Listings sind bereits aktuell');
+      }
+      queryClient.invalidateQueries({ queryKey: ['sales-desk-request', projectId] });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Sync fehlgeschlagen');
+    }
+    setIsSyncing(false);
+  }
+
   const hasProject = !!projectId || isDemo;
 
   return (
@@ -844,6 +869,29 @@ export function SalesApprovalSection({
               </div>
             );
           })}
+
+          {/* Sync Button — visible when Vertrieb is active */}
+          {isVertriebActive && (
+            <div className="pt-2 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncToListings}
+                disabled={isSyncing || isDemo}
+                className="gap-2"
+              >
+                {isSyncing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                {isSyncing ? 'Synchronisiere...' : 'Daten synchronisieren'}
+              </Button>
+              <p className="text-xs text-muted-foreground mt-1">
+                Überträgt Preise, Flächen und Mieten aus der Preisliste auf alle veröffentlichten Listings.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
