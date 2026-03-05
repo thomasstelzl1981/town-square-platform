@@ -159,7 +159,7 @@ export function analyzeClaimHistory(claims: InsuranceClaim[]): {
   let totalEstimated = 0;
   let totalApproved = 0;
   let totalPaid = 0;
-  let processingDays: number[] = [];
+  const processingDays: number[] = [];
   let decidedCount = 0;
   let approvedCount = 0;
 

@@ -69,8 +69,8 @@ serve(async (req) => {
     const geminiKey = Deno.env.get("GEMINI_API_KEY");
 
     let estimatedValue = 0;
-    let confidence = "low";
-    let method = "fallback_estimate";
+    const confidence = "low";
+    const method = "fallback_estimate";
 
     // Simple heuristic fallback
     const basePrice = 2500; // €/m² default

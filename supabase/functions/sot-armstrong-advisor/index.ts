@@ -4296,7 +4296,7 @@ serve(async (req) => {
     
     // Get user context from JWT
     const authHeader = req.headers.get("Authorization");
-    let userContext: UserContext = {
+    const userContext: UserContext = {
       user_id: "anonymous",
       org_id: null,
       roles: [],

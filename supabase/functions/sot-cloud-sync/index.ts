@@ -425,7 +425,7 @@ Deno.serve(async (req) => {
         const requestedFileIds = (body.fileIds as string[] | undefined);
 
         // List files
-        let q = `'${connector.remote_folder_id}' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'`;
+        const q = `'${connector.remote_folder_id}' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'`;
         const listRes = await fetch(
           `${GOOGLE_DRIVE_API}/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,size,modifiedTime)&orderBy=name&pageSize=100`,
           { headers: { Authorization: `Bearer ${accessToken}` } }

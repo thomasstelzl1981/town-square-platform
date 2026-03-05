@@ -49,7 +49,7 @@ export function useTenancyApplicants(unitId?: string) {
     queryKey: ['tenancy-applicants', tenantId, unitId],
     queryFn: async () => {
       if (!tenantId) return [];
-      let q = supabase
+      const q = supabase
         .from('applicant_profiles')
         .select('*')
         .eq('tenant_id', tenantId)

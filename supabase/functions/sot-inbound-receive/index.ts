@@ -906,7 +906,7 @@ invoice_data NUR befüllen wenn is_invoice === true.`;
     // Parse AI response
     let parsed: any;
     try {
-      let jsonStr = aiContent.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+      const jsonStr = aiContent.replace(/```json\n?/g, "").replace(/```\n?/g, "");
       parsed = JSON.parse(jsonStr.trim());
     } catch {
       console.warn("[auto-trigger] AI response not valid JSON, using raw text");

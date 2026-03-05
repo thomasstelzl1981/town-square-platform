@@ -221,7 +221,7 @@ export default function AdminRecherche() {
   };
 
   const toggleResult = (id: string) => {
-    const s = new Set(selectedResults); s.has(id) ? s.delete(id) : s.add(id); setSelectedResults(s);
+    const s = new Set(selectedResults); if (s.has(id)) { s.delete(id); } else { s.add(id); } setSelectedResults(s);
   };
   const toggleAll = () => {
     setSelectedResults(selectedResults.size === filteredResults.length ? new Set() : new Set(filteredResults.map(r => r.id)));

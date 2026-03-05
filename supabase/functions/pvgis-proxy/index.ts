@@ -13,7 +13,8 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    let { lat, lon, peakpower, loss, angle, aspect, pvtechchoice, address } = body;
+    const { peakpower, loss, angle, aspect, pvtechchoice, address } = body;
+    let { lat, lon } = body;
 
     // Geocode address if lat/lon not provided
     if ((!lat || !lon) && address) {

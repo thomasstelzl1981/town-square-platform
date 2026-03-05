@@ -196,7 +196,7 @@ Antworte NUR mit validem JSON:
     // Parse AI response
     let parsed: { full_text: string; confidence: number; detected_type: string; summary: string; key_data: Record<string, unknown> };
     try {
-      let jsonStr = aiContent.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+      const jsonStr = aiContent.replace(/```json\n?/g, "").replace(/```\n?/g, "");
       parsed = JSON.parse(jsonStr.trim());
     } catch {
       parsed = {
