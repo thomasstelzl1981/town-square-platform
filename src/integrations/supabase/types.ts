@@ -23268,8 +23268,11 @@ export type Database = {
           created_at: string
           created_by: string
           credits_charged: number
+          draft_source_ref: string | null
           id: string
+          property_id: string | null
           source_context: string
+          source_mode: string
           source_ref: string | null
           stage_current: number
           stage_timings: Json | null
@@ -23281,8 +23284,11 @@ export type Database = {
           created_at?: string
           created_by: string
           credits_charged?: number
+          draft_source_ref?: string | null
           id?: string
+          property_id?: string | null
           source_context?: string
+          source_mode?: string
           source_ref?: string | null
           stage_current?: number
           stage_timings?: Json | null
@@ -23294,8 +23300,11 @@ export type Database = {
           created_at?: string
           created_by?: string
           credits_charged?: number
+          draft_source_ref?: string | null
           id?: string
+          property_id?: string | null
           source_context?: string
+          source_mode?: string
           source_ref?: string | null
           stage_current?: number
           stage_timings?: Json | null
@@ -23304,6 +23313,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "valuation_cases_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "valuation_cases_tenant_id_fkey"
             columns: ["tenant_id"]
