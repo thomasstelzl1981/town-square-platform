@@ -147,15 +147,23 @@ export function useValuationCase() {
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Bewertung fehlgeschlagen');
 
-      const caseId = data.caseId as string;
+      // Defensive: backend returns snake_case
+      const caseId = (data.case_id ?? data.caseId) as string;
+      if (!caseId) throw new Error('case_id not found in run response');
 
-      // Update stages from response
-      const stageTimings = data.stageTimings || {};
-      const stages: StageProgress[] = Object.entries(stageTimings).map(([k, v]) => ({
-        stageId: parseInt(k) as ValuationStageId,
-        status: 'done' as ValuationStageStatus,
-        durationMs: v as number,
-      }));
+      // Update stages from response (snake_case from backend)
+      const stageTimings = data.stage_timings ?? data.stageTimings ?? {};
+      const stages: StageProgress[] = Object.entries(stageTimings).map(([k, v]) => {
+        const num = k.replace('stage_', '');
+        return {
+          stageId: parseInt(num) as ValuationStageId,
+          status: 'done' as ValuationStageStatus,
+          durationMs: (v as any)?.durationMs ?? (v as number),
+        };
+      });
+
+      // Capture summary from run response (executive_summary, diffs, etc.)
+      const runSummary = data.summary || {};
 
       setState(s => ({
         ...s,
@@ -165,8 +173,8 @@ export function useValuationCase() {
         currentStage: 5,
       }));
 
-      // Auto-fetch results
-      await fetchResult(caseId);
+      // Auto-fetch results and map to UI format
+      await fetchResult(caseId, runSummary);
       setIsLoading(false);
       return caseId;
     } catch (e: any) {
@@ -178,17 +186,52 @@ export function useValuationCase() {
     }
   }, [activeOrganization, user]);
 
-  /** Step 3: Fetch results for existing case */
-  const fetchResult = useCallback(async (caseId: string) => {
+  /** Step 3: Fetch results for existing case and map to UI format */
+  const fetchResult = useCallback(async (caseId: string, runSummary?: Record<string, any>) => {
     try {
       const { data, error } = await supabase.functions.invoke('sot-valuation-engine', {
         body: { action: 'get', case_id: caseId },
       });
       if (error) throw new Error(error.message);
-      setState(s => ({ ...s, resultData: data, caseId }));
-      return data;
+
+      // Map raw DB response { case, inputs, results, report } to UI DTO
+      const results = data?.results || {};
+      const caseData = data?.case || {};
+      const inputs = data?.inputs || {};
+
+      const mappedResult = {
+        // Value band (stored as JSON in valuation_results)
+        valueBand: results.value_band ?? null,
+        // Methods array
+        methods: results.valuation_methods ?? [],
+        // Financing scenarios
+        financing: results.financing ?? [],
+        // Stress tests
+        stressTests: results.stress_tests ?? [],
+        // Lien proxy
+        lienProxy: results.lien_proxy ?? null,
+        // Debt service
+        debtService: results.debt_service ?? null,
+        // Data quality (from inputs snapshot or run summary)
+        dataQuality: inputs.snapshot?.data_quality ?? runSummary?.data_quality ?? null,
+        // Comp stats
+        compStats: results.comp_stats ?? null,
+        // Executive summary (only in run response summary, not stored separately)
+        executiveSummary: runSummary?.executive_summary ?? null,
+        // Legal title (from run summary or inputs)
+        legalTitle: runSummary?.legal_title ?? inputs.snapshot?.legal_title ?? null,
+        // Diffs (from inputs or run summary)
+        diffs: inputs.diffs ?? [],
+        // Source mode
+        sourceMode: caseData.source_mode ?? 'DRAFT_INTAKE',
+      };
+
+      setState(s => ({ ...s, resultData: mappedResult, caseId }));
+      return mappedResult;
     } catch (e: any) {
       console.error('fetchResult error:', e);
+      setState(s => ({ ...s, error: `Ergebnis konnte nicht geladen werden: ${e.message}`, status: 'failed' }));
+      toast.error('Ergebnis konnte nicht geladen werden');
       return null;
     }
   }, []);
