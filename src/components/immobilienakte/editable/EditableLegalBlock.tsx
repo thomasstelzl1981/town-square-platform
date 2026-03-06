@@ -97,14 +97,53 @@ export function EditableLegalBlock({
           </div>
         </div>
 
-        <div className="space-y-1">
-          <Label className="text-[11px] text-muted-foreground">TE-Nummer (Wohnungseigentum)</Label>
-          <Input 
-            value={teNumber || ''} 
-            onChange={(e) => onFieldChange('teNumber', e.target.value)}
-            placeholder="z.B. 42/1000"
-            className="h-7 text-xs"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">TE-Nummer (Wohnungseigentum)</Label>
+            <Input 
+              value={teNumber || ''} 
+              onChange={(e) => onFieldChange('teNumber', e.target.value)}
+              placeholder="z.B. 42/1000"
+              className="h-7 text-xs"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Grundstücksfläche (m²)</Label>
+            <Input 
+              type="number"
+              step="0.01"
+              value={plotAreaSqm || ''} 
+              onChange={(e) => onFieldChange('plotAreaSqm', e.target.value ? parseFloat(e.target.value) : undefined)}
+              placeholder="z.B. 533"
+              className="h-7 text-xs"
+            />
+          </div>
+        </div>
+
+        {/* MEA — relevant für Bodenwertberechnung bei Teileigentum */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">MEA-Anteil (z.B. 42/1000)</Label>
+            <Input 
+              type="number"
+              step="0.01"
+              value={meaShare || ''} 
+              onChange={(e) => onFieldChange('meaShare', e.target.value ? parseFloat(e.target.value) : undefined)}
+              placeholder="z.B. 42"
+              className="h-7 text-xs"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">MEA-Gesamt (z.B. 1000)</Label>
+            <Input 
+              type="number"
+              step="0.01"
+              value={meaTotal || ''} 
+              onChange={(e) => onFieldChange('meaTotal', e.target.value ? parseFloat(e.target.value) : undefined)}
+              placeholder="z.B. 1000"
+              className="h-7 text-xs"
+            />
+          </div>
         </div>
 
         {/* Acquisition */}

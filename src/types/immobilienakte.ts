@@ -407,6 +407,7 @@ export interface PropertyFormData {
   landRegisterVolume?: string;
   parcelNumber?: string;
   teNumber?: string;
+  plotAreaSqm?: number;
   notaryDate?: string;
   purchasePrice?: number;
   marketValue?: number;

@@ -45,6 +45,12 @@ export function CoreDataBlock({
               <span>{roomsCount} Zimmer</span>
             </div>
           )}
+          {plotAreaSqm && (
+            <div className="flex items-center gap-2">
+              <LandPlot className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>{plotAreaSqm} m² Grundstück</span>
+            </div>
+          )}
         </div>
 
         {(heatingType || energySource) && (
