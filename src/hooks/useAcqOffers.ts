@@ -16,7 +16,7 @@ import { calcBestandQuick, calcAufteilerQuick } from '@/engines/akquiseCalc/engi
 
 export type AcqOfferSource = 'inbound_email' | 'upload' | 'manual' | 'portal_scrape' | 'firecrawl';
 export type AcqOfferStatus = 'new' | 'analyzing' | 'analyzed' | 'presented' | 'accepted' | 'rejected' | 'archived';
-export type AcqAnalysisType = 'ai_research' | 'geomap' | 'calc_bestand' | 'calc_aufteiler' | 'enrichment' | 'extraction';
+export type AcqAnalysisType = 'ai_research' | 'valuation' | 'calc_bestand' | 'calc_aufteiler' | 'enrichment' | 'extraction';
 export type AcqAnalysisStatus = 'pending' | 'running' | 'completed' | 'failed';
 
 export interface AcqOffer {
