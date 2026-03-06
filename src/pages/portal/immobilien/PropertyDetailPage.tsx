@@ -66,7 +66,7 @@ export default function PropertyDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
   const deleteQueryClient = useQueryClient();
-  const contentRef = usePdfContentRef();
+  
   const { checkPropertyCompleteness } = useArmstrongProactiveDispatcher('MOD-04');
 
   const { data: dossierData, isLoading: dossierLoading } = usePropertyDossier(id);
