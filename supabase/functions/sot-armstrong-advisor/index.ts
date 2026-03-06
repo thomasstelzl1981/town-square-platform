@@ -4852,7 +4852,7 @@ serve(async (req) => {
     }
     
     if (intent === "ACTION") {
-      const suggestions = suggestActionsForMessage(message, availableActions);
+      const suggestions = suggestActionsForMessage(message, availableActions, entity);
       
       if (suggestions.length === 0) {
         return new Response(
