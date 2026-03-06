@@ -14,7 +14,7 @@ const corsHeaders = {
 
 interface ResearchRequest {
   query: string;
-  mode?: 'ai' | 'geomap' | 'both';
+  mode?: 'ai' | 'valuation' | 'both';
 }
 
 interface StructuredResearchResult {
