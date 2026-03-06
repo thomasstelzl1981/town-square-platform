@@ -38,8 +38,8 @@ interface ResultData {
 
 function extractResult(result: any): ResultData {
   const vb = result?.value_band as any;
-  const methods = (result?.methods as any[]) || [];
-  const dq = result?.data_quality as any;
+  const methods = (result?.valuation_methods as any[]) || [];
+  const dq = vb?.data_quality as any;
 
   const findMethod = (label: string) =>
     methods.find((m: any) => m.label?.toLowerCase().includes(label))?.value ?? null;
