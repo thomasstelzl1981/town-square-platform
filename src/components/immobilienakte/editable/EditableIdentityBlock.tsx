@@ -15,6 +15,7 @@ interface EditableIdentityBlockProps {
   reportingRegime: ReportingRegime;
   buildYear?: number;
   wegFlag?: boolean;
+  unitCountActual?: number;
   // Address fields (moved from AddressBlock)
   street?: string;
   houseNumber?: string;
