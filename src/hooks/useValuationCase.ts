@@ -378,6 +378,9 @@ export function useValuationCase() {
             beleihungswert: bw.beleihungswert ?? 0,
             beleihungswertQuote: bw.beleihungswert_quote ?? bw.beleihungswertQuote ?? 0,
             sicherheitsabschlag: bw.sicherheitsabschlag ?? 0.10,
+            bwkBelwertv: bw.bwk_belwertv ?? bw.bwkBelwertv ?? 0,
+            reinertagBelwertv: bw.reinertrag_belwertv ?? bw.reinertagBelwertv ?? 0,
+            barwertfaktorBelwertv: bw.barwertfaktor_belwertv ?? bw.barwertfaktorBelwertv ?? 0,
           };
         })(),
         // V9.0: Gemini Research
