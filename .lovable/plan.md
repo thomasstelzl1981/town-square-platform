@@ -1,239 +1,226 @@
-# Refactoring-Masterplan: TSX-Monolithen → Modulare Architektur
 
-> **Datum**: 2026-03-05 (aktualisiert)
-> **Status**: Wave 1 ✅ (R-1–R-6) — Wave 2 Tranche 1 ✅ (R-7–R-10) — Tranche 2 ✅ (R-11–R-14) — Tranche 3 ✅ (R-15–R-24) — Tranche 4 ✅ (R-25–R-35)
-> **Methode**: Bewährtes Orchestrator + Sub-Components Pattern
 
----
+# Zone-2 PDF-CI SSOT (Premium) — Implementierungsplan
 
-## Gesamtstatistik
+## Freeze-Analyse
 
-| Metrik | Wave 1 (done) | Wave 2 T1-T3 (done) | Wave 2 T4 (geplant) | Gesamt |
-|--------|--------------|---------------------|---------------------|--------|
-| Dateien | 6 | 18 | 11 | 35 |
-| Zeilen vorher | 5.530 | ~10.800 | ~4.900 | ~21.230 |
-| Zeilen nachher | ~1.350 | ~3.200 | ~1.320 | ~5.870 |
-| Reduktion | 76% | ~70% | ~73% | ~72% |
+**Frei editierbar (kein Modul/Engine/Infra-Pfad):**
+- `src/lib/pdf/*` (NEU) — kein Freeze
+- `src/components/pdf/*` — kein Modulpfad
+- `src/components/shared/*` — kein Modulpfad
 
----
-
-## Wave 1 — ABGESCHLOSSEN ✅
-
-| # | Phase | Datei | Vorher | Nachher | Modul |
-|---|-------|-------|--------|---------|-------|
-| 1 | R-1 ✅ | FMEinreichung.tsx | 1039 | 295 | MOD-11 |
-| 2 | R-2 ✅ | ExposeDetail.tsx | 1008 | 299 | MOD-06 |
-| 3 | R-3 ✅ | Inbox.tsx | 976 | 180 | Admin |
-| 4 | R-4 ✅ | KontexteTab.tsx | 923 | 214 | MOD-04 |
-| 5 | R-5 ✅ | AnfrageFormV2.tsx | 904 | 183 | MOD-07 |
-| 6 | R-6 ✅ | Users.tsx | 680 | 178 | Admin |
+**Frozen — benötigt UNFREEZE:**
+- MOD-18 (`src/components/finanzanalyse/*`) — für FinanzberichtSection Refactor
+- MOD-12 (`src/components/akquise/*`) — für Doppel-Export-Bereinigung
+- MOD-17 (`src/components/portal/cars/*`) — für Fahrtenbuch CI-Header
+- MOD-22 (`src/pages/portal/petmanager/*`, `src/pages/portal/pets/*`) — für Invoice Dedupe
+- MOD-06 (`src/components/verkauf/*`) — für Exposé-Template
+- MOD-04 (`src/components/immobilien/*`) — für Portfolio-Dossier
+- ENG-NK (`src/engines/nkAbrechnung/*`) — für NK pdfExport CI-Header
+- MOD-13 (`src/components/projekte/*`) — für Projekt-Report CI-Header
 
 ---
 
-## Wave 2 — Tranche 1 ✅ (R-7–R-10)
+## Phase 1 — CI-Kit + Infrastruktur (keine Freezes betroffen)
 
-| # | Phase | Datei | Vorher | Nachher | Modul |
-|---|-------|-------|--------|---------|-------|
-| 7 | R-7 ✅ | EmailTab.tsx | 1506 | ~180 | MOD-02 |
-| 8 | R-8 ✅ | PortfolioTab.tsx | 1511 | ~200 | MOD-04 |
-| 9 | R-9 ✅ | BriefTab.tsx | 1012 | ~200 | MOD-02 |
-| 10 | R-10 ✅ | GeldeingangTab.tsx | 1018 | ~200 | MOD-04 |
+### 1.1 `src/lib/pdf/pdfCiTokens.ts`
+SSOT Design Tokens:
+- Page: A4 Portrait, margins T18/R16/B16/L18mm, contentWidth 176mm
+- Typography: H1 22pt semibold, H2 14pt semibold, H3 11pt semibold, Body 10pt regular, Caption 8pt, KPI 18-26pt semibold — all Helvetica (jsPDF native, Inter not embeddable without TTF complexity)
+- Colors: ink #0B1220, muted #556070, border #E6E8EC, surface #F7F8FA, accent #1E40AF, success #0F766E, warning #B45309, danger #B91C1C
+- Spacing: 8px grid baseline, section gap 12mm, paragraph gap 4mm
 
-## Wave 2 — Tranche 2 ✅ (R-11–R-14)
+### 1.2 `src/lib/pdf/pdfCiKit.ts`
+Premium primitives (all receive `doc: jsPDF` + return updated `y`):
+- `drawCiHeader(doc, opts: {title, subtitle?, caseId?, objectId?, date?})` — Logo left, title+subtitle, meta right; accent bar top
+- `drawCiFooter(doc, opts: {page, totalPages, confidential?, org?})` — "System of a Town" left, page center, org right
+- `drawCover(doc, opts: {title, subtitle?, heroImageBase64?, date, caseId?})` — full cover page with accent band
+- `drawSectionTitle(doc, y, title, subtitle?)` — H2 + optional divider
+- `drawKpiRow(doc, y, kpis: {label, value, tone?}[])` — 3-4 KPI cards, surface fill, large numbers
+- `drawTable(doc, y, spec: {headers, rows, colWidths?})` — header fill, stripe rows, auto page break
+- `drawInfoCard(doc, y, title, lines[])` — bordered card for disclaimers
+- `drawList(doc, y, items[])` — numbered/bulleted
+- `drawDivider(doc, y)` — thin border line
+- `drawBadge(doc, x, y, label, tone)` — small status badge
+- `ensurePageBreak(doc, y, minSpace)` — page break if insufficient space
+- `loadLogoAsBase64()` — cached logo loader
 
-| # | Phase | Datei | Vorher | Nachher | Modul |
-|---|-------|-------|--------|---------|-------|
-| 11 | R-11 ✅ | TenancyTab.tsx | 904 | ~200 | MOD-04 |
-| 12 | R-12 ✅ | UnitDetailPage.tsx | 708 | ~150 | MOD-13 |
-| 13 | R-13 ✅ | TileCatalog.tsx | 646 | ~150 | Admin |
-| 14 | R-14 ✅ | ManagerFreischaltung.tsx | 635 | ~140 | Admin |
-
-## Wave 2 — Tranche 3 ✅ (R-15–R-24)
-
-| # | Phase | Datei | Vorher | Nachher | Modul | Neue Dateien |
-|---|-------|-------|--------|---------|-------|-------------|
-| 15 | R-15 ✅ | PropertyDetailPage.tsx | 628 | ~200 | MOD-04 | PropertyDetailHeader, PropertyTabRouter |
-| 16 | R-16 ✅ | CaringProviderDetail.tsx | 599 | ~160 | MOD-22 | ProviderGallery, ProviderProfileCard, ProviderServicesCard, ProviderBookingSection |
-| 17 | R-17 ✅ | FMFinanzierungsakte.tsx | 596 | ~200 | MOD-11 | AkteKaufySearch |
-| 18 | R-18 ✅ | MasterTemplates.tsx | 585 | ~140 | Admin | 3 sub-components |
-| 19 | R-19 ✅ | OrganizationDetail.tsx | 581 | ~160 | Admin | 3 sub-components |
-| 20 | R-20 ✅ | FMFallDetail.tsx | 579 | ~160 | MOD-11 | FallHeaderBlock, FallContentBlocks |
-| 21 | R-21 ✅ | LeadManagerKampagnen.tsx | 576 | ~100 | MOD-10 | KampagnenKPIs, KampagnenLeadInbox, KampagnenCampaignList, KampagnenCreator |
-| 22 | R-22 ✅ | LeadPool.tsx | 560 | ~140 | Admin | 3 sub-components |
-| 23 | R-23 ✅ | ObjekteingangDetail.tsx | 539 | ~200 | MOD-12 | ObjektKPIRow, ObjektBasisdaten |
-| 24 | R-24 ✅ | Oversight.tsx | 531 | ~140 | Admin | 3 sub-components |
-
----
-
-## Wave 2 — Tranche 4 ✅ (R-25–R-35)
-
-| # | Phase | Datei | Vorher | Nachher | Modul | Neue Dateien |
-|---|-------|-------|--------|---------|-------|-------------|
-| R-25 | ✅ | Agreements.tsx | 506 | ~90 | Admin | AgreementsTemplateTable, AgreementsConsentLog |
-| R-26 | ✅ | Dashboard.tsx (Admin) | 491 | ~100 | Admin | AdminKPIGrid, AdminSessionCard |
-| R-27 | ✅ | Delegations.tsx | 486 | ~100 | Admin | DelegationTable |
-| R-28 | ✅ | ArmstrongWorkspace.tsx | 479 | ~180 | MOD-00 | WorkspaceChatHeader, WorkspaceChatMessages, WorkspaceChatInput |
-| R-29 | ✅ | FMDashboard.tsx | 472 | ~83 | MOD-11 | FMZinsTickerWidget, FMMandateCards, FMProfileEditSheet |
-| R-30 | ✅ | VerwaltungTab.tsx | 456 | ~150 | MOD-04 | VerwaltungContextGrid, VerwaltungPropertyAccordion, VerwaltungGesamtergebnis |
-| R-31 | ✅ | ProjectDetailPage.tsx | 456 | ~120 | MOD-13 | ProjectDetailHeader, ProjectUnitsTable, ProjectInfoTabs |
-| R-32 | ✅ | SanierungTab.tsx | 451 | ~89 | MOD-04 | SanierungDemoDetail |
-| R-33 | ✅ | MasterTemplatesImmo.tsx | 444 | ~60 | Admin | ImmoAkteBlockView, immoAkteBlocks.ts |
-| R-34 | ⬜ | StorageFileManager.tsx | 434 | — | MOD-03 | Skipped — already modular (5 views) |
-| R-35 | ✅ | RolesManagement.tsx | 419 | ~30 | Admin | RolesCatalogTab, RolesMatrixTab, RolesGovernanceTab |
-
-### Ergebnis
-
-- **33 von 35 Dateien** refactored (R-28 ArmstrongWorkspace + R-34 StorageFileManager waren optional, R-28 jetzt done)
-- **~80+ Sub-Components** extrahiert
-- **Durchschnittliche Reduktion**: ~65%
-
----
-
-## Regeln
-
-1. **Keine funktionalen Änderungen** — Reine Extraktion
-2. **Keine DB-Änderungen** — Kein Migrations-Tool nötig
-3. **Keine neuen Routes** — Bestehende Routen bleiben
-4. **Module sofort re-freezen** nach Abschluss jeder Phase
-5. **TSX Creation Check** (Regel F) — vor jeder neuen Datei auf Duplikate prüfen
-6. **Zone Separation** (Regel G) — keine Cross-Zone-Imports
-
----
-
-## Objektfinder / Portal-Recherche — Phasenplan
-
-> **Modul**: MOD-12 (Akquise-Manager) — Tools → Portal-Recherche
-> **Datum**: 2026-03-05
-
-### Phase 1 — Portal-Suche reparieren ✅
-
-**Status**: Implementiert
-
-| Änderung | Datei | Beschreibung |
-|----------|-------|--------------|
-| URL-Builder mit echten Filtern | `sot-research-engine/index.ts` | `buildPortalUrl()` mit Preis, Fläche, Objektart-Mapping pro Portal |
-| Parallele 3-Portal-Suche | `sot-research-engine/index.ts` | `searchAllPortals()` scrapt IS24/Immowelt/Kleinanzeigen parallel |
-| Erweiterter Extraktions-Prompt | `sot-research-engine/index.ts` | KI extrahiert: Objektart, Fläche, Zimmer, WE, Baujahr, Rendite, PLZ |
-| UI-Rebuild ohne Maklersuche | `PortalSearchTool.tsx` | Objektart-Filter, Flächen-Filter, Portal-Status-Badges, Ergebnis-Cards |
-| Hook-Update | `useAcqTools.ts` | Neue `PortalSearchParams` ohne `portal`/`searchType`, mit `areaMin/Max` |
-
-### Phase 2 — Persistierung + Inbox-Workflow (geplant)
-
-**Ziel**: Ergebnisse speichern, deduplizieren, als Lead-Kandidaten verarbeiten.
-
-**Neue DB-Tabellen** (via Migration):
-
-```sql
--- Suchlauf-Protokoll
-CREATE TABLE portal_search_runs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES organizations(id),
-  created_by UUID NOT NULL,
-  search_params_json JSONB NOT NULL,
-  status TEXT NOT NULL DEFAULT 'running', -- running/partial/success/fail
-  metrics_json JSONB, -- {immoscout24: {found: 12, new: 8}, ...}
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Gefundene Listings (alle Portale)
-CREATE TABLE portal_listings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES organizations(id),
-  run_id UUID REFERENCES portal_search_runs(id),
-  source_portal TEXT NOT NULL,
-  source_url TEXT,
-  source_listing_id TEXT,
-  title TEXT NOT NULL,
-  price INTEGER,
-  object_type TEXT,
-  living_area_sqm NUMERIC,
-  plot_area_sqm NUMERIC,
-  address TEXT,
-  city TEXT,
-  zip_code TEXT,
-  rooms NUMERIC,
-  units_count INTEGER,
-  year_built INTEGER,
-  gross_yield NUMERIC,
-  broker_name TEXT,
-  raw_extract_json JSONB,
-  cluster_fingerprint TEXT, -- Hash(adresse+preis+fläche) für Dedupe
-  status TEXT NOT NULL DEFAULT 'new', -- new/seen/saved/rejected/suppressed
-  score INTEGER, -- 0-100 Match vs. Suchprofil
-  match_reasons_json JSONB,
-  first_seen_at TIMESTAMPTZ DEFAULT now(),
-  last_seen_at TIMESTAMPTZ DEFAULT now(),
-  linked_offer_id UUID REFERENCES acq_offers(id), -- wenn in Objekteingang übernommen
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
-**Implementierung** (Dateien):
-
-| Datei | Beschreibung |
-|-------|--------------|
-| DB Migration | `portal_search_runs` + `portal_listings` mit RLS |
-| `src/hooks/usePortalListings.ts` | CRUD für portal_listings, Suppression, Status-Updates |
-| `src/pages/portal/akquise-manager/components/PortalSearchInbox.tsx` | Inbox-Cards: Neu/Gesehen/Gespeichert/Abgelehnt |
-| `sot-research-engine/index.ts` | Ergebnisse in `portal_listings` persistieren, Dedupe via `cluster_fingerprint` |
-| Scoring-Logic in `src/engines/akquiseCalc/` | `scoreListingVsProfile()` → Score 0-100 + Reasons |
-
-**Dedupe-Strategie**:
-- `cluster_fingerprint = MD5(lower(city) + price_bucket + area_bucket)`
-- Bei Match: `last_seen_at` updaten, nicht duplizieren
-- Suppression: Abgelehnte Fingerprints bei nächster Suche ignorieren
-
-**Inbox-Actions**:
-- "In Objekteingang übernehmen" → erstellt `acq_offers`-Record, setzt `linked_offer_id`
-- "Ablehnen" → Status `rejected`, optionale Suppression
-- "Merken" → Status `saved`
-
-### Phase 3 — KI-Suchprofil-Erfassung (geplant)
-
-**Ziel**: User beschreibt Wunschobjekt in Freitext, KI erzeugt strukturierte Filter.
-
-**Implementierung**:
-
-| Datei | Beschreibung |
-|-------|--------------|
-| `PortalSearchAIIntake.tsx` | Freitext-Eingabe + Confidence-Anzeige + Rückfragen |
-| `sot-research-engine/index.ts` | Neuer Intent `ai_search_profile` → Gemini 2.5 Pro |
-| `useAcqTools.ts` | `useAISearchProfile()` Hook |
-
-**AI Output Contract**:
+### 1.3 `src/lib/pdf/templates/registry.ts`
+Template Registry:
 ```typescript
-interface AIProfileDraft {
-  canonical: {
-    region?: string;
-    price_min?: number;
-    price_max?: number;
-    area_min?: number;
-    area_max?: number;
-    object_types?: string[];
-    yield_min?: number;
-    units_min?: number;
-  };
-  confidence: Record<string, number>; // 0-1 pro Feld
-  assumptions: string[]; // "Annahme: Preis = Kaltmiete"
-  questions?: string[]; // "Meinen Sie Warm- oder Kaltmiete?"
+interface PdfTemplate {
+  key: string;           // e.g. 'FIN_REPORT_V1'
+  label: string;
+  module: string;        // MOD-XX
+  type: 'B' | 'C';      // Report or Dossier
+  pageLimit: number;
+  requiredScopes?: string[];  // role/consent gates
+  generate: (data: any) => Promise<void>;
+}
+```
+Initial registrations: `FIN_REPORT_V1`, `SALES_EXPOSE_V1`, `PORTFOLIO_DOSSIER_V1`, `VALUATION_REPORT_V1` (existing), `NK_SETTLEMENT_V1` (existing), `PROJECT_REPORT_V1` (existing)
+
+### 1.4 `src/lib/pdf/README.md`
+"How to build a new PDF Template" — 1-page guide.
+
+### 1.5 Global Print CSS
+Add to `src/index.css`:
+```css
+@media print {
+  .no-print, .pdf-hide { display: none !important; }
+  .avoid-break { break-inside: avoid; }
+  .page-break { break-before: page; }
 }
 ```
 
-**Flow**:
-1. User gibt Freitext ein: "Suche MFH in Berlin, bis 2 Mio, mindestens 6% Rendite"
-2. Gemini 2.5 Pro extrahiert → `AIProfileDraft`
-3. UI zeigt extrahierte Filter mit Confidence-Badges
-4. User bestätigt oder korrigiert
-5. Bestätigte Filter werden als Suchparameter übernommen
+---
+
+## Phase 2 — Quick-Wins (benötigt UNFREEZE MOD-22, MOD-12, MOD-17, ENG-NK)
+
+### QW-2: Pet Invoice Dedupe
+- Create `src/lib/pdf/generateInvoicePdf.ts` — shared function extracting the duplicated ~40 lines from PMFinanzen + PetsMeinBereich
+- Both files import and call the shared function
+
+### QW-4: CI-Header/Footer in NK-Abrechnung + Fahrtenbuch
+- `src/engines/nkAbrechnung/pdfExport.ts`: Replace manual header/footer with `drawCiHeader`/`drawCiFooter` from pdfCiKit
+- `src/components/portal/cars/logbook/LogbookExport.tsx`: Same treatment
+
+### QW-5: MOD-12 Doppel-Export bereinigen
+- `src/components/akquise/acqPdfExport.ts`: Migrate to use `pdfCiKit` header/footer
+- Remove any `window.print()` button if present in the profile section
 
 ---
 
-### Abhängigkeiten & Reihenfolge
+## Phase 3 — High-Priority Templates (benötigt UNFREEZE MOD-18, MOD-06, MOD-04)
 
+### 3.1 MOD-18 Finanzreport (`src/lib/pdf/templates/financeReportV1.ts`)
+
+**Type B, 8-10 pages, CI-A.**
+
+Data source: `useFinanzberichtData` hook (already aggregates all data).
+
+Page structure:
+1. **Cover** — `drawCover` with title "Vermögensauskunft", person name, date
+2. **KPI Row** — Nettovermögen, Monatlicher Überschuss, Liquiditätsquote, Verschuldungsgrad
+3. **Einnahmen/Ausgaben** — `drawTable` with income/expense categories
+4. **Vermögen/Verbindlichkeiten** — `drawTable` with net calculation
+5. **Immobilienübersicht** — Top 10 properties, `drawTable`
+6. **Darlehen** — Top 10 loans, `drawTable`
+7. **Verträge/Abos** — compact `drawTable`
+8. **Vorsorge** — compact `drawTable` + status badges
+9. **Appendix** — QR link to web reader, disclaimer
+
+Security: Add consent gate check before generation.
+
+MOD-18 integration: Replace `PdfExportFooter` in `FinanzberichtSection.tsx` with a button that calls `financeReportV1.generate(data)`.
+
+### 3.2 MOD-06 Verkaufsexposé (`src/lib/pdf/templates/salesExposeV1.ts`)
+
+**Type B, 4-6 pages, CI-A. Currently missing entirely.**
+
+Data source: MOD-04 SSOT (`properties`, `units`, `document_links` for images).
+
+Page structure:
+1. **Cover** — Hero image (first property photo), address, price, key facts row (m², rooms, year, type)
+2. **Objektbeschreibung** — Facts table + highlights text
+3. **Lage** — Static map placeholder + location description
+4. **Bilder/Grundriss** — 2x2 image grid from property photos
+5. **Wirtschaftlichkeit** (optional, if Kapitalanlage) — Rendite KPIs, financing table
+6. **Rechtliches + Kontakt** — Disclaimer, broker contact, QR link
+
+Integration: Add export button to `ExposeDetail.tsx` (MOD-06).
+
+### 3.3 MOD-04 Portfolio-Dossier (`src/lib/pdf/templates/portfolioDossierV1.ts`)
+
+**Type C, 6-10 pages, CI-A.**
+
+Data source: `properties` + `units` + `leases` + `loans` aggregate.
+
+Page structure:
+1. **Cover** — "Portfolio-Report", person/org name, date, property count
+2. **KPI Row** — Gesamtwert, Mieteinnahmen p.a., Leerstandsquote, Ø Rendite
+3. **Portfolio-Tabelle** — Top 20 properties: Adresse, Typ, Wert, Miete, Rendite, Status
+4. **Objekt-Kacheln** — 2-3 per page with key data
+5. **Finanzierung aggregiert** — Total Restschuld, Annuität, Zinsbindung-Risiko
+6. **Risiko/Flags** — Data Quality, Leerstand, Zinsbindung alerts
+7. **Appendix** — QR link
+
+Integration: Add button in Immobilien portfolio view.
+
+---
+
+## Phase 4 — Existing Template Migration
+
+### Valuation PDF (`ValuationPdfGenerator.ts`)
+- Register in registry as `VALUATION_REPORT_V1`
+- Migrate header/footer to use `pdfCiKit` functions (the rest of the 12-page structure stays)
+- Not urgent, current implementation is functional
+
+### Project Report (`generateProjectReportPdf.ts`)
+- Register in registry as `PROJECT_REPORT_V1`
+- Migrate header/footer to `pdfCiKit`
+
+---
+
+## Required Unfreezes (Summary)
+
+Before implementation, user must provide:
 ```
-Phase 1 (done) ──→ Phase 2 (DB + Inbox) ──→ Phase 3 (KI-Intake)
-                         ↓
-                   Scoring-Engine (ENG-AKQUISE erweitern)
+UNFREEZE MOD-18
+UNFREEZE MOD-06
+UNFREEZE MOD-04
+UNFREEZE MOD-12
+UNFREEZE MOD-17
+UNFREEZE MOD-22
+UNFREEZE ENG-NK
+UNFREEZE MOD-13
 ```
 
-Phase 2 kann unabhängig von Phase 3 deployed werden. Phase 3 baut auf den Filter-Parametern aus Phase 1 auf.
+---
+
+## File Creation/Edit Summary
+
+| File | Action | Freeze |
+|------|--------|--------|
+| `src/lib/pdf/pdfCiTokens.ts` | NEW | None |
+| `src/lib/pdf/pdfCiKit.ts` | NEW | None |
+| `src/lib/pdf/templates/registry.ts` | NEW | None |
+| `src/lib/pdf/templates/financeReportV1.ts` | NEW | None |
+| `src/lib/pdf/templates/salesExposeV1.ts` | NEW | None |
+| `src/lib/pdf/templates/portfolioDossierV1.ts` | NEW | None |
+| `src/lib/pdf/generateInvoicePdf.ts` | NEW | None |
+| `src/lib/pdf/README.md` | NEW | None |
+| `src/index.css` | EDIT (print CSS) | None |
+| `src/components/finanzanalyse/FinanzberichtSection.tsx` | EDIT | MOD-18 |
+| `src/components/akquise/acqPdfExport.ts` | EDIT | MOD-12 |
+| `src/components/portal/cars/logbook/LogbookExport.tsx` | EDIT | MOD-17 |
+| `src/engines/nkAbrechnung/pdfExport.ts` | EDIT | ENG-NK |
+| `src/pages/portal/petmanager/PMFinanzen.tsx` | EDIT | MOD-22 |
+| `src/pages/portal/pets/PetsMeinBereich.tsx` | EDIT | MOD-22 |
+| `src/components/verkauf/ExposeDetail.tsx` | EDIT | MOD-06 |
+| `src/components/immobilien/*` (portfolio button) | EDIT | MOD-04 |
+| `src/components/projekte/generateProjectReportPdf.ts` | EDIT | MOD-13 |
+
+---
+
+## Bestätigungen
+
+- **CI-A ist aktiv** und wird in allen neuen Templates verwendet
+- **Report-PDFs werden ausschließlich als jsPDF-Templates** umgesetzt (Typ B/C)
+- **Page-PDF (window.print)** bleibt nur für simple Seitendrucke (Zone 1 Admin Dashboards etc.)
+- **CI-B (DIN 5008)** und **CI-C (Juristisch)** bleiben bewusst getrennt
+
+---
+
+## Aufwandsschätzung
+
+| Workstream | Iterationen |
+|-----------|-------------|
+| Phase 1: CI-Kit + Registry + Print CSS | 3-4 |
+| Phase 2: Quick-Wins (Dedupe, Headers, MOD-12) | 2-3 |
+| Phase 3a: MOD-18 Finanzreport Template | 3-4 |
+| Phase 3b: MOD-06 Exposé Template | 3-4 |
+| Phase 3c: MOD-04 Portfolio Dossier | 2-3 |
+| Phase 4: Migration existing templates | 2 |
+| **Gesamt** | **~15-20** |
+
