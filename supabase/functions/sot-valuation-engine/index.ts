@@ -1142,19 +1142,34 @@ Deno.serve(async (req) => {
           is_viable: dscr >= CALC.DSCR_VIABLE_THRESHOLD,
         };
 
-        // Save results
-        await sbAdmin.from("valuation_results").insert({
-          case_id: caseId, value_band: valueBand, valuation_methods: methods,
-          financing: financingScenarios, stress_tests: stressTests,
-          lien_proxy: lienProxy, debt_service: debtService,
-          location_analysis: locationAnalysis,
-          comp_stats: compStats, comp_postings: compPostings.slice(0, 10),
-          sensitivity: {},
-          charts: {},
-          // V9.0: New fields
-          gemini_research: geminiResearch,
-          beleihungswert: beleihungswertResult,
-        });
+        // Save results (with graceful degradation)
+        try {
+          const { error: insertErr } = await sbAdmin.from("valuation_results").insert({
+            case_id: caseId, value_band: valueBand, valuation_methods: methods,
+            financing: financingScenarios, stress_tests: stressTests,
+            lien_proxy: lienProxy, debt_service: debtService,
+            location_analysis: locationAnalysis,
+            comp_stats: compStats, comp_postings: compPostings.slice(0, 10),
+            sensitivity: {},
+            charts: {},
+            gemini_research: geminiResearch,
+            beleihungswert: beleihungswertResult,
+          });
+          if (insertErr) {
+            stageLog(4, `Results insert error: ${insertErr.message} — retrying without new columns`);
+            await sbAdmin.from("valuation_results").insert({
+              case_id: caseId, value_band: valueBand, valuation_methods: methods,
+              financing: financingScenarios, stress_tests: stressTests,
+              lien_proxy: lienProxy, debt_service: debtService,
+              location_analysis: locationAnalysis,
+              comp_stats: compStats, comp_postings: compPostings.slice(0, 10),
+              sensitivity: { gemini_research: geminiResearch, beleihungswert: beleihungswertResult },
+              charts: {},
+            });
+          }
+        } catch (insertError) {
+          stageLog(4, `Results insert critical error: ${insertError}`);
+        }
 
         tracker.end(4);
         stageLog(4, `Done. Marktwert P50: ${valueBand.p50}, Beleihungswert: ${beleihungswertFinal}, DSCR: ${dscr}`);
