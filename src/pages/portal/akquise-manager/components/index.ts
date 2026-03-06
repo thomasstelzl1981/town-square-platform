@@ -15,7 +15,7 @@ export { GeoMapTool } from './GeoMapTool';
 export { AcqDataRoom } from './AcqDataRoom';
 export { QuickCalcTool } from './QuickCalcTool';
 export { ExposeDragDropUploader } from './ExposeDragDropUploader';
-export { StandaloneCalculatorPanel } from './StandaloneCalculatorPanel';
+
 
 // Calculation Components
 export { BestandCalculation } from './BestandCalculation';
