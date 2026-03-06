@@ -82,7 +82,7 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
         const marketValue = vb?.p50 ?? null;
         const p25 = vb?.p25 ?? null;
         const p75 = vb?.p75 ?? null;
-        const dq = result?.data_quality ?? null;
+        const dq = vb?.data_quality ?? null;
 
         // Delta vs previous completed case
         let delta: number | null = null;

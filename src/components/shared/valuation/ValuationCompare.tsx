@@ -66,7 +66,7 @@ export function ValuationCompare({ caseIdA, caseIdB, allCases, onClose }: Props)
     queryFn: async () => {
       const { data: results, error } = await supabase
         .from('valuation_results')
-        .select('case_id, value_band, methods, data_quality')
+        .select('case_id, value_band, valuation_methods')
         .in('case_id', [selectedA, selectedB]);
       if (error) throw error;
       const map = new Map(results?.map(r => [r.case_id, r]) || []);
