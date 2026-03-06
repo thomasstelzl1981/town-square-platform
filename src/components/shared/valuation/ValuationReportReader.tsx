@@ -619,9 +619,9 @@ export function ValuationReportReader({
               {geminiResearch.vergleichsmieten && (
                 <div className="p-4 rounded-xl border bg-muted/10 space-y-1">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Vergleichsmieten</p>
-                  <DataRow label="Min" value={`${fmtNum((geminiResearch.vergleichsmieten as any).mieteMin ?? (geminiResearch.vergleichsmieten as any).miete_min)} €/m²`} />
-                  <DataRow label="Median" value={`${fmtNum((geminiResearch.vergleichsmieten as any).mieteMedian ?? (geminiResearch.vergleichsmieten as any).miete_median)} €/m²`} />
-                  <DataRow label="Max" value={`${fmtNum((geminiResearch.vergleichsmieten as any).mieteMax ?? (geminiResearch.vergleichsmieten as any).miete_max)} €/m²`} />
+                  <DataRow label="Min" value={`${fmtNum(geminiResearch.vergleichsmieten.mieteMin)} €/m²`} />
+                  <DataRow label="Median" value={`${fmtNum(geminiResearch.vergleichsmieten.mieteMedian)} €/m²`} />
+                  <DataRow label="Max" value={`${fmtNum(geminiResearch.vergleichsmieten.mieteMax)} €/m²`} />
                   <DataRow label="Quelle" value={geminiResearch.vergleichsmieten.quelle} muted />
                   {(geminiResearch.vergleichsmieten as any).begruendung && <DataRow label="Begründung" value={String((geminiResearch.vergleichsmieten as any).begruendung)} muted />}
                 </div>
