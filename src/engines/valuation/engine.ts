@@ -236,8 +236,8 @@ export function mergeSnapshots(
     const ssotVal = ssot[key];
     const extractedVal = extracted[key];
 
-    // SSOT wins if it has a value
-    if (ssotVal === null || ssotVal === undefined || ssotVal === '' || ssotVal === 0) {
+    // SSOT wins if it has a non-null value (0 is a valid value, e.g. vacancyRate: 0)
+    if (ssotVal === null || ssotVal === undefined || ssotVal === '') {
       if (extractedVal !== null && extractedVal !== undefined && extractedVal !== '') {
         (merged as any)[key] = extractedVal;
       }
