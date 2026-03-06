@@ -109,6 +109,7 @@ export function useDossierForm(initialData: UnitDossierData | null) {
       if (changes.totalAreaSqm !== undefined) mapped.totalAreaSqm = changes.totalAreaSqm;
       if ((changes as any).coreRenovated !== undefined) (mapped as any).coreRenovated = (changes as any).coreRenovated;
       if ((changes as any).renovationYear !== undefined) (mapped as any).renovationYear = (changes as any).renovationYear;
+      if ((changes as any).unitCountActual !== undefined) (mapped as any).unitCountActual = (changes as any).unitCountActual;
       return mapped;
     }
     
