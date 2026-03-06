@@ -144,7 +144,7 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
   doc.text(`Case ${data.caseId.slice(0, 8)}  ·  ${new Date(data.generatedAt).toLocaleDateString('de-DE')}${sourceModeLabel}`, ML, 35);
 
   y = 60;
-  heading(data.snapshot.address || 'Objekt', TYPO.H1.size - 6);
+  heading(data.snapshot.address || 'Objekt', 16);
   body(`${data.snapshot.postalCode || ''} ${data.snapshot.city || ''}`);
   y += 5;
 

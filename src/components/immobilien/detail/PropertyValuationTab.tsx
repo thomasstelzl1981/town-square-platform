@@ -238,7 +238,7 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
                 </Badge>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium font-mono">{v.public_id || v.id.slice(0, 8)}</p>
+                <p className="text-sm font-medium font-mono">{v.id.slice(0, 8)}</p>
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-muted-foreground">
                     {v.completed_at ? new Date(v.completed_at).toLocaleDateString('de-DE') : v.created_at ? new Date(v.created_at).toLocaleDateString('de-DE') : '–'}
