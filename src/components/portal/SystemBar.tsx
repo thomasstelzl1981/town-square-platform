@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { applyBrandFavicon } from '@/lib/brandFavicon';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';

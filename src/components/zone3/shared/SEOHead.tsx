@@ -8,6 +8,7 @@
  */
 import { useEffect } from 'react';
 import { usePageView } from '@/hooks/usePageView';
+import { applyBrandFavicon } from '@/lib/brandFavicon';
 
 // ─── Brand Registry ──────────────────────────────────────────────────────────
 export interface BrandSEOConfig {
