@@ -77,5 +77,7 @@ export * from './plc/spec';
 export * from './shared/controllerConventions';
 
 // Engine 19: SoT Valuation Engine (ENG-VALUATION)
-export * from './valuation/engine';
-export * from './valuation/spec';
+// Note: Valuation engine has its own namespace — import directly from '@/engines/valuation/spec' and '@/engines/valuation/engine'
+// to avoid name collisions with ENG-BWA (BEWIRTSCHAFTUNG_DEFAULTS) and ENG-FINANCE (TrafficLight)
+export { VALUATION_ENGINE_VERSION, VALUATION_CREDITS_PER_CASE, VALUATION_STAGES } from './valuation/spec';
+export { calculateErtragswert, calculateFinancingScenarios as calculateValuationFinancing, fuseValueBand, calculateLienProxy, calculateDSCR } from './valuation/engine';
