@@ -51,9 +51,18 @@ export function ValuationPreflight({
   return (
     <Card className={className}>
       <CardContent className="py-5 space-y-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Zap className="h-5 w-5 text-primary" />
           <span className="text-sm font-semibold">Bewertung — Preflight</span>
+          {preflight.sourceMode && (
+            <Badge 
+              variant={preflight.sourceMode === 'SSOT_FINAL' ? 'default' : 'outline'} 
+              className={cn('text-[10px]', preflight.sourceMode === 'SSOT_FINAL' && 'bg-primary/90')}
+            >
+              <Database className="h-3 w-3 mr-1" />
+              {preflight.sourceModeLabel || preflight.sourceMode}
+            </Badge>
+          )}
           <Badge variant="secondary" className="ml-auto text-xs">
             {preflight.creditsCost} Credits
           </Badge>
