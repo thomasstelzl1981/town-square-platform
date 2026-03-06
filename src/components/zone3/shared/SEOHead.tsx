@@ -8,6 +8,7 @@
  */
 import { useEffect } from 'react';
 import { usePageView } from '@/hooks/usePageView';
+import { applyBrandFavicon } from '@/lib/brandFavicon';
 
 // ─── Brand Registry ──────────────────────────────────────────────────────────
 export interface BrandSEOConfig {
@@ -264,6 +265,10 @@ export function SEOHead({ brand, page, faq, services, article, breadcrumbs }: SE
     const fullTitle = `${page.title} | ${config.name}`;
     document.title = fullTitle;
 
+    // ── Brand Favicon ──
+    const cleanupFavicon = applyBrandFavicon(brand);
+    document.title = fullTitle; // restore SEO title after favicon sets its own
+
     const canonicalUrl = page.canonical || `${config.domain}${page.path || '/'}`;
     const ogImage = page.ogImage || (config.ogImage ? `${config.domain}${config.ogImage}` : `${config.domain}${config.logo}`);
 
@@ -335,6 +340,7 @@ export function SEOHead({ brand, page, faq, services, article, breadcrumbs }: SE
     // ── Cleanup ──
     return () => {
       document.title = prevTitle;
+      cleanupFavicon();
       metas.forEach((el) => el.remove());
       ldScripts.forEach((el) => el.remove());
       if (createdCanonical && canonical) canonical.remove();

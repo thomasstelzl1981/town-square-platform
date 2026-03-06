@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { applyBrandFavicon } from '@/lib/brandFavicon';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
@@ -82,6 +83,12 @@ export function SystemBar() {
   const { theme, setTheme } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [temperature, setTemperature] = useState<number | null>(null);
+
+  // ── Armstrong Favicon ──
+  useEffect(() => {
+    const cleanup = applyBrandFavicon('armstrong');
+    return cleanup;
+  }, []);
 
   const isAtPortalRoot = location.pathname.replace(/\/+$/, '') === '/portal';
 
