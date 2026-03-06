@@ -1334,9 +1334,11 @@ function filterActionsForContext(
 
 function suggestActionsForMessage(
   message: string,
-  availableActions: ActionDefinition[]
+  availableActions: ActionDefinition[],
+  entity?: { type?: string; id?: string }
 ): SuggestedAction[] {
   const lowerMsg = message.toLowerCase();
+  const hasActiveEntity = !!(entity?.id);
   const suggestions: SuggestedAction[] = [];
   
   for (const action of availableActions) {
