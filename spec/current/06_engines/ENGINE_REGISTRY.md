@@ -27,6 +27,7 @@
 | 17 | **Konto-Matching Engine** | Ordnet Kontobewegungen automatisch Immobilien, PV-Anlagen und Vertraegen zu | Konten · Immobilien · PV | Free |
 | 18 | **KI-Browser Engine** | Armstrong navigiert kontrolliert im Web, extrahiert und belegt Inhalte | KI-Browser (MOD-21) | 1-4 Credits/Session |
 | 19 | **Trip Engine** | Erkennt Fahrten aus GPS/Telematics-Daten fuer das Fahrtenbuch | Fahrzeuge (MOD-17) | Free |
+| 20 | **Valuation Engine** | KI-gestuetzte Immobilienbewertung mit deterministischem Rechenkern, Google-Standort, Portal-Comps | MOD-04, MOD-12, MOD-13 | 20 Credits/Case |
 
 ---
 
@@ -54,6 +55,7 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 | ENG-SLC | Sales Lifecycle Controller | MOD-04, MOD-06, MOD-13 | ⚡ Teilweise | `src/engines/slc/spec.ts`, `engine.ts` |
 | ENG-FDC | Finance Data Controller | MOD-18, MOD-20, MOD-04 | ✅ Live | `src/engines/fdc/spec.ts`, `engine.ts`, `conventions.ts` |
 | ENG-PLC | Pet Service Lifecycle Controller | MOD-22, MOD-05, Z3, Z1 | ⚡ Teilweise | `src/engines/plc/spec.ts`, `engine.ts` |
+| ENG-VALUATION | SoT Valuation Engine | MOD-04, MOD-12, MOD-13 | 🔲 Geplant | `src/engines/valuation/spec.ts`, `engine.ts` |
 
 ### Orchestrierung (1 Engine)
 
@@ -135,3 +137,4 @@ Jede Engine hat eine `engineVersion` die in `armstrong_action_runs.engine_versio
 | 2026-03-02 | v1.5 — ENG-TLC + ENG-SLC in ArmstrongEngines.tsx als Orchestrierungs-Kategorie registriert. GP-VERKAUF Golden Path (11 Steps) mit Context Resolver und 17 Ledger-Events erstellt. Property Desk (Zone 1) für TLC-Governance implementiert. |
 | 2026-03-02 | v1.6 — ENG-FDC (Finance Data Controller) hinzugefuegt. DSGVO-konformes Governance Backbone fuer MOD-18: Registry (72 Objekte), Link Graph, Repair Actions. 12 Integritaetsregeln, Coverage Scoring, Patrol Cron (sot-fdc-patrol). |
 | 2026-03-02 | v1.7 — ENG-PLC (Pet Service Lifecycle Controller) hinzugefuegt. Marktplatz-Modell fuer Pet Services: 11-Phasen State Machine, 7.5% nicht-erstattbare Plattformgebuehr (Deposit), Stripe-Integration, Stuck-Detection. DB: pet_service_cases, pet_lifecycle_events. |
+| 2026-03-06 | v1.8 — ENG-VALUATION (SoT Valuation Engine) hinzugefuegt. Ersetzt Sprengnetter + GeoMap komplett. 6-Stage Pipeline (Preflight, Intake, Norm+Location, Comps, Calc, Report). Deterministischer Kern (Ertrag/Comp-Proxy/Sachwert). Google Maps (Geocode/Places/Routes/Static), Portal-Comps via Scraper. 12-Seiten PDF. 20 Credits/Case. DB: valuation_cases, valuation_inputs, valuation_results, valuation_reports. |
