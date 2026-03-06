@@ -68,6 +68,8 @@ export function EditableBuildingBlock({
   energyCertValue,
   energyCertValidUntil,
   featuresTags,
+  coreRenovated,
+  renovationYear,
   onFieldChange,
 }: EditableBuildingBlockProps) {
   return (
