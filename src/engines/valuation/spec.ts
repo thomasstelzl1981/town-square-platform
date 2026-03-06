@@ -173,7 +173,7 @@ export type ValuationStageId = 0 | 1 | 2 | 3 | 4 | 5;
 
 export type ValuationStageStatus = 'queued' | 'running' | 'done' | 'warn' | 'fail' | 'needs_info';
 
-export type ValuationMethodType = 'ertrag' | 'comp_proxy' | 'sachwert_proxy';
+export type ValuationMethodType = 'ertrag' | 'ertragswert' | 'comp_proxy' | 'sachwert_proxy';
 
 export type TrafficLight = 'green' | 'yellow' | 'red';
 
