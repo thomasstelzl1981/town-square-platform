@@ -147,15 +147,23 @@ export function useValuationCase() {
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Bewertung fehlgeschlagen');
 
-      const caseId = data.caseId as string;
+      // Defensive: backend returns snake_case
+      const caseId = (data.case_id ?? data.caseId) as string;
+      if (!caseId) throw new Error('case_id not found in run response');
 
-      // Update stages from response
-      const stageTimings = data.stageTimings || {};
-      const stages: StageProgress[] = Object.entries(stageTimings).map(([k, v]) => ({
-        stageId: parseInt(k) as ValuationStageId,
-        status: 'done' as ValuationStageStatus,
-        durationMs: v as number,
-      }));
+      // Update stages from response (snake_case from backend)
+      const stageTimings = data.stage_timings ?? data.stageTimings ?? {};
+      const stages: StageProgress[] = Object.entries(stageTimings).map(([k, v]) => {
+        const num = k.replace('stage_', '');
+        return {
+          stageId: parseInt(num) as ValuationStageId,
+          status: 'done' as ValuationStageStatus,
+          durationMs: (v as any)?.durationMs ?? (v as number),
+        };
+      });
+
+      // Capture summary from run response (executive_summary, diffs, etc.)
+      const runSummary = data.summary || {};
 
       setState(s => ({
         ...s,
@@ -165,8 +173,8 @@ export function useValuationCase() {
         currentStage: 5,
       }));
 
-      // Auto-fetch results
-      await fetchResult(caseId);
+      // Auto-fetch results and map to UI format
+      await fetchResult(caseId, runSummary);
       setIsLoading(false);
       return caseId;
     } catch (e: any) {
