@@ -6,7 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Building2, MapPin, LayoutGrid, Calculator,
-  Euro, FileText, BookOpen, Users, FileSignature, Globe,
+  Euro, FileText, BookOpen, Users, FileSignature, Globe, TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectDossier, useDevProjects } from '@/hooks/useDevProjects';
