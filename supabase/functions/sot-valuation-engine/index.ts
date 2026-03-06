@@ -379,7 +379,7 @@ Deno.serve(async (req) => {
         preflight: {
           creditsCost: CREDITS_REQUIRED,
           credits_available: creditData?.available_credits ?? 0,
-          can_proceed: creditData?.can_proceed ?? false,
+          can_proceed: creditData?.allowed ?? false,
           sources: ssotSummary
             ? [{ name: `SSOT: ${ssotSummary.address}, ${ssotSummary.city}`, type: "ssot", pages: 0 }]
             : [],
