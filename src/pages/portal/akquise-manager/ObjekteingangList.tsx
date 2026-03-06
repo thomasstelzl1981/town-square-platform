@@ -45,9 +45,9 @@ const FILTER_CHIPS = [
 
 const SOURCE_CHIPS = [
   { value: 'all', label: 'Alle Quellen' },
-  { value: 'portal', label: 'Portal-Treffer' },
+  { value: 'portal_scrape', label: 'Portal-Treffer' },
   { value: 'upload', label: 'Upload' },
-  { value: 'email', label: 'E-Mail' },
+  { value: 'inbound_email', label: 'E-Mail' },
   { value: 'manual', label: 'Manuell' },
 ];
 
