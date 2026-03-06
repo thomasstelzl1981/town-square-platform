@@ -775,7 +775,7 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
         preflight: {
           creditsCost: CREDITS_REQUIRED,
           credits_available: creditData?.available_credits ?? 0,
-          can_proceed: creditData?.allowed ?? false && blockers.length === 0,
+          can_proceed: (creditData?.allowed ?? false) && blockers.length === 0,
           sources: ssotSummary ? [{ name: `SSOT: ${ssotSummary.address}, ${ssotSummary.city}`, type: "ssot", pages: 0 }] : [],
           totalEstimatedPages: 0,
           limitsOk: blockers.length === 0,
