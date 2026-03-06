@@ -280,6 +280,71 @@ export function ValuationReportReader({
       </Card>
 
       {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 1b — OBJEKTSTECKBRIEF
+          ═══════════════════════════════════════════════════════════════ */}
+      {snapshot && Object.keys(snapshot).length > 0 && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <SectionHeader icon={Building2} title="Objektdaten & Gebäudeangaben" subtitle="Stammdaten der Immobilie" />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Lage & Identifikation */}
+              <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Lage & Identifikation</p>
+                {snapshot.address && <DataRow label="Adresse" value={snapshot.address} />}
+                {(snapshot.postalCode || snapshot.city) && <DataRow label="PLZ / Ort" value={[snapshot.postalCode, snapshot.city].filter(Boolean).join(' ')} />}
+                {snapshot.objectType && <DataRow label="Objektart" value={objectTypeLabel(snapshot.objectType)} />}
+                {snapshot.yearBuilt != null && <DataRow label="Baujahr" value={String(snapshot.yearBuilt)} />}
+                {snapshot.rentalStatus && <DataRow label="Vermietungsstatus" value={rentalStatusLabel(snapshot.rentalStatus)} />}
+              </div>
+
+              {/* Flächen & Aufteilung */}
+              <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Flächen & Aufteilung</p>
+                {snapshot.livingAreaSqm != null && <DataRow label="Wohnfläche" value={`${fmtNum(snapshot.livingAreaSqm, 1)} m²`} />}
+                {snapshot.usableAreaSqm != null && <DataRow label="Nutzfläche" value={`${fmtNum(snapshot.usableAreaSqm, 1)} m²`} />}
+                {snapshot.commercialAreaSqm != null && <DataRow label="Gewerbefläche" value={`${fmtNum(snapshot.commercialAreaSqm, 1)} m²`} />}
+                {snapshot.plotAreaSqm != null && <DataRow label="Grundstücksfläche" value={`${fmtNum(snapshot.plotAreaSqm, 0)} m²`} />}
+                {snapshot.rooms != null && <DataRow label="Zimmer" value={String(snapshot.rooms)} />}
+                {snapshot.floors != null && <DataRow label="Etagen" value={String(snapshot.floors)} />}
+                {snapshot.units != null && <DataRow label="Einheiten" value={String(snapshot.units)} />}
+                {snapshot.parkingSpots != null && <DataRow label="Stellplätze" value={String(snapshot.parkingSpots)} />}
+              </div>
+            </div>
+
+            {/* Zustand & Wirtschaftlichkeit */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Zustand & Energie</p>
+                {snapshot.condition && <DataRow label="Zustand" value={conditionLabel(snapshot.condition)} />}
+                {snapshot.energyClass && <DataRow label="Energieklasse" value={snapshot.energyClass} />}
+                {snapshot.modernizations && snapshot.modernizations.length > 0 && (
+                  <div className="pt-1">
+                    <p className="text-xs text-muted-foreground mb-1">Modernisierungen:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {snapshot.modernizations.map((m, i) => (
+                        <Badge key={i} variant="outline" className="text-[10px]">{m}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Wirtschaftlichkeit</p>
+                {snapshot.netColdRentMonthly != null && <DataRow label="Kaltmiete (mtl.)" value={fmtEur(snapshot.netColdRentMonthly)} />}
+                {snapshot.netColdRentPerSqm != null && <DataRow label="Miete / m²" value={fmtEur2(snapshot.netColdRentPerSqm)} />}
+                {snapshot.hausgeldMonthly != null && <DataRow label="Hausgeld (mtl.)" value={fmtEur(snapshot.hausgeldMonthly)} />}
+                {snapshot.askingPrice != null && <DataRow label="Angebotspreis" value={fmtEur(snapshot.askingPrice)} />}
+                {snapshot.purchasePrice != null && <DataRow label="Kaufpreis" value={fmtEur(snapshot.purchasePrice)} />}
+                {snapshot.vacancyRate != null && <DataRow label="Leerstandsquote" value={fmtPct(snapshot.vacancyRate)} />}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
           SEKTION 2 — GRUNDBUCH & EIGENTUM
           ═══════════════════════════════════════════════════════════════ */}
       {legalTitle && sourceMode === 'SSOT_FINAL' && (
