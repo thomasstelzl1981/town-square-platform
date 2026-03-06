@@ -22,6 +22,8 @@ interface EditableBuildingBlockProps {
   featuresTags?: string[];
   coreRenovated?: boolean;
   renovationYear?: number;
+  unitCountActual?: number;
+  propertyType?: string;
   onFieldChange: (field: string, value: any) => void;
 }
 
