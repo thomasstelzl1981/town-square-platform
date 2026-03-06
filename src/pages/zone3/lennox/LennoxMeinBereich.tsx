@@ -187,7 +187,7 @@ export default function LennoxMeinBereich() {
     createCase.mutate({
       session_token: z3SessionToken,
       provider_id: selectedProviderId,
-      service_id: selectedSvc?.id || null,
+      service_id: bookingService || null,
       customer_notes: bookingNotes || null,
       scheduled_start: bookingDate || null,
       scheduled_end: bookingDateEnd || null,
