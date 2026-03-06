@@ -1,10 +1,24 @@
 /**
- * generateValuationPdf — Creates a branded SoT Bewertungsgutachten PDF (max 12 pages)
- * Uses lazy-loaded jsPDF. Pure data-driven, no DOM dependency.
- * V6.1: Uses pdfCiTokens for CI-A compliance
+ * generateValuationPdf — Premium SoT Bewertungsgutachten PDF (10-12 pages)
+ * V7.0: Uses pdfCiKit primitives, embedded map images, editorial chapter structure
+ * Pure data-driven, no DOM dependency. Lazy-loaded jsPDF.
  */
 import { getJsPDF } from '@/lib/lazyJspdf';
 import { PAGE, COLOR, TYPO, SPACING, BRAND } from '@/lib/pdf/pdfCiTokens';
+import {
+  drawCover,
+  drawSectionTitle,
+  drawKpiRow,
+  drawTable,
+  drawInfoCard,
+  drawBodyText,
+  drawDivider,
+  drawBadge,
+  ensurePageBreak,
+  addFootersToAllPages,
+  EUR,
+  PCT,
+} from '@/lib/pdf/pdfCiKit';
 import type {
   ValueBand,
   ValuationMethodResult,
@@ -38,249 +52,356 @@ export interface ValuationPdfData {
   legalTitle?: LegalTitleBlock | null;
 }
 
-const EUR = (v: number) =>
-  new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
+// ─── Image Helpers ───────────────────────────────────────────────────
 
-const PCT = (v: number) => `${(v * 100).toFixed(1)}%`;
+/** Fetch an image URL and return as base64 data URI. Returns null on failure. */
+async function fetchImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, { mode: 'cors' });
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Pre-fetch all location map images in parallel */
+async function prefetchMapImages(location: LocationAnalysis | null): Promise<{
+  micro: string | null;
+  macro: string | null;
+  streetView: string | null;
+}> {
+  if (!location) return { micro: null, macro: null, streetView: null };
+  const [micro, macro, streetView] = await Promise.all([
+    location.microMapUrl ? fetchImageAsBase64(location.microMapUrl) : Promise.resolve(null),
+    location.macroMapUrl ? fetchImageAsBase64(location.macroMapUrl) : Promise.resolve(null),
+    (location as any).streetViewUrl ? fetchImageAsBase64((location as any).streetViewUrl) : Promise.resolve(null),
+  ]);
+  return { micro, macro, streetView };
+}
+
+// ─── PDF Helper Functions ────────────────────────────────────────────
+
+function setFont(doc: any, spec: { size: number; style: string }) {
+  doc.setFontSize(spec.size);
+  doc.setFont(TYPO.FONT_FAMILY, spec.style);
+}
+
+function setColor(doc: any, color: readonly [number, number, number]) {
+  doc.setTextColor(color[0], color[1], color[2]);
+}
+
+function setFillColor(doc: any, color: readonly [number, number, number]) {
+  doc.setFillColor(color[0], color[1], color[2]);
+}
+
+function row(doc: any, y: number, lbl: string, val: string, x2 = PAGE.MARGIN_LEFT + 62): number {
+  y = ensurePageBreak(doc, y, 6);
+  setFont(doc, TYPO.CAPTION);
+  setColor(doc, COLOR.MUTED);
+  doc.text(lbl, PAGE.MARGIN_LEFT + 4, y);
+  setFont(doc, { size: TYPO.CAPTION.size + 0.5, style: 'bold' });
+  setColor(doc, COLOR.INK);
+  doc.text(val, x2, y);
+  return y + 5;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MAIN EXPORT
+// ═══════════════════════════════════════════════════════════════════════
 
 export async function generateValuationPdf(data: ValuationPdfData): Promise<void> {
-  const jsPDF = await getJsPDF();
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  // Pre-fetch map images in parallel with jsPDF load
+  const [jsPDF, mapImages] = await Promise.all([
+    getJsPDF(),
+    prefetchMapImages(data.location),
+  ]);
 
-  const W = PAGE.WIDTH;
-  const H = PAGE.HEIGHT;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const ML = PAGE.MARGIN_LEFT;
-  const MR = PAGE.MARGIN_RIGHT;
   const CW = PAGE.CONTENT_WIDTH;
   let y = 0;
 
-  // CI-A color aliases
-  const colors = {
-    primary: COLOR.ACCENT as [number, number, number],
-    dark: COLOR.INK as [number, number, number],
-    muted: COLOR.MUTED as [number, number, number],
-    light: COLOR.SURFACE as [number, number, number],
-    white: COLOR.WHITE as [number, number, number],
-    green: COLOR.SUCCESS as [number, number, number],
-    red: COLOR.DANGER as [number, number, number],
-  };
-
-  function newPage() {
-    doc.addPage();
-    y = PAGE.MARGIN_TOP;
-  }
-
-  function heading(text: string, size: number = TYPO.H2.size) {
-    if (y > H - 40) newPage();
-    doc.setFont(TYPO.FONT_FAMILY, 'bold');
-    doc.setFontSize(size);
-    doc.setTextColor(...colors.dark);
-    doc.text(text, ML, y);
-    y += size * 0.5 + 4;
-  }
-
-  function subheading(text: string) {
-    if (y > H - 30) newPage();
-    doc.setFont(TYPO.FONT_FAMILY, 'bold');
-    doc.setFontSize(TYPO.BODY.size);
-    doc.setTextColor(...colors.primary);
-    doc.text(text, ML, y);
-    y += 6;
-  }
-
-  function body(text: string, maxWidth = CW) {
-    if (y > H - 25) newPage();
-    doc.setFont(TYPO.FONT_FAMILY, 'normal');
-    doc.setFontSize(TYPO.CAPTION.size + 1);
-    doc.setTextColor(...colors.dark);
-    const lines = doc.splitTextToSize(text, maxWidth);
-    doc.text(lines, ML, y);
-    y += lines.length * 4 + 2;
-  }
-
-  function label(text: string) {
-    doc.setFont(TYPO.FONT_FAMILY, 'normal');
-    doc.setFontSize(TYPO.CAPTION.size);
-    doc.setTextColor(...colors.muted);
-    doc.text(text, ML, y);
-  }
-
-  function value(text: string, x: number) {
-    doc.setFont(TYPO.FONT_FAMILY, 'bold');
-    doc.setFontSize(TYPO.CAPTION.size + 1);
-    doc.setTextColor(...colors.dark);
-    doc.text(text, x, y);
-  }
-
-  function row(lbl: string, val: string, x2 = ML + 60) {
-    if (y > H - 20) newPage();
-    label(lbl);
-    value(val, x2);
-    y += 5;
-  }
-
-  function separator() {
-    doc.setDrawColor(...(COLOR.BORDER as [number, number, number]));
-    doc.setLineWidth(0.3);
-    doc.line(ML, y, W - MR, y);
-    y += 4;
-  }
+  const sourceModeLabel = data.sourceMode === 'SSOT_FINAL' ? 'Datenbasis: SSOT (Final)' : 'Datenbasis: Exposé Draft';
+  const caseShort = data.caseId.slice(0, 8);
+  const dateStr = new Date(data.generatedAt).toLocaleDateString('de-DE');
 
   // ═══════════════════════════════════════
-  // PAGE 1: COVER
+  // PAGE 1: PREMIUM COVER
   // ═══════════════════════════════════════
-  y = 60;
-  doc.setFillColor(...colors.primary);
-  doc.rect(0, 0, W, 45, 'F');
+  const addressLine = [data.snapshot.address, data.snapshot.postalCode, data.snapshot.city].filter(Boolean).join(', ');
 
-  doc.setFont(TYPO.FONT_FAMILY, 'bold');
-  doc.setFontSize(TYPO.H1.size);
-  doc.setTextColor(...colors.white);
-  doc.text('SoT Bewertungsgutachten', ML, 25);
+  y = drawCover(doc, {
+    title: 'SoT Bewertungsgutachten',
+    subtitle: addressLine || 'Immobilienbewertung',
+    date: dateStr,
+    caseId: `Case ${caseShort}`,
+    heroImageBase64: mapImages.streetView || mapImages.micro || undefined,
+  });
 
-  doc.setFontSize(TYPO.BODY.size);
-  doc.setFont(TYPO.FONT_FAMILY, 'normal');
-  const sourceModeLabel = data.sourceMode === 'SSOT_FINAL' ? '  ·  Datenbasis: SSOT (Final)' : '  ·  Datenbasis: Exposé Draft';
-  doc.text(`Case ${data.caseId.slice(0, 8)}  ·  ${new Date(data.generatedAt).toLocaleDateString('de-DE')}${sourceModeLabel}`, ML, 35);
-
-  y = 60;
-  heading(data.snapshot.address || 'Objekt', 16);
-  body(`${data.snapshot.postalCode || ''} ${data.snapshot.city || ''}`);
-  y += 5;
-
-  subheading('Objektdaten');
-  row('Typ', data.snapshot.objectType?.toUpperCase() || '–');
-  row('Wohnfläche', data.snapshot.livingAreaSqm ? `${data.snapshot.livingAreaSqm} m²` : '–');
-  row('Grundstück', data.snapshot.plotAreaSqm ? `${data.snapshot.plotAreaSqm} m²` : '–');
-  row('Baujahr', data.snapshot.yearBuilt?.toString() || '–');
-  row('Einheiten', data.snapshot.units?.toString() || '–');
-  row('Zustand', data.snapshot.condition || '–');
-  row('Angebotspreis', data.snapshot.askingPrice ? EUR(data.snapshot.askingPrice) : '–');
-  y += 5;
-
-  // Value Band highlight
-  doc.setFillColor(...colors.light);
-  doc.roundedRect(ML, y, CW, 28, 3, 3, 'F');
+  // Source mode badge
+  y += 2;
+  setFont(doc, TYPO.CAPTION);
+  setColor(doc, COLOR.MUTED);
+  doc.text(sourceModeLabel, ML, y);
   y += 8;
-  doc.setFont(TYPO.FONT_FAMILY, 'normal');
-  doc.setFontSize(TYPO.CAPTION.size);
-  doc.setTextColor(...colors.muted);
+
+  // Value Band Hero Box
+  setFillColor(doc, COLOR.SURFACE);
+  doc.roundedRect(ML, y, CW, 32, 2, 2, 'F');
+  y += 8;
+  setFont(doc, TYPO.CAPTION);
+  setColor(doc, COLOR.MUTED);
   doc.text('WERTBAND (P25 – P50 – P75)', ML + 5, y);
-  y += 7;
-  doc.setFont(TYPO.FONT_FAMILY, 'bold');
-  doc.setFontSize(TYPO.KPI_MEDIUM.size);
-  doc.setTextColor(...colors.primary);
+  y += 8;
+  setFont(doc, TYPO.KPI_LARGE);
+  setColor(doc, COLOR.ACCENT);
   doc.text(EUR(data.valueBand.p50), ML + 5, y);
-  doc.setFontSize(TYPO.CAPTION.size + 1);
-  doc.setTextColor(...colors.muted);
-  doc.text(`${EUR(data.valueBand.p25)}  –  ${EUR(data.valueBand.p75)}`, ML + 70, y);
-  y += 15;
+  setFont(doc, { size: 11, style: 'normal' });
+  setColor(doc, COLOR.MUTED);
+  doc.text(`${EUR(data.valueBand.p25)}  –  ${EUR(data.valueBand.p75)}`, ML + 75, y);
+  y += 6;
+  setFont(doc, TYPO.CAPTION);
+  setColor(doc, COLOR.MUTED);
+  doc.text(`Konfidenz: ${data.valueBand.confidence} (${(data.valueBand.confidenceScore * 100).toFixed(0)}%)`, ML + 5, y);
+  y += 16;
+
+  // Object profile summary
+  y = drawKpiRow(doc, y, [
+    { label: 'Typ', value: data.snapshot.objectType?.toUpperCase() || '–' },
+    { label: 'Fläche', value: data.snapshot.livingAreaSqm ? `${data.snapshot.livingAreaSqm} m²` : '–' },
+    { label: 'Baujahr', value: data.snapshot.yearBuilt?.toString() || '–' },
+    { label: 'Angebotspreis', value: data.snapshot.askingPrice ? EUR(data.snapshot.askingPrice) : '–', tone: 'accent' },
+  ]);
 
   // ═══════════════════════════════════════
-  // PAGE 2: EXECUTIVE SUMMARY
+  // PAGE 2: EXECUTIVE SUMMARY + DATENLAGE
   // ═══════════════════════════════════════
-  newPage();
-  heading('Executive Summary');
-  body(data.executiveSummary || 'Keine Zusammenfassung verfügbar.');
-  y += 5;
+  doc.addPage();
+  y = drawSectionTitle(doc, PAGE.MARGIN_TOP + 6, 'Executive Summary', 'Zusammenfassung der Bewertungsergebnisse');
+  y = drawBodyText(doc, y, data.executiveSummary || 'Keine Zusammenfassung verfügbar.');
 
   if (data.dataQuality) {
-    subheading('Datenlage');
-    row('Vollständigkeit', `${data.dataQuality.completenessPercent.toFixed(0)}%`);
-    row('Verifizierte Felder', data.dataQuality.fieldsVerified.toString());
-    row('Abgeleitete Felder', data.dataQuality.fieldsDerived.toString());
-    row('Fehlende Felder', data.dataQuality.fieldsMissing.toString());
-    row('Konfidenz', `${data.dataQuality.globalConfidence} (${(data.dataQuality.globalConfidenceScore * 100).toFixed(0)}%)`);
-    y += 5;
+    y = drawDivider(doc, y);
+    y = drawSectionTitle(doc, y, 'Datenlage', 'Vollständigkeit und Herkunft der Bewertungsgrundlagen');
+    y = drawKpiRow(doc, y, [
+      { label: 'Vollständigkeit', value: `${data.dataQuality.completenessPercent.toFixed(0)}%`, tone: data.dataQuality.completenessPercent >= 70 ? 'success' : 'warning' },
+      { label: 'Verifiziert', value: data.dataQuality.fieldsVerified.toString(), tone: 'success' },
+      { label: 'Abgeleitet', value: data.dataQuality.fieldsDerived.toString(), tone: 'warning' },
+      { label: 'Fehlend', value: data.dataQuality.fieldsMissing.toString(), tone: data.dataQuality.fieldsMissing > 5 ? 'danger' : 'default' },
+    ]);
   }
 
   // ═══════════════════════════════════════
   // PAGE 3: BEWERTUNGSMETHODEN
   // ═══════════════════════════════════════
-  newPage();
-  heading('Bewertungsmethoden');
+  doc.addPage();
+  y = drawSectionTitle(doc, PAGE.MARGIN_TOP + 6, 'Bewertungsmethoden', 'Verfahrensübersicht und Gewichtung');
 
-  for (const m of data.methods) {
-    subheading(m.method.replace('_', ' ').replace(/^\w/, c => c.toUpperCase()));
-    row('Wert', EUR(m.value));
-    row('Konfidenz', `${m.confidence} (${(m.confidenceScore * 100).toFixed(0)}%)`);
-    if (m.notes.length) {
-      body(m.notes.join('; '));
-    }
-    y += 3;
-  }
+  // Methods table
+  const methodRows = data.methods.map(m => [
+    m.method.replace('_', ' ').replace(/^\w/, c => c.toUpperCase()),
+    EUR(m.value),
+    `${m.confidence} (${(m.confidenceScore * 100).toFixed(0)}%)`,
+    m.notes[0] || '–',
+  ]);
+  y = drawTable(doc, y, {
+    headers: ['Methode', 'Wert', 'Konfidenz', 'Anmerkung'],
+    rows: methodRows,
+    colWidths: [40, 35, 35, CW - 110],
+    alignRight: [1],
+  });
 
-  separator();
-  subheading('Gewichtung');
-  for (const w of data.valueBand.weightingTable) {
-    row(w.method.replace('_', ' '), `${(w.weight * 100).toFixed(0)}% → ${EUR(w.value)}`);
+  // Weighting
+  y += 4;
+  y = ensurePageBreak(doc, y, 30);
+  setFont(doc, { size: TYPO.H3.size, style: 'bold' });
+  setColor(doc, COLOR.INK);
+  doc.text('Gewichtung', ML, y);
+  y += 6;
+
+  const weightRows = data.valueBand.weightingTable.map(w => [
+    w.method.replace('_', ' ').replace(/^\w/, c => c.toUpperCase()),
+    `${(w.weight * 100).toFixed(0)}%`,
+    EUR(w.value),
+  ]);
+  y = drawTable(doc, y, {
+    headers: ['Methode', 'Gewicht', 'Gewichteter Wert'],
+    rows: weightRows,
+    colWidths: [60, 40, CW - 100],
+    alignRight: [1, 2],
+  });
+
+  if (data.valueBand.reasoning) {
+    y += 4;
+    y = drawBodyText(doc, y, data.valueBand.reasoning);
   }
-  y += 3;
-  body(data.valueBand.reasoning);
 
   // ═══════════════════════════════════════
   // PAGE 4: VERGLEICHSANGEBOTE
   // ═══════════════════════════════════════
   if (data.compStats || data.comps.length > 0) {
-    newPage();
-    heading('Vergleichsangebote');
+    doc.addPage();
+    y = drawSectionTitle(doc, PAGE.MARGIN_TOP + 6, 'Vergleichsangebote', 'Marktdaten aus Immobilienportalen');
 
     if (data.compStats) {
-      row('Anzahl', `${data.compStats.dedupedCount} (von ${data.compStats.count} roh)`);
-      row('Median €/m²', EUR(data.compStats.medianPriceSqm));
-      row('P25 / P75 €/m²', `${EUR(data.compStats.p25PriceSqm)} / ${EUR(data.compStats.p75PriceSqm)}`);
-      y += 5;
+      y = drawKpiRow(doc, y, [
+        { label: 'Median €/m²', value: EUR(data.compStats.medianPriceSqm), tone: 'accent' },
+        { label: 'P25 €/m²', value: EUR(data.compStats.p25PriceSqm) },
+        { label: 'P75 €/m²', value: EUR(data.compStats.p75PriceSqm) },
+        { label: 'Objekte', value: `${data.compStats.dedupedCount} / ${data.compStats.count}` },
+      ]);
     }
 
-    const topComps = data.comps.slice(0, 10);
+    const topComps = data.comps.slice(0, 12);
     if (topComps.length > 0) {
-      subheading('Top Vergleichsobjekte');
-      for (const c of topComps) {
-        if (y > H - 20) newPage();
-        doc.setFont(TYPO.FONT_FAMILY, 'normal');
-        doc.setFontSize(TYPO.CAPTION.size);
-        doc.setTextColor(...colors.dark);
-        doc.text(`${c.title?.slice(0, 40) || '–'}  |  ${EUR(c.price)}  |  ${c.area}m²  |  ${EUR(c.priceSqm)}/m²`, ML, y);
-        y += 4;
-      }
+      y += 4;
+      const compRows = topComps.map(c => [
+        c.portal || '–',
+        c.title?.slice(0, 35) || '–',
+        EUR(c.price),
+        `${c.area}m²`,
+        EUR(c.priceSqm),
+        c.distanceKm != null ? `${c.distanceKm.toFixed(1)}km` : '–',
+      ]);
+      y = drawTable(doc, y, {
+        headers: ['Portal', 'Objekt', 'Preis', 'Fläche', '€/m²', 'Entf.'],
+        rows: compRows,
+        colWidths: [20, CW - 130, 30, 20, 30, 20],
+        alignRight: [2, 4, 5],
+      });
     }
   }
 
   // ═══════════════════════════════════════
-  // PAGE 5: STANDORT
+  // PAGE 5: STANDORTANALYSE (with Maps)
   // ═══════════════════════════════════════
   if (data.location) {
-    newPage();
-    heading('Standortanalyse');
-    row('Gesamtscore', `${data.location.overallScore}/100`);
-    y += 3;
+    doc.addPage();
+    y = drawSectionTitle(doc, PAGE.MARGIN_TOP + 6, 'Standortanalyse', 'Lage, Umfeld & Erreichbarkeit');
 
-    for (const dim of data.location.dimensions) {
-      row(dim.label, `${dim.score}/10`);
+    // Overall score KPI
+    y = drawKpiRow(doc, y, [
+      { label: 'Gesamtscore', value: `${data.location.overallScore}/100`, tone: data.location.overallScore >= 70 ? 'success' : data.location.overallScore >= 40 ? 'warning' : 'danger' },
+    ]);
+
+    // Dimension scores table
+    const dimRows = data.location.dimensions.map(d => [d.label, `${d.score}/10`]);
+    y = drawTable(doc, y, {
+      headers: ['Dimension', 'Score'],
+      rows: dimRows,
+      colWidths: [CW - 30, 30],
+      alignRight: [1],
+    });
+
+    // Embedded Map Images
+    const mapEntries = [
+      { label: 'Mikrolage', img: mapImages.micro },
+      { label: 'Makrolage', img: mapImages.macro },
+      { label: 'Straßenansicht', img: mapImages.streetView },
+    ].filter(m => m.img);
+
+    if (mapEntries.length > 0) {
+      y += 4;
+      y = ensurePageBreak(doc, y, 60);
+
+      const imgCount = Math.min(mapEntries.length, 3);
+      const imgGap = 4;
+      const imgW = (CW - (imgCount - 1) * imgGap) / imgCount;
+      const imgH = imgW * 0.75; // 4:3 aspect
+
+      // Labels
+      setFont(doc, TYPO.CAPTION);
+      setColor(doc, COLOR.MUTED);
+      for (let i = 0; i < imgCount; i++) {
+        const x = ML + i * (imgW + imgGap);
+        doc.text(mapEntries[i].label.toUpperCase(), x, y);
+      }
+      y += 4;
+
+      // Images
+      for (let i = 0; i < imgCount; i++) {
+        const x = ML + i * (imgW + imgGap);
+        try {
+          const imgData = mapEntries[i].img!;
+          const format = imgData.includes('image/png') ? 'PNG' : 'JPEG';
+          doc.addImage(imgData, format, x, y, imgW, imgH);
+          // Border
+          doc.setDrawColor(230, 232, 236);
+          doc.setLineWidth(0.3);
+          doc.roundedRect(x, y, imgW, imgH, 1, 1, 'S');
+        } catch {
+          // Skip broken image
+          setFillColor(doc, COLOR.SURFACE);
+          doc.roundedRect(x, y, imgW, imgH, 1, 1, 'F');
+          setFont(doc, TYPO.CAPTION);
+          setColor(doc, COLOR.MUTED);
+          doc.text('Bild nicht verfügbar', x + imgW / 2, y + imgH / 2, { align: 'center' });
+        }
+      }
+      y += imgH + 6;
     }
-    y += 5;
-    body(data.location.narrative);
+
+    // Narrative
+    if (data.location.narrative) {
+      y = drawBodyText(doc, y, data.location.narrative);
+    }
+
+    // Reachability
+    if (data.location.reachability?.length > 0) {
+      y += 2;
+      const reachRows = data.location.reachability.map(r => [
+        r.destinationName,
+        r.drivingMinutes != null ? `${r.drivingMinutes} min` : '–',
+        r.transitMinutes != null ? `${r.transitMinutes} min` : '–',
+      ]);
+      y = drawTable(doc, y, {
+        headers: ['Ziel', 'PKW', 'ÖPNV'],
+        rows: reachRows,
+        colWidths: [CW - 50, 25, 25],
+        alignRight: [1, 2],
+      });
+    }
   }
 
   // ═══════════════════════════════════════
   // PAGE 6: FINANZIERUNG
   // ═══════════════════════════════════════
   if (data.financing.length > 0) {
-    newPage();
-    heading('Finanzierbarkeit');
+    doc.addPage();
+    y = drawSectionTitle(doc, PAGE.MARGIN_TOP + 6, 'Finanzierbarkeit', 'Szenarienvergleich für typische Darlehensstrukturen');
 
+    const finRows = data.financing.map(f => [
+      f.name,
+      PCT(f.ltv),
+      EUR(f.loanAmount),
+      `${PCT(f.interestRate)} / ${PCT(f.repaymentRate)}`,
+      EUR(f.monthlyRate),
+      f.cashflowAfterDebt != null ? EUR(f.cashflowAfterDebt) : '–',
+      f.trafficLight === 'green' ? '✓' : f.trafficLight === 'yellow' ? '⚠' : '✗',
+    ]);
+    y = drawTable(doc, y, {
+      headers: ['Szenario', 'LTV', 'Darlehen', 'Zins/Tilg.', 'Rate/mtl.', 'CF n. KD/a', 'Status'],
+      rows: finRows,
+      colWidths: [28, 18, 28, 28, 25, 28, 15],
+      alignRight: [1, 2, 3, 4, 5],
+    });
+
+    // Per-scenario detail cards
     for (const f of data.financing) {
-      subheading(`Szenario: ${f.name}`);
-      row('LTV', PCT(f.ltv));
-      row('Darlehen', EUR(f.loanAmount));
-      row('Eigenkapital', EUR(f.equity));
-      row('Zins / Tilgung', `${PCT(f.interestRate)} / ${PCT(f.repaymentRate)}`);
-      row('Monatsrate', EUR(f.monthlyRate));
-      if (f.cashflowAfterDebt != null) {
-        row('CF nach KD/Jahr', EUR(f.cashflowAfterDebt));
-      }
-      row('Ampel', f.trafficLight.toUpperCase());
-      y += 3;
+      y += 6;
+      y = drawInfoCard(doc, y, `Szenario: ${f.name}`, [
+        `Eigenkapital: ${EUR(f.equity)}  ·  Darlehen: ${EUR(f.loanAmount)}`,
+        `Zins: ${PCT(f.interestRate)}  ·  Tilgung: ${PCT(f.repaymentRate)}  ·  LTV: ${PCT(f.ltv)}`,
+        `Monatsrate: ${EUR(f.monthlyRate)}  ·  Ampel: ${f.trafficLight.toUpperCase()}`,
+        f.cashflowAfterDebt != null ? `Cashflow nach Kapitaldienst: ${EUR(f.cashflowAfterDebt)}/Jahr` : '',
+      ].filter(Boolean));
     }
   }
 
@@ -288,33 +409,55 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
   // PAGE 7: STRESS-TESTS
   // ═══════════════════════════════════════
   if (data.stressTests.length > 0) {
-    newPage();
-    heading('Stress-Tests & KDF');
+    doc.addPage();
+    y = drawSectionTitle(doc, PAGE.MARGIN_TOP + 6, 'Stress-Tests & Kapitaldienstfähigkeit', 'Sensitivitätsanalyse bei Zins- und Mietveränderung');
 
-    for (const st of data.stressTests) {
-      row(st.label, `${EUR(st.monthlyRate)}/mtl.  |  DSCR: ${st.dscr?.toFixed(2) || '–'}  |  ${st.trafficLight.toUpperCase()}`);
-    }
+    const stressRows = data.stressTests.map(st => [
+      st.label,
+      EUR(st.monthlyRate),
+      st.dscr?.toFixed(2) || '–',
+      st.trafficLight === 'green' ? '✓ Tragbar' : st.trafficLight === 'yellow' ? '⚠ Grenzwertig' : '✗ Kritisch',
+    ]);
+    y = drawTable(doc, y, {
+      headers: ['Szenario', 'Rate/mtl.', 'DSCR', 'Status'],
+      rows: stressRows,
+      colWidths: [CW - 80, 25, 20, 35],
+      alignRight: [1, 2],
+    });
   }
 
   // ═══════════════════════════════════════
-  // PAGE 8: BELEIHUNG
+  // PAGE 8: BELEIHUNGSWERT
   // ═══════════════════════════════════════
   if (data.lienProxy) {
     y += 10;
-    if (y > H - 60) newPage();
-    heading('Beleihungswert (Proxy)');
-    row('Marktwert P50', EUR(data.lienProxy.marketValueP50));
-    row('Abschlag gesamt', PCT(data.lienProxy.totalDiscount));
-    row('Beleihung niedrig', EUR(data.lienProxy.lienValueLow));
-    row('Beleihung hoch', EUR(data.lienProxy.lienValueHigh));
-    row('Sicheres LTV-Fenster', `${PCT(data.lienProxy.safeLtvWindow[0])} – ${PCT(data.lienProxy.safeLtvWindow[1])}`);
+    if (y > PAGE.HEIGHT - 80) {
+      doc.addPage();
+      y = PAGE.MARGIN_TOP + 10;
+    }
+    y = drawSectionTitle(doc, y, 'Beleihungswert (Proxy)', 'Geschätzte Beleihungswertspanne nach BelWertV');
 
-    if (data.lienProxy.riskDrivers.length) {
-      y += 3;
-      subheading('Risikotreiber');
-      for (const rd of data.lienProxy.riskDrivers) {
-        row(rd.factor, `−${PCT(rd.discountPercent)}`);
-      }
+    y = drawKpiRow(doc, y, [
+      { label: 'Marktwert P50', value: EUR(data.lienProxy.marketValueP50), tone: 'accent' },
+      { label: 'Abschlag', value: PCT(data.lienProxy.totalDiscount), tone: 'warning' },
+      { label: 'Beleihung niedrig', value: EUR(data.lienProxy.lienValueLow) },
+      { label: 'Beleihung hoch', value: EUR(data.lienProxy.lienValueHigh) },
+    ]);
+
+    y = row(doc, y, 'Sicheres LTV-Fenster', `${PCT(data.lienProxy.safeLtvWindow[0])} – ${PCT(data.lienProxy.safeLtvWindow[1])}`);
+
+    if (data.lienProxy.riskDrivers.length > 0) {
+      y += 4;
+      const riskRows = data.lienProxy.riskDrivers.map(rd => [
+        rd.factor,
+        `−${PCT(rd.discountPercent)}`,
+      ]);
+      y = drawTable(doc, y, {
+        headers: ['Risikofaktor', 'Abschlag'],
+        rows: riskRows,
+        colWidths: [CW - 30, 30],
+        alignRight: [1],
+      });
     }
   }
 
@@ -322,39 +465,50 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
   // PAGE 9: RECHT & EIGENTUM (SSOT only)
   // ═══════════════════════════════════════
   if (data.legalTitle && data.sourceMode === 'SSOT_FINAL') {
-    newPage();
-    heading('Recht & Eigentum');
+    doc.addPage();
+    y = drawSectionTitle(doc, PAGE.MARGIN_TOP + 6, 'Recht & Eigentum', 'Grundbuch, Eigentumsverhältnisse & Dokumentstatus');
 
-    if (data.legalTitle.landRegisterCourt) row('Grundbuchamt', data.legalTitle.landRegisterCourt);
-    if (data.legalTitle.landRegisterSheet) row('Blatt', data.legalTitle.landRegisterSheet);
-    if (data.legalTitle.landRegisterVolume) row('Band', data.legalTitle.landRegisterVolume);
-    if (data.legalTitle.parcelNumber) row('Flurstück', data.legalTitle.parcelNumber);
-    if (data.legalTitle.ownershipSharePercent != null) row('Eigentumsanteil', `${data.legalTitle.ownershipSharePercent}%`);
-    if (data.legalTitle.wegFlag) row('WEG', `Ja${data.legalTitle.teNumber ? ` (TE: ${data.legalTitle.teNumber})` : ''}`);
-    if (data.legalTitle.meaShare != null) row('MEA', data.legalTitle.meaShare.toString());
-    y += 3;
+    const legalRows: string[][] = [];
+    if (data.legalTitle.landRegisterCourt) legalRows.push(['Grundbuchamt', data.legalTitle.landRegisterCourt]);
+    if (data.legalTitle.landRegisterSheet) legalRows.push(['Blatt', data.legalTitle.landRegisterSheet]);
+    if (data.legalTitle.landRegisterVolume) legalRows.push(['Band', data.legalTitle.landRegisterVolume]);
+    if (data.legalTitle.parcelNumber) legalRows.push(['Flurstück', data.legalTitle.parcelNumber]);
+    if (data.legalTitle.ownershipSharePercent != null) legalRows.push(['Eigentumsanteil', `${data.legalTitle.ownershipSharePercent}%`]);
+    if (data.legalTitle.wegFlag) legalRows.push(['WEG', `Ja${data.legalTitle.teNumber ? ` (TE: ${data.legalTitle.teNumber})` : ''}`]);
+    if (data.legalTitle.meaShare != null) legalRows.push(['MEA', data.legalTitle.meaShare.toString()]);
 
-    subheading('Dokumentstatus');
-    row('Grundbuchauszug', data.legalTitle.landRegisterExtractAvailable ? '✓ Vorhanden' : '✗ Nicht vorhanden');
-    row('Teilungserklärung', data.legalTitle.partitionDeclarationAvailable ? '✓ Vorhanden' : '✗ Nicht vorhanden');
-    y += 3;
+    if (legalRows.length > 0) {
+      y = drawTable(doc, y, {
+        headers: ['Eigenschaft', 'Wert'],
+        rows: legalRows,
+        colWidths: [CW / 2, CW / 2],
+      });
+    }
 
-    body(data.legalTitle.encumbrancesNote);
+    // Document status
+    y += 4;
+    y = drawInfoCard(doc, y, 'Dokumentstatus', [
+      `Grundbuchauszug: ${data.legalTitle.landRegisterExtractAvailable ? '✓ Vorhanden' : '✗ Nicht vorhanden'}`,
+      `Teilungserklärung: ${data.legalTitle.partitionDeclarationAvailable ? '✓ Vorhanden' : '✗ Nicht vorhanden'}`,
+    ]);
+
+    // Encumbrances note
+    if (data.legalTitle.encumbrancesNote) {
+      y += 2;
+      y = drawBodyText(doc, y, data.legalTitle.encumbrancesNote);
+    }
   }
 
-  // FOOTER on every page
   // ═══════════════════════════════════════
-  const totalPages = doc.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    doc.setFont(TYPO.FONT_FAMILY, 'normal');
-    doc.setFontSize(TYPO.CAPTION.size - 1);
-    doc.setTextColor(...colors.muted);
-    doc.text(`${BRAND.COMPANY_NAME}  ·  SoT Bewertungsgutachten  ·  ${data.caseId.slice(0, 8)}  ·  Seite ${i}/${totalPages}`, ML, H - 10);
-    doc.text(`${BRAND.CONFIDENTIAL}  ·  ${BRAND.COPYRIGHT()}`, W - MR, H - 10, { align: 'right' });
-  }
+  // FOOTER on every page — CI-A branded
+  // ═══════════════════════════════════════
+  addFootersToAllPages(doc, {
+    confidential: true,
+    org: `Case ${caseShort}`,
+    version: 'V7.0',
+  });
 
   // Save
-  const filename = `SoT-Gutachten-${data.caseId.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  const filename = `SoT-Gutachten-${caseShort}-${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(filename);
 }
