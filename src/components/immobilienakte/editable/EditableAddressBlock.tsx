@@ -80,7 +80,7 @@ export function EditableAddressBlock({
   };
 
   return (
-    <Card>
+    <Card className="h-full flex flex-col">
       <CardHeader className="pb-2 pt-3 px-4">
         <CardTitle className="text-sm flex items-center gap-2">
           <MapPin className="h-3.5 w-3.5" />
