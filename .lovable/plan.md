@@ -1,211 +1,278 @@
+# Refactoring-Masterplan: TSX-Monolithen → Modulare Architektur
 
-
-# ENG-VALUATION — Forensische Analyse & Korrekturplan
-
-## Diagnose: Was genau schiefgelaufen ist
-
-Ich habe das PDF, die DB-Daten (Case `3b960189`), den Edge-Function-Code und alle Mapper forensisch geprüft. Das Ergebnis ist **keine Premium-Frage** — es gibt **7 harte technische Bugs**, die das Gutachten auf Datenbankebene bereits ruinieren.
-
-### Die 7 konkreten Bugs (mit DB-Beweis)
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ BUG #1: Geocoding nutzt nur "Parkweg" ohne Stadt/PLZ           │
-│ → location_analysis.available = FALSE                          │
-│ → Keine Karten, kein Score, keine POIs, keine Reachability     │
-│                                                                │
-│ BUG #2: PCT() in pdfCiKit multipliziert NICHT ×100             │
-│ → PCT(0.038) = "0,0 %" statt "3,8 %"                          │
-│ → Alle Zins/Tilgung/LTV-Werte im PDF zeigen "0,0 %"           │
-│                                                                │
-│ BUG #3: Comp-Suche liefert 0 Treffer                           │
-│ → comp_postings: [], comp_stats.available: false               │
-│ → 35% Methodengewicht fällt komplett weg                       │
-│                                                                │
-│ BUG #4: Sachwert nutzt flat 2.500 €/m² statt spec.ts-Cluster  │
-│ → spec.ts definiert HERSTELLKOSTEN_CLUSTERS nach Baujahr       │
-│ → Edge Function ignoriert das und nutzt Konstantenwert         │
-│                                                                │
-│ BUG #5: Kein Bodenwert im Ertragswert                          │
-│ → Ertragswert = NOI / cap_rate (vereinfachte DCF-Formel)       │
-│ → Fehlt: Bodenwert (Bodenrichtwert × Grundstücksfläche)        │
-│                                                                │
-│ BUG #6: Gewichts-Umverteilung fehlt                            │
-│ → Wenn Comps ausfallen: 35% Gewicht verschwindet einfach       │
-│ → Verbleibende Methoden teilen sich die Last nicht auf          │
-│                                                                │
-│ BUG #7: LienProxy-Mapper liest falsches Feld                   │
-│ → DB: market_value_band.p50 → Mapper: market_value_p50 → 0    │
-│ → PDF zeigt "Marktwert P50: 0 €"                               │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Auswirkung auf den Wert
-
-**Gemini-Referenz: ~707.000 €** vs. **Unser P50: 440.825 €** (−38%)
-
-Warum:
-- Ertragswert 460.000 € — plausibel, aber ohne Bodenwert zu niedrig
-- Sachwert 259.727 € — viel zu niedrig (flat 2.500 €/m², 48% AfA)
-- Comp Proxy: 0 € — komplett ausgefallen
-- Gewichtung: 0.5×0.85 (Ertrag) + 0.15×0.3 (Sach) = eff. Gewicht nur 0.47, stark Ertrag-lastig
-
-### DB-Beweis
-
-| Feld | Wert in DB | Problem |
-|------|-----------|---------|
-| `lat` / `lng` | `null` | Geocoding lieferte nichts |
-| `location_analysis.available` | `false` | Kein Standortblock |
-| `comp_postings` | `[]` | 0 Comps |
-| `comp_stats.available` | `false` | Kein Vergleich |
-| `financing[0].interest_rate` | `0.038` ✓ | Korrekt in DB, Anzeige kaputt |
-| `lien_proxy.market_value_band.p50` | `440825` | Mapper liest falsches Feld |
+> **Datum**: 2026-03-05 (aktualisiert)
+> **Status**: Wave 1 ✅ (R-1–R-6) — Wave 2 Tranche 1 ✅ (R-7–R-10) — Tranche 2 ✅ (R-11–R-14) — Tranche 3 ✅ (R-15–R-24) — Tranche 4 ✅ (R-25–R-35)
+> **Methode**: Bewährtes Orchestrator + Sub-Components Pattern
 
 ---
 
-## Korrekturplan (6 Fixes)
+## Gesamtstatistik
 
-### Voraussetzung: UNFREEZE INFRA-edge_functions
+| Metrik | Wave 1 (done) | Wave 2 T1-T3 (done) | Wave 2 T4 (geplant) | Gesamt |
+|--------|--------------|---------------------|---------------------|--------|
+| Dateien | 6 | 18 | 11 | 35 |
+| Zeilen vorher | 5.530 | ~10.800 | ~4.900 | ~21.230 |
+| Zeilen nachher | ~1.350 | ~3.200 | ~1.320 | ~5.870 |
+| Reduktion | 76% | ~70% | ~73% | ~72% |
 
-Alle Fixes außer #2 betreffen die Edge Function.
+---
 
-### Fix #1 — Geocoding-Adresse korrekt zusammenbauen
+## Wave 1 — ABGESCHLOSSEN ✅
 
-**Datei:** `supabase/functions/sot-valuation-engine/index.ts` (Zeile 744)
+| # | Phase | Datei | Vorher | Nachher | Modul |
+|---|-------|-------|--------|---------|-------|
+| 1 | R-1 ✅ | FMEinreichung.tsx | 1039 | 295 | MOD-11 |
+| 2 | R-2 ✅ | ExposeDetail.tsx | 1008 | 299 | MOD-06 |
+| 3 | R-3 ✅ | Inbox.tsx | 976 | 180 | Admin |
+| 4 | R-4 ✅ | KontexteTab.tsx | 923 | 214 | MOD-04 |
+| 5 | R-5 ✅ | AnfrageFormV2.tsx | 904 | 183 | MOD-07 |
+| 6 | R-6 ✅ | Users.tsx | 680 | 178 | Admin |
 
-**Ist:** `const address = snapshot.address || snapshot.city || "";`
-**Soll:** `const address = [snapshot.address, snapshot.postal_code, snapshot.city].filter(Boolean).join(', ');`
+---
 
-Damit wird "Parkweg, 94315 Straubing" an Google gesendet statt nur "Parkweg".
+## Wave 2 — Tranche 1 ✅ (R-7–R-10)
 
-### Fix #2 — PCT-Funktion in pdfCiKit ×100 multiplizieren
+| # | Phase | Datei | Vorher | Nachher | Modul |
+|---|-------|-------|--------|---------|-------|
+| 7 | R-7 ✅ | EmailTab.tsx | 1506 | ~180 | MOD-02 |
+| 8 | R-8 ✅ | PortfolioTab.tsx | 1511 | ~200 | MOD-04 |
+| 9 | R-9 ✅ | BriefTab.tsx | 1012 | ~200 | MOD-02 |
+| 10 | R-10 ✅ | GeldeingangTab.tsx | 1018 | ~200 | MOD-04 |
 
-**Datei:** `src/lib/pdf/pdfCiKit.ts` (Zeile 455-456)
+## Wave 2 — Tranche 2 ✅ (R-11–R-14)
 
-**Ist:** `v.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %'`
-**Soll:** `(v * 100).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %'`
+| # | Phase | Datei | Vorher | Nachher | Modul |
+|---|-------|-------|--------|---------|-------|
+| 11 | R-11 ✅ | TenancyTab.tsx | 904 | ~200 | MOD-04 |
+| 12 | R-12 ✅ | UnitDetailPage.tsx | 708 | ~150 | MOD-13 |
+| 13 | R-13 ✅ | TileCatalog.tsx | 646 | ~150 | Admin |
+| 14 | R-14 ✅ | ManagerFreischaltung.tsx | 635 | ~140 | Admin |
 
-Das behebt: Zins, Tilgung, LTV — alle Prozentangaben im gesamten PDF.
+## Wave 2 — Tranche 3 ✅ (R-15–R-24)
 
-### Fix #3 — Comp-Suche robuster machen
+| # | Phase | Datei | Vorher | Nachher | Modul | Neue Dateien |
+|---|-------|-------|--------|---------|-------|-------------|
+| 15 | R-15 ✅ | PropertyDetailPage.tsx | 628 | ~200 | MOD-04 | PropertyDetailHeader, PropertyTabRouter |
+| 16 | R-16 ✅ | CaringProviderDetail.tsx | 599 | ~160 | MOD-22 | ProviderGallery, ProviderProfileCard, ProviderServicesCard, ProviderBookingSection |
+| 17 | R-17 ✅ | FMFinanzierungsakte.tsx | 596 | ~200 | MOD-11 | AkteKaufySearch |
+| 18 | R-18 ✅ | MasterTemplates.tsx | 585 | ~140 | Admin | 3 sub-components |
+| 19 | R-19 ✅ | OrganizationDetail.tsx | 581 | ~160 | Admin | 3 sub-components |
+| 20 | R-20 ✅ | FMFallDetail.tsx | 579 | ~160 | MOD-11 | FallHeaderBlock, FallContentBlocks |
+| 21 | R-21 ✅ | LeadManagerKampagnen.tsx | 576 | ~100 | MOD-10 | KampagnenKPIs, KampagnenLeadInbox, KampagnenCampaignList, KampagnenCreator |
+| 22 | R-22 ✅ | LeadPool.tsx | 560 | ~140 | Admin | 3 sub-components |
+| 23 | R-23 ✅ | ObjekteingangDetail.tsx | 539 | ~200 | MOD-12 | ObjektKPIRow, ObjektBasisdaten |
+| 24 | R-24 ✅ | Oversight.tsx | 531 | ~140 | Admin | 3 sub-components |
 
-**Datei:** `supabase/functions/sot-valuation-engine/index.ts` (Stage 3)
+---
 
-Probleme:
-1. Suchquery "MFH kaufen Straubing ca. 200m²" ist zu spezifisch für Firecrawl
-2. Kein Fallback wenn 0 Treffer
-3. Kein Apify-Fallback obwohl Token konfiguriert
+## Wave 2 — Tranche 4 ✅ (R-25–R-35)
 
-Plan:
-- Primärsuche: `"Mehrfamilienhaus kaufen ${city}"` (ohne m²-Filter)
-- Wenn 0 Treffer: Relaxed-Suche: `"Haus kaufen ${city}"` 
-- Wenn immer noch 0: Apify IS24-Scraper als Fallback (Token ist da)
-- Mindestens die Portal-URLs direkt scrapen (immobilienscout24.de/Suche/de/bayern/straubing/...)
+| # | Phase | Datei | Vorher | Nachher | Modul | Neue Dateien |
+|---|-------|-------|--------|---------|-------|-------------|
+| R-25 | ✅ | Agreements.tsx | 506 | ~90 | Admin | AgreementsTemplateTable, AgreementsConsentLog |
+| R-26 | ✅ | Dashboard.tsx (Admin) | 491 | ~100 | Admin | AdminKPIGrid, AdminSessionCard |
+| R-27 | ✅ | Delegations.tsx | 486 | ~100 | Admin | DelegationTable |
+| R-28 | ✅ | ArmstrongWorkspace.tsx | 479 | ~180 | MOD-00 | WorkspaceChatHeader, WorkspaceChatMessages, WorkspaceChatInput |
+| R-29 | ✅ | FMDashboard.tsx | 472 | ~83 | MOD-11 | FMZinsTickerWidget, FMMandateCards, FMProfileEditSheet |
+| R-30 | ✅ | VerwaltungTab.tsx | 456 | ~150 | MOD-04 | VerwaltungContextGrid, VerwaltungPropertyAccordion, VerwaltungGesamtergebnis |
+| R-31 | ✅ | ProjectDetailPage.tsx | 456 | ~120 | MOD-13 | ProjectDetailHeader, ProjectUnitsTable, ProjectInfoTabs |
+| R-32 | ✅ | SanierungTab.tsx | 451 | ~89 | MOD-04 | SanierungDemoDetail |
+| R-33 | ✅ | MasterTemplatesImmo.tsx | 444 | ~60 | Admin | ImmoAkteBlockView, immoAkteBlocks.ts |
+| R-34 | ⬜ | StorageFileManager.tsx | 434 | — | MOD-03 | Skipped — already modular (5 views) |
+| R-35 | ✅ | RolesManagement.tsx | 419 | ~30 | Admin | RolesCatalogTab, RolesMatrixTab, RolesGovernanceTab |
 
-### Fix #4 — Sachwert: Herstellkosten-Cluster aus spec.ts nutzen
+### Ergebnis
 
-**Datei:** `supabase/functions/sot-valuation-engine/index.ts` (Stage 4, ~Zeile 1030)
+- **33 von 35 Dateien** refactored (R-28 ArmstrongWorkspace + R-34 StorageFileManager waren optional, R-28 jetzt done)
+- **~80+ Sub-Components** extrahiert
+- **Durchschnittliche Reduktion**: ~65%
 
-**Ist:** Flat `SACHWERT_BASE_COST_SQM: 2500`
-**Soll:** Cluster-Lookup nach Baujahr:
+---
+
+## Regeln
+
+1. **Keine funktionalen Änderungen** — Reine Extraktion
+2. **Keine DB-Änderungen** — Kein Migrations-Tool nötig
+3. **Keine neuen Routes** — Bestehende Routen bleiben
+4. **Module sofort re-freezen** nach Abschluss jeder Phase
+5. **TSX Creation Check** (Regel F) — vor jeder neuen Datei auf Duplikate prüfen
+6. **Zone Separation** (Regel G) — keine Cross-Zone-Imports
+
+---
+
+## Objektfinder / Portal-Recherche — Phasenplan
+
+> **Modul**: MOD-12 (Akquise-Manager) — Tools → Portal-Recherche
+> **Datum**: 2026-03-05
+
+### Phase 1 — Portal-Suche reparieren ✅
+
+**Status**: Implementiert
+
+| Änderung | Datei | Beschreibung |
+|----------|-------|--------------|
+| URL-Builder mit echten Filtern | `sot-research-engine/index.ts` | `buildPortalUrl()` mit Preis, Fläche, Objektart-Mapping pro Portal |
+| Parallele 3-Portal-Suche | `sot-research-engine/index.ts` | `searchAllPortals()` scrapt IS24/Immowelt/Kleinanzeigen parallel |
+| Erweiterter Extraktions-Prompt | `sot-research-engine/index.ts` | KI extrahiert: Objektart, Fläche, Zimmer, WE, Baujahr, Rendite, PLZ |
+| UI-Rebuild ohne Maklersuche | `PortalSearchTool.tsx` | Objektart-Filter, Flächen-Filter, Portal-Status-Badges, Ergebnis-Cards |
+| Hook-Update | `useAcqTools.ts` | Neue `PortalSearchParams` ohne `portal`/`searchType`, mit `areaMin/Max` |
+
+### Phase 2 — Persistierung + Inbox-Workflow (geplant)
+
+**Ziel**: Ergebnisse speichern, deduplizieren, als Lead-Kandidaten verarbeiten.
+
+**Neue DB-Tabellen** (via Migration):
+
+```sql
+-- Suchlauf-Protokoll
+CREATE TABLE portal_search_runs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES organizations(id),
+  created_by UUID NOT NULL,
+  search_params_json JSONB NOT NULL,
+  status TEXT NOT NULL DEFAULT 'running', -- running/partial/success/fail
+  metrics_json JSONB, -- {immoscout24: {found: 12, new: 8}, ...}
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Gefundene Listings (alle Portale)
+CREATE TABLE portal_listings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES organizations(id),
+  run_id UUID REFERENCES portal_search_runs(id),
+  source_portal TEXT NOT NULL,
+  source_url TEXT,
+  source_listing_id TEXT,
+  title TEXT NOT NULL,
+  price INTEGER,
+  object_type TEXT,
+  living_area_sqm NUMERIC,
+  plot_area_sqm NUMERIC,
+  address TEXT,
+  city TEXT,
+  zip_code TEXT,
+  rooms NUMERIC,
+  units_count INTEGER,
+  year_built INTEGER,
+  gross_yield NUMERIC,
+  broker_name TEXT,
+  raw_extract_json JSONB,
+  cluster_fingerprint TEXT, -- Hash(adresse+preis+fläche) für Dedupe
+  status TEXT NOT NULL DEFAULT 'new', -- new/seen/saved/rejected/suppressed
+  score INTEGER, -- 0-100 Match vs. Suchprofil
+  match_reasons_json JSONB,
+  first_seen_at TIMESTAMPTZ DEFAULT now(),
+  last_seen_at TIMESTAMPTZ DEFAULT now(),
+  linked_offer_id UUID REFERENCES acq_offers(id), -- wenn in Objekteingang übernommen
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 ```
-function getHerstellkostenSqm(yearBuilt: number): number {
-  if (yearBuilt < 1950) return 1200;
-  if (yearBuilt < 1970) return 1400;
-  if (yearBuilt < 1990) return 1600;  // ← Parkweg 1978
-  if (yearBuilt < 2010) return 2000;
-  return 2600;
+
+**Implementierung** (Dateien):
+
+| Datei | Beschreibung |
+|-------|--------------|
+| DB Migration | `portal_search_runs` + `portal_listings` mit RLS |
+| `src/hooks/usePortalListings.ts` | CRUD für portal_listings, Suppression, Status-Updates |
+| `src/pages/portal/akquise-manager/components/PortalSearchInbox.tsx` | Inbox-Cards: Neu/Gesehen/Gespeichert/Abgelehnt |
+| `sot-research-engine/index.ts` | Ergebnisse in `portal_listings` persistieren, Dedupe via `cluster_fingerprint` |
+| Scoring-Logic in `src/engines/akquiseCalc/` | `scoreListingVsProfile()` → Score 0-100 + Reasons |
+
+**Dedupe-Strategie**:
+- `cluster_fingerprint = MD5(lower(city) + price_bucket + area_bucket)`
+- Bei Match: `last_seen_at` updaten, nicht duplizieren
+- Suppression: Abgelehnte Fingerprints bei nächster Suche ignorieren
+
+**Inbox-Actions**:
+- "In Objekteingang übernehmen" → erstellt `acq_offers`-Record, setzt `linked_offer_id`
+- "Ablehnen" → Status `rejected`, optionale Suppression
+- "Merken" → Status `saved`
+
+### Phase 3 — KI-Suchprofil-Erfassung (geplant)
+
+**Ziel**: User beschreibt Wunschobjekt in Freitext, KI erzeugt strukturierte Filter.
+
+**Implementierung**:
+
+| Datei | Beschreibung |
+|-------|--------------|
+| `PortalSearchAIIntake.tsx` | Freitext-Eingabe + Confidence-Anzeige + Rückfragen |
+| `sot-research-engine/index.ts` | Neuer Intent `ai_search_profile` → Gemini 2.5 Pro |
+| `useAcqTools.ts` | `useAISearchProfile()` Hook |
+
+**AI Output Contract**:
+```typescript
+interface AIProfileDraft {
+  canonical: {
+    region?: string;
+    price_min?: number;
+    price_max?: number;
+    area_min?: number;
+    area_max?: number;
+    object_types?: string[];
+    yield_min?: number;
+    units_min?: number;
+  };
+  confidence: Record<string, number>; // 0-1 pro Feld
+  assumptions: string[]; // "Annahme: Preis = Kaltmiete"
+  questions?: string[]; // "Meinen Sie Warm- oder Kaltmiete?"
 }
 ```
 
-Plus **Baupreisindex-Korrektor** (2020→2026 ~+25%): `herstellkosten * 1.25`
-
-Für Parkweg 1978: 1.600 × 1.25 = 2.000 €/m² → Sachwert = 199.79 × 2.000 × (1-0.48) = ~207.782 €
-
-Und zusätzlich: **Bodenwert-Komponente** hinzufügen (wenn `plot_area_sqm` vorhanden):
-- Bodenrichtwert-Proxy für Standardlagen: 300 €/m² (Stadt/gut), skalierbar
-- Bodenwert = `plot_area_sqm × bodenwert_proxy`
-- Gesamtsachwert = Gebäudesachwert + Bodenwert
-
-### Fix #5 — Ertragswert um Bodenwert ergänzen
-
-**Datei:** `supabase/functions/sot-valuation-engine/index.ts` (Stage 4, ~Zeile 985)
-
-Der aktuelle Ertragswert ist: `NOI / cap_rate`. Das ist eine vereinfachte Income-Capitalisation.
-
-Korrekt nach ImmoWertV:
-```
-Ertragswert = (NOI / Liegenschaftszins) + Bodenwert
-```
-
-Der Bodenwert muss additiv dazu. Ohne ihn fehlt bei einem MFH mit großem Grundstück ein erheblicher Wertanteil.
-
-### Fix #6 — Gewichts-Umverteilung bei fehlenden Methoden
-
-**Datei:** `supabase/functions/sot-valuation-engine/index.ts` (Stage 4, ~Zeile 1048)
-
-**Ist:** Wenn comp_proxy fehlt, bleibt sein 35%-Gewicht einfach weg. Die Fusion teilt durch die Summe der vorhandenen Gewichte — aber da die Gewichte mit Confidence multipliziert werden, verzerrt das Ergebnis stark.
-
-**Soll:** Explizite Umverteilung:
-```
-Wenn nur 2 Methoden: Ertrag 75%, Sachwert 25%
-Wenn nur Ertrag: 100%
-Wenn nur Sachwert: 100%
-Alle 3: Standard-Gewichte (50/35/15)
-```
-
-### Fix #7 — LienProxy-Mapper korrigieren
-
-**Datei:** `src/hooks/useValuationCase.ts` (Zeile 284)
-
-**Ist:** `marketValueP50: raw.market_value_p50 ?? raw.marketValueP50 ?? raw.p50 ?? 0`
-**Soll:** `marketValueP50: raw.market_value_p50 ?? raw.marketValueP50 ?? raw.market_value_band?.p50 ?? raw.p50 ?? 0`
-
-Das DB-Feld heißt `market_value_band` (ein Objekt mit p50), nicht `market_value_p50`.
-
-Analog `totalDiscount`:
-**Ist:** `raw.total_discount ?? raw.totalDiscount ?? 0`
-**Soll:** `raw.total_discount ?? raw.totalDiscount ?? raw.risk_discount ?? 0`
+**Flow**:
+1. User gibt Freitext ein: "Suche MFH in Berlin, bis 2 Mio, mindestens 6% Rendite"
+2. Gemini 2.5 Pro extrahiert → `AIProfileDraft`
+3. UI zeigt extrahierte Filter mit Confidence-Badges
+4. User bestätigt oder korrigiert
+5. Bestätigte Filter werden als Suchparameter übernommen
 
 ---
 
-## Auswirkung auf den Wert (Prognose nach Fixes)
+## ENG-VALUATION: Soll-/Ist-Analyse & Korrekturfahrplan
 
-```text
-Ertragswert:    460.000 € (bleibt)  + Bodenwert ~150.000 € = ~610.000 €
-  → Gewicht 75% (da keine Comps)
-  
-Sachwert:       ~208.000 € (Gebäude) + ~150.000 € (Boden) = ~358.000 €
-  → Gewicht 25%
-  
-P50 = 0.75 × 610.000 × 0.85  +  0.25 × 358.000 × 0.3
-    = 388.875 + 26.850
-    / (0.75 × 0.85 + 0.25 × 0.3)
-    = 415.725 / 0.7125
-    = ~583.000 €
+> **Datum**: 2026-03-06  
+> **Verdict**: Core vorhanden (95%), Produkt unvollständig (45%)
 
-Mit Comps (geschätzt ~3.400 €/m² → 679.000 €):
-P50 ≈ 620.000 – 660.000 €
-```
+### Top 10 Gaps (Priorität)
 
-Das wäre deutlich näher am Gemini-Referenzwert (707k), aber konservativer — was für ein automatisiertes Tool korrekt ist.
+| # | Gap | Aufwand | Freeze? |
+|---|-----|---------|---------|
+| 1 | MOD-12: `useRunValuation` verdrahten (throw Error → Edge Function) | Klein | Nein |
+| 2 | MOD-04: PropertyValuationTab Query `property_valuations` → `valuation_cases` | Klein | MOD-04 |
+| 3 | PDF-Export Button im Report-View | Klein | shared |
+| 4 | MOD-12 Objekteingang: Bewertungs-Step befüllen | Mittel | MOD-12 |
+| 5 | ReportReader: Location-Block (Scores, POIs, Maps) | Mittel | shared |
+| 6 | ReportReader: Comp-Postings-Liste | Klein | shared |
+| 7 | ReportReader: LegalBlock rendern | Klein | shared |
+| 8 | PDF-Generator: pdfCiTokens importieren | Klein | shared |
+| 9 | MOD-13 Inbox: Draft-Bewertungs-Entry-Point | Groß | MOD-05 |
+| 10 | Google Routes Matrix + StreetView | Mittel | Edge Function |
+
+### Korrekturreihenfolge
+
+- **Phase A:** Gap 1 (kein Freeze)
+- **Phase B:** UNFREEZE MOD-04 → Gaps 2+3
+- **Phase C:** UNFREEZE shared/valuation → Gaps 5+6+7+8
+- **Phase D:** UNFREEZE MOD-12 → Gap 4
+- **Phase E:** Gaps 9+10 (neue Features)
+
+### Root Causes
+
+1. Core-first, Produkt-later (3.228 LOC Engine, 1/3 Entry Points verdrahtet)
+2. Phase-Planung nicht durchgezogen (MOD-12 = "Phase 5 TODO")
+3. Tabellen-Drift (property_valuations vs valuation_cases)
+4. PDF nie an UI angebunden (358 LOC ohne Button)
+5. Contract Drift snake/camel (Deep Mapper nachträglich)
+6. ReportReader zeigt nur Zahlen (Location/Comps/Legal fehlen)
 
 ---
 
-## Reihenfolge der Umsetzung
+### Abhängigkeiten & Reihenfolge
 
-1. **Fix #2** — PCT in pdfCiKit (kein Unfreeze nötig, `src/lib/pdf/`)
-2. **Fix #7** — LienProxy-Mapper (kein Unfreeze nötig, `src/hooks/`)
-3. **Fix #1** — Geocoding-Adresse (Edge Function — braucht Unfreeze)
-4. **Fix #4+5** — Sachwert-Cluster + Bodenwert + Ertragswert-Bodenwert (Edge Function)
-5. **Fix #6** — Gewichts-Umverteilung (Edge Function)
-6. **Fix #3** — Comp-Suche robust (Edge Function)
+```
+Phase 1 (done) ──→ Phase 2 (DB + Inbox) ──→ Phase 3 (KI-Intake)
+                         ↓
+                   Scoring-Engine (ENG-AKQUISE erweitern)
+```
 
-Fixes 1-2 und 7 sind Einzeiler. Fixes 3-6 sind inhaltlich umfangreicher.
-
-## Freeze-Anforderungen
-
-- `UNFREEZE INFRA-edge_functions` — für Fixes 1, 3, 4, 5, 6
-- `src/lib/pdf/pdfCiKit.ts` — nicht im Freeze-Scope, frei editierbar
-- `src/hooks/useValuationCase.ts` — nicht im Freeze-Scope, frei editierbar
-
+Phase 2 kann unabhängig von Phase 3 deployed werden. Phase 3 baut auf den Filter-Parametern aus Phase 1 auf.
