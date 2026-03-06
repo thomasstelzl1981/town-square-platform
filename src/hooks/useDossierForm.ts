@@ -57,7 +57,7 @@ export function useDossierForm(initialData: UnitDossierData | null) {
       'usageType', 'heatingType', 'energySource', 'landRegisterCourt', 'landRegisterSheet',
       'landRegisterVolume', 'parcelNumber', 'teNumber', 'purchaseDate', 'purchasePrice',
       'marketValue', 'acquisitionCosts', 'wegFlag', 'meaTotal', 'allocationKeyDefault',
-      'plotAreaSqm', 'totalAreaSqm', 'coreRenovated', 'renovationYear'
+      'plotAreaSqm', 'totalAreaSqm', 'coreRenovated', 'renovationYear', 'unitCountActual'
     ];
     
     const changes: Partial<PropertyFormData> = {};
