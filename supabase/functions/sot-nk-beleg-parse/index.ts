@@ -417,6 +417,7 @@ PRÜFE:
       p_action_code: "nk_beleg_parsing",
       p_ref_type: "nk_beleg_extraction",
       p_ref_id: extraction.id,
+      p_user_id: user.id,
     });
 
     console.log(`[sot-nk-beleg-parse] Extracted ${doc.name}: ${parsed.provider_name}, ${parsed.total_amount}€, confidence ${confidence}`);

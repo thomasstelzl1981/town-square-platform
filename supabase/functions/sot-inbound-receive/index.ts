@@ -1027,6 +1027,7 @@ invoice_data NUR befüllen wenn is_invoice === true.`;
       p_action_code: "doc_extraction",
       p_ref_type: "document",
       p_ref_id: documentId,
+      p_user_id: null,
     });
 
     console.log(`[auto-trigger] ✅ Extracted ${pages.length} pages from ${filename} → ${documentId} (priority: ${parsed.priority}, invoice: ${parsed.is_invoice}) (1 Credit deducted)`);

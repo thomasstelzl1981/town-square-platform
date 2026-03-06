@@ -317,6 +317,7 @@ Deno.serve(async (req) => {
       p_action_code: "invoice_parsing",
       p_ref_type: "invoice_extraction",
       p_ref_id: extraction.id,
+      p_user_id: user.id,
     });
 
     console.log(`[sot-invoice-parse] Parsed ${doc.name}: ${parsed.vendor_name}, ${parsed.total_gross}€, match: ${matchMethod || 'none'}`);

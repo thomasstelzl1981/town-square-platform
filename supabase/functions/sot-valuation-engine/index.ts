@@ -422,6 +422,7 @@ Deno.serve(async (req) => {
         p_action_code: ACTION_CODE,
         p_ref_type: "valuation_case",
         p_ref_id: null,
+        p_user_id: userId,
       });
 
       if (deductErr || !deductData) {
