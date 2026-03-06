@@ -260,6 +260,7 @@ export function useUnitDossier(unitId: string | undefined) {
         featuresTags: unitData.features_tags as string[] || [],
         coreRenovated: (property as any).core_renovated || false,
         renovationYear: (property as any).renovation_year,
+        unitCountActual: (property as any).unit_count_actual || null,
 
         // Block D: Legal
         landRegisterCourt: property.land_register_court,

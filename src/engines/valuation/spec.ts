@@ -444,6 +444,13 @@ export interface ValuationUnitDetail {
   rentCold: number | null;
 }
 
+/** V9.2: Modernisierungsbonus + Kernsanierung für Report */
+export interface RenovationData {
+  coreRenovated: boolean;
+  renovationYear: number | null;
+  modernisierungsbonus: number;
+}
+
 // ============================================================================
 // COMP POSTINGS
 // ============================================================================
@@ -673,6 +680,14 @@ export const REPORT_CHAPTERS: { key: ReportChapter; title: string; pageTarget: n
 // STAGE OUTPUT SHAPES
 // ============================================================================
 
+/** V9.2: Preflight warning/blocker for KI-Validierung */
+export interface PreflightWarning {
+  field: string;
+  severity: 'warning' | 'blocker';
+  message: string;
+  suggestedAction?: string;
+}
+
 export interface PreflightOutput {
   creditsCost: number;
   sources: { name: string; type: string; pages?: number }[];
@@ -682,6 +697,10 @@ export interface PreflightOutput {
   scraperAvailable: boolean;
   sourceMode: ValuationSourceMode;
   sourceModeLabel: string;
+  /** V9.2: KI-Preflight validation warnings */
+  warnings?: PreflightWarning[];
+  /** V9.2: KI-Preflight blockers — prevent valuation start */
+  blockers?: PreflightWarning[];
 }
 
 export interface IntakeOutput {

@@ -449,7 +449,15 @@ export function ValuationReportReader({
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Restnutzungsdauer</p>
               {ertragParams.gesamtnutzungsdauer && <DataRow label="Gesamtnutzungsdauer" value={`${ertragParams.gesamtnutzungsdauer} Jahre`} />}
               {ertragParams.alter && <DataRow label="Alter" value={`${ertragParams.alter} Jahre`} />}
-              {Number(ertragParams.modernisierungsbonus) > 0 && <DataRow label="Modernisierungsbonus" value={`+${ertragParams.modernisierungsbonus} Jahre`} />}
+              {ertragParams.core_renovated && ertragParams.renovation_year && (
+                <DataRow label="Kernsanierung" value={`${ertragParams.renovation_year}`} />
+              )}
+              {Number(ertragParams.modernisierungsbonus) > 0 && (
+                <div className="flex items-start gap-2 p-2 rounded-md bg-emerald-500/10 text-emerald-700 text-[10px] my-1">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <span>Modernisierungsbonus: +{ertragParams.modernisierungsbonus} Jahre (ImmoWertV-konform, Kernsanierung {ertragParams.renovation_year})</span>
+                </div>
+              )}
               <SectionDivider />
               <DataRow label="RESTNUTZUNGSDAUER" value={`${ertragParams.restnutzungsdauer || '–'} Jahre`} bold />
             </div>

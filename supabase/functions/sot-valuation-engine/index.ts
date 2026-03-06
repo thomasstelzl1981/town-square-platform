@@ -460,25 +460,60 @@ function buildServerSSOTSnapshot(ssotData: any): Record<string, any> {
     encumbrances_note: "Belastungen nicht automatisch ausgewertet — manuelle Prüfung empfohlen",
   };
 
-  // V9.1: MFH multi-unit detection
+  // V9.2: MFH multi-unit detection — now also uses unit_count_actual
   const isMfh = ['MFH', 'mfh', 'Mehrfamilienhaus'].includes(p.property_type || '');
-  const mfhMultiUnit = isMfh && units.length > 1;
-  const unitsDetail = units.length > 0 ? units.map((u: any) => {
-    // Find matching lease for this unit
-    const unitLease = activeLeases.find((l: any) => l.unit_id === u.id);
-    return {
-      id: u.id,
-      area_sqm: u.area_sqm || 0,
-      rooms: u.rooms || null,
-      floor: u.floor || null,
-      rent_cold: unitLease?.rent_cold_eur || u.current_monthly_rent || null,
-    };
-  }) : [];
+  const unitCountActual = p.unit_count_actual || null;
+  const mfhMultiUnit = isMfh && (units.length > 1 || (unitCountActual != null && unitCountActual > 1));
 
-  // V9.1: For MFH multi-unit, calculate average unit size for comp filtering
-  const avgUnitArea = mfhMultiUnit && unitsDetail.length > 0
-    ? Math.round(unitsDetail.reduce((s: number, u: any) => s + (u.area_sqm || 0), 0) / unitsDetail.length)
+  // Build units_detail — if unit_count_actual > 1 but only 1 unit record, generate synthetic units
+  let unitsDetail: any[] = [];
+  if (units.length > 1) {
+    unitsDetail = units.map((u: any) => {
+      const unitLease = activeLeases.find((l: any) => l.unit_id === u.id);
+      return {
+        id: u.id,
+        area_sqm: u.area_sqm || 0,
+        rooms: u.rooms || null,
+        floor: u.floor || null,
+        rent_cold: unitLease?.rent_cold_eur || u.current_monthly_rent || null,
+      };
+    });
+  } else if (mfhMultiUnit && unitCountActual && unitCountActual > 1 && totalArea) {
+    // Synthetic unit generation: split total area evenly
+    const perUnitArea = Math.round(totalArea / unitCountActual);
+    const perUnitRent = totalRent ? Math.round(totalRent / unitCountActual) : null;
+    for (let i = 0; i < unitCountActual; i++) {
+      unitsDetail.push({
+        id: `synthetic-${i + 1}`,
+        area_sqm: perUnitArea,
+        rooms: null,
+        floor: null,
+        rent_cold: perUnitRent,
+      });
+    }
+    stageLog(0, `MFH: Generated ${unitCountActual} synthetic units from unit_count_actual (${perUnitArea}m² each)`);
+  } else if (units.length > 0) {
+    unitsDetail = units.map((u: any) => {
+      const unitLease = activeLeases.find((l: any) => l.unit_id === u.id);
+      return {
+        id: u.id,
+        area_sqm: u.area_sqm || 0,
+        rooms: u.rooms || null,
+        floor: u.floor || null,
+        rent_cold: unitLease?.rent_cold_eur || u.current_monthly_rent || null,
+      };
+    });
+  }
+
+  // V9.2: For MFH multi-unit, calculate average unit size for comp filtering
+  const effectiveUnitCount = mfhMultiUnit ? (unitCountActual || units.length) : units.length;
+  const avgUnitArea = mfhMultiUnit && effectiveUnitCount > 0 && totalArea
+    ? Math.round(totalArea / effectiveUnitCount)
     : null;
+
+  // V9.2: Kernsanierung / Renovation data
+  const coreRenovated = p.core_renovated || false;
+  const renovationYear = p.renovation_year || null;
 
   return {
     source_mode: "SSOT_FINAL",
@@ -490,6 +525,7 @@ function buildServerSSOTSnapshot(ssotData: any): Record<string, any> {
     plot_area_sqm: p.plot_area_sqm || null,
     rooms: totalRooms,
     units_count: units.length || null,
+    unit_count_actual: unitCountActual,
     year_built: p.year_built || null,
     condition: p.condition_grade || null,
     energy_class: p.energy_certificate_value || null,
@@ -512,10 +548,13 @@ function buildServerSSOTSnapshot(ssotData: any): Record<string, any> {
       fixed_interest_end: primaryLoan.fixed_interest_end_date,
       bank_name: primaryLoan.bank_name,
     } : null,
-    // V9.1: MFH unit-aware fields
+    // V9.2: MFH unit-aware fields
     mfh_multi_unit: mfhMultiUnit,
     units_detail: unitsDetail,
     avg_unit_area: avgUnitArea,
+    // V9.2: Kernsanierung
+    core_renovated: coreRenovated,
+    renovation_year: renovationYear,
   };
 }
 
@@ -563,15 +602,171 @@ Deno.serve(async (req) => {
       });
 
       let ssotSummary: any = null;
+      let warnings: any[] = [];
+      let blockers: any[] = [];
+
       if (property_id) {
         const ssotData = await fetchSSOTPropertyData(sbAdmin, property_id, tenantId);
         if (ssotData) {
+          const p = ssotData.property as any;
           ssotSummary = {
-            address: ssotData.property.address, city: ssotData.property.city,
-            type: ssotData.property.property_type, units_count: ssotData.units.length,
+            address: p.address, city: p.city,
+            type: p.property_type, units_count: ssotData.units.length,
             leases_count: ssotData.leases.length, loans_count: ssotData.loans.length,
-            has_legal_data: !!(ssotData.property.land_register_court || ssotData.property.parcel_number),
+            has_legal_data: !!(p.land_register_court || p.parcel_number),
           };
+
+          // V9.2: KI-Preflight Validation — deterministic checks
+          const isMfh = ['MFH', 'mfh', 'Mehrfamilienhaus'].includes(p.property_type || '');
+          const unitCountActual = p.unit_count_actual || null;
+          const totalArea = ssotData.units.reduce((s: number, u: any) => s + (u.area_sqm || 0), 0) || p.total_area_sqm || 0;
+          const activeLeases = ssotData.leases.filter((l: any) => l.status === 'active' || l.status === 'aktiv');
+          const totalRent = activeLeases.reduce((s: number, l: any) => s + (l.rent_cold_eur || 0), 0);
+
+          // Check: MFH with only 1 unit and no unit_count_actual
+          if (isMfh && ssotData.units.length <= 1 && !unitCountActual) {
+            warnings.push({
+              field: 'unit_count_actual',
+              severity: 'warning',
+              message: 'MFH mit nur 1 Einheit erfasst. Anzahl Wohneinheiten nicht angegeben — Bewertung erfolgt als Einfamilienhaus.',
+              suggestedAction: 'Tragen Sie die tatsächliche Anzahl der Wohneinheiten in der Immobilienakte ein.',
+            });
+          }
+
+          // Check: Core renovation without year
+          if (p.core_renovated && !p.renovation_year) {
+            warnings.push({
+              field: 'renovation_year',
+              severity: 'warning',
+              message: 'Kernsanierung markiert, aber kein Sanierungsjahr angegeben — Modernisierungsbonus wird nicht berechnet.',
+              suggestedAction: 'Bitte das Sanierungsjahr in der Immobilienakte ergänzen.',
+            });
+          }
+
+          // Check: No address
+          if (!p.address || !p.city) {
+            blockers.push({
+              field: 'address',
+              severity: 'blocker',
+              message: 'Adresse oder Stadt fehlt — keine Bewertung ohne Standortdaten möglich.',
+              suggestedAction: 'Adresse und Stadt in der Immobilienakte eintragen.',
+            });
+          }
+
+          // Check: No rent and no asking price
+          if (totalRent <= 0 && !p.market_value && !p.purchase_price) {
+            blockers.push({
+              field: 'pricing',
+              severity: 'blocker',
+              message: 'Keine Miete, kein Marktwert und kein Kaufpreis vorhanden — Ertragswertberechnung nicht möglich.',
+              suggestedAction: 'Mindestens Mietdaten oder einen Kaufpreis/Marktwert eintragen.',
+            });
+          }
+
+          // Check: Unrealistic rent per sqm
+          if (totalRent > 0 && totalArea > 0) {
+            const rentPerSqm = totalRent / totalArea;
+            if (rentPerSqm < 2) {
+              warnings.push({
+                field: 'rent_per_sqm',
+                severity: 'warning',
+                message: `Kaltmiete sehr niedrig: ${rentPerSqm.toFixed(2)} €/m². Prüfen Sie, ob die Mietangabe korrekt ist.`,
+                suggestedAction: 'Miethöhe in den Mietverhältnissen prüfen.',
+              });
+            } else if (rentPerSqm > 30) {
+              warnings.push({
+                field: 'rent_per_sqm',
+                severity: 'warning',
+                message: `Kaltmiete ungewöhnlich hoch: ${rentPerSqm.toFixed(2)} €/m². Prüfen Sie die Mietangabe.`,
+                suggestedAction: 'Miethöhe in den Mietverhältnissen prüfen.',
+              });
+            }
+          }
+
+          // Check: No year built
+          if (!p.year_built) {
+            warnings.push({
+              field: 'year_built',
+              severity: 'warning',
+              message: 'Kein Baujahr angegeben — Restnutzungsdauer wird mit Fallback 1980 berechnet.',
+              suggestedAction: 'Baujahr in der Immobilienakte ergänzen.',
+            });
+          }
+
+          // Check: No plot area
+          if (!p.plot_area_sqm) {
+            warnings.push({
+              field: 'plot_area_sqm',
+              severity: 'warning',
+              message: 'Keine Grundstücksfläche angegeben — wird per Heuristik geschätzt.',
+              suggestedAction: 'Grundstücksfläche im Grundbuch-Block der Immobilienakte eintragen.',
+            });
+          }
+
+          // V9.2: AI-based deeper validation if lovableApiKey available
+          if (lovableApiKey && warnings.length > 0) {
+            try {
+              const aiValidationResult = await callAI(
+                lovableApiKey,
+                "google/gemini-2.5-flash-lite",
+                `Du bist ein Immobiliensachverständiger. Prüfe die folgenden Objektdaten auf Plausibilität und logische Widersprüche.
+Antworte AUSSCHLIESSLICH mit dem JSON-Funktionsaufruf.`,
+                `Objektdaten:
+- Typ: ${p.property_type}
+- Adresse: ${p.address}, ${p.postal_code} ${p.city}
+- Baujahr: ${p.year_built || 'unbekannt'}
+- Wohnfläche: ${totalArea}m²
+- Einheiten DB: ${ssotData.units.length}
+- Einheiten tatsächlich: ${unitCountActual || 'nicht angegeben'}
+- Kernsanierung: ${p.core_renovated ? 'Ja' : 'Nein'}
+- Sanierungsjahr: ${p.renovation_year || 'nicht angegeben'}
+- Kaltmiete: ${totalRent}€/Monat
+- Grundstück: ${p.plot_area_sqm || 'nicht angegeben'}m²
+
+Bereits erkannte Probleme: ${warnings.map((w: any) => w.message).join('; ')}
+
+Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
+                [{
+                  type: "function",
+                  function: {
+                    name: "report_validation",
+                    description: "Report validation findings",
+                    parameters: {
+                      type: "object",
+                      properties: {
+                        additional_warnings: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              field: { type: "string" },
+                              message: { type: "string" },
+                              suggested_action: { type: "string" },
+                            },
+                            required: ["field", "message"],
+                          },
+                        },
+                      },
+                      required: ["additional_warnings"],
+                    },
+                  },
+                }],
+                { type: "function", function: { name: "report_validation" } },
+              );
+              if (aiValidationResult?.additional_warnings) {
+                for (const w of aiValidationResult.additional_warnings) {
+                  warnings.push({
+                    field: w.field || 'ai_check',
+                    severity: 'warning',
+                    message: w.message,
+                    suggestedAction: w.suggested_action || undefined,
+                  });
+                }
+              }
+            } catch (e) {
+              stageLog(0, `AI preflight validation error: ${e}`);
+            }
+          }
         }
       }
 
@@ -580,15 +775,17 @@ Deno.serve(async (req) => {
         preflight: {
           creditsCost: CREDITS_REQUIRED,
           credits_available: creditData?.available_credits ?? 0,
-          can_proceed: creditData?.allowed ?? false,
+          can_proceed: (creditData?.allowed ?? false) && blockers.length === 0,
           sources: ssotSummary ? [{ name: `SSOT: ${ssotSummary.address}, ${ssotSummary.city}`, type: "ssot", pages: 0 }] : [],
           totalEstimatedPages: 0,
-          limitsOk: true,
+          limitsOk: blockers.length === 0,
           googleApiAvailable: !!googleMapsKey,
           scraperAvailable: !!firecrawlKey,
           sourceMode,
           sourceModeLabel: sourceMode === "SSOT_FINAL" ? "Datenbasis: MOD-04 SSOT (Final)" : "Datenbasis: Exposé Draft (Intake)",
           ssotSummary,
+          warnings,
+          blockers,
         },
       });
     }
@@ -984,7 +1181,25 @@ Deno.serve(async (req) => {
         const sachYearBuilt = Number(snapshot.year_built) || 1980;
         const sachAge = new Date().getFullYear() - sachYearBuilt;
         const gnd = getGesamtnutzungsdauer(calcObjectType);
-        const rnd = Math.max(10, gnd - sachAge);
+        let rnd = Math.max(10, gnd - sachAge);
+
+        // V9.2: Modernisierungsbonus bei Kernsanierung (ImmoWertV-konform)
+        let modernisierungsbonus = 0;
+        const coreRenovated = !!snapshot.core_renovated;
+        const renovationYear = Number(snapshot.renovation_year) || 0;
+        if (coreRenovated && renovationYear > 0) {
+          const currentYear = new Date().getFullYear();
+          const yearsSinceRenovation = currentYear - renovationYear;
+          // ImmoWertV: Kernsanierung verlängert RND um ~70% der GND minus Jahre seit Sanierung
+          modernisierungsbonus = Math.max(0, Math.round(gnd * 0.7) - yearsSinceRenovation);
+          const rndBeforeBonus = rnd;
+          rnd = Math.max(rnd, Math.min(gnd, rnd + modernisierungsbonus));
+          stageLog(4, `Modernisierungsbonus: Kernsanierung ${renovationYear}, Bonus +${modernisierungsbonus} Jahre, RND ${rndBeforeBonus} → ${rnd}`);
+          assumptions.push({
+            text: `Kernsanierung ${renovationYear}: Modernisierungsbonus +${modernisierungsbonus} Jahre auf RND (${rndBeforeBonus} → ${rnd} Jahre, ImmoWertV-konform)`,
+            impact: "high",
+          });
+        }
 
         // ═══ 4.1 Ertragswert (Marktwert) ═══
         let ertragswertResult: any = null;
@@ -1021,7 +1236,9 @@ Deno.serve(async (req) => {
               restnutzungsdauer: rnd,
               gesamtnutzungsdauer: gnd,
               alter: sachAge,
-              modernisierungsbonus: 0,
+              modernisierungsbonus,
+              core_renovated: coreRenovated,
+              renovation_year: renovationYear || null,
               barwertfaktor: Math.round(bwf * 100) / 100,
               bodenertrag: Math.round(bodenertrag),
               ertragswert_gebaeude: ertragswertGebaeude,

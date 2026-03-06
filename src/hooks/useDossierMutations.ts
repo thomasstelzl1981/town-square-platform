@@ -64,6 +64,7 @@ export function useUpdateProperty() {
       if (data.managerContact !== undefined) updateData.manager_contact = data.managerContact;
       if ((data as any).coreRenovated !== undefined) updateData.core_renovated = (data as any).coreRenovated;
       if ((data as any).renovationYear !== undefined) updateData.renovation_year = (data as any).renovationYear;
+      if ((data as any).unitCountActual !== undefined) updateData.unit_count_actual = (data as any).unitCountActual;
 
       const { error } = await supabase
         .from('properties')
