@@ -1,17 +1,18 @@
 /**
- * PMKalender — Wochen- und Monatskalender für Pet Manager (P4.1 + P4.2)
+ * PMKalender — Wochen- und Monatskalender für Pet Manager (PLC-basiert)
  */
 import { useState, useMemo } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, PawPrint, Clock } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useMyProvider, useBookings, type PetBooking } from '@/hooks/usePetBookings';
+import { useMyProvider } from '@/hooks/usePetBookings';
+import { useCasesForProvider, type CaseWithComputed } from '@/hooks/usePetServiceCases';
+import { PLC_PHASE_LABELS, type PLCPhase } from '@/engines/plc/spec';
 import {
   format, startOfWeek, endOfWeek, addDays, addWeeks, subWeeks,
   startOfMonth, endOfMonth, addMonths, subMonths,
-  isSameDay, isToday, parseISO, eachDayOfInterval, getDay,
+  isToday, eachDayOfInterval,
 } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -20,30 +21,39 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { isDemoId } from '@/engines/demoData';
 
-// ─── Status colors ────────────────────────────────────────
-const STATUS_BG: Record<string, string> = {
+// ─── Phase colors ─────────────────────────────────────────
+const PHASE_BG: Record<string, string> = {
   requested: 'bg-amber-500/20 border-amber-500/40 text-amber-700 dark:text-amber-300',
-  confirmed: 'bg-primary/15 border-primary/30 text-primary',
-  in_progress: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-700 dark:text-emerald-300',
-  completed: 'bg-muted border-border text-muted-foreground',
-  cancelled: 'bg-destructive/10 border-destructive/20 text-destructive line-through',
+  provider_confirmed: 'bg-primary/15 border-primary/30 text-primary',
+  deposit_pending: 'bg-blue-500/20 border-blue-500/40 text-blue-700 dark:text-blue-300',
+  deposit_paid: 'bg-blue-600/20 border-blue-600/40 text-blue-700 dark:text-blue-300',
+  checked_in: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-700 dark:text-emerald-300',
+  closed_completed: 'bg-muted border-border text-muted-foreground',
+  closed_cancelled: 'bg-destructive/10 border-destructive/20 text-destructive line-through',
+  closed_no_show: 'bg-destructive/10 border-destructive/20 text-destructive',
+  disputed: 'bg-red-500/20 border-red-500/40 text-red-700 dark:text-red-300',
 };
 
-const STATUS_DOT: Record<string, string> = {
+const PHASE_DOT: Record<string, string> = {
   requested: 'bg-amber-500',
-  confirmed: 'bg-primary',
-  in_progress: 'bg-emerald-500',
-  completed: 'bg-muted-foreground',
-  cancelled: 'bg-destructive',
+  provider_confirmed: 'bg-primary',
+  deposit_pending: 'bg-blue-500',
+  deposit_paid: 'bg-blue-600',
+  checked_in: 'bg-emerald-500',
+  closed_completed: 'bg-muted-foreground',
+  closed_cancelled: 'bg-destructive',
+  closed_no_show: 'bg-destructive',
+  disputed: 'bg-red-500',
 };
 
 // ─── Helpers ──────────────────────────────────────────────
-function groupByDate(bookings: PetBooking[]) {
-  const map = new Map<string, PetBooking[]>();
-  bookings.forEach(b => {
-    const key = b.scheduled_date;
+function groupByDate(cases: CaseWithComputed[]) {
+  const map = new Map<string, CaseWithComputed[]>();
+  cases.forEach(c => {
+    const key = c.scheduled_start?.slice(0, 10);
+    if (!key) return;
     if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(b);
+    map.get(key)!.push(c);
   });
   return map;
 }
@@ -56,31 +66,28 @@ function capacityColor(count: number, max: number) {
   return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400';
 }
 
-// ─── Booking Block (compact) ──────────────────────────────
-function BookingBlock({ booking }: { booking: PetBooking }) {
+// ─── Case Block (compact) ─────────────────────────────────
+function CaseBlock({ c }: { c: CaseWithComputed }) {
   return (
     <div className={cn(
       'rounded px-1.5 py-0.5 text-[10px] leading-tight border truncate',
-      STATUS_BG[booking.status] || 'bg-muted border-border',
+      PHASE_BG[c.current_phase] || 'bg-muted border-border',
     )}>
-      <span className="font-medium">{booking.pet?.name}</span>
-      {booking.scheduled_time_start && (
-        <span className="ml-1 opacity-70">{booking.scheduled_time_start.slice(0, 5)}</span>
-      )}
+      <span className="font-medium">{c.customer_name || c.customer_email || 'Kunde'}</span>
     </div>
   );
 }
 
 // ─── WEEK VIEW ────────────────────────────────────────────
-function WeekView({ bookings, weekStart }: { bookings: PetBooking[]; weekStart: Date }) {
-  const grouped = useMemo(() => groupByDate(bookings), [bookings]);
+function WeekView({ cases, weekStart }: { cases: CaseWithComputed[]; weekStart: Date }) {
+  const grouped = useMemo(() => groupByDate(cases), [cases]);
   const days = useMemo(() => eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) }), [weekStart]);
 
   return (
     <div className="grid grid-cols-7 gap-1 md:gap-2">
       {days.map(day => {
         const key = format(day, 'yyyy-MM-dd');
-        const dayBookings = grouped.get(key) || [];
+        const dayCases = grouped.get(key) || [];
         const today = isToday(day);
         return (
           <div key={key} className={cn(
@@ -89,29 +96,22 @@ function WeekView({ bookings, weekStart }: { bookings: PetBooking[]; weekStart: 
             !today && 'bg-card',
           )}>
             <div className="flex items-center justify-between mb-1">
-              <span className={cn(
-                'text-xs font-medium',
-                today ? 'text-primary' : 'text-muted-foreground',
-              )}>
+              <span className={cn('text-xs font-medium', today ? 'text-primary' : 'text-muted-foreground')}>
                 {format(day, 'EEE', { locale: de })}
               </span>
-              <span className={cn(
-                'text-xs rounded-full w-5 h-5 flex items-center justify-center',
-                today && 'bg-primary text-primary-foreground font-bold',
-              )}>
+              <span className={cn('text-xs rounded-full w-5 h-5 flex items-center justify-center', today && 'bg-primary text-primary-foreground font-bold')}>
                 {format(day, 'd')}
               </span>
             </div>
             <div className="flex-1 space-y-0.5 overflow-y-auto">
-              {dayBookings
-                .filter(b => b.status !== 'cancelled')
-                .sort((a, b) => (a.scheduled_time_start || '').localeCompare(b.scheduled_time_start || ''))
-                .map(b => <BookingBlock key={b.id} booking={b} />)}
+              {dayCases
+                .filter(c => !c.current_phase.startsWith('closed_cancelled'))
+                .map(c => <CaseBlock key={c.id} c={c} />)}
             </div>
-            {dayBookings.length > 0 && (
+            {dayCases.length > 0 && (
               <div className="mt-1 flex gap-0.5">
-                {dayBookings.filter(b => b.status !== 'cancelled').map(b => (
-                  <span key={b.id} className={cn('w-1.5 h-1.5 rounded-full', STATUS_DOT[b.status] || 'bg-muted-foreground')} />
+                {dayCases.filter(c => !c.current_phase.startsWith('closed_cancelled')).map(c => (
+                  <span key={c.id} className={cn('w-1.5 h-1.5 rounded-full', PHASE_DOT[c.current_phase] || 'bg-muted-foreground')} />
                 ))}
               </div>
             )}
@@ -123,8 +123,8 @@ function WeekView({ bookings, weekStart }: { bookings: PetBooking[]; weekStart: 
 }
 
 // ─── MONTH VIEW ───────────────────────────────────────────
-function MonthView({ bookings, monthStart, maxCapacity }: { bookings: PetBooking[]; monthStart: Date; maxCapacity: number }) {
-  const grouped = useMemo(() => groupByDate(bookings), [bookings]);
+function MonthView({ cases, monthStart, maxCapacity }: { cases: CaseWithComputed[]; monthStart: Date; maxCapacity: number }) {
+  const grouped = useMemo(() => groupByDate(cases), [cases]);
   const monthEnd = endOfMonth(monthStart);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
   const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
@@ -132,18 +132,16 @@ function MonthView({ bookings, monthStart, maxCapacity }: { bookings: PetBooking
 
   return (
     <div>
-      {/* Header */}
       <div className="grid grid-cols-7 gap-1 mb-1">
         {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(d => (
           <div key={d} className="text-center text-[10px] font-medium text-muted-foreground py-1">{d}</div>
         ))}
       </div>
-      {/* Days */}
       <div className="grid grid-cols-7 gap-1">
         {allDays.map(day => {
           const key = format(day, 'yyyy-MM-dd');
-          const dayBookings = (grouped.get(key) || []).filter(b => b.status !== 'cancelled');
-          const count = dayBookings.length;
+          const dayCases = (grouped.get(key) || []).filter(c => !c.current_phase.startsWith('closed_cancelled'));
+          const count = dayCases.length;
           const inMonth = day.getMonth() === monthStart.getMonth();
           const today = isToday(day);
 
@@ -154,22 +152,12 @@ function MonthView({ bookings, monthStart, maxCapacity }: { bookings: PetBooking
               today && 'ring-2 ring-primary/50',
               count > 0 ? capacityColor(count, maxCapacity) : 'bg-card',
             )}>
-              <span className={cn(
-                'text-xs',
-                today && 'font-bold text-primary',
-              )}>
-                {format(day, 'd')}
-              </span>
-              {count > 0 && (
-                <span className="text-[10px] font-semibold mt-0.5">
-                  {count}
-                </span>
-              )}
-              {/* Dot indicators */}
+              <span className={cn('text-xs', today && 'font-bold text-primary')}>{format(day, 'd')}</span>
+              {count > 0 && <span className="text-[10px] font-semibold mt-0.5">{count}</span>}
               {count > 0 && (
                 <div className="flex gap-0.5 mt-0.5">
-                  {dayBookings.slice(0, 4).map(b => (
-                    <span key={b.id} className={cn('w-1 h-1 rounded-full', STATUS_DOT[b.status])} />
+                  {dayCases.slice(0, 4).map(c => (
+                    <span key={c.id} className={cn('w-1 h-1 rounded-full', PHASE_DOT[c.current_phase])} />
                   ))}
                   {count > 4 && <span className="text-[8px] text-muted-foreground">+</span>}
                 </div>
@@ -179,12 +167,11 @@ function MonthView({ bookings, monthStart, maxCapacity }: { bookings: PetBooking
         })}
       </div>
 
-      {/* Legend */}
       <div className="flex items-center gap-4 mt-3 text-[10px] text-muted-foreground">
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> Angefragt</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-primary" /> Bestätigt</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Laufend</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-muted-foreground" /> Erledigt</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Eingecheckt</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-muted-foreground" /> Abgeschlossen</span>
       </div>
     </div>
   );
@@ -193,25 +180,32 @@ function MonthView({ bookings, monthStart, maxCapacity }: { bookings: PetBooking
 // ─── MAIN ─────────────────────────────────────────────────
 export default function PMKalender() {
   const { data: provider } = useMyProvider();
-  const { data: rawBookings = [], isLoading } = useBookings(provider ? { providerId: provider.id } : undefined);
+  const { data: rawCases = [], isLoading } = useCasesForProvider(provider?.id);
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-PET');
-  const bookings = demoEnabled ? rawBookings : rawBookings.filter(b => !isDemoId(b.id));
+  const cases = demoEnabled ? rawCases : rawCases.filter(c => !isDemoId(c.id));
   const [view, setView] = useState<'week' | 'month'>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const monthStart = startOfMonth(currentDate);
-
   const maxCapacity = (provider as any)?.max_daily_capacity || 10;
 
-  const navigate = (dir: 'prev' | 'next') => {
+  const nav = (dir: 'prev' | 'next') => {
     if (view === 'week') {
       setCurrentDate(dir === 'prev' ? subWeeks(currentDate, 1) : addWeeks(currentDate, 1));
     } else {
       setCurrentDate(dir === 'prev' ? subMonths(currentDate, 1) : addMonths(currentDate, 1));
     }
   };
+
+  // Stats based on PLC phases
+  const stats = useMemo(() => [
+    { label: 'Anfragen', count: cases.filter(c => c.current_phase === 'requested').length, dot: 'bg-amber-500' },
+    { label: 'Bestätigt', count: cases.filter(c => ['provider_confirmed', 'deposit_pending', 'deposit_paid'].includes(c.current_phase)).length, dot: 'bg-primary' },
+    { label: 'Eingecheckt', count: cases.filter(c => c.current_phase === 'checked_in').length, dot: 'bg-emerald-500' },
+    { label: 'Abgeschlossen', count: cases.filter(c => c.current_phase === 'closed_completed').length, dot: 'bg-muted-foreground' },
+  ], [cases]);
 
   if (!provider) {
     return (
@@ -230,7 +224,6 @@ export default function PMKalender() {
   return (
     <PageShell>
     <div className="space-y-4">
-      {/* ModulePageHeader — CI-Standard */}
       <ModulePageHeader
         title="Kalender"
         description="Wochen- und Monatsansicht deiner Buchungen"
@@ -244,9 +237,8 @@ export default function PMKalender() {
         }
       />
 
-      {/* Navigation */}
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={() => navigate('prev')}>
+        <Button variant="ghost" size="sm" onClick={() => nav('prev')}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div className="text-center">
@@ -260,12 +252,11 @@ export default function PMKalender() {
             Heute
           </Button>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => navigate('next')}>
+        <Button variant="ghost" size="sm" onClick={() => nav('next')}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
-      {/* Calendar */}
       <Card>
         <CardContent className="pt-4">
           {isLoading ? (
@@ -273,21 +264,15 @@ export default function PMKalender() {
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             </div>
           ) : view === 'week' ? (
-            <WeekView bookings={bookings} weekStart={weekStart} />
+            <WeekView cases={cases} weekStart={weekStart} />
           ) : (
-            <MonthView bookings={bookings} monthStart={monthStart} maxCapacity={maxCapacity} />
+            <MonthView cases={cases} monthStart={monthStart} maxCapacity={maxCapacity} />
           )}
         </CardContent>
       </Card>
 
-      {/* Stats summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'Anfragen', count: bookings.filter(b => b.status === 'requested').length, dot: 'bg-amber-500' },
-          { label: 'Bestätigt', count: bookings.filter(b => b.status === 'confirmed').length, dot: 'bg-primary' },
-          { label: 'Laufend', count: bookings.filter(b => b.status === 'in_progress').length, dot: 'bg-emerald-500' },
-          { label: 'Erledigt', count: bookings.filter(b => b.status === 'completed').length, dot: 'bg-muted-foreground' },
-        ].map(s => (
+        {stats.map(s => (
           <div key={s.label} className="rounded-lg border bg-card p-3 flex items-center gap-2">
             <span className={cn('w-2 h-2 rounded-full shrink-0', s.dot)} />
             <span className="text-xs text-muted-foreground">{s.label}</span>
