@@ -69,7 +69,9 @@ export function useSearchProviders(location?: string, category?: string) {
 
       return results;
     },
-    enabled: true, // Always enabled when search triggered
+    enabled: !!(location || category),
+    staleTime: 30_000,
+    retry: 2,
   });
 }
 
