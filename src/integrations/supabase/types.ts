@@ -17055,6 +17055,7 @@ export type Database = {
           tenant_id: string
           total_area_sqm: number | null
           total_occupants: number | null
+          unit_count_actual: number | null
           unit_ownership_nr: string | null
           updated_at: string
           usage_type: string
@@ -17117,6 +17118,7 @@ export type Database = {
           tenant_id: string
           total_area_sqm?: number | null
           total_occupants?: number | null
+          unit_count_actual?: number | null
           unit_ownership_nr?: string | null
           updated_at?: string
           usage_type?: string
@@ -17179,6 +17181,7 @@ export type Database = {
           tenant_id?: string
           total_area_sqm?: number | null
           total_occupants?: number | null
+          unit_count_actual?: number | null
           unit_ownership_nr?: string | null
           updated_at?: string
           usage_type?: string

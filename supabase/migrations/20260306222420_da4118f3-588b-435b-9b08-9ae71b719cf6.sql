@@ -1,0 +1,1 @@
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS unit_count_actual integer DEFAULT NULL;
