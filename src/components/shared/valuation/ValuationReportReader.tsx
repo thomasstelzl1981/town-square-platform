@@ -152,7 +152,7 @@ function getMethodValue(methods: ValuationMethodResult[], key: string): number {
 export function ValuationReportReader({
   valueBand, methods, financing, stressTests, lienProxy, debtService,
   dataQuality, compStats, executiveSummary, sourceMode, legalTitle,
-  location, comps, beleihungswert, geminiResearch, onDownloadPdf, className,
+  location, comps, beleihungswert, geminiResearch, snapshot, onDownloadPdf, className,
 }: Props) {
   if (!valueBand) return null;
 
