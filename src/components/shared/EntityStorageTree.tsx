@@ -191,7 +191,7 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
         objectType: entityType,
         objectId: entityId,
         parentNodeId: targetFolderId,
-        source: 'entity-storage-tree',
+        source: 'upload',
       });
 
       if (result.error) {

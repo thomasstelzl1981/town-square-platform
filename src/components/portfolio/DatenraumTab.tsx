@@ -90,7 +90,7 @@ export function DatenraumTab({ propertyId, tenantId, propertyCode }: DatenraumTa
           objectType: 'property',
           objectId: propertyId,
           parentNodeId: selectedNodeId || undefined,
-          source: 'datenraum',
+          source: 'upload',
         });
         if (result.error) throw new Error(result.error);
         successCount++;
