@@ -783,6 +783,35 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
 
             const microMap = await googleStaticMap(geo.lat, geo.lng, googleMapsKey, 16, "600x400");
             const macroMap = await googleStaticMap(geo.lat, geo.lng, googleMapsKey, 12, "600x400");
+            const streetView = googleStreetViewUrl(geo.lat, geo.lng, googleMapsKey);
+
+            // Routes Matrix: city center + nearest transit
+            let reachability: any[] = [];
+            try {
+              const transitPois = poiResults.find((p: any) => p.type === "transit_station")?.pois || [];
+              const routeDestinations: { name: string; lat: number; lng: number }[] = [];
+
+              if (snapshot.city) {
+                const cityGeo = await googleGeocode(snapshot.city + " Zentrum", googleMapsKey);
+                if (cityGeo) {
+                  routeDestinations.push({ name: `${snapshot.city} Zentrum`, lat: cityGeo.lat, lng: cityGeo.lng });
+                }
+              }
+
+              if (transitPois.length > 0 && transitPois[0].address) {
+                const stationGeo = await googleGeocode(transitPois[0].address + " " + (snapshot.city || ""), googleMapsKey);
+                if (stationGeo) {
+                  routeDestinations.push({ name: transitPois[0].name || "Nächster Bahnhof", lat: stationGeo.lat, lng: stationGeo.lng });
+                }
+              }
+
+              if (routeDestinations.length > 0) {
+                reachability = await googleRoutesMatrix(geo.lat, geo.lng, routeDestinations, googleMapsKey);
+                stageLog(2, `Routes matrix: ${reachability.length} destinations`);
+              }
+            } catch (e) {
+              stageLog(2, `Routes matrix error: ${e}`);
+            }
 
             const scoreByCategory = poiResults.map((cat) => {
               const avgDist = cat.pois.length > 0
@@ -802,7 +831,8 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
               scores: scoreByCategory,
               global_score: globalScore,
               pois: poiResults,
-              maps: { micro: microMap, macro: macroMap },
+              reachability,
+              maps: { micro: microMap, macro: macroMap, street_view: streetView },
             };
 
             stageLog(2, `Location done. Score: ${globalScore}/100`);
