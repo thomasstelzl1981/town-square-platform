@@ -10,6 +10,9 @@ interface EditableLegalBlockProps {
   landRegisterVolume?: string;
   parcelNumber?: string;
   teNumber?: string;
+  plotAreaSqm?: number;
+  meaShare?: number;
+  meaTotal?: number;
   purchaseDate?: string;
   purchasePrice?: number;
   marketValue?: number;
