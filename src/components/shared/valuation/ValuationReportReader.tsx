@@ -494,9 +494,11 @@ export function ValuationReportReader({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Marktwert</p>
-                {sachwertParams.nhkPerSqm && <DataRow label="NHK 2010" value={`${fmtNum(Number(sachwertParams.nhkPerSqm), 0)} €/m²`} />}
-                {sachwertParams.bpiFactor && <DataRow label="BPI-Index" value={fmtNum(Number(sachwertParams.bpiFactor))} />}
-                {sachwertParams.zeitwertGebaeude && <DataRow label="Zeitwert Gebäude" value={fmtEur(Number(sachwertParams.zeitwertGebaeude))} />}
+                <DataRow label="NHK 2010" value={`${fmtNum(Number(sachwertParams.base_cost_sqm) || 0, 0)} €/m²`} />
+                <DataRow label="BPI-Index" value="1,38" />
+                <DataRow label="Alterswertminderung" value={fmtPct(Number(sachwertParams.depreciation) || 0)} />
+                {sachwertParams.gebaeude_sachwert && <DataRow label="Zeitwert Gebäude" value={fmtEur(Number(sachwertParams.gebaeude_sachwert))} />}
+                {sachwertParams.marktanpassung && <DataRow label="Marktanpassung" value={fmtNum(Number(sachwertParams.marktanpassung))} />}
                 <SectionDivider />
                 <DataRow label="SACHWERT (MWT)" value={fmtEur(sachwertValue)} bold />
               </div>
