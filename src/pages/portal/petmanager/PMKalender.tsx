@@ -37,15 +37,17 @@ const PHASE_BG: Record<string, string> = {
 };
 
 const PHASE_DOT: Record<string, string> = {
-  requested: 'bg-amber-500',
-  provider_confirmed: 'bg-primary',
-  deposit_pending: 'bg-blue-500',
+  search_initiated: 'bg-amber-500',
+  provider_selected: 'bg-amber-500',
+  deposit_requested: 'bg-blue-500',
   deposit_paid: 'bg-blue-600',
+  provider_confirmed: 'bg-primary',
+  provider_declined: 'bg-destructive',
   checked_in: 'bg-emerald-500',
+  checked_out: 'bg-teal-500',
+  settlement: 'bg-violet-500',
   closed_completed: 'bg-muted-foreground',
   closed_cancelled: 'bg-destructive',
-  closed_no_show: 'bg-destructive',
-  disputed: 'bg-red-500',
 };
 
 // ─── Helpers ──────────────────────────────────────────────
