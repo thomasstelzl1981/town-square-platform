@@ -9,9 +9,10 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetHeader } from '@/components/shared/WidgetHeader';
 import { DESIGN } from '@/config/designManifest';
-import { ValuationPreflight, ValuationPipeline, ValuationReportReader } from '@/components/shared/valuation';
+import { ValuationPreflight, ValuationPipeline, ValuationReportReader, generateValuationPdf } from '@/components/shared/valuation';
 import { useValuationCase } from '@/hooks/useValuationCase';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { toast } from 'sonner';
 
 export function BewertungTab() {
   const { activeOrganization } = useAuth();
