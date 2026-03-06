@@ -56,7 +56,7 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 | ENG-FLC | Financing Lifecycle Controller | MOD-07, MOD-11, Z1 Finance | ⚡ Teilweise | `src/engines/flc/spec.ts`, `engine.ts`, `conventions.ts` |
 | ENG-FDC | Finance Data Controller | MOD-18, MOD-20, MOD-04 | ✅ Live | `src/engines/fdc/spec.ts`, `engine.ts`, `conventions.ts` |
 | ENG-PLC | Pet Service Lifecycle Controller | MOD-22, MOD-05, Z3, Z1 | ⚡ Teilweise | `src/engines/plc/spec.ts`, `engine.ts` |
-| ENG-VALUATION | SoT Valuation Engine | MOD-04, MOD-12, MOD-13 | 🔲 Geplant | `src/engines/valuation/spec.ts`, `engine.ts` |
+| ENG-VALUATION | SoT Valuation Engine | MOD-04, MOD-12, MOD-13 | ⚡ Teilweise | `src/engines/valuation/spec.ts`, `engine.ts` + Edge Function `sot-valuation-engine` |
 
 ### Orchestrierung (4 Engines)
 
@@ -70,6 +70,20 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 > **ENG-FLC** orchestriert Finanzierungsfaelle von Z3-Intake ueber Z1-Zuweisung bis MOD-11-Bearbeitung. 14 Phasen (INTAKE_RECEIVED → PLATFORM_FEE_PAID), 7 Quality Gates, SLA-Ueberwachung (48h Intake, 72h Manager-Annahme), idempotente E-Mail-Benachrichtigung, 25% Plattformanteil-Erzwingung.
 
 > **ENG-TLC** ist der uebergeordnete Orchestrator fuer alle Mietverhaeltnisse. Er prueft woechentlich: Zahlungsstatus, Mahnstufen, Mieterhoehungs-Berechtigung (§558 BGB), Kautionsstatus, Fristen und generiert KI-gestuetzte Next-Best-Actions via `google/gemini-2.5-pro`.
+
+### Bewertung (1 Engine)
+
+| Code | Name | Status | Billing | Ausfuehrung |
+|------|------|--------|---------|-------------|
+| ENG-VALUATION | SoT Valuation Engine | ⚡ Teilweise | 20 Credits/Case | Edge Function (`sot-valuation-engine`, 6-Stage Pipeline) + Client Engine (`src/engines/valuation/`) |
+
+> **ENG-VALUATION** ersetzt Sprengnetter + GeoMap. 6-Stage Pipeline:
+> Stage 0 Preflight (Credit-Check), Stage 1 Intake (Datenextraktion),
+> Stage 2 Norm+Location (Google Maps APIs fuer POIs/Routen/Karten), Stage 3 Comps (Portal-Scraping via Firecrawl/Apify),
+> Stage 4 Calc (Ertragswert/Comp-Proxy/Sachwert — deterministischer Kern), Stage 5 Report (Web Reader + 12-Seiten PDF).
+> Scope: MOD-04 (Portfolio-Bewertung, SSOT_FINAL Mode), MOD-12/MOD-13 (Akquise-Exposé-Bewertung).
+> Deep Mapper in `useValuationCase` normalisiert snake_case DB-Output zu camelCase UI-DTO.
+> DB: `valuation_cases`, `valuation_inputs`, `valuation_results`, `valuation_reports`.
 
 ### Daten (4 Engines)
 
@@ -143,3 +157,4 @@ Jede Engine hat eine `engineVersion` die in `armstrong_action_runs.engine_versio
 | 2026-03-02 | v1.7 — ENG-PLC (Pet Service Lifecycle Controller) hinzugefuegt. Marktplatz-Modell fuer Pet Services: 11-Phasen State Machine, 7.5% nicht-erstattbare Plattformgebuehr (Deposit), Stripe-Integration, Stuck-Detection. DB: pet_service_cases, pet_lifecycle_events. |
 | 2026-03-06 | v1.8 — ENG-VALUATION (SoT Valuation Engine) hinzugefuegt. Ersetzt Sprengnetter + GeoMap komplett. 6-Stage Pipeline (Preflight, Intake, Norm+Location, Comps, Calc, Report). Deterministischer Kern (Ertrag/Comp-Proxy/Sachwert). Google Maps (Geocode/Places/Routes/Static), Portal-Comps via Scraper. 12-Seiten PDF. 20 Credits/Case. DB: valuation_cases, valuation_inputs, valuation_results, valuation_reports. |
 | 2026-03-06 | v1.9 — ENG-FLC (Financing Lifecycle Controller) in Registry nachgetragen. 14-Phasen State Machine, 7 Quality Gates, Daily CRON (`sot-flc-lifecycle`), idempotente E-Mail-Orchestrierung (`sot-finance-manager-notify`). Scope: MOD-07, MOD-11, Zone 1 Finance Desk. DB: finance_lifecycle_events. |
+| 2026-03-06 | v2.0 — ENG-VALUATION Status von `Geplant` auf `Teilweise` korrigiert. Eigene Bewertung-Kategorie mit 6-Stage Pipeline Detail-Sektion (Preflight→Intake→Norm+Location→Comps→Calc→Report), Scope (MOD-04/12/13) und Deep Mapper Architektur hinzugefuegt. Hybrid-Engine: Client (`src/engines/valuation/`) + Edge Function (`sot-valuation-engine`). |
