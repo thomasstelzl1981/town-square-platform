@@ -219,15 +219,16 @@ export function BewertungTab() {
                       <div key={v.id} className="flex items-center gap-3 p-3 rounded-lg border">
                         <div className="h-14 w-11 rounded-md bg-muted flex flex-col items-center justify-center shrink-0 border">
                           <FileText className="h-5 w-5 text-muted-foreground" />
-                          <Badge variant="secondary" className="text-[9px] px-1 py-0 mt-0.5">PDF</Badge>
+                          <Badge variant="secondary" className="text-[9px] px-1 py-0 mt-0.5">
+                            {v.source_mode === 'SSOT_FINAL' ? 'SSOT' : 'Draft'}
+                          </Badge>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium font-mono">{v.public_id}</p>
+                          <p className="text-sm font-medium font-mono">{v.id.slice(0, 8)}</p>
                           <p className="text-xs text-muted-foreground">
-                            {v.completed_at ? new Date(v.completed_at).toLocaleDateString('de-DE') : '–'}
+                            {v.updated_at ? new Date(v.updated_at).toLocaleDateString('de-DE') : '–'}
                           </p>
                         </div>
-                        <p className="text-sm font-semibold shrink-0">{formatCurrency(v.market_value)}</p>
                       </div>
                     ))}
                   </div>
