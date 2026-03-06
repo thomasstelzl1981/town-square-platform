@@ -26,6 +26,6 @@
     "MOD-19": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-20": { "frozen": true, "frozen_at": "2026-03-05T10:00:00.000Z", "reason": "Full freeze — All modules locked" },
     "MOD-21": { "frozen": true, "frozen_at": "2026-03-02T11:00:00.000Z", "reason": "REMOVED — Module deactivated and all artifacts deleted" },
-    "MOD-22": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "reason": "Full freeze — all modules locked except MOD-11" }
+    "MOD-22": { "frozen": true, "frozen_at": "2026-03-06T14:00:00.000Z", "reason": "Re-frozen after PDF-CI SSOT: PetsMeinBereich invoice PDF migrated to shared generateInvoicePdf" }
   }
 }
