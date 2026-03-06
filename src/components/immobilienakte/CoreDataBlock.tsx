@@ -12,6 +12,8 @@ interface CoreDataBlockProps {
   energyCertificateValue?: number;
   energyCertificateValidUntil?: string;
   featuresTags?: string[];
+  coreRenovated?: boolean;
+  renovationYear?: number;
 }
 
 export function CoreDataBlock({
