@@ -57,10 +57,11 @@ async function prefetchMapImages(location: LocationAnalysis | null): Promise<{
   micro: string | null; macro: string | null; streetView: string | null;
 }> {
   if (!location) return { micro: null, macro: null, streetView: null };
+  // Prefer server-side pre-fetched Base64 (CORS-free), fallback to client fetch
   const [micro, macro, streetView] = await Promise.all([
-    location.microMapUrl ? fetchImageAsBase64(location.microMapUrl) : Promise.resolve(null),
-    location.macroMapUrl ? fetchImageAsBase64(location.macroMapUrl) : Promise.resolve(null),
-    location.streetViewUrl ? fetchImageAsBase64(location.streetViewUrl) : Promise.resolve(null),
+    location.microMapBase64 || (location.microMapUrl ? fetchImageAsBase64(location.microMapUrl) : null),
+    location.macroMapBase64 || (location.macroMapUrl ? fetchImageAsBase64(location.macroMapUrl) : null),
+    location.streetViewBase64 || (location.streetViewUrl ? fetchImageAsBase64(location.streetViewUrl) : null),
   ]);
   return { micro, macro, streetView };
 }

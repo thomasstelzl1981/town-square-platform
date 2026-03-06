@@ -421,6 +421,10 @@ export interface LocationAnalysis {
   microMapUrl: string | null;
   macroMapUrl: string | null;
   streetViewUrl: string | null;
+  /** Pre-fetched Base64 images for CORS-free PDF embedding */
+  microMapBase64?: string | null;
+  macroMapBase64?: string | null;
+  streetViewBase64?: string | null;
   narrative: string;
   narrativeConfidence: ConfidenceLevel;
 }

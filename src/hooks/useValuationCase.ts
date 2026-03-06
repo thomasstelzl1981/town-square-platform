@@ -448,6 +448,9 @@ export function useValuationCase() {
             microMapUrl: loc.maps?.micro ?? null,
             macroMapUrl: loc.maps?.macro ?? null,
             streetViewUrl: loc.maps?.street_view ?? null,
+            microMapBase64: loc.maps_base64?.micro ?? null,
+            macroMapBase64: loc.maps_base64?.macro ?? null,
+            streetViewBase64: loc.maps_base64?.street_view ?? null,
             narrative: loc.narrative ?? '',
             narrativeConfidence: 'medium' as const,
           };
