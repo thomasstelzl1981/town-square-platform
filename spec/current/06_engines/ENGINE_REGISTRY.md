@@ -27,6 +27,7 @@
 | 17 | **Konto-Matching Engine** | Ordnet Kontobewegungen automatisch Immobilien, PV-Anlagen und Vertraegen zu | Konten · Immobilien · PV | Free |
 | 18 | **KI-Browser Engine** | Armstrong navigiert kontrolliert im Web, extrahiert und belegt Inhalte | KI-Browser (MOD-21) | 1-4 Credits/Session |
 | 19 | **Trip Engine** | Erkennt Fahrten aus GPS/Telematics-Daten fuer das Fahrtenbuch | Fahrzeuge (MOD-17) | Free |
+| 20 | **Valuation Engine** | KI-gestuetzte Immobilienbewertung mit deterministischem Rechenkern, Google-Standort, Portal-Comps | MOD-04, MOD-12, MOD-13 | 20 Credits/Case |
 
 ---
 
