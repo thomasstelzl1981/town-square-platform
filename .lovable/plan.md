@@ -1,239 +1,133 @@
-# Refactoring-Masterplan: TSX-Monolithen → Modulare Architektur
 
-> **Datum**: 2026-03-05 (aktualisiert)
-> **Status**: Wave 1 ✅ (R-1–R-6) — Wave 2 Tranche 1 ✅ (R-7–R-10) — Tranche 2 ✅ (R-11–R-14) — Tranche 3 ✅ (R-15–R-24) — Tranche 4 ✅ (R-25–R-35)
-> **Methode**: Bewährtes Orchestrator + Sub-Components Pattern
+
+# ENG-VALUATION: Schonungslose Soll-/Ist-Analyse
 
 ---
 
-## Gesamtstatistik
+## Executive Summary
 
-| Metrik | Wave 1 (done) | Wave 2 T1-T3 (done) | Wave 2 T4 (geplant) | Gesamt |
-|--------|--------------|---------------------|---------------------|--------|
-| Dateien | 6 | 18 | 11 | 35 |
-| Zeilen vorher | 5.530 | ~10.800 | ~4.900 | ~21.230 |
-| Zeilen nachher | ~1.350 | ~3.200 | ~1.320 | ~5.870 |
-| Reduktion | 76% | ~70% | ~73% | ~72% |
+**Ja — ENG-VALUATION ist "Core vorhanden, Produkt unvollständig".**
+
+Der technische Kern ist erstaunlich komplett: 1.236 Zeilen Edge Function mit funktionierender 6-Stage Pipeline, 972 Zeilen client-side Engine mit SSOT-Merge/Diff, 358 Zeilen PDF-Generator mit 9 Seiten, und ein Deep Mapper im Hook. **Aber die Produktverdrahtung hat zwei klaffende Löcher**: MOD-12 wirft explizit einen Error ("wird in Phase 5 implementiert"), und der PDF-Export ist nie an einen Button im UI angebunden.
 
 ---
 
-## Wave 1 — ABGESCHLOSSEN ✅
+## Soll-/Ist-Tabelle
 
-| # | Phase | Datei | Vorher | Nachher | Modul |
-|---|-------|-------|--------|---------|-------|
-| 1 | R-1 ✅ | FMEinreichung.tsx | 1039 | 295 | MOD-11 |
-| 2 | R-2 ✅ | ExposeDetail.tsx | 1008 | 299 | MOD-06 |
-| 3 | R-3 ✅ | Inbox.tsx | 976 | 180 | Admin |
-| 4 | R-4 ✅ | KontexteTab.tsx | 923 | 214 | MOD-04 |
-| 5 | R-5 ✅ | AnfrageFormV2.tsx | 904 | 183 | MOD-07 |
-| 6 | R-6 ✅ | Users.tsx | 680 | 178 | Admin |
-
----
-
-## Wave 2 — Tranche 1 ✅ (R-7–R-10)
-
-| # | Phase | Datei | Vorher | Nachher | Modul |
-|---|-------|-------|--------|---------|-------|
-| 7 | R-7 ✅ | EmailTab.tsx | 1506 | ~180 | MOD-02 |
-| 8 | R-8 ✅ | PortfolioTab.tsx | 1511 | ~200 | MOD-04 |
-| 9 | R-9 ✅ | BriefTab.tsx | 1012 | ~200 | MOD-02 |
-| 10 | R-10 ✅ | GeldeingangTab.tsx | 1018 | ~200 | MOD-04 |
-
-## Wave 2 — Tranche 2 ✅ (R-11–R-14)
-
-| # | Phase | Datei | Vorher | Nachher | Modul |
-|---|-------|-------|--------|---------|-------|
-| 11 | R-11 ✅ | TenancyTab.tsx | 904 | ~200 | MOD-04 |
-| 12 | R-12 ✅ | UnitDetailPage.tsx | 708 | ~150 | MOD-13 |
-| 13 | R-13 ✅ | TileCatalog.tsx | 646 | ~150 | Admin |
-| 14 | R-14 ✅ | ManagerFreischaltung.tsx | 635 | ~140 | Admin |
-
-## Wave 2 — Tranche 3 ✅ (R-15–R-24)
-
-| # | Phase | Datei | Vorher | Nachher | Modul | Neue Dateien |
-|---|-------|-------|--------|---------|-------|-------------|
-| 15 | R-15 ✅ | PropertyDetailPage.tsx | 628 | ~200 | MOD-04 | PropertyDetailHeader, PropertyTabRouter |
-| 16 | R-16 ✅ | CaringProviderDetail.tsx | 599 | ~160 | MOD-22 | ProviderGallery, ProviderProfileCard, ProviderServicesCard, ProviderBookingSection |
-| 17 | R-17 ✅ | FMFinanzierungsakte.tsx | 596 | ~200 | MOD-11 | AkteKaufySearch |
-| 18 | R-18 ✅ | MasterTemplates.tsx | 585 | ~140 | Admin | 3 sub-components |
-| 19 | R-19 ✅ | OrganizationDetail.tsx | 581 | ~160 | Admin | 3 sub-components |
-| 20 | R-20 ✅ | FMFallDetail.tsx | 579 | ~160 | MOD-11 | FallHeaderBlock, FallContentBlocks |
-| 21 | R-21 ✅ | LeadManagerKampagnen.tsx | 576 | ~100 | MOD-10 | KampagnenKPIs, KampagnenLeadInbox, KampagnenCampaignList, KampagnenCreator |
-| 22 | R-22 ✅ | LeadPool.tsx | 560 | ~140 | Admin | 3 sub-components |
-| 23 | R-23 ✅ | ObjekteingangDetail.tsx | 539 | ~200 | MOD-12 | ObjektKPIRow, ObjektBasisdaten |
-| 24 | R-24 ✅ | Oversight.tsx | 531 | ~140 | Admin | 3 sub-components |
+| # | Bereich | Soll | Ist im Repo | Ist in der UI | Abweichung | Schwere | Ursache | Korrektur |
+|---|---------|------|-------------|---------------|------------|---------|---------|-----------|
+| 1 | **Engine Registry** | Status "Teilweise" oder "Live", Detail-Sektion | ✅ Gerade korrigiert auf v2.0 mit Detail-Sektion | N/A | ✅ Behoben | — | War "Geplant" bis heute | Erledigt |
+| 2 | **Engine Core (spec.ts)** | V6 Typen, SSOT-Final, LegalTitle, FieldSource, alle Interfaces | ✅ 672 Zeilen, V2.0.0, alle Interfaces vorhanden | N/A | Keine | — | — | — |
+| 3 | **Engine Core (engine.ts)** | Deterministische Calc-Funktionen, SSOT Snapshot Builder, Merge/Diff | ✅ 972 Zeilen, Ertragswert + CompProxy + Sachwert + Financing + Stress + Lien + DSCR + Sensitivity + Merge + Diff | N/A | Keine | — | — | — |
+| 4 | **Edge Function** | 6-Stage Pipeline, Google, Comps, AI, SSOT-Fetch, Report | ✅ 1.236 Zeilen, alle 6 Stages implementiert, Google Geocode/Places/Static, Firecrawl Comps, AI Extraction, SSOT-Final Mode, Credit Gate | N/A | Keine Kern-Lücke | — | — | — |
+| 5 | **DB Schema** | valuation_cases, _inputs, _results, _reports | ✅ Alle 4 Tabellen existieren und werden befüllt | N/A | Keine | — | — | — |
+| 6 | **MOD-04 Bewertung** | Button in PropertyValuationTab → Preflight → Run → Report anzeigen | ✅ PropertyValuationTab.tsx mit Start-Button, Preflight-View, Pipeline-View, Result-View | ✅ Button vorhanden, Pipeline läuft | Deep Mapper war defekt → **gerade gefixt** | Mittel | Contract Drift snake/camel | Erledigt (Deep Mapper) |
+| 7 | **MOD-12 Akquise-Bewertung** | SoT Bewertung Button in AnalysisTab → Runs valuation → Zeigt Ergebnisse | ❌ `useRunValuation()` wirft `throw new Error('wird in Phase 5 implementiert')` (Zeile 348) | ❌ Button existiert, crasht sofort mit Toast-Error | **KOMPLETT OFFEN** | **Kritisch** | Bewusst als TODO belassen | useRunValuation verdrahten auf sot-valuation-engine |
+| 8 | **MOD-12 Objekteingang** | Bewertung als Step 3 ("Bewertung") im Offer-Flow | ❌ ObjekteingangDetail hat Stepper mit "Bewertung" Step, aber KEIN Valuation-UI darin | ❌ Step "Bewertung" existiert im Stepper, zeigt aber nichts | **OFFEN** | **Kritisch** | Nie implementiert | ValuationTab in Objekteingang einbauen |
+| 9 | **MOD-13 Inbox** | Draft-Bewertung aus Inbox-Upload | ❌ Kein Code gefunden der MOD_13_INBOX als sourceContext nutzt | ❌ Nicht vorhanden | **OFFEN** | Hoch | Nie angefangen | Neuer Entry Point |
+| 10 | **Google Standortanalyse** | Geocode, Places (5 POI-Kategorien), Routes, Static Maps, StreetView | ✅ Geocode, Places (5 Kategorien), Static Maps (micro+macro) implementiert. ❌ Routes Matrix fehlt, ❌ StreetView fehlt | Nicht sichtbar in UI (Location-Daten werden in DB gespeichert, aber ReportReader hat keinen Location-Block) | Teilweise | Mittel | Routes/StreetView nicht priorisiert; UI zeigt Location nicht | Location-Block in ReportReader einbauen |
+| 11 | **Portal-Comps** | Firecrawl Scraping, AI-Extraktion, Deduplizierung, CompStats | ✅ Firecrawl Search + AI Extraction in Stage 3 implementiert | Nicht sichtbar in UI (CompStats wird gemappt, aber ReportReader zeigt nur Zahlen, keine Comp-Liste) | Teilweise | Mittel | UI-Darstellung fehlt | CompPostings-Liste im Report zeigen |
+| 12 | **12-Seiten PDF** | CI-konformes Premium-Gutachten, 12 Seiten max | ✅ ValuationPdfGenerator.ts existiert mit 9 Sektionen (Cover, Summary, Methoden, Comps, Standort, Finanzierung, Stress, Beleihung, Recht&Eigentum) | ❌ **KEIN Button** in der UI ruft generateValuationPdf auf | **OFFEN** | **Hoch** | PDF-Generator gebaut, aber nie an UI angebunden | "PDF exportieren" Button in Report-View |
+| 13 | **CI / PDF Integration** | pdfCiKit Tokens, PdfConsentGate | ❌ ValuationPdfGenerator nutzt eigene Farben, nicht pdfCiKit/pdfCiTokens | N/A | Kosmetisch | Niedrig | Parallel entwickelt | CI-Tokens importieren |
+| 14 | **Hook/Mapper** | Robustes snake→camel Mapping, Error Handling | ✅ Deep Mapper mit 8 Sub-Mappern, Error Toast statt Silent Reset | Funktioniert nach Fix | ✅ Gerade behoben | — | Contract Drift | Erledigt |
+| 15 | **Draft→SSOT Merge** | Merge-Logik: SSOT wins, Extracted fills gaps, Diff-Review UI | ✅ Engine: mergeSnapshots + detectDiffs. ✅ Edge Function: Server-side SSOT merge + Diff-Tracking. ✅ UI: ValuationDiffReview.tsx vorhanden | Zeigt Diffs wenn vorhanden | Keine Kern-Lücke | — | — | — |
+| 16 | **Legal & Title Block** | Grundbuch, WEG, Flurstück, MEA, Teilungserklärung | ✅ LegalTitleBlock in spec.ts, buildLegalTitleBlock in engine.ts, Server-side in Edge Function, ValuationLegalBlock.tsx als UI-Komponente, PDF Seite 9 | ❌ ReportReader importiert aber legalTitle-Prop wird nicht als Block gerendert (nur durchgereicht) | Teilweise | Mittel | UI-Integration unvollständig | LegalBlock in ReportReader rendern |
+| 17 | **Valuation-Liste in PropertyTab** | Listet abgeschlossene Bewertungen mit Case-ID, Datum, Wert | ❌ Listet aus `property_valuations` Tabelle (alt), Engine schreibt in `valuation_cases` | ❌ Liste zeigt nichts, da falsche Tabelle abgefragt wird | **OFFEN** | **Hoch** | Struktureller Drift: 2 verschiedene Tabellen | Query auf valuation_cases umstellen |
 
 ---
 
-## Wave 2 — Tranche 4 ✅ (R-25–R-35)
+## Antworten auf die Verdachtsmomente
 
-| # | Phase | Datei | Vorher | Nachher | Modul | Neue Dateien |
-|---|-------|-------|--------|---------|-------|-------------|
-| R-25 | ✅ | Agreements.tsx | 506 | ~90 | Admin | AgreementsTemplateTable, AgreementsConsentLog |
-| R-26 | ✅ | Dashboard.tsx (Admin) | 491 | ~100 | Admin | AdminKPIGrid, AdminSessionCard |
-| R-27 | ✅ | Delegations.tsx | 486 | ~100 | Admin | DelegationTable |
-| R-28 | ✅ | ArmstrongWorkspace.tsx | 479 | ~180 | MOD-00 | WorkspaceChatHeader, WorkspaceChatMessages, WorkspaceChatInput |
-| R-29 | ✅ | FMDashboard.tsx | 472 | ~83 | MOD-11 | FMZinsTickerWidget, FMMandateCards, FMProfileEditSheet |
-| R-30 | ✅ | VerwaltungTab.tsx | 456 | ~150 | MOD-04 | VerwaltungContextGrid, VerwaltungPropertyAccordion, VerwaltungGesamtergebnis |
-| R-31 | ✅ | ProjectDetailPage.tsx | 456 | ~120 | MOD-13 | ProjectDetailHeader, ProjectUnitsTable, ProjectInfoTabs |
-| R-32 | ✅ | SanierungTab.tsx | 451 | ~89 | MOD-04 | SanierungDemoDetail |
-| R-33 | ✅ | MasterTemplatesImmo.tsx | 444 | ~60 | Admin | ImmoAkteBlockView, immoAkteBlocks.ts |
-| R-34 | ⬜ | StorageFileManager.tsx | 434 | — | MOD-03 | Skipped — already modular (5 views) |
-| R-35 | ✅ | RolesManagement.tsx | 419 | ~30 | Admin | RolesCatalogTab, RolesMatrixTab, RolesGovernanceTab |
+**A) Wurde primär der Core gebaut, aber nicht das fertige Produkt?**
+**JA.** Der Core (spec.ts: 672 LOC, engine.ts: 972 LOC, Edge Function: 1.236 LOC, PDF: 358 LOC) ist beeindruckend vollständig. Aber von drei geplanten Entry Points (MOD-04, MOD-12, MOD-13) ist nur MOD-04 verdrahtet — und auch dort fehlt der PDF-Button und die Liste zeigt die falsche Tabelle.
 
-### Ergebnis
-
-- **33 von 35 Dateien** refactored (R-28 ArmstrongWorkspace + R-34 StorageFileManager waren optional, R-28 jetzt done)
-- **~80+ Sub-Components** extrahiert
-- **Durchschnittliche Reduktion**: ~65%
-
----
-
-## Regeln
-
-1. **Keine funktionalen Änderungen** — Reine Extraktion
-2. **Keine DB-Änderungen** — Kein Migrations-Tool nötig
-3. **Keine neuen Routes** — Bestehende Routen bleiben
-4. **Module sofort re-freezen** nach Abschluss jeder Phase
-5. **TSX Creation Check** (Regel F) — vor jeder neuen Datei auf Duplikate prüfen
-6. **Zone Separation** (Regel G) — keine Cross-Zone-Imports
-
----
-
-## Objektfinder / Portal-Recherche — Phasenplan
-
-> **Modul**: MOD-12 (Akquise-Manager) — Tools → Portal-Recherche
-> **Datum**: 2026-03-05
-
-### Phase 1 — Portal-Suche reparieren ✅
-
-**Status**: Implementiert
-
-| Änderung | Datei | Beschreibung |
-|----------|-------|--------------|
-| URL-Builder mit echten Filtern | `sot-research-engine/index.ts` | `buildPortalUrl()` mit Preis, Fläche, Objektart-Mapping pro Portal |
-| Parallele 3-Portal-Suche | `sot-research-engine/index.ts` | `searchAllPortals()` scrapt IS24/Immowelt/Kleinanzeigen parallel |
-| Erweiterter Extraktions-Prompt | `sot-research-engine/index.ts` | KI extrahiert: Objektart, Fläche, Zimmer, WE, Baujahr, Rendite, PLZ |
-| UI-Rebuild ohne Maklersuche | `PortalSearchTool.tsx` | Objektart-Filter, Flächen-Filter, Portal-Status-Badges, Ergebnis-Cards |
-| Hook-Update | `useAcqTools.ts` | Neue `PortalSearchParams` ohne `portal`/`searchType`, mit `areaMin/Max` |
-
-### Phase 2 — Persistierung + Inbox-Workflow (geplant)
-
-**Ziel**: Ergebnisse speichern, deduplizieren, als Lead-Kandidaten verarbeiten.
-
-**Neue DB-Tabellen** (via Migration):
-
-```sql
--- Suchlauf-Protokoll
-CREATE TABLE portal_search_runs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES organizations(id),
-  created_by UUID NOT NULL,
-  search_params_json JSONB NOT NULL,
-  status TEXT NOT NULL DEFAULT 'running', -- running/partial/success/fail
-  metrics_json JSONB, -- {immoscout24: {found: 12, new: 8}, ...}
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Gefundene Listings (alle Portale)
-CREATE TABLE portal_listings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES organizations(id),
-  run_id UUID REFERENCES portal_search_runs(id),
-  source_portal TEXT NOT NULL,
-  source_url TEXT,
-  source_listing_id TEXT,
-  title TEXT NOT NULL,
-  price INTEGER,
-  object_type TEXT,
-  living_area_sqm NUMERIC,
-  plot_area_sqm NUMERIC,
-  address TEXT,
-  city TEXT,
-  zip_code TEXT,
-  rooms NUMERIC,
-  units_count INTEGER,
-  year_built INTEGER,
-  gross_yield NUMERIC,
-  broker_name TEXT,
-  raw_extract_json JSONB,
-  cluster_fingerprint TEXT, -- Hash(adresse+preis+fläche) für Dedupe
-  status TEXT NOT NULL DEFAULT 'new', -- new/seen/saved/rejected/suppressed
-  score INTEGER, -- 0-100 Match vs. Suchprofil
-  match_reasons_json JSONB,
-  first_seen_at TIMESTAMPTZ DEFAULT now(),
-  last_seen_at TIMESTAMPTZ DEFAULT now(),
-  linked_offer_id UUID REFERENCES acq_offers(id), -- wenn in Objekteingang übernommen
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
-**Implementierung** (Dateien):
-
-| Datei | Beschreibung |
-|-------|--------------|
-| DB Migration | `portal_search_runs` + `portal_listings` mit RLS |
-| `src/hooks/usePortalListings.ts` | CRUD für portal_listings, Suppression, Status-Updates |
-| `src/pages/portal/akquise-manager/components/PortalSearchInbox.tsx` | Inbox-Cards: Neu/Gesehen/Gespeichert/Abgelehnt |
-| `sot-research-engine/index.ts` | Ergebnisse in `portal_listings` persistieren, Dedupe via `cluster_fingerprint` |
-| Scoring-Logic in `src/engines/akquiseCalc/` | `scoreListingVsProfile()` → Score 0-100 + Reasons |
-
-**Dedupe-Strategie**:
-- `cluster_fingerprint = MD5(lower(city) + price_bucket + area_bucket)`
-- Bei Match: `last_seen_at` updaten, nicht duplizieren
-- Suppression: Abgelehnte Fingerprints bei nächster Suche ignorieren
-
-**Inbox-Actions**:
-- "In Objekteingang übernehmen" → erstellt `acq_offers`-Record, setzt `linked_offer_id`
-- "Ablehnen" → Status `rejected`, optionale Suppression
-- "Merken" → Status `saved`
-
-### Phase 3 — KI-Suchprofil-Erfassung (geplant)
-
-**Ziel**: User beschreibt Wunschobjekt in Freitext, KI erzeugt strukturierte Filter.
-
-**Implementierung**:
-
-| Datei | Beschreibung |
-|-------|--------------|
-| `PortalSearchAIIntake.tsx` | Freitext-Eingabe + Confidence-Anzeige + Rückfragen |
-| `sot-research-engine/index.ts` | Neuer Intent `ai_search_profile` → Gemini 2.5 Pro |
-| `useAcqTools.ts` | `useAISearchProfile()` Hook |
-
-**AI Output Contract**:
+**B) Ist MOD-12 im Repo noch faktisch "Phase 5 / TODO"?**
+**JA.** Beweis: `src/hooks/useAcqOffers.ts`, Zeile 347-348:
 ```typescript
-interface AIProfileDraft {
-  canonical: {
-    region?: string;
-    price_min?: number;
-    price_max?: number;
-    area_min?: number;
-    area_max?: number;
-    object_types?: string[];
-    yield_min?: number;
-    units_min?: number;
-  };
-  confidence: Record<string, number>; // 0-1 pro Feld
-  assumptions: string[]; // "Annahme: Preis = Kaltmiete"
-  questions?: string[]; // "Meinen Sie Warm- oder Kaltmiete?"
-}
+// TODO: Phase 5 — invoke sot-valuation-engine edge function
+throw new Error('SoT Valuation Engine wird in Phase 5 implementiert');
 ```
+Der Button "SoT Bewertung" in AnalysisTab.tsx existiert, ruft diese Funktion auf, und crasht sofort.
 
-**Flow**:
-1. User gibt Freitext ein: "Suche MFH in Berlin, bis 2 Mio, mindestens 6% Rendite"
-2. Gemini 2.5 Pro extrahiert → `AIProfileDraft`
-3. UI zeigt extrahierte Filter mit Confidence-Badges
-4. User bestätigt oder korrigiert
-5. Bestätigte Filter werden als Suchparameter übernommen
+**C) Ist MOD-04 erst nachträglich von Draft-only auf SSOT-Final korrigiert worden?**
+**JA.** Die Edge Function hat explizite V6.0-Marker: `// V6.0: SSOT-Final Mode`, `// V6.0: Determine source mode`, `// V6.0: Fetch SSOT data`. Die Architektur wurde in einer zweiten Welle nachgerüstet.
+
+**D) Ist die Engine-Dokumentation / Registry statusmäßig inkonsistent?**
+**WAR JA**, heute korrigiert auf v2.0 mit Detail-Sektion und Status "Teilweise".
+
+**E) Ist der Report eher ein kompakter V5-Output statt das definierte Premium-Gutachten?**
+**JEIN.** Der PDF-Generator hat 9 Sektionen und ist nah am 12-Seiten-Ziel. Aber er wird nie aufgerufen — es gibt keinen Button dafür. Und der Web-Reader (ValuationReportReader) zeigt Location und Comps nicht.
+
+**F) Ist die Trennung zwischen Akquise-Bewertung und Finalbewertung zu schwach?**
+**JA.** Die Edge Function unterscheidet sauber (sourceMode SSOT_FINAL vs DRAFT_INTAKE). Aber MOD-12 nutzt diese Unterscheidung gar nicht, weil die Verdrahtung fehlt.
+
+**G) Ist das Frontend-Retrieval/Mapper-Thema ein Symptom?**
+**JA.** Der Deep-Mapper-Bug war nur das sichtbare Symptom. Die echten Gaps sind: fehlende Verdrahtung (MOD-12), fehlende UI-Anbindung (PDF, Location-Block, Comp-Liste), falsche Tabelle (property_valuations vs valuation_cases).
 
 ---
 
-### Abhängigkeiten & Reihenfolge
+## Root Cause Analyse
 
-```
-Phase 1 (done) ──→ Phase 2 (DB + Inbox) ──→ Phase 3 (KI-Intake)
-                         ↓
-                   Scoring-Engine (ENG-AKQUISE erweitern)
-```
+| # | Root Cause | Auswirkung |
+|---|-----------|-----------|
+| 1 | **Core-first, Produkt-later** | 3.228 LOC Engine-Code, aber nur 1 von 3 Entry Points verdrahtet |
+| 2 | **Phase-Planung nicht durchgezogen** | MOD-12 hat einen expliziten "Phase 5 TODO" der nie aufgelöst wurde |
+| 3 | **Tabellen-Drift** | PropertyValuationTab listet `property_valuations`, Engine schreibt `valuation_cases` |
+| 4 | **PDF nie angebunden** | 358 LOC PDF-Generator ohne einzigen Aufruf im UI |
+| 5 | **Contract Drift** | Edge Function speichert snake_case, UI erwartet camelCase — Deep Mapper erst nachträglich gebaut |
+| 6 | **ReportReader zeigt nur Zahlen** | Location-Analyse (Google), Comp-Postings-Liste, Legal-Block werden nicht gerendert |
 
-Phase 2 kann unabhängig von Phase 3 deployed werden. Phase 3 baut auf den Filter-Parametern aus Phase 1 auf.
+---
+
+## Top 10 Gaps (nach Priorität)
+
+| Prio | Gap | Aufwand | Datei(en) |
+|------|-----|---------|-----------|
+| **1** | MOD-12: `useRunValuation` verdrahten (ersetzt throw Error) | Klein | `src/hooks/useAcqOffers.ts` |
+| **2** | MOD-04: PropertyValuationTab Tabelle umstellen `property_valuations` → `valuation_cases` | Klein | `src/components/immobilien/detail/PropertyValuationTab.tsx` (MOD-04 frozen!) |
+| **3** | PDF-Export Button im Report-View einbauen | Klein | `src/components/shared/valuation/ValuationReportReader.tsx` (frozen? shared) |
+| **4** | MOD-12 Objekteingang: Bewertungs-Step mit Valuation-UI befüllen | Mittel | `src/pages/portal/akquise-manager/ObjekteingangDetail.tsx` (MOD-12 frozen!) |
+| **5** | ReportReader: Location-Block einbauen (Scores, POIs, Maps) | Mittel | ValuationReportReader.tsx |
+| **6** | ReportReader: Comp-Postings-Liste einbauen | Klein | ValuationReportReader.tsx |
+| **7** | ReportReader: LegalBlock rendern (ValuationLegalBlock.tsx existiert bereits) | Klein | ValuationReportReader.tsx |
+| **8** | PDF-Generator: pdfCiTokens importieren statt eigene Farben | Klein | ValuationPdfGenerator.ts |
+| **9** | MOD-13 Inbox: Draft-Bewertungs-Entry-Point | Groß | Neuer Code |
+| **10** | Google Routes Matrix + StreetView in Edge Function | Mittel | Edge Function (frozen!) |
+
+---
+
+## Empfohlene Korrekturreihenfolge
+
+**Phase A — Sofort-Fixes (kein Freeze betroffen):**
+1. `useRunValuation` in useAcqOffers.ts verdrahten (useValuationCase importieren, sot-valuation-engine aufrufen statt throw Error)
+
+**Phase B — Freeze aufheben für MOD-04:**
+2. PropertyValuationTab: Query auf `valuation_cases` umstellen
+3. PDF-Button im Report-View
+
+**Phase C — Freeze aufheben für shared/valuation:**
+4. ReportReader: Location + Comps + Legal Block
+5. PDF CI-Token Integration
+
+**Phase D — Freeze aufheben für MOD-12:**
+6. Objekteingang Bewertungs-Step
+
+**Phase E — Neue Features:**
+7. MOD-13 Entry Point
+8. Google Routes + StreetView
+
+---
+
+## Klare Aussage
+
+**ENG-VALUATION ist "Core vorhanden, Produkt unvollständig" — JA.**
+
+- Core-Engine: **95% fertig** (spec, engine, Edge Function, DB, PDF-Generator)
+- MOD-04 Verdrahtung: **70% fertig** (funktioniert nach Deep-Mapper-Fix, aber falsche Tabelle + kein PDF)
+- MOD-12 Verdrahtung: **0% fertig** (throw Error)
+- MOD-13 Verdrahtung: **0% fertig** (nicht existiert)
+- Premium-Report (Web): **60% fertig** (Zahlen ja, Location/Comps/Legal nein)
+- Premium-Report (PDF): **90% fertig als Code, 0% erreichbar für User** (kein Button)
+
+Das Gesamtprodukt ist bei ca. **45% Fertigstellung**, obwohl der technische Kern bei **95%** liegt. Die Lücke ist reine Verdrahtung und UI-Anbindung.
+
