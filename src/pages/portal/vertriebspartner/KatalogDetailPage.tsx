@@ -218,7 +218,11 @@ const KatalogDetailPage = () => {
   const handleDownload = async (doc: DocumentItem) => {
     const url = await getCachedSignedUrl(doc.file_path);
     if (url) {
-      window.open(url, '_blank');
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.click();
     }
   };
 
