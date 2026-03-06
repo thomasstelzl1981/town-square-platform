@@ -137,7 +137,8 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Case ${data.caseId.slice(0, 8)}  ·  ${new Date(data.generatedAt).toLocaleDateString('de-DE')}`, ML, 35);
+  const sourceModeLabel = data.sourceMode === 'SSOT_FINAL' ? '  ·  Datenbasis: SSOT (Final)' : '  ·  Datenbasis: Exposé Draft';
+  doc.text(`Case ${data.caseId.slice(0, 8)}  ·  ${new Date(data.generatedAt).toLocaleDateString('de-DE')}${sourceModeLabel}`, ML, 35);
 
   y = 60;
   heading(data.snapshot.address || 'Objekt', 16);
