@@ -164,6 +164,37 @@ function Column({ items, selectedId, selectedFileId, onSelect, onDoubleClickFile
 }
 
 export function ColumnView({ allNodes, documents, documentLinks, columnPath, onNavigateColumn, onSelectFile, onDownload, onDelete, onNewSubfolder, isDownloading, isDeleting }: ColumnViewProps) {
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+
+  const buildFileManagerItem = useCallback((item: ColumnItem): FileManagerItem => {
+    const doc = documents.find(d => d.id === item.id);
+    return {
+      id: item.id,
+      name: item.name,
+      type: 'file',
+      mimeType: item.mimeType ?? doc?.mime_type,
+      createdAt: item.createdAt ?? doc?.created_at ?? '',
+      documentId: item.documentId ?? item.id,
+      filePath: item.filePath ?? doc?.file_path,
+    };
+  }, [documents]);
+
+  const handleDoubleClickFile = useCallback((item: ColumnItem) => {
+    if (item.documentId && onDownload) {
+      onDownload(item.documentId);
+    }
+  }, [onDownload]);
+
+  const handleSelect = useCallback((item: ColumnItem, depth: number) => {
+    if (item.type === 'folder' && item.nodeId) {
+      onNavigateColumn(item.nodeId, depth);
+      setSelectedFileId(null);
+    } else {
+      setSelectedFileId(item.id);
+      onSelectFile(buildFileManagerItem(item));
+    }
+  }, [onNavigateColumn, onSelectFile, buildFileManagerItem]);
+
   const columns = useMemo(() => {
     const result: { parentId: string | null; selectedId?: string; items: ColumnItem[] }[] = [];
 
@@ -220,6 +251,7 @@ export function ColumnView({ allNodes, documents, documentLinks, columnPath, onN
           key={col.parentId ?? 'root'}
           items={col.items}
           selectedId={col.selectedId}
+          selectedFileId={selectedFileId ?? undefined}
           onDownload={onDownload}
           onDelete={onDelete}
           onNewSubfolder={onNewSubfolder}
@@ -227,22 +259,8 @@ export function ColumnView({ allNodes, documents, documentLinks, columnPath, onN
           onPreview={onSelectFile}
           isDownloading={isDownloading}
           isDeleting={isDeleting}
-          onSelect={(item) => {
-            if (item.type === 'folder' && item.nodeId) {
-              onNavigateColumn(item.nodeId, depth);
-            } else {
-              const doc = documents.find(d => d.id === item.id);
-              onSelectFile({
-                id: item.id,
-                name: item.name,
-                type: 'file',
-                mimeType: doc?.mime_type,
-                createdAt: doc?.created_at || '',
-                documentId: item.id,
-                filePath: doc?.file_path,
-              });
-            }
-          }}
+          onDoubleClickFile={handleDoubleClickFile}
+          onSelect={(item) => handleSelect(item, depth)}
         />
       ))}
     </div>
