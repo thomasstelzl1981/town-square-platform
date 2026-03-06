@@ -4733,7 +4733,7 @@ serve(async (req) => {
       // Enable Global Assist Mode when not in MVP module
       const isGlobalAssist = !isInMvpModule;
       const explainResult = await generateExplainResponse(message, module, supabase, isGlobalAssist, buildContextBlock(body, userContext), body, userContext, availableActions, projectContext);
-      const suggestions = suggestActionsForMessage(message, availableActions);
+      const suggestions = suggestActionsForMessage(message, availableActions, entity);
       
       // If we got a Response object back, it's a streaming response from the AI gateway
       if (explainResult instanceof Response && explainResult.body) {
