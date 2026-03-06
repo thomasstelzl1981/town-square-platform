@@ -237,7 +237,7 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
   const { data: offer, isLoading } = useAcqOffer(offerId);
   const uploadDoc = useUploadOfferDocument();
   const runAI = useRunAIResearch();
-  const runGeoMap = useRunGeoMap();
+  const runValuation = useRunValuation();
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
