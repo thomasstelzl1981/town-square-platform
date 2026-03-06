@@ -58,13 +58,16 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 | ENG-PLC | Pet Service Lifecycle Controller | MOD-22, MOD-05, Z3, Z1 | ⚡ Teilweise | `src/engines/plc/spec.ts`, `engine.ts` |
 | ENG-VALUATION | SoT Valuation Engine | MOD-04, MOD-12, MOD-13 | 🔲 Geplant | `src/engines/valuation/spec.ts`, `engine.ts` |
 
-### Orchestrierung (1 Engine)
+### Orchestrierung (4 Engines)
 
 | Code | Name | Status | Billing | Ausfuehrung |
 |------|------|--------|---------|-------------|
 | ENG-TLC | Tenancy Lifecycle Controller | ✅ Live | Free + KI (1 Credit/Run) | Edge Function (`sot-tenancy-lifecycle`, Weekly CRON Sun 03:00 UTC) + Client Engine |
 | ENG-SLC | Sales Lifecycle Controller | ⚡ Teilweise | Free | Client Engine (Phase-Tracking, Drift-Detection, Stuck-Detection) |
+| ENG-FLC | Financing Lifecycle Controller | ⚡ Teilweise | Free | Client Engine (14-Phasen State Machine, 7 Quality Gates) + Edge Function (`sot-flc-lifecycle`, Daily CRON) + `sot-finance-manager-notify` |
 | ENG-PLC | Pet Service Lifecycle Controller | ⚡ Teilweise | Free | Client Engine (Marketplace Phase-Tracking, Deposit-Calculation, Stuck-Detection) |
+
+> **ENG-FLC** orchestriert Finanzierungsfaelle von Z3-Intake ueber Z1-Zuweisung bis MOD-11-Bearbeitung. 14 Phasen (INTAKE_RECEIVED → PLATFORM_FEE_PAID), 7 Quality Gates, SLA-Ueberwachung (48h Intake, 72h Manager-Annahme), idempotente E-Mail-Benachrichtigung, 25% Plattformanteil-Erzwingung.
 
 > **ENG-TLC** ist der uebergeordnete Orchestrator fuer alle Mietverhaeltnisse. Er prueft woechentlich: Zahlungsstatus, Mahnstufen, Mieterhoehungs-Berechtigung (§558 BGB), Kautionsstatus, Fristen und generiert KI-gestuetzte Next-Best-Actions via `google/gemini-2.5-pro`.
 
