@@ -444,6 +444,13 @@ export interface ValuationUnitDetail {
   rentCold: number | null;
 }
 
+/** V9.2: Modernisierungsbonus + Kernsanierung für Report */
+export interface RenovationData {
+  coreRenovated: boolean;
+  renovationYear: number | null;
+  modernisierungsbonus: number;
+}
+
 // ============================================================================
 // COMP POSTINGS
 // ============================================================================
