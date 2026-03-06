@@ -23263,6 +23263,56 @@ export type Database = {
         }
         Relationships: []
       }
+      valuation_cases: {
+        Row: {
+          created_at: string
+          created_by: string
+          credits_charged: number
+          id: string
+          source_context: string
+          source_ref: string | null
+          stage_current: number
+          stage_timings: Json | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          credits_charged?: number
+          id?: string
+          source_context?: string
+          source_ref?: string | null
+          stage_current?: number
+          stage_timings?: Json | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          credits_charged?: number
+          id?: string
+          source_context?: string
+          source_ref?: string | null
+          stage_current?: number
+          stage_timings?: Json | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "valuation_cases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       valuation_credits: {
         Row: {
           created_at: string
@@ -23307,6 +23357,138 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      valuation_inputs: {
+        Row: {
+          assumptions: Json | null
+          canonical_snapshot: Json | null
+          case_id: string
+          data_quality: Json | null
+          evidence_map: Json | null
+          extracted_fields: Json | null
+          id: string
+          missing_fields: Json | null
+        }
+        Insert: {
+          assumptions?: Json | null
+          canonical_snapshot?: Json | null
+          case_id: string
+          data_quality?: Json | null
+          evidence_map?: Json | null
+          extracted_fields?: Json | null
+          id?: string
+          missing_fields?: Json | null
+        }
+        Update: {
+          assumptions?: Json | null
+          canonical_snapshot?: Json | null
+          case_id?: string
+          data_quality?: Json | null
+          evidence_map?: Json | null
+          extracted_fields?: Json | null
+          id?: string
+          missing_fields?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "valuation_inputs_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "valuation_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      valuation_reports: {
+        Row: {
+          case_id: string
+          generated_at: string
+          id: string
+          pdf_file_ref: string | null
+          report_version: number
+          web_render_hash: string | null
+        }
+        Insert: {
+          case_id: string
+          generated_at?: string
+          id?: string
+          pdf_file_ref?: string | null
+          report_version?: number
+          web_render_hash?: string | null
+        }
+        Update: {
+          case_id?: string
+          generated_at?: string
+          id?: string
+          pdf_file_ref?: string | null
+          report_version?: number
+          web_render_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "valuation_reports_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "valuation_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      valuation_results: {
+        Row: {
+          case_id: string
+          charts: Json | null
+          comp_postings: Json | null
+          comp_stats: Json | null
+          debt_service: Json | null
+          financing: Json | null
+          id: string
+          lien_proxy: Json | null
+          location_analysis: Json | null
+          sensitivity: Json | null
+          stress_tests: Json | null
+          valuation_methods: Json | null
+          value_band: Json | null
+        }
+        Insert: {
+          case_id: string
+          charts?: Json | null
+          comp_postings?: Json | null
+          comp_stats?: Json | null
+          debt_service?: Json | null
+          financing?: Json | null
+          id?: string
+          lien_proxy?: Json | null
+          location_analysis?: Json | null
+          sensitivity?: Json | null
+          stress_tests?: Json | null
+          valuation_methods?: Json | null
+          value_band?: Json | null
+        }
+        Update: {
+          case_id?: string
+          charts?: Json | null
+          comp_postings?: Json | null
+          comp_stats?: Json | null
+          debt_service?: Json | null
+          financing?: Json | null
+          id?: string
+          lien_proxy?: Json | null
+          location_analysis?: Json | null
+          sensitivity?: Json | null
+          stress_tests?: Json | null
+          valuation_methods?: Json | null
+          value_band?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "valuation_results_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "valuation_cases"
             referencedColumns: ["id"]
           },
         ]
