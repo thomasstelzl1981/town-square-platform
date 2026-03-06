@@ -42,6 +42,9 @@ export function PortfolioTab() {
   const { activeOrganization, activeTenantId } = useAuth();
   const queryClient = useQueryClient();
 
+  // ── PDF Export ──
+  const { isGenerating: isPdfGenerating, generate: generatePdf } = usePdfTemplateExport('PORTFOLIO_DOSSIER_V1');
+
   // ── State ──
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
