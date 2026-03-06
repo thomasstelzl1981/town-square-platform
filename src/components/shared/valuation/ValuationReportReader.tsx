@@ -596,7 +596,7 @@ export function ValuationReportReader({
               {geminiResearch.liegenschaftszins && (
                 <div className="p-4 rounded-xl border bg-muted/10 space-y-1">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Liegenschaftszins</p>
-                  <DataRow label="Empfohlen (MWT)" value={fmtPct((geminiResearch.liegenschaftszins as any).marktwertZins ?? (geminiResearch.liegenschaftszins as any).marktwert_zins)} />
+                  <DataRow label="Empfohlen (MWT)" value={fmtPct(geminiResearch.liegenschaftszins.marktwertZins)} />
                   <DataRow label="Spanne" value={`${fmtPct(geminiResearch.liegenschaftszins.min)} – ${fmtPct(geminiResearch.liegenschaftszins.max)}`} />
                   <DataRow label="BelWertV (fest)" value="5,0 %" muted />
                   <DataRow label="Quelle" value={geminiResearch.liegenschaftszins.quelle} muted />
