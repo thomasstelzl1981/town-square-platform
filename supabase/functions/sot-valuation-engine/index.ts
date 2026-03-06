@@ -765,7 +765,7 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         let locationAnalysis: any = { available: false };
 
         // V6.0: Use SSOT address/coords if available
-        const address = snapshot.address || snapshot.city || "";
+        const address = [snapshot.address, snapshot.postal_code, snapshot.city].filter(Boolean).join(', ');
         const ssotLat = snapshot.lat;
         const ssotLng = snapshot.lng;
 
