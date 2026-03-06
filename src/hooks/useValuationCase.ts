@@ -186,6 +186,162 @@ export function useValuationCase() {
     }
   }, [activeOrganization, user]);
 
+  // =========================================================================
+  // DEEP MAPPER: DB snake_case → UI spec.ts camelCase
+  // =========================================================================
+
+  /** Derive ConfidenceLevel from numeric score (0–1 or 0–100) */
+  const toConfidenceLevel = (v: number | string | null | undefined): 'high' | 'medium' | 'low' => {
+    if (typeof v === 'string') return (['high', 'medium', 'low'].includes(v) ? v : 'medium') as any;
+    if (v == null) return 'medium';
+    const n = v > 1 ? v / 100 : v; // normalize 0-100 → 0-1
+    if (n >= 0.7) return 'high';
+    if (n >= 0.4) return 'medium';
+    return 'low';
+  };
+
+  /** Normalize confidence score to 0-1 */
+  const toScore01 = (v: number | null | undefined): number => {
+    if (v == null) return 0;
+    return v > 1 ? v / 100 : v;
+  };
+
+  /** Derive TrafficLight from DSCR */
+  const dscrToTrafficLight = (dscr: number | null | undefined): 'green' | 'yellow' | 'red' => {
+    if (dscr == null) return 'yellow';
+    if (dscr >= 1.2) return 'green';
+    if (dscr >= 1.0) return 'yellow';
+    return 'red';
+  };
+
+  /** Map raw valueBand from DB to spec.ts ValueBand */
+  const mapValueBand = (raw: any): any => {
+    if (!raw) return null;
+    return {
+      p25: raw.p25 ?? 0,
+      p50: raw.p50 ?? 0,
+      p75: raw.p75 ?? 0,
+      confidence: toConfidenceLevel(raw.confidence),
+      confidenceScore: toScore01(raw.confidence),
+      weightingTable: (raw.weightingTable ?? raw.weighting_table ?? raw.weighting ?? []).map((w: any) => ({
+        method: w.method ?? w.key ?? 'ertrag',
+        weight: w.weight ?? 0,
+        value: w.value ?? 0,
+        confidence: toConfidenceLevel(w.confidence),
+      })),
+      reasoning: raw.reasoning ?? raw.narrative ?? 'Gewichtung basiert auf Datenlage und Methodeneignung.',
+    };
+  };
+
+  /** Map raw methods array to spec.ts ValuationMethodResult[] */
+  const mapMethods = (raw: any[]): any[] => {
+    if (!Array.isArray(raw)) return [];
+    return raw.map(m => ({
+      method: m.method ?? m.key ?? 'ertrag',
+      value: m.value ?? 0,
+      confidence: toConfidenceLevel(m.confidence ?? m.confidence_score),
+      confidenceScore: toScore01(m.confidence ?? m.confidence_score),
+      params: m.params ?? {},
+      notes: m.notes ?? [],
+    }));
+  };
+
+  /** Map financing scenarios from snake_case to camelCase */
+  const mapFinancing = (raw: any[]): any[] => {
+    if (!Array.isArray(raw)) return [];
+    return raw.map(f => ({
+      name: f.name ?? '',
+      ltv: f.ltv ?? 0,
+      loanAmount: f.loan_amount ?? f.loanAmount ?? 0,
+      equity: f.equity ?? 0,
+      interestRate: f.interest_rate ?? f.interestRate ?? 0,
+      repaymentRate: f.repayment_rate ?? f.repaymentRate ?? 0,
+      monthlyRate: f.monthly_rate ?? f.monthlyRate ?? 0,
+      annualDebtService: f.annual_debt_service ?? f.annualDebtService ?? 0,
+      cashflowAfterDebt: f.cashflow_after_debt ?? f.cashflowAfterDebt ?? null,
+      trafficLight: f.traffic_light ?? f.trafficLight ?? dscrToTrafficLight(f.dscr),
+    }));
+  };
+
+  /** Map stress tests from DB to spec.ts StressTestResult[] */
+  const mapStressTests = (raw: any[]): any[] => {
+    if (!Array.isArray(raw)) return [];
+    return raw.map(s => ({
+      label: s.label ?? s.scenario ?? '',
+      monthlyRate: s.monthly_rate ?? s.monthlyRate ?? 0,
+      annualDebtService: s.annual_debt_service ?? s.annualDebtService ?? 0,
+      cashflowAfterDebt: s.cashflow_after_debt ?? s.cashflowAfterDebt ?? s.cashflow ?? null,
+      dscr: s.dscr ?? null,
+      trafficLight: s.traffic_light ?? s.trafficLight ?? dscrToTrafficLight(s.dscr),
+    }));
+  };
+
+  /** Map lienProxy from DB to spec.ts LienProxy */
+  const mapLienProxy = (raw: any): any => {
+    if (!raw) return null;
+    const lienValue = raw.lien_value ?? raw.lienValue ?? 0;
+    return {
+      marketValueP50: raw.market_value_p50 ?? raw.marketValueP50 ?? raw.p50 ?? 0,
+      totalDiscount: raw.total_discount ?? raw.totalDiscount ?? 0,
+      lienValueLow: raw.lien_value_low ?? raw.lienValueLow ?? Math.round(lienValue * 0.95),
+      lienValueHigh: raw.lien_value_high ?? raw.lienValueHigh ?? Math.round(lienValue * 1.05),
+      safeLtvWindow: raw.safe_ltv_window ?? raw.safeLtvWindow ??
+        (raw.ltv_window ? [raw.ltv_window.safe ?? 0.55, raw.ltv_window.max ?? 0.70] : [0.55, 0.70]),
+      riskDrivers: (raw.risk_drivers ?? raw.riskDrivers ?? []).map((rd: any) =>
+        typeof rd === 'string'
+          ? { factor: rd, discountPercent: 0, reasoning: '' }
+          : {
+              factor: rd.factor ?? rd.name ?? '',
+              discountPercent: rd.discount_percent ?? rd.discountPercent ?? 0,
+              reasoning: rd.reasoning ?? '',
+            }
+      ),
+    };
+  };
+
+  /** Map debtService from DB to spec.ts DebtServiceResult */
+  const mapDebtService = (raw: any): any => {
+    if (!raw) return null;
+    return {
+      dscr: raw.dscr ?? null,
+      breakEvenRentMonthly: raw.break_even_rent ?? raw.break_even_rent_monthly ?? raw.breakEvenRentMonthly ?? null,
+      isViable: raw.is_viable ?? raw.isViable ?? null,
+      cashflowAfterDebt: raw.cashflow_after_debt ?? raw.cashflowAfterDebt ?? null,
+      notes: raw.notes ?? [],
+    };
+  };
+
+  /** Map dataQuality from DB to spec.ts DataQuality */
+  const mapDataQuality = (raw: any): any => {
+    if (!raw) return null;
+    const criticalGaps = raw.critical_gaps ?? raw.criticalGaps;
+    return {
+      completenessPercent: raw.completeness_percent ?? raw.completenessPercent ?? raw.completeness ?? 0,
+      criticalGaps: typeof criticalGaps === 'number' ? criticalGaps : (Array.isArray(criticalGaps) ? criticalGaps.length : 0),
+      fieldsVerified: raw.fields_verified ?? raw.fieldsVerified ?? raw.belegt ?? 0,
+      fieldsDerived: raw.fields_derived ?? raw.fieldsDerived ?? 0,
+      fieldsMissing: raw.fields_missing ?? raw.fieldsMissing ?? raw.missing ?? 0,
+      globalConfidence: toConfidenceLevel(raw.global_confidence ?? raw.globalConfidence ?? raw.globalConfidenceScore),
+      globalConfidenceScore: toScore01(raw.global_confidence_score ?? raw.globalConfidenceScore ?? raw.global_confidence),
+    };
+  };
+
+  /** Map compStats from DB to spec.ts CompStats */
+  const mapCompStats = (raw: any): any => {
+    if (!raw) return null;
+    return {
+      count: raw.count ?? 0,
+      dedupedCount: raw.deduped_count ?? raw.dedupedCount ?? 0,
+      medianPriceSqm: raw.median_price_sqm ?? raw.medianPriceSqm ?? 0,
+      p25PriceSqm: raw.p25_price_sqm ?? raw.p25PriceSqm ?? raw.p25 ?? 0,
+      p50PriceSqm: raw.p50_price_sqm ?? raw.p50PriceSqm ?? raw.p50 ?? 0,
+      p75PriceSqm: raw.p75_price_sqm ?? raw.p75PriceSqm ?? raw.p75 ?? 0,
+      iqr: raw.iqr ?? 0,
+      meanPriceSqm: raw.mean_price_sqm ?? raw.meanPriceSqm ?? 0,
+      stdDevPriceSqm: raw.std_dev_price_sqm ?? raw.stdDevPriceSqm ?? 0,
+    };
+  };
+
   /** Step 3: Fetch results for existing case and map to UI format */
   const fetchResult = useCallback(async (caseId: string, runSummary?: Record<string, any>) => {
     try {
@@ -194,35 +350,23 @@ export function useValuationCase() {
       });
       if (error) throw new Error(error.message);
 
-      // Map raw DB response { case, inputs, results, report } to UI DTO
       const results = data?.results || {};
       const caseData = data?.case || {};
       const inputs = data?.inputs || {};
+      const rawDq = inputs.snapshot?.data_quality ?? runSummary?.data_quality ?? null;
 
       const mappedResult = {
-        // Value band (stored as JSON in valuation_results)
-        valueBand: results.value_band ?? null,
-        // Methods array
-        methods: results.valuation_methods ?? [],
-        // Financing scenarios
-        financing: results.financing ?? [],
-        // Stress tests
-        stressTests: results.stress_tests ?? [],
-        // Lien proxy
-        lienProxy: results.lien_proxy ?? null,
-        // Debt service
-        debtService: results.debt_service ?? null,
-        // Data quality (from inputs snapshot or run summary)
-        dataQuality: inputs.snapshot?.data_quality ?? runSummary?.data_quality ?? null,
-        // Comp stats
-        compStats: results.comp_stats ?? null,
-        // Executive summary (only in run response summary, not stored separately)
+        valueBand: mapValueBand(results.value_band),
+        methods: mapMethods(results.valuation_methods ?? []),
+        financing: mapFinancing(results.financing ?? []),
+        stressTests: mapStressTests(results.stress_tests ?? []),
+        lienProxy: mapLienProxy(results.lien_proxy),
+        debtService: mapDebtService(results.debt_service),
+        dataQuality: mapDataQuality(rawDq),
+        compStats: mapCompStats(results.comp_stats),
         executiveSummary: runSummary?.executive_summary ?? null,
-        // Legal title (from run summary or inputs)
         legalTitle: runSummary?.legal_title ?? inputs.snapshot?.legal_title ?? null,
-        // Diffs (from inputs or run summary)
         diffs: inputs.diffs ?? [],
-        // Source mode
         sourceMode: caseData.source_mode ?? 'DRAFT_INTAKE',
       };
 
