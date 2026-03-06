@@ -1096,16 +1096,34 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
           };
         }
 
-        // 4.4 Fuse value band
+        // 4.4 Fuse value band (V7.0: dynamic weight redistribution)
         const methods = [ertragswertResult, compProxyResult, sachwertResult].filter(Boolean);
         let valueBand: any = { p25: 0, p50: 0, p75: 0, confidence: 0 };
 
         if (methods.length > 0) {
+          // Determine weight map based on available methods
+          const hasErtrag = !!ertragswertResult;
+          const hasComp = !!compProxyResult;
+          const hasSach = !!sachwertResult;
+
+          let weightMap: Record<string, number>;
+          if (hasErtrag && hasComp && hasSach) {
+            weightMap = CALC.METHOD_WEIGHTS_3;
+          } else if (hasErtrag && hasSach && !hasComp) {
+            weightMap = CALC.METHOD_WEIGHTS_2_NO_COMP;
+          } else if (hasComp && hasSach && !hasErtrag) {
+            weightMap = CALC.METHOD_WEIGHTS_2_NO_ERTRAG;
+          } else {
+            // Single method or other combos: equal weight
+            weightMap = {};
+            for (const m of methods) weightMap[m.method] = 1.0 / methods.length;
+          }
+
           let totalWeight = 0;
           let weightedSum = 0;
 
           for (const m of methods) {
-            const w = CALC.METHOD_WEIGHTS[m.method] || 0.1;
+            const w = weightMap[m.method] || 0.1;
             weightedSum += m.value * w * m.confidence;
             totalWeight += w * m.confidence;
           }
@@ -1120,7 +1138,7 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
             weighting: methods.map((m: any) => ({
               method: m.method,
               value: m.value,
-              weight: CALC.METHOD_WEIGHTS[m.method] || 0.1,
+              weight: weightMap[m.method] || 0.1,
               confidence: m.confidence,
             })),
           };
