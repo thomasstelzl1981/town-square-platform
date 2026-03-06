@@ -119,18 +119,7 @@ export default function AkquiseDashboard() {
     setEditData(prev => ({ ...prev, [field]: value }));
   };
 
-  if (loadingPending || loadingActive) {
-    return <PageShell><div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></PageShell>;
-  }
-
-  const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || profile?.display_name || '—';
-  const address = [profile?.street, profile?.house_number].filter(Boolean).join(' ');
-  const cityLine = [profile?.postal_code, profile?.city].filter(Boolean).join(' ');
-  const fullAddress = [address, cityLine].filter(Boolean).join(', ');
-  const activeCount = activeMandates?.length || 0;
-  const pendingCount = pendingMandates?.length || 0;
-
-  // B-2 Fix: Live KPI queries for contacts and pipeline objects
+  // B-2 Fix: Live KPI queries — MUST be before any early return (Rules of Hooks)
   const { data: contactsCount } = useQuery({
     queryKey: ['acq-kpi-contacts', activeTenantId],
     queryFn: async () => {
@@ -160,6 +149,17 @@ export default function AkquiseDashboard() {
     },
     enabled: !!activeTenantId,
   });
+
+  if (loadingPending || loadingActive) {
+    return <PageShell><div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></PageShell>;
+  }
+
+  const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || profile?.display_name || '—';
+  const address = [profile?.street, profile?.house_number].filter(Boolean).join(' ');
+  const cityLine = [profile?.postal_code, profile?.city].filter(Boolean).join(' ');
+  const fullAddress = [address, cityLine].filter(Boolean).join(', ');
+  const activeCount = activeMandates?.length || 0;
+  const pendingCount = pendingMandates?.length || 0;
 
   return (
     <PageShell>
