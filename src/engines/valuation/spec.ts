@@ -240,6 +240,7 @@ export interface GeminiLiegenschaftszinsResult {
   stichtag: string;
   min: number;
   max: number;
+  begruendung?: string | null;
   confidence: ConfidenceLevel;
 }
 
