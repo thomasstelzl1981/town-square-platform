@@ -21,7 +21,7 @@ import { ArrowLeft, Loader2, Building2 } from 'lucide-react';
 import { useLegalConsent } from '@/hooks/useLegalConsent';
 import { EditableUnitDossierView } from '@/components/immobilienakte';
 import { InventoryInvestmentSimulation } from '@/components/immobilienakte/InventoryInvestmentSimulation';
-import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
+
 import { PageShell } from '@/components/shared/PageShell';
 import { useArmstrongProactiveDispatcher } from '@/hooks/useArmstrongProactiveDispatcher';
 import { PropertyDetailHeader, PropertyTabRouter } from '@/components/immobilien/detail';
@@ -66,7 +66,7 @@ export default function PropertyDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
   const deleteQueryClient = useQueryClient();
-  const contentRef = usePdfContentRef();
+  
   const { checkPropertyCompleteness } = useArmstrongProactiveDispatcher('MOD-04');
 
   const { data: dossierData, isLoading: dossierLoading } = usePropertyDossier(id);
@@ -157,15 +157,9 @@ export default function PropertyDetailPage() {
     marginalTaxRate: contextData?.marginal_tax_rate || 0.42,
   };
 
-  const getDocumentTitle = () => {
-    const prefix = property.code ? `${property.code} – ` : '';
-    const labels: Record<string, string> = { akte: 'Immobilienakte', expose: 'Exposé', features: 'Features', tenancy: 'Mietverhältnis', datenraum: 'Datenraum' };
-    return `${labels[activeTab] || ''}: ${prefix}${property.address}`;
-  };
-
   return (
     <PageShell fullWidth={splitView}>
-      <div ref={contentRef}>
+      <div>
         <PropertyDetailHeader property={property} propertyId={id} isDemo={isDemo} splitView={splitView} onSplitViewChange={setSplitView} onDelete={() => setShowDeleteDialog(true)} />
 
         {splitView ? (
@@ -178,7 +172,7 @@ export default function PropertyDetailPage() {
         )}
       </div>
 
-      <PdfExportFooter contentRef={contentRef} documentTitle={getDocumentTitle()} moduleName="MOD-04 Immobilien – Immobilienakte" />
+      
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
