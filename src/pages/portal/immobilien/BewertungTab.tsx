@@ -77,6 +77,31 @@ export function BewertungTab() {
   const hasResult = result?.valueBand || result?.results;
   const resultObj = result?.results || result;
 
+  const handleDownloadPdf = useCallback(async () => {
+    if (!resultObj?.valueBand || !resultObj?.snapshot) return;
+    try {
+      await generateValuationPdf({
+        snapshot: resultObj.snapshot,
+        valueBand: resultObj.valueBand,
+        methods: resultObj.methods || [],
+        financing: resultObj.financing || [],
+        stressTests: resultObj.stressTests || [],
+        lienProxy: resultObj.lienProxy || null,
+        dataQuality: resultObj.dataQuality || null,
+        compStats: resultObj.compStats || null,
+        comps: resultObj.comps || [],
+        location: resultObj.location || null,
+        executiveSummary: resultObj.executiveSummary || '',
+        caseId: valuation.state.caseId || 'unknown',
+        generatedAt: new Date().toISOString(),
+      });
+      toast.success('PDF erstellt');
+    } catch (e) {
+      console.error('PDF error:', e);
+      toast.error('PDF-Erstellung fehlgeschlagen');
+    }
+  }, [resultObj, valuation.state.caseId]);
+
   return (
     <PageShell>
       <ModulePageHeader
