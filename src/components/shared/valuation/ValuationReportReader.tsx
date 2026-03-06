@@ -380,7 +380,7 @@ export function ValuationReportReader({
             <SectionHeader
               icon={Building2}
               title="Vergleichsangebote"
-              subtitle={`${comps.length} Vergleichsobjekte aus ${compStats?.portalBreakdown ? Object.keys(compStats.portalBreakdown).length : '–'} Portalen`}
+              subtitle={`${comps.length} Vergleichsobjekte aus Immobilienportalen`}
               badge={
                 <Badge variant="outline" className="text-xs">
                   {comps.length} Treffer
