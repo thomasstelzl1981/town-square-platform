@@ -228,6 +228,45 @@ interface AIProfileDraft {
 
 ---
 
+## ENG-VALUATION: Soll-/Ist-Analyse & Korrekturfahrplan
+
+> **Datum**: 2026-03-06  
+> **Verdict**: Core vorhanden (95%), Produkt unvollständig (45%)
+
+### Top 10 Gaps (Priorität)
+
+| # | Gap | Aufwand | Freeze? |
+|---|-----|---------|---------|
+| 1 | MOD-12: `useRunValuation` verdrahten (throw Error → Edge Function) | Klein | Nein |
+| 2 | MOD-04: PropertyValuationTab Query `property_valuations` → `valuation_cases` | Klein | MOD-04 |
+| 3 | PDF-Export Button im Report-View | Klein | shared |
+| 4 | MOD-12 Objekteingang: Bewertungs-Step befüllen | Mittel | MOD-12 |
+| 5 | ReportReader: Location-Block (Scores, POIs, Maps) | Mittel | shared |
+| 6 | ReportReader: Comp-Postings-Liste | Klein | shared |
+| 7 | ReportReader: LegalBlock rendern | Klein | shared |
+| 8 | PDF-Generator: pdfCiTokens importieren | Klein | shared |
+| 9 | MOD-13 Inbox: Draft-Bewertungs-Entry-Point | Groß | MOD-05 |
+| 10 | Google Routes Matrix + StreetView | Mittel | Edge Function |
+
+### Korrekturreihenfolge
+
+- **Phase A:** Gap 1 (kein Freeze)
+- **Phase B:** UNFREEZE MOD-04 → Gaps 2+3
+- **Phase C:** UNFREEZE shared/valuation → Gaps 5+6+7+8
+- **Phase D:** UNFREEZE MOD-12 → Gap 4
+- **Phase E:** Gaps 9+10 (neue Features)
+
+### Root Causes
+
+1. Core-first, Produkt-later (3.228 LOC Engine, 1/3 Entry Points verdrahtet)
+2. Phase-Planung nicht durchgezogen (MOD-12 = "Phase 5 TODO")
+3. Tabellen-Drift (property_valuations vs valuation_cases)
+4. PDF nie an UI angebunden (358 LOC ohne Button)
+5. Contract Drift snake/camel (Deep Mapper nachträglich)
+6. ReportReader zeigt nur Zahlen (Location/Comps/Legal fehlen)
+
+---
+
 ### Abhängigkeiten & Reihenfolge
 
 ```
