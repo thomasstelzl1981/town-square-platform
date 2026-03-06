@@ -24697,6 +24697,14 @@ export type Database = {
       }
       cleanup_golden_path_data: { Args: never; Returns: Json }
       cleanup_rate_limit_counters: { Args: never; Returns: undefined }
+      delete_storage_file: {
+        Args: { p_document_id: string; p_tenant_id: string }
+        Returns: Json
+      }
+      delete_storage_folder: {
+        Args: { p_folder_id: string; p_tenant_id: string }
+        Returns: Json
+      }
       delete_test_batch: {
         Args: { p_batch_id: string }
         Returns: {
