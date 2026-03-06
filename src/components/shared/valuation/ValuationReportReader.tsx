@@ -20,7 +20,7 @@ import type {
   ValueBand, ValuationMethodResult, FinancingScenario, StressTestResult,
   LienProxy, DebtServiceResult, DataQuality, CompStats, CompPosting,
   LocationAnalysis, LegalTitleBlock, ValuationSourceMode,
-  BeleihungswertResult, GeminiResearchResult,
+  BeleihungswertResult, GeminiResearchResult, ValuationUnitDetail,
 } from '@/engines/valuation/spec';
 
 // ─── Props ────────────────────────────────────────────────────────────
