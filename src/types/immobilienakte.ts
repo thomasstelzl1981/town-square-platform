@@ -73,6 +73,8 @@ export interface BuildingData {
   energyCertValue?: number;
   energyCertValidUntil?: string;
   featuresTags?: string[];
+  coreRenovated?: boolean;
+  renovationYear?: number;
 }
 
 // ============================================================
