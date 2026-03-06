@@ -23455,12 +23455,14 @@ export type Database = {
       }
       valuation_results: {
         Row: {
+          beleihungswert: Json | null
           case_id: string
           charts: Json | null
           comp_postings: Json | null
           comp_stats: Json | null
           debt_service: Json | null
           financing: Json | null
+          gemini_research: Json | null
           id: string
           lien_proxy: Json | null
           location_analysis: Json | null
@@ -23470,12 +23472,14 @@ export type Database = {
           value_band: Json | null
         }
         Insert: {
+          beleihungswert?: Json | null
           case_id: string
           charts?: Json | null
           comp_postings?: Json | null
           comp_stats?: Json | null
           debt_service?: Json | null
           financing?: Json | null
+          gemini_research?: Json | null
           id?: string
           lien_proxy?: Json | null
           location_analysis?: Json | null
@@ -23485,12 +23489,14 @@ export type Database = {
           value_band?: Json | null
         }
         Update: {
+          beleihungswert?: Json | null
           case_id?: string
           charts?: Json | null
           comp_postings?: Json | null
           comp_stats?: Json | null
           debt_service?: Json | null
           financing?: Json | null
+          gemini_research?: Json | null
           id?: string
           lien_proxy?: Json | null
           location_analysis?: Json | null

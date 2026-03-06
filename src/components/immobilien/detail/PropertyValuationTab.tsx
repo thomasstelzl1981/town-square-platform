@@ -1,15 +1,15 @@
 /**
  * PropertyValuationTab — Bewertung tab extracted from PropertyDetailPage
  * R-15 sub-component
- * V6.1: Queries valuation_cases (SSOT) + PDF export button
+ * V6.2: Delete function + fallback state + try/catch resilience
  */
 import { useState, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, FileText, TrendingUp, Play, Database } from 'lucide-react';
+import { Loader2, FileText, TrendingUp, Play, Database, Trash2, RotateCcw, AlertTriangle } from 'lucide-react';
 import { useValuationCase } from '@/hooks/useValuationCase';
 import { toast } from 'sonner';
 import {
@@ -27,6 +27,8 @@ interface Props {
 
 export function PropertyValuationTab({ propertyId, tenantId }: Props) {
   const [showPipeline, setShowPipeline] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const { state, isLoading, runPreflight, runValuation, reset } = useValuationCase();
 
   // Fetch existing valuations from valuation_cases (SSOT table)
@@ -41,7 +43,6 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
         .order('created_at', { ascending: false });
       if (error) throw error;
 
-      // Fetch market values from valuation_results for completed cases
       if (data && data.length > 0) {
         const completedIds = data.filter(c => c.status === 'final').map(c => c.id);
         if (completedIds.length > 0) {
@@ -88,6 +89,25 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
   const handleReset = () => {
     reset();
     setShowPipeline(false);
+    queryClient.invalidateQueries({ queryKey: ['valuation-cases', propertyId, tenantId] });
+  };
+
+  const handleDeleteCase = async (caseId: string) => {
+    setDeletingId(caseId);
+    try {
+      // Child-first deletion order
+      await supabase.from('valuation_reports').delete().eq('case_id', caseId);
+      await supabase.from('valuation_results').delete().eq('case_id', caseId);
+      await supabase.from('valuation_inputs').delete().eq('case_id', caseId);
+      await supabase.from('valuation_cases').delete().eq('id', caseId);
+      toast.success('Bewertung gelöscht');
+      queryClient.invalidateQueries({ queryKey: ['valuation-cases', propertyId, tenantId] });
+    } catch (e) {
+      console.error('Delete error:', e);
+      toast.error('Löschen fehlgeschlagen');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleDownloadPdf = useCallback(async () => {
@@ -183,6 +203,25 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
         </div>
       );
     }
+
+    // Fallback: pipeline finished but no resultData (e.g. DB insert failed)
+    if (state.status !== 'idle') {
+      return (
+        <Card className="border-destructive/30">
+          <CardContent className="flex flex-col items-center py-12 text-center space-y-3">
+            <AlertTriangle className="h-8 w-8 text-destructive/60" />
+            <p className="text-sm font-medium">Bewertung konnte nicht geladen werden</p>
+            <p className="text-xs text-muted-foreground">
+              {state.error || 'Das Ergebnis wurde möglicherweise nicht korrekt gespeichert.'}
+            </p>
+            <Button size="sm" variant="outline" onClick={handleReset}>
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+              Erneut versuchen
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
   }
 
   // Default: List view
@@ -246,11 +285,24 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
                     {v.updated_at ? new Date(v.updated_at).toLocaleDateString('de-DE') : v.created_at ? new Date(v.created_at).toLocaleDateString('de-DE') : '–'}
                   </p>
                   <Badge variant={v.status === 'final' ? 'default' : 'outline'} className="text-[9px]">
-                    {v.status === 'final' ? 'Abgeschlossen' : v.status === 'running' ? 'Läuft...' : v.status}
+                    {v.status === 'final' ? 'Abgeschlossen' : v.status}
                   </Badge>
                 </div>
               </div>
               <p className="text-sm font-semibold shrink-0">{fmt(v.market_value)}</p>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+                onClick={() => handleDeleteCase(v.id)}
+                disabled={deletingId === v.id}
+              >
+                {deletingId === v.id ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+              </Button>
             </CardContent>
           </Card>
         ))
