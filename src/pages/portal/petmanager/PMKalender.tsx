@@ -23,15 +23,17 @@ import { isDemoId } from '@/engines/demoData';
 
 // ─── Phase colors ─────────────────────────────────────────
 const PHASE_BG: Record<string, string> = {
-  requested: 'bg-amber-500/20 border-amber-500/40 text-amber-700 dark:text-amber-300',
-  provider_confirmed: 'bg-primary/15 border-primary/30 text-primary',
-  deposit_pending: 'bg-blue-500/20 border-blue-500/40 text-blue-700 dark:text-blue-300',
+  search_initiated: 'bg-amber-500/20 border-amber-500/40 text-amber-700 dark:text-amber-300',
+  provider_selected: 'bg-amber-500/20 border-amber-500/40 text-amber-700 dark:text-amber-300',
+  deposit_requested: 'bg-blue-500/20 border-blue-500/40 text-blue-700 dark:text-blue-300',
   deposit_paid: 'bg-blue-600/20 border-blue-600/40 text-blue-700 dark:text-blue-300',
+  provider_confirmed: 'bg-primary/15 border-primary/30 text-primary',
+  provider_declined: 'bg-destructive/10 border-destructive/20 text-destructive',
   checked_in: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-700 dark:text-emerald-300',
+  checked_out: 'bg-teal-500/20 border-teal-500/40 text-teal-700 dark:text-teal-300',
+  settlement: 'bg-violet-500/20 border-violet-500/40 text-violet-700 dark:text-violet-300',
   closed_completed: 'bg-muted border-border text-muted-foreground',
   closed_cancelled: 'bg-destructive/10 border-destructive/20 text-destructive line-through',
-  closed_no_show: 'bg-destructive/10 border-destructive/20 text-destructive',
-  disputed: 'bg-red-500/20 border-red-500/40 text-red-700 dark:text-red-300',
 };
 
 const PHASE_DOT: Record<string, string> = {
