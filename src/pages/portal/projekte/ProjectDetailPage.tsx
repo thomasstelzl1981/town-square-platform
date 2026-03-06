@@ -84,6 +84,13 @@ export default function ProjectDetailPage() {
         <TabsContent value="location"><ProjectLocationTab project={project} /></TabsContent>
         <TabsContent value="units"><ProjectUnitsTable project={project} units={units} /></TabsContent>
         <TabsContent value="calculation"><ProjectAufteilerCalculation project={project} units={units} /></TabsContent>
+        <TabsContent value="valuation">
+          <ProjectValuationSection
+            projectId={project.id}
+            projectName={project.name || project.code}
+            address={project.address}
+          />
+        </TabsContent>
         <TabsContent value="pricing"><ProjectPricingBlock project={project} units={units} /></TabsContent>
         <TabsContent value="documents"><ProjectDocumentsBlock project={project} /></TabsContent>
         <TabsContent value="reservations"><ProjectReservationsBlock projectId={project.id} units={units} /></TabsContent>
