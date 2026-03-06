@@ -159,6 +159,9 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
           landRegisterVolume={formData.landRegisterVolume}
           parcelNumber={formData.parcelNumber}
           teNumber={formData.teNumber}
+          plotAreaSqm={formData.plotAreaSqm}
+          meaShare={formData.meaShare}
+          meaTotal={formData.meaTotal}
           purchaseDate={formData.purchaseDate}
           purchasePrice={formData.purchasePrice}
           marketValue={formData.marketValue}
