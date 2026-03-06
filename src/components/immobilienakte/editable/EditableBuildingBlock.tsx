@@ -22,6 +22,8 @@ interface EditableBuildingBlockProps {
   featuresTags?: string[];
   coreRenovated?: boolean;
   renovationYear?: number;
+  unitCountActual?: number;
+  propertyType?: string;
   onFieldChange: (field: string, value: any) => void;
 }
 
@@ -70,8 +72,11 @@ export function EditableBuildingBlock({
   featuresTags,
   coreRenovated,
   renovationYear,
+  unitCountActual,
+  propertyType,
   onFieldChange,
 }: EditableBuildingBlockProps) {
+  const isMfh = propertyType?.toLowerCase().includes('mfh') || propertyType?.toLowerCase().includes('mehrfamilienhaus');
   return (
     <Card>
       <CardHeader className="pb-2 pt-3 px-4">
@@ -126,8 +131,22 @@ export function EditableBuildingBlock({
           </div>
         </div>
 
-        {/* Kernsanierung — 2-col */}
-        <div className="grid grid-cols-2 gap-3 pt-1 border-t">
+        {/* Wohneinheiten (nur bei MFH) + Kernsanierung */}
+        <div className={`grid ${isMfh ? 'grid-cols-3' : 'grid-cols-2'} gap-3 pt-1 border-t`}>
+          {isMfh && (
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Wohneinheiten</Label>
+              <Input
+                type="number"
+                min="1"
+                max="999"
+                value={unitCountActual || ''}
+                onChange={(e) => onFieldChange('unitCountActual', e.target.value ? parseInt(e.target.value) : undefined)}
+                className="h-7 text-xs"
+                placeholder="z.B. 6"
+              />
+            </div>
+          )}
           <div className="flex items-center gap-2 pt-1">
             <Checkbox
               id="coreRenovated"

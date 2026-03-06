@@ -158,6 +158,8 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
           featuresTags={formData.featuresTags}
           coreRenovated={formData.coreRenovated}
           renovationYear={formData.renovationYear}
+          unitCountActual={formData.unitCountActual}
+          propertyType={formData.propertyType}
           onFieldChange={handleFieldChange}
         />
       </div>
