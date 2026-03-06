@@ -166,9 +166,8 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   }, []);
 
   const handleSelectFile = useCallback((item: FileManagerItem) => {
-    if (item.name) {
-      toast.info(`Datei: ${item.name}`);
-    }
+    // Single click = select + show info. Double click triggers download in ColumnView.
+    // No-op toast removed — ColumnView handles visual selection state internally.
   }, []);
 
   const invalidateAll = useCallback(() => {

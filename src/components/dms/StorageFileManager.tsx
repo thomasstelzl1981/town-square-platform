@@ -307,8 +307,9 @@ export function StorageFileManager({
           />
         )}
 
-        {/* Content */}
-        <div className="flex-1 min-h-0">
+        {/* Content — Drop zone scoped to content area only */}
+        <FileDropZone onDrop={onUploadFiles} disabled={isUploading} className="flex-1 min-h-0" targetFolderName={selectedNodeId ? (nodes.find(n => n.id === selectedNodeId)?.name || undefined) : undefined}>
+        <div className="h-full">
           {effectiveViewMode === 'list' && (
             <ListView
               items={items}
