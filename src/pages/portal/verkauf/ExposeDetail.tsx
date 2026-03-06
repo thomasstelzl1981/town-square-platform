@@ -16,7 +16,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { ArrowLeft, Save, Zap } from 'lucide-react';
+import { ArrowLeft, Save, Zap, Download } from 'lucide-react';
+import { usePdfTemplateExport } from '@/hooks/usePdfTemplateExport';
+import { generateSalesExpose, type SalesExposeData } from '@/lib/pdf/templates/salesExposeV1';
 import { PartnerReleaseDialog, ExposeImageGallery, ExposeLocationMap } from '@/components/verkauf';
 import { useViewTracking } from '@/hooks/useViewTracking';
 import { ExposeKeyFacts } from '@/components/verkauf/ExposeKeyFacts';
@@ -30,6 +32,7 @@ const ExposeDetail = () => {
   const { unitId } = useParams<{ unitId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isGenerating: isPdfGenerating, generate: generatePdf } = usePdfTemplateExport('SALES_EXPOSE_V1');
 
   const [formData, setFormData] = useState<ExposeFormData>({
     title: '', description: '', asking_price: '', commission_rate: [7]
@@ -227,6 +230,35 @@ const ExposeDetail = () => {
           <Badge variant={isActive ? 'default' : 'secondary'} className="text-sm">
             {listing?.status === 'draft' ? 'Entwurf' : listing?.status === 'active' ? 'Aktiv' : listing?.status === 'reserved' ? 'Reserviert' : listing?.status}
           </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (!property || !unit) return;
+              const exposeData: SalesExposeData = {
+                address: property.address || '',
+                postalCode: property.postal_code || '',
+                city: property.city || '',
+                objectType: property.property_type || 'Immobilie',
+                yearBuilt: property.year_built || 0,
+                livingAreaSqm: unit.area_sqm || property.total_area_sqm || 0,
+                askingPrice: askingPrice,
+                pricePerSqm,
+                isInvestment: grossYield > 0,
+                yieldGross: grossYield,
+                rentMonthly: unit.current_monthly_rent || 0,
+                rentYearly: annualRent,
+                titleText: formData.title || undefined,
+                descriptionText: formData.description || undefined,
+                highlights: [],
+              };
+              generatePdf(() => generateSalesExpose(exposeData));
+            }}
+            disabled={isPdfGenerating || !property}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {isPdfGenerating ? 'Generiert…' : 'PDF Export'}
+          </Button>
           <Button onClick={() => saveMutation.mutate()} disabled={!hasChanges || saveMutation.isPending}>
             <Save className="h-4 w-4 mr-2" />{saveMutation.isPending ? 'Speichert...' : 'Speichern'}
           </Button>

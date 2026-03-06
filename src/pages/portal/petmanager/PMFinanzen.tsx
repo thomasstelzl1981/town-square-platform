@@ -33,8 +33,8 @@ import { toast } from '@/hooks/use-toast';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getJsPDF } from '@/lib/lazyJspdf';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { generateInvoicePdf, type InvoiceData } from '@/lib/pdf/generateInvoicePdf';
 import { isDemoId } from '@/engines/demoData';
 
 type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
@@ -282,45 +282,22 @@ export default function PMFinanzen() {
       .eq('invoice_id', inv.id)
       .order('sort_order');
 
-    const jsPDF = await getJsPDF();
-    const doc = new jsPDF();
-    doc.setFontSize(20);
-    doc.text('Rechnung', 20, 25);
-    doc.setFontSize(10);
-    doc.text(`Rechnungsnr.: ${inv.invoice_number}`, 20, 35);
-    doc.text(`Datum: ${format(new Date(inv.created_at), 'dd.MM.yyyy', { locale: de })}`, 20, 41);
-    if (inv.due_date) doc.text(`Fällig: ${format(new Date(inv.due_date), 'dd.MM.yyyy', { locale: de })}`, 20, 47);
+    const invoiceData: InvoiceData = {
+      invoiceNumber: inv.invoice_number,
+      createdAt: format(new Date(inv.created_at), 'dd.MM.yyyy', { locale: de }),
+      dueDate: inv.due_date ? format(new Date(inv.due_date), 'dd.MM.yyyy', { locale: de }) : null,
+      netCents: inv.net_cents,
+      taxCents: inv.tax_cents,
+      amountCents: inv.amount_cents,
+      items: (items || []).map((item: any) => ({
+        description: item.description,
+        quantity: item.quantity,
+        unitPriceCents: item.unit_price_cents,
+        totalCents: item.total_cents,
+      })),
+    };
 
-    let y = 60;
-    doc.setFontSize(9);
-    doc.text('Pos.', 20, y); doc.text('Beschreibung', 35, y); doc.text('Menge', 130, y); doc.text('Einzelpreis', 150, y); doc.text('Gesamt', 180, y);
-    y += 5;
-    doc.line(20, y, 195, y);
-    y += 5;
-
-    (items || []).forEach((item: any, i: number) => {
-      doc.text(`${i + 1}`, 20, y);
-      doc.text(item.description.substring(0, 50), 35, y);
-      doc.text(`${item.quantity}`, 130, y);
-      doc.text(formatCents(item.unit_price_cents), 150, y);
-      doc.text(formatCents(item.total_cents), 180, y);
-      y += 6;
-    });
-
-    y += 5;
-    doc.line(140, y, 195, y); y += 6;
-    doc.text(`Netto: ${formatCents(inv.net_cents)}`, 150, y); y += 5;
-    doc.text(`USt. ${inv.tax_rate}%: ${formatCents(inv.tax_cents)}`, 150, y); y += 5;
-    doc.setFontSize(11);
-    doc.text(`Gesamt: ${formatCents(inv.amount_cents)}`, 150, y);
-
-    if (inv.notes) {
-      y += 15;
-      doc.setFontSize(9);
-      doc.text(`Anmerkungen: ${inv.notes}`, 20, y);
-    }
-
-    doc.save(`Rechnung_${inv.invoice_number}.pdf`);
+    await generateInvoicePdf(invoiceData);
   };
 
   // Revenue chart data (last 6 months)

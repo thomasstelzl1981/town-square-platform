@@ -1,20 +1,25 @@
 /**
  * FinanzberichtSection — Strukturierte Vermögensauskunft
  * Sektionen: Personen, Einnahmen/Ausgaben, Vermögen/Verbindlichkeiten, KPIs, Abonnements, Energieverträge, Chart, Verträge, PDF
+ * PDF-Export: CI-A Template via financeReportV1 + Consent Gate
  */
-import { useRef } from 'react';
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { PdfExportFooter } from '@/components/pdf';
+import { Button } from '@/components/ui/button';
 import { useFinanzberichtData, type ContractSummary, type SubscriptionsByCategory, type EnergyContract, type PropertyListItem, type LoanListItem } from '@/hooks/useFinanzberichtData';
 import type { DemoKVContract } from '@/engines/demoData/spec';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PdfConsentGateDialog } from '@/components/pdf/PdfConsentGateDialog';
+import { usePdfTemplateExport } from '@/hooks/usePdfTemplateExport';
+import { generateFinanceReport, type FinanceReportData } from '@/lib/pdf/templates/financeReportV1';
 import {
   Users, TrendingUp, TrendingDown, Wallet, Building2, Shield,
   FileText, ScrollText, CheckCircle2, XCircle, PiggyBank, Landmark,
-  CreditCard, HeartPulse, Zap, Repeat, Sun, Car, LineChart, Briefcase
+  CreditCard, HeartPulse, Zap, Repeat, Sun, Car, LineChart, Briefcase,
+  Download
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -97,12 +102,115 @@ function ContractTable({ contracts, emptyLabel }: { contracts: ContractSummary[]
   );
 }
 
+// ─── Data Mapper: useFinanzberichtData → FinanceReportData ───
+
+function mapToReportData(data: ReturnType<typeof useFinanzberichtData>, persons: any[]): FinanceReportData {
+  const { income, expenses, assets, liabilities } = data;
+  const personName = persons.length > 0
+    ? `${persons[0].first_name || ''} ${persons[0].last_name || ''}`.trim()
+    : 'Haushalt';
+
+  const incomeItems: FinanceReportData['incomeItems'] = [];
+  if (income.netIncomeTotal > 0) incomeItems.push({ label: 'Nettoeinkommen', monthly: income.netIncomeTotal });
+  if (income.selfEmployedIncome > 0) incomeItems.push({ label: 'Selbstständige Tätigkeit', monthly: income.selfEmployedIncome });
+  if (income.rentalIncomePortfolio > 0) incomeItems.push({ label: 'Vermietung & Verpachtung', monthly: income.rentalIncomePortfolio });
+  if (income.taxBenefitRental > 0) incomeItems.push({ label: 'Steuereffekt Kapitalanlage', monthly: income.taxBenefitRental });
+  if (income.pvIncome > 0) incomeItems.push({ label: 'Photovoltaik', monthly: income.pvIncome });
+  if (income.sideJobIncome > 0) incomeItems.push({ label: 'Nebentätigkeit', monthly: income.sideJobIncome });
+  if (income.childBenefit > 0) incomeItems.push({ label: 'Kindergeld', monthly: income.childBenefit });
+  if (income.otherIncome > 0) incomeItems.push({ label: 'Sonstige Einkünfte', monthly: income.otherIncome });
+
+  const expenseItems: FinanceReportData['expenseItems'] = [];
+  if (expenses.warmRent > 0) expenseItems.push({ label: 'Warmmiete', monthly: expenses.warmRent });
+  if (expenses.portfolioLoans > 0) expenseItems.push({ label: 'Immobiliendarlehen', monthly: expenses.portfolioLoans });
+  if (expenses.privateLoans > 0) expenseItems.push({ label: 'Private Darlehen', monthly: expenses.privateLoans });
+  if (expenses.pvLoans > 0) expenseItems.push({ label: 'PV-Darlehen', monthly: expenses.pvLoans });
+  if (expenses.healthInsurance > 0) expenseItems.push({ label: 'Krankenversicherung', monthly: expenses.healthInsurance });
+  if (expenses.insurancePremiums > 0) expenseItems.push({ label: 'Versicherungsprämien', monthly: expenses.insurancePremiums });
+  if (expenses.savingsContracts > 0) expenseItems.push({ label: 'Sparverträge', monthly: expenses.savingsContracts });
+  if (expenses.investmentContracts > 0) expenseItems.push({ label: 'Investment-Sparpläne', monthly: expenses.investmentContracts });
+  if (expenses.subscriptions > 0) expenseItems.push({ label: 'Abonnements', monthly: expenses.subscriptions });
+  if (expenses.alimony > 0) expenseItems.push({ label: 'Unterhalt', monthly: expenses.alimony });
+  if (expenses.livingExpenses > 0) expenseItems.push({ label: 'Lebenshaltung', monthly: expenses.livingExpenses });
+
+  const assetItems: FinanceReportData['assetItems'] = [];
+  if (assets.propertyValue > 0) assetItems.push({ label: 'Immobilienportfolio', value: assets.propertyValue });
+  if (assets.homeValue > 0) assetItems.push({ label: 'Eigengenutzte Immobilie', value: assets.homeValue });
+  if (assets.depotValue > 0) assetItems.push({ label: 'Investment-Depots', value: assets.depotValue });
+  if (assets.vorsorgeBalance > 0) assetItems.push({ label: 'Vorsorge-Guthaben', value: assets.vorsorgeBalance });
+  if (assets.vehicleValue > 0) assetItems.push({ label: 'Fahrzeuge', value: assets.vehicleValue });
+  if (assets.bankSavings > 0) assetItems.push({ label: 'Bank- & Sparguthaben', value: assets.bankSavings });
+  if (assets.securities > 0) assetItems.push({ label: 'Wertpapiere', value: assets.securities });
+  if (assets.surrenderValues > 0) assetItems.push({ label: 'Rückkaufswerte (LV)', value: assets.surrenderValues });
+
+  const liabilityItems: FinanceReportData['liabilityItems'] = [];
+  if (liabilities.portfolioDebt > 0) liabilityItems.push({ label: 'Portfolio-Darlehen', value: liabilities.portfolioDebt });
+  if (liabilities.homeDebt > 0) liabilityItems.push({ label: 'Zuhause-Darlehen', value: liabilities.homeDebt });
+  if (liabilities.pvDebt > 0) liabilityItems.push({ label: 'PV-Darlehen', value: liabilities.pvDebt });
+  if (liabilities.otherDebt > 0) liabilityItems.push({ label: 'Sonstige Verbindlichkeiten', value: liabilities.otherDebt });
+
+  return {
+    personName,
+    reportDate: new Date().toLocaleDateString('de-DE'),
+    netWorth: data.netWealth,
+    monthlyOverflow: income.totalIncome - expenses.totalExpenses,
+    liquidityRatio: data.liquidityPercent,
+    debtRatio: assets.totalAssets > 0 ? (liabilities.totalLiabilities / assets.totalAssets) * 100 : 0,
+    incomeItems,
+    expenseItems,
+    assetItems,
+    liabilityItems,
+    properties: data.propertyList.slice(0, 10).map(p => ({
+      address: p.label,
+      type: p.type,
+      value: p.marketValue,
+      rent: 0,
+      status: p.city || '',
+    })),
+    loans: data.loanList.slice(0, 10).map(l => ({
+      lender: l.bank,
+      balance: l.remainingBalance,
+      rate: l.monthlyRate,
+      interest: l.interestRate,
+      endDate: '',
+    })),
+    contracts: data.subscriptionsByCategory.flatMap(cat =>
+      cat.items.map(item => ({ name: item.merchant, category: cat.label, monthly: item.amount }))
+    ),
+    vorsorge: data.vorsorgeContracts.map(v => ({
+      type: v.type,
+      provider: v.provider,
+      value: v.monthlyAmount * 12,
+      status: 'Aktiv',
+    })),
+  };
+}
+
 // ─── Main Component ──────────────────────────────────────────
 
 export function FinanzberichtSection() {
-  const contentRef = useRef<HTMLDivElement>(null);
+  const [consentDialogOpen, setConsentDialogOpen] = useState(false);
+  const [consentsGranted, setConsentsGranted] = useState<Record<string, boolean>>({
+    'finance:read': true, // assumed granted if user can see this page
+    'consent:finance_report': false,
+  });
   const data = useFinanzberichtData();
   const { persons } = useFinanzanalyseData();
+  const { isGenerating, generate } = usePdfTemplateExport('FIN_REPORT_V1');
+
+  const handleExportClick = () => {
+    setConsentDialogOpen(true);
+  };
+
+  const handleGrantConsent = (scope: string) => {
+    setConsentsGranted(prev => ({ ...prev, [scope]: true }));
+  };
+
+  const handleConfirmExport = () => {
+    const reportData = mapToReportData(data, persons);
+    generate(() => generateFinanceReport(reportData));
+    setConsentDialogOpen(false);
+  };
 
   if (data.isLoading) {
     return <Skeleton className="h-96 w-full" />;
@@ -113,17 +221,36 @@ export function FinanzberichtSection() {
   return (
     <div className="space-y-6 mt-10">
       <Separator />
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-          <FileText className="h-5 w-5 text-primary" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <FileText className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold">Finanzbericht</h2>
+            <p className="text-sm text-muted-foreground">Strukturierte Vermögensauskunft</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-bold">Finanzbericht</h2>
-          <p className="text-sm text-muted-foreground">Strukturierte Vermögensauskunft</p>
-        </div>
+        <Button variant="outline" size="sm" onClick={handleExportClick} disabled={isGenerating}>
+          <Download className="h-4 w-4 mr-2" />
+          {isGenerating ? 'Generiert…' : 'PDF Export'}
+        </Button>
       </div>
 
-      <div ref={contentRef} className="space-y-8">
+      <PdfConsentGateDialog
+        open={consentDialogOpen}
+        onOpenChange={setConsentDialogOpen}
+        templateLabel="Finanzreport"
+        scopeChecks={[
+          { scope: 'finance:read', label: 'Rolle: Finanzdaten lesen', granted: consentsGranted['finance:read'] },
+          { scope: 'consent:finance_report', label: 'Consent: Finanzreport-Export', granted: consentsGranted['consent:finance_report'] },
+        ]}
+        onConfirm={handleConfirmExport}
+        onGrantConsent={handleGrantConsent}
+        isGenerating={isGenerating}
+      />
+
+      <div className="space-y-8">
         {/* ═══ SEKTION 1: Personen ═══ */}
         <Card className="glass-card">
           <CardContent className="p-6">
@@ -570,13 +697,7 @@ export function FinanzberichtSection() {
           </CardContent>
         </Card>
 
-        {/* ═══ SEKTION 9: PDF-Export ═══ */}
-        <PdfExportFooter
-          contentRef={contentRef}
-          documentTitle={`Vermögensauskunft ${new Date().toLocaleDateString('de-DE')}`}
-          moduleName="Finanzanalyse"
-          subtitle="Strukturierter Gesamtbericht"
-        />
+        {/* PDF Export moved to header button + consent gate dialog */}
       </div>
     </div>
   );

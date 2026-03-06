@@ -16,7 +16,9 @@ import { Button } from '@/components/ui/button';
 import { FileUploader } from '@/components/shared';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
-import { Loader2, Upload, Download, Landmark } from 'lucide-react';
+import { Loader2, Upload, Download, Landmark, FileText } from 'lucide-react';
+import { usePdfTemplateExport } from '@/hooks/usePdfTemplateExport';
+import { generatePortfolioDossier, type PortfolioDossierData } from '@/lib/pdf/templates/portfolioDossierV1';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { ExcelImportDialog } from '@/components/portfolio/ExcelImportDialog';
@@ -39,6 +41,9 @@ export function PortfolioTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { activeOrganization, activeTenantId } = useAuth();
   const queryClient = useQueryClient();
+
+  // ── PDF Export ──
+  const { isGenerating: isPdfGenerating, generate: generatePdf } = usePdfTemplateExport('PORTFOLIO_DOSSIER_V1');
 
   // ── State ──
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -221,6 +226,40 @@ export function PortfolioTab() {
   const selectedContext = contexts.find(c => c.id === selectedContextId);
 
   // ── Handlers ──
+  const handlePortfolioPdfExport = useCallback(() => {
+    if (!totals || !displayUnits.length) return;
+    const ownerName = activeOrganization?.name || 'Portfolio';
+    const dossierData: PortfolioDossierData = {
+      ownerName,
+      reportDate: new Date().toLocaleDateString('de-DE'),
+      totalValue: totals.totalValue,
+      totalRentYearly: totals.totalIncome,
+      vacancyRate: 0,
+      avgYield: totals.avgYield,
+      totalDebt: totals.totalDebt,
+      totalAnnuity: totals.totalAnnuity,
+      properties: displayUnits.slice(0, 20).map(u => ({
+        address: `${u.address || ''}, ${u.city || ''}`.trim(),
+        type: u.property_type || '',
+        value: u.market_value || 0,
+        units: 1,
+        rentMonthly: (u.annual_net_cold_rent || 0) / 12,
+        yieldGross: u.market_value ? ((u.annual_net_cold_rent || 0) / u.market_value) * 100 : 0,
+        vacancy: 0,
+        status: 'Aktiv',
+      })),
+      loans: (loansData || []).slice(0, 20).map(l => ({
+        property: displayUnits.find(u => u.property_id === l.property_id)?.address || '',
+        lender: '',
+        balance: l.outstanding_balance_eur || 0,
+        rate: (l.annuity_monthly_eur || 0),
+        fixedUntil: '',
+      })),
+      riskFlags: [],
+    };
+    generatePdf(() => generatePortfolioDossier(dossierData));
+  }, [totals, displayUnits, activeOrganization, loansData, generatePdf]);
+
   const handleContextSelect = useCallback((id: string | null) => {
     const p = new URLSearchParams(searchParams);
     id ? p.set('context', id) : p.delete('context');
@@ -252,7 +291,12 @@ export function PortfolioTab() {
   // ── Render ──
   return (
     <PageShell>
-      <ModulePageHeader title="Portfolio" description="Übersicht und Verwaltung deiner Immobilien und Einheiten" />
+      <ModulePageHeader title="Portfolio" description="Übersicht und Verwaltung deiner Immobilien und Einheiten" actions={
+        <Button variant="outline" size="sm" onClick={handlePortfolioPdfExport} disabled={isPdfGenerating || !hasData}>
+          <FileText className="h-4 w-4 mr-2" />
+          {isPdfGenerating ? 'Generiert…' : 'Portfolio PDF'}
+        </Button>
+      } />
 
       <CreateContextDialog open={showCreateContextDialog || !!editContext} onOpenChange={(open) => { if (!open) { setShowCreateContextDialog(false); setEditContext(null); } }} editContext={editContext} />
       {assignContextId && <PropertyContextAssigner open={!!assignContextId} onOpenChange={(open) => { if (!open) setAssignContextId(null); }} contextId={assignContextId} contextName={assignContextName} />}
