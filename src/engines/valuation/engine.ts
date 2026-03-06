@@ -357,11 +357,16 @@ export function deriveErtragswertParams(
   const area = snapshot.livingAreaSqm || snapshot.usableAreaSqm || 0;
   const yearBuilt = snapshot.yearBuilt || 1980;
   const age = new Date().getFullYear() - yearBuilt;
+  const objectType = snapshot.objectType || 'other';
   
-  const restnutzungsdauer = assumptions.restnutzungsdauer || Math.max(10, 80 - age);
-  const liegenschaftszins = assumptions.liegenschaftszins || 0.05;
-  const bodenwertPerSqm = assumptions.bodenwertPerSqm || 150;
-  const plotArea = snapshot.plotAreaSqm || area * 0.5;
+  const gnd = GESAMTNUTZUNGSDAUER_BY_TYPE[objectType] || 70;
+  const restnutzungsdauer = assumptions.restnutzungsdauer || Math.max(10, gnd - age);
+  const liegenschaftszins = assumptions.liegenschaftszins || LIEGENSCHAFTSZINS_BY_TYPE[objectType] || 0.045;
+  
+  // Bodenwert: use actual plot area or heuristic
+  const plotHeuristic = PLOT_AREA_HEURISTIC_BY_TYPE[objectType] || 1.0;
+  const plotArea = snapshot.plotAreaSqm || (area * plotHeuristic);
+  const bodenwertPerSqm = assumptions.bodenwertPerSqm || BODENRICHTWERT_FLOOR;
 
   return {
     netColdRentYearly: rent * 12,
