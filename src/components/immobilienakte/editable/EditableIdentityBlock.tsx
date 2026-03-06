@@ -60,6 +60,7 @@ export function EditableIdentityBlock({
   reportingRegime,
   buildYear,
   wegFlag,
+  unitCountActual,
   street,
   houseNumber,
   postalCode,
@@ -67,6 +68,7 @@ export function EditableIdentityBlock({
   unitNumber,
   onFieldChange,
 }: EditableIdentityBlockProps) {
+  const isMfh = propertyType?.toLowerCase().includes('mfh') || propertyType?.toLowerCase().includes('mehrfamilienhaus');
   return (
     <Card>
       <CardHeader className="pb-2 pt-3 px-4">
