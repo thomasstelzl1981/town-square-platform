@@ -1,6 +1,6 @@
 /**
- * Analysis Tab — Bestand + Aufteiler nebeneinander, GeoMap + KI darunter
- * V2: Tabs aufgelöst, Side-by-Side-Layout gemäß Konsolidierungsplan
+ * Analysis Tab — Bestand + Aufteiler nebeneinander, KI darunter
+ * V3: GeoMap/Sprengnetter entfernt, SoT Valuation Engine wird in Phase 5 integriert
  */
 import * as React from 'react';
 import { DesktopOnly } from '@/components/shared/DesktopOnly';
