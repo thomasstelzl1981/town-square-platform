@@ -74,6 +74,24 @@ export function CoreDataBlock({
           </div>
         )}
 
+        {(coreRenovated || renovationYear) && (
+          <div className="pt-2 border-t space-y-1">
+            {coreRenovated && (
+              <div className="flex items-center gap-2">
+                <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                <Badge variant="secondary" className="text-xs">Kernsaniert</Badge>
+                {renovationYear && <span className="text-muted-foreground">({renovationYear})</span>}
+              </div>
+            )}
+            {!coreRenovated && renovationYear && (
+              <div className="flex items-center gap-2">
+                <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>Sanierung {renovationYear}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {energyCertificateValue && (
           <div className="pt-2 border-t">
             <div className="flex justify-between">
