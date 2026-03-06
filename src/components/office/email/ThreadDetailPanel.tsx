@@ -161,6 +161,7 @@ function ThreadMessage({
         <div className="p-4">
           <div className="flex items-center gap-1 mb-3">
             <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onReply(email)}><Reply className="h-3 w-3 mr-1" /> Antworten</Button>
+            <SendToObjekteingangButton email={email} variant="full" />
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onToggleStar(email.id, email.is_starred)}>
               <Star className={cn("h-3 w-3", email.is_starred && "text-yellow-500 fill-yellow-500")} />
             </Button>
