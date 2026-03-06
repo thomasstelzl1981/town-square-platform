@@ -385,10 +385,10 @@ export function ValuationReportReader({
               {ertragParams.plot_area_sqm && <DataRow label="Grundstücksfläche" value={`${fmtNum(Number(ertragParams.plot_area_sqm), 0)} m²`} />}
               {geminiResearch?.bodenrichtwert ? (
                 <>
-                  <DataRow label="Bodenrichtwert" value={`${fmtNum(geminiResearch.bodenrichtwert.bodenrichtwertEurSqm ?? geminiResearch.bodenrichtwert.bodenrichtwert_eur_sqm)} €/m²`} />
+                  <DataRow label="Bodenrichtwert" value={`${fmtNum(geminiResearch.bodenrichtwert.bodenrichtwertEurSqm)} €/m²`} />
                   <DataRow label="Quelle" value={geminiResearch.bodenrichtwert.quelle} muted />
-                  {geminiResearch.bodenrichtwert.artDerNutzung || geminiResearch.bodenrichtwert.art_der_nutzung ? (
-                    <DataRow label="Nutzungsart" value={String(geminiResearch.bodenrichtwert.artDerNutzung ?? geminiResearch.bodenrichtwert.art_der_nutzung)} muted />
+                  {geminiResearch.bodenrichtwert.artDerNutzung ? (
+                    <DataRow label="Nutzungsart" value={geminiResearch.bodenrichtwert.artDerNutzung} muted />
                   ) : null}
                 </>
               ) : (
