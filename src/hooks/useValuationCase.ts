@@ -378,16 +378,52 @@ export function useValuationCase() {
             beleihungswert: bw.beleihungswert ?? 0,
             beleihungswertQuote: bw.beleihungswert_quote ?? bw.beleihungswertQuote ?? 0,
             sicherheitsabschlag: bw.sicherheitsabschlag ?? 0.10,
+            bwkBelwertv: bw.bwk_belwertv ?? bw.bwkBelwertv ?? 0,
+            reinertagBelwertv: bw.reinertrag_belwertv ?? bw.reinertagBelwertv ?? 0,
+            barwertfaktorBelwertv: bw.barwertfaktor_belwertv ?? bw.barwertfaktorBelwertv ?? 0,
           };
         })(),
         // V9.0: Gemini Research
         geminiResearch: (() => {
           const gr = results.gemini_research ?? runSummary?.gemini_research;
           if (!gr) return null;
+          // Map snake_case sub-objects to camelCase for UI consumption
+          const mapLZ = (raw: any) => {
+            if (!raw) return null;
+            return {
+              marktwertZins: raw.marktwert_zins ?? raw.marktwertZins ?? null,
+              beleihungswertZins: raw.beleihungswert_zins ?? raw.beleihungswertZins ?? 0.05,
+              min: raw.min ?? null,
+              max: raw.max ?? null,
+              quelle: raw.quelle ?? '',
+              stichtag: raw.stichtag ?? null,
+              begruendung: raw.begruendung ?? null,
+            };
+          };
+          const mapBRW = (raw: any) => {
+            if (!raw) return null;
+            return {
+              bodenrichtwertEurSqm: raw.bodenrichtwert_eur_sqm ?? raw.bodenrichtwertEurSqm ?? 0,
+              artDerNutzung: raw.art_der_nutzung ?? raw.artDerNutzung ?? null,
+              quelle: raw.quelle ?? '',
+              stichtag: raw.stichtag ?? null,
+              begruendung: raw.begruendung ?? null,
+            };
+          };
+          const mapVM = (raw: any) => {
+            if (!raw) return null;
+            return {
+              mieteMin: raw.miete_min ?? raw.mieteMin ?? 0,
+              mieteMedian: raw.miete_median ?? raw.mieteMedian ?? 0,
+              mieteMax: raw.miete_max ?? raw.mieteMax ?? 0,
+              quelle: raw.quelle ?? '',
+              begruendung: raw.begruendung ?? null,
+            };
+          };
           return {
-            liegenschaftszins: gr.liegenschaftszins ?? null,
-            bodenrichtwert: gr.bodenrichtwert ?? null,
-            vergleichsmieten: gr.vergleichsmieten ?? null,
+            liegenschaftszins: mapLZ(gr.liegenschaftszins),
+            bodenrichtwert: mapBRW(gr.bodenrichtwert),
+            vergleichsmieten: mapVM(gr.vergleichsmieten),
             researchedAt: gr.researched_at ?? gr.researchedAt ?? null,
           };
         })(),

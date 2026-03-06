@@ -154,10 +154,10 @@ export function ValuationReportReader({
 }: Props) {
   if (!valueBand) return null;
 
-  const ertragParams = getMethodParams(methods, 'ertrag');
+  const ertragParams = getMethodParams(methods, 'ertragswert');
   const sachwertParams = getMethodParams(methods, 'sachwert_proxy');
   const compValue = getMethodValue(methods, 'comp_proxy');
-  const ertragValue = getMethodValue(methods, 'ertrag');
+  const ertragValue = getMethodValue(methods, 'ertragswert');
   const sachwertValue = getMethodValue(methods, 'sachwert_proxy');
 
   return (
@@ -382,17 +382,20 @@ export function ValuationReportReader({
             {/* Bodenwert */}
             <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Bodenwert</p>
-              {ertragParams.plotAreaSqm && <DataRow label="Grundstücksfläche" value={`${fmtNum(Number(ertragParams.plotAreaSqm), 0)} m²`} />}
+              {ertragParams.plot_area_sqm && <DataRow label="Grundstücksfläche" value={`${fmtNum(Number(ertragParams.plot_area_sqm), 0)} m²`} />}
               {geminiResearch?.bodenrichtwert ? (
                 <>
                   <DataRow label="Bodenrichtwert" value={`${fmtNum(geminiResearch.bodenrichtwert.bodenrichtwertEurSqm)} €/m²`} />
                   <DataRow label="Quelle" value={geminiResearch.bodenrichtwert.quelle} muted />
+                  {geminiResearch.bodenrichtwert.artDerNutzung ? (
+                    <DataRow label="Nutzungsart" value={geminiResearch.bodenrichtwert.artDerNutzung} muted />
+                  ) : null}
                 </>
               ) : (
-                <DataRow label="Bodenrichtwert" value={ertragParams.bodenwertProxy ? `${fmtEur(Number(ertragParams.bodenwertProxy))} (Proxy)` : '–'} />
+                <DataRow label="Bodenrichtwert" value={ertragParams.bodenrichtwert_eur_sqm ? `${fmtNum(Number(ertragParams.bodenrichtwert_eur_sqm))} €/m²` : '–'} />
               )}
               <SectionDivider />
-              <DataRow label="BODENWERT" value={fmtEur(Number(ertragParams.bodenwertProxy) || 0)} bold />
+              <DataRow label="BODENWERT" value={fmtEur(Number(ertragParams.bodenwert) || 0)} bold />
             </div>
 
             {/* RND */}
@@ -400,9 +403,9 @@ export function ValuationReportReader({
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Restnutzungsdauer</p>
               {ertragParams.gesamtnutzungsdauer && <DataRow label="Gesamtnutzungsdauer" value={`${ertragParams.gesamtnutzungsdauer} Jahre`} />}
               {ertragParams.alter && <DataRow label="Alter" value={`${ertragParams.alter} Jahre`} />}
-              {ertragParams.modernisierungsbonus && <DataRow label="Modernisierungsbonus" value={`+${ertragParams.modernisierungsbonus} Jahre`} />}
+              {Number(ertragParams.modernisierungsbonus) > 0 && <DataRow label="Modernisierungsbonus" value={`+${ertragParams.modernisierungsbonus} Jahre`} />}
               <SectionDivider />
-              <DataRow label="RESTNUTZUNGSDAUER" value={`${ertragParams.restnutzungsdauer || ertragParams.rnd || '–'} Jahre`} bold />
+              <DataRow label="RESTNUTZUNGSDAUER" value={`${ertragParams.restnutzungsdauer || '–'} Jahre`} bold />
             </div>
           </div>
         </CardContent>
@@ -418,27 +421,30 @@ export function ValuationReportReader({
 
             <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Rohertrag</p>
-              <DataRow label="Jahresmiete (Ist)" value={fmtEur2(Number(ertragParams.netColdRentYearly) || 0)} />
+              <DataRow label="Jahresmiete (Ist)" value={fmtEur2(Number(ertragParams.annual_rent) || 0)} />
             </div>
 
             <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Bewirtschaftungskosten (BWK)</p>
               {ertragParams.verwaltung && <DataRow label="Verwaltung" value={fmtEur2(Number(ertragParams.verwaltung))} />}
               {ertragParams.instandhaltung && <DataRow label="Instandhaltung" value={fmtEur2(Number(ertragParams.instandhaltung))} />}
-              {ertragParams.mietausfallwagnis && <DataRow label="Mietausfallwagnis" value={fmtEur2(Number(ertragParams.mietausfallwagnis))} />}
+              {ertragParams.mietausfall && <DataRow label="Mietausfallwagnis" value={fmtEur2(Number(ertragParams.mietausfall))} />}
               {ertragParams.nichtUmlagefaehig && <DataRow label="Modernisierungsrisiko" value={fmtEur2(Number(ertragParams.nichtUmlagefaehig))} />}
               <SectionDivider />
-              <DataRow label="BWK Gesamt" value={fmtEur2(Number(ertragParams.bewirtschaftungAbzug) || 0)} bold />
+              <DataRow label="BWK Gesamt" value={`${fmtEur2(Number(ertragParams.bewirtschaftung_abzug) || 0)} (${fmtPct(Number(ertragParams.bewirtschaftung_rate) || 0)})`} bold />
             </div>
 
             <div className="space-y-1 p-4 rounded-xl border bg-primary/5">
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Ertragsableitung</p>
               <DataRow label="Reinertrag" value={fmtEur2(Number(ertragParams.reinertrag) || 0)} />
-              <DataRow label="Liegenschaftszins" value={fmtPct(Number(ertragParams.liegenschaftszins) || 0)} />
-              {geminiResearch?.liegenschaftszins && (
-                <DataRow label="Quelle Liegenschaftszins" value={geminiResearch.liegenschaftszins.quelle} muted />
+              <DataRow label="Liegenschaftszins" value={fmtPct(Number(ertragParams.cap_rate) || 0)} />
+              {ertragParams.cap_rate_source && (
+                <DataRow label="Quelle Liegenschaftszins" value={String(ertragParams.cap_rate_source)} muted />
               )}
-              <DataRow label="Restnutzungsdauer" value={`${ertragParams.restnutzungsdauer || ertragParams.rnd || '–'} Jahre`} />
+              {geminiResearch?.liegenschaftszins && (
+                <DataRow label="Quelle (Gemini)" value={geminiResearch.liegenschaftszins.quelle ?? String(geminiResearch.liegenschaftszins.quelle || '')} muted />
+              )}
+              <DataRow label="Restnutzungsdauer" value={`${ertragParams.restnutzungsdauer || '–'} Jahre`} />
               <DataRow label="Barwertfaktor" value={fmtNum(Number(ertragParams.barwertfaktor))} />
               <SectionDivider />
               <DataRow label="ERTRAGSWERT (MWT)" value={fmtEur(ertragValue)} bold />
@@ -461,7 +467,9 @@ export function ValuationReportReader({
 
             <div className="space-y-1 p-4 rounded-xl border bg-emerald-500/5">
               <DataRow label="Liegenschaftszins (BelWertV §12)" value="5,0 %" />
-              <DataRow label="BWK (konservativ)" value={fmtEur2(beleihungswert.bwkBelwertv || 0)} />
+              <DataRow label="BWK (konservativ)" value={fmtEur2((beleihungswert as any).bwkBelwertv ?? (beleihungswert as any).bwk_belwertv ?? 0)} />
+              <DataRow label="Reinertrag (BelWertV)" value={fmtEur2((beleihungswert as any).reinertagBelwertv ?? (beleihungswert as any).reinertrag_belwertv ?? 0)} />
+              <DataRow label="Barwertfaktor (BelWertV)" value={fmtNum((beleihungswert as any).barwertfaktorBelwertv ?? (beleihungswert as any).barwertfaktor_belwertv ?? 0)} />
               <DataRow label="Sicherheitsabschlag" value={fmtPct(beleihungswert.sicherheitsabschlag)} />
               <SectionDivider />
               <DataRow label="ERTRAGSWERT (BWT)" value={fmtEur(beleihungswert.ertragswertBelwertv)} bold />
@@ -486,9 +494,11 @@ export function ValuationReportReader({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Marktwert</p>
-                {sachwertParams.nhkPerSqm && <DataRow label="NHK 2010" value={`${fmtNum(Number(sachwertParams.nhkPerSqm), 0)} €/m²`} />}
-                {sachwertParams.bpiFactor && <DataRow label="BPI-Index" value={fmtNum(Number(sachwertParams.bpiFactor))} />}
-                {sachwertParams.zeitwertGebaeude && <DataRow label="Zeitwert Gebäude" value={fmtEur(Number(sachwertParams.zeitwertGebaeude))} />}
+                <DataRow label="NHK 2010" value={`${fmtNum(Number(sachwertParams.base_cost_sqm) || 0, 0)} €/m²`} />
+                <DataRow label="BPI-Index" value="1,38" />
+                <DataRow label="Alterswertminderung" value={fmtPct(Number(sachwertParams.depreciation) || 0)} />
+                {sachwertParams.gebaeude_sachwert && <DataRow label="Zeitwert Gebäude" value={fmtEur(Number(sachwertParams.gebaeude_sachwert))} />}
+                {sachwertParams.marktanpassung && <DataRow label="Marktanpassung" value={fmtNum(Number(sachwertParams.marktanpassung))} />}
                 <SectionDivider />
                 <DataRow label="SACHWERT (MWT)" value={fmtEur(sachwertValue)} bold />
               </div>
@@ -590,6 +600,7 @@ export function ValuationReportReader({
                   <DataRow label="Spanne" value={`${fmtPct(geminiResearch.liegenschaftszins.min)} – ${fmtPct(geminiResearch.liegenschaftszins.max)}`} />
                   <DataRow label="BelWertV (fest)" value="5,0 %" muted />
                   <DataRow label="Quelle" value={geminiResearch.liegenschaftszins.quelle} muted />
+                  {geminiResearch.liegenschaftszins.begruendung && <DataRow label="Begründung" value={String(geminiResearch.liegenschaftszins.begruendung)} muted />}
                 </div>
               )}
 
@@ -598,8 +609,9 @@ export function ValuationReportReader({
                 <div className="p-4 rounded-xl border bg-muted/10 space-y-1">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Bodenrichtwert</p>
                   <DataRow label="Richtwert" value={`${fmtNum(geminiResearch.bodenrichtwert.bodenrichtwertEurSqm)} €/m²`} />
-                  <DataRow label="Nutzungsart" value={geminiResearch.bodenrichtwert.artDerNutzung} />
+                  <DataRow label="Nutzungsart" value={geminiResearch.bodenrichtwert.artDerNutzung || '–'} />
                   <DataRow label="Quelle" value={geminiResearch.bodenrichtwert.quelle} muted />
+                  {geminiResearch.bodenrichtwert.begruendung && <DataRow label="Begründung" value={String(geminiResearch.bodenrichtwert.begruendung)} muted />}
                 </div>
               )}
 
@@ -611,6 +623,7 @@ export function ValuationReportReader({
                   <DataRow label="Median" value={`${fmtNum(geminiResearch.vergleichsmieten.mieteMedian)} €/m²`} />
                   <DataRow label="Max" value={`${fmtNum(geminiResearch.vergleichsmieten.mieteMax)} €/m²`} />
                   <DataRow label="Quelle" value={geminiResearch.vergleichsmieten.quelle} muted />
+                  {(geminiResearch.vergleichsmieten as any).begruendung && <DataRow label="Begründung" value={String((geminiResearch.vergleichsmieten as any).begruendung)} muted />}
                 </div>
               )}
             </div>
@@ -685,7 +698,7 @@ export function ValuationReportReader({
                 <span className="text-right font-semibold w-28">{fmtEur(m.value)}</span>
                 {beleihungswert && (
                   <span className="text-right text-muted-foreground w-28">
-                    {m.method === 'ertrag' ? fmtEur(beleihungswert.ertragswertBelwertv) :
+                    {m.method === 'ertragswert' ? fmtEur(beleihungswert.ertragswertBelwertv) :
                      m.method === 'sachwert_proxy' ? fmtEur(beleihungswert.sachwertBelwertv) : '–'}
                   </span>
                 )}

@@ -173,7 +173,7 @@ export type ValuationStageId = 0 | 1 | 2 | 3 | 4 | 5;
 
 export type ValuationStageStatus = 'queued' | 'running' | 'done' | 'warn' | 'fail' | 'needs_info';
 
-export type ValuationMethodType = 'ertrag' | 'comp_proxy' | 'sachwert_proxy';
+export type ValuationMethodType = 'ertrag' | 'ertragswert' | 'comp_proxy' | 'sachwert_proxy';
 
 export type TrafficLight = 'green' | 'yellow' | 'red';
 
@@ -240,6 +240,7 @@ export interface GeminiLiegenschaftszinsResult {
   stichtag: string;
   min: number;
   max: number;
+  begruendung?: string | null;
   confidence: ConfidenceLevel;
 }
 
@@ -249,6 +250,7 @@ export interface GeminiBodenrichtwertResult {
   stichtag: string;
   quelle: string;
   artDerNutzung: string;
+  begruendung?: string | null;
   confidence: ConfidenceLevel;
 }
 
@@ -258,6 +260,7 @@ export interface GeminiVergleichsmietenResult {
   mieteMedian: number;
   mieteMax: number;
   quelle: string;
+  begruendung?: string | null;
   confidence: ConfidenceLevel;
 }
 

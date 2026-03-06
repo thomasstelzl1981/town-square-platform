@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -951,11 +951,16 @@ Deno.serve(async (req) => {
               cap_rate: liegenschaftszinsMWT,
               cap_rate_source: liegenschaftszinsSource,
               restnutzungsdauer: rnd,
+              gesamtnutzungsdauer: gnd,
+              alter: sachAge,
+              modernisierungsbonus: 0,
               barwertfaktor: Math.round(bwf * 100) / 100,
               bodenertrag: Math.round(bodenertrag),
               ertragswert_gebaeude: ertragswertGebaeude,
               bodenwert,
               bodenwert_source: bodenrichtwertSource,
+              plot_area_sqm: plotAreaSqm,
+              bodenrichtwert_eur_sqm: bodenrichtwert,
               gross_yield: askingPrice > 0 ? Math.round((annualRent / askingPrice) * 10000) / 100 : null,
             },
           };
@@ -1069,12 +1074,24 @@ Deno.serve(async (req) => {
         const beleihungswertFinal = beleihungswert === Infinity ? Math.round(valueBand.p50 * 0.80) : beleihungswert;
         const beleihungswertQuote = valueBand.p50 > 0 ? Math.round((beleihungswertFinal / valueBand.p50) * 100) / 100 : 0;
 
+        // Compute BelWertV details for display
+        const bwkBelwertvValue = netRent > 0 ? (() => {
+          const ar = netRent * 12;
+          const bew = CALC.BEWIRTSCHAFTUNG_BELWERTV;
+          return Math.round(ar * bew.verwaltungPercent + livingArea * bew.instandhaltungPerSqmYear + ar * bew.mietausfallPercent + ar * bew.nichtUmlagefaehigPercent);
+        })() : 0;
+        const reinertagBelwertvValue = netRent > 0 ? Math.round(netRent * 12 - bwkBelwertvValue) : 0;
+        const bwfBelwertvValue = barwertfaktor(CALC.BELWERTV_LIEGENSCHAFTSZINS, rnd);
+
         const beleihungswertResult = {
           ertragswert_belwertv: ertragswertBelwertv,
           sachwert_belwertv: sachwertBelwertv,
           beleihungswert: beleihungswertFinal,
           beleihungswert_quote: beleihungswertQuote,
           sicherheitsabschlag: CALC.BELWERTV_SICHERHEITSABSCHLAG,
+          bwk_belwertv: bwkBelwertvValue,
+          reinertrag_belwertv: reinertagBelwertvValue,
+          barwertfaktor_belwertv: Math.round(bwfBelwertvValue * 100) / 100,
         };
 
         // ═══ 4.8 Financing ═══
