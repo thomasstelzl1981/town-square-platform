@@ -3248,6 +3248,128 @@ ${contactHint}`
         }
       }
 
+      // =================================================================
+      // GLOBAL WEB RESEARCH (ARM.GLOBAL.WEB_RESEARCH)
+      // =================================================================
+      case "ARM.GLOBAL.WEB_RESEARCH": {
+        const LOVABLE_API_KEY_WR = Deno.env.get("LOVABLE_API_KEY");
+        if (!LOVABLE_API_KEY_WR) {
+          return { success: false, error: "AI key not configured" };
+        }
+
+        const query = (params.query as string) || body?.message || "";
+        if (!query.trim()) {
+          return { success: false, error: "Bitte geben Sie eine Suchanfrage an." };
+        }
+
+        try {
+          const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${LOVABLE_API_KEY_WR}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-pro",
+              messages: [
+                {
+                  role: "system",
+                  content: `Du bist ein Recherche-Assistent für Immobilien- und Finanzprofis. 
+Recherchiere gründlich zum Thema und liefere eine strukturierte Zusammenfassung.
+Antworte auf Deutsch. Gib Quellen/URLs an, wenn möglich.
+Format: Markdown mit Überschriften, Aufzählungen und ggf. Tabellen.`
+                },
+                {
+                  role: "user",
+                  content: `Recherchiere folgendes Thema und erstelle einen umfassenden Bericht:\n\n${query}`
+                }
+              ],
+              max_tokens: 8000,
+            }),
+          });
+
+          if (!aiResponse.ok) {
+            console.error("[Armstrong] WEB_RESEARCH AI error:", aiResponse.status);
+            return { success: false, error: "Recherche fehlgeschlagen." };
+          }
+
+          const aiData = await aiResponse.json();
+          const researchResult = aiData.choices?.[0]?.message?.content || "Keine Ergebnisse.";
+
+          return {
+            success: true,
+            output: {
+              query,
+              research_result: researchResult,
+              model: "gemini-2.5-pro",
+              message: researchResult,
+            },
+          };
+        } catch (err) {
+          console.error("[Armstrong] WEB_RESEARCH error:", err);
+          return { success: false, error: "Fehler bei der Web-Recherche." };
+        }
+      }
+
+      // =================================================================
+      // DMS STORAGE EXTRACTION (ARM.DMS.STORAGE_EXTRACTION)
+      // =================================================================
+      case "ARM.DMS.STORAGE_EXTRACTION": {
+        const supabaseUrlDms = Deno.env.get("SUPABASE_URL");
+        const serviceKeyDms = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+        if (!supabaseUrlDms || !serviceKeyDms) {
+          return { success: false, error: "Server configuration missing" };
+        }
+
+        if (!userContext.org_id) {
+          return { success: false, error: "Tenant ID required" };
+        }
+
+        const bucketName = (params.bucket as string) || "tenant-documents";
+        const folderPath = (params.folder_path as string) || "";
+
+        try {
+          const extractResponse = await fetch(`${supabaseUrlDms}/functions/v1/sot-storage-extractor`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${serviceKeyDms}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "bulk-scan",
+              tenant_id: userContext.org_id,
+              user_id: userContext.user_id,
+              bucket: bucketName,
+              folder_path: folderPath,
+            }),
+          });
+
+          if (!extractResponse.ok) {
+            const errText = await extractResponse.text();
+            console.error("[Armstrong] STORAGE_EXTRACTION error:", errText);
+            return { success: false, error: `DMS-Extraktion fehlgeschlagen: ${extractResponse.status}` };
+          }
+
+          const extractResult = await extractResponse.json();
+
+          return {
+            success: true,
+            output: {
+              files_processed: extractResult.files_processed || 0,
+              files_skipped: extractResult.files_skipped || 0,
+              chunks_created: extractResult.chunks_created || 0,
+              bucket: bucketName,
+              folder_path: folderPath || "(root)",
+              message: `DMS-Extraktion abgeschlossen: ${extractResult.files_processed || 0} Dateien verarbeitet, ${extractResult.chunks_created || 0} Text-Chunks erstellt.`,
+            },
+          };
+        } catch (err) {
+          console.error("[Armstrong] STORAGE_EXTRACTION error:", err);
+          return { success: false, error: "Fehler bei der DMS-Extraktion." };
+        }
+      }
+
       default:
         return { success: false, error: `Action ${actionCode} not implemented in MVP` };
     }
