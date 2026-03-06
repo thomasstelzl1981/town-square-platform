@@ -388,6 +388,7 @@ export function StorageFileManager({
             />
           )}
         </div>
+        </FileDropZone>
 
         {/* Status bar */}
         <div className="px-4 py-2 border-t border-border/30 text-xs text-muted-foreground flex items-center gap-2">
@@ -431,6 +432,5 @@ export function StorageFileManager({
           isCreating={isCreatingFolder}
         />
       </div>
-    </FileDropZone>
   );
 }
