@@ -3418,6 +3418,132 @@ Format: Markdown mit Überschriften, Aufzählungen und ggf. Tabellen.`
         }
       }
 
+      // =====================================================================
+      // ARM.MOD04.ENRICH_FROM_STORAGE — Enrich existing property from document
+      // =====================================================================
+      case "ARM.MOD04.ENRICH_FROM_STORAGE": {
+        try {
+          if (!entity.id || entity.type !== "property") {
+            return { success: false, error: "Diese Aktion erfordert eine aktive Immobilienakte. Bitte öffnen Sie zuerst eine Immobilie." };
+          }
+
+          const propertyId = entity.id;
+          const tenantId = userContext.org_id;
+
+          // Step 1: Load structured data from documents linked to this property
+          const { data: structuredDocs, error: sdError } = await supabase
+            .from("document_structured_data")
+            .select("id, document_id, doc_category, extracted_fields, extraction_confidence, created_at")
+            .eq("property_id", propertyId)
+            .order("created_at", { ascending: false })
+            .limit(20);
+
+          if (sdError) {
+            console.error("[Armstrong] ENRICH_FROM_STORAGE - structured data query error:", sdError);
+            return { success: false, error: "Fehler beim Laden der Dokumentdaten." };
+          }
+
+          if (!structuredDocs || structuredDocs.length === 0) {
+            return {
+              success: false,
+              error: "Keine extrahierten Dokumentdaten gefunden. Bitte laden Sie zuerst ein Dokument (z.B. Grundbuchauszug) in den Datenraum hoch und lassen Sie es von Armstrong analysieren (Datenraum-Extraktion).",
+            };
+          }
+
+          // Step 2: Find the best document (prefer Grundbuchauszug, then newest)
+          const grundbuchDoc = structuredDocs.find(
+            (d: any) => d.doc_category?.toLowerCase()?.includes("grundbuch")
+          );
+          const targetDoc = grundbuchDoc || structuredDocs[0];
+          const fields = (targetDoc as any).extracted_fields || {};
+
+          // Step 3: Map extracted fields to properties columns
+          const updatePayload: Record<string, any> = {};
+          const fieldMappings: Array<{ source: string; target: string; label: string }> = [
+            { source: "amtsgericht", target: "land_register_court", label: "Amtsgericht" },
+            { source: "grundbuchbezirk", target: "land_register_volume", label: "Grundbuchbezirk" },
+            { source: "blatt_nr", target: "land_register_sheet", label: "Grundbuchblatt" },
+            { source: "flurstueck", target: "parcel_number", label: "Flurstück" },
+          ];
+
+          // Build refs object for complex data
+          const refsData: Record<string, any> = {};
+          if (fields.eigentuemer) refsData.eigentuemer = fields.eigentuemer;
+          if (fields.abteilung_ii_lasten) refsData.abteilung_ii = fields.abteilung_ii_lasten;
+          if (fields.abteilung_iii_hypotheken) refsData.abteilung_iii = fields.abteilung_iii_hypotheken;
+
+          // Load current property to check which fields are already filled
+          const { data: currentProperty } = await supabase
+            .from("properties")
+            .select("land_register_court, land_register_volume, land_register_sheet, parcel_number, land_register_refs")
+            .eq("id", propertyId)
+            .single();
+
+          const preview: string[] = [];
+          let fieldsUpdated = 0;
+
+          for (const mapping of fieldMappings) {
+            const value = fields[mapping.source];
+            if (value) {
+              const currentValue = currentProperty?.[mapping.target as keyof typeof currentProperty];
+              if (!currentValue) {
+                updatePayload[mapping.target] = String(value);
+                preview.push(`✅ **${mapping.label}**: ${value}`);
+                fieldsUpdated++;
+              } else {
+                preview.push(`⏭️ **${mapping.label}**: bereits vorhanden (${currentValue})`);
+              }
+            }
+          }
+
+          if (Object.keys(refsData).length > 0) {
+            const existingRefs = (currentProperty?.land_register_refs as Record<string, any>) || {};
+            updatePayload.land_register_refs = { ...existingRefs, ...refsData };
+            if (refsData.eigentuemer) preview.push(`✅ **Eigentümer**: ${typeof refsData.eigentuemer === 'string' ? refsData.eigentuemer : JSON.stringify(refsData.eigentuemer).substring(0, 100)}`);
+            if (refsData.abteilung_ii) preview.push(`✅ **Abt. II (Lasten)**: ${Array.isArray(refsData.abteilung_ii) ? refsData.abteilung_ii.length + ' Einträge' : 'vorhanden'}`);
+            if (refsData.abteilung_iii) preview.push(`✅ **Abt. III (Hypotheken)**: ${Array.isArray(refsData.abteilung_iii) ? refsData.abteilung_iii.length + ' Einträge' : 'vorhanden'}`);
+            fieldsUpdated += Object.keys(refsData).length;
+          }
+
+          if (Object.keys(updatePayload).length === 0) {
+            return {
+              success: true,
+              output: {
+                fields_updated: 0,
+                message: "Alle Felder sind bereits ausgefüllt — keine Änderungen nötig.",
+                preview: preview.join("\n"),
+              },
+            };
+          }
+
+          // Step 4: Perform the update
+          updatePayload.updated_at = new Date().toISOString();
+          const { error: updateError } = await supabase
+            .from("properties")
+            .update(updatePayload)
+            .eq("id", propertyId);
+
+          if (updateError) {
+            console.error("[Armstrong] ENRICH_FROM_STORAGE - update error:", updateError);
+            return { success: false, error: `Fehler beim Aktualisieren der Immobilienakte: ${updateError.message}` };
+          }
+
+          return {
+            success: true,
+            output: {
+              fields_updated: fieldsUpdated,
+              document_category: (targetDoc as any).doc_category || "unbekannt",
+              confidence: (targetDoc as any).extraction_confidence,
+              preview: preview.join("\n"),
+              message: `${fieldsUpdated} Feld(er) erfolgreich in die Immobilienakte übernommen.`,
+            },
+          };
+        } catch (err) {
+          console.error("[Armstrong] ENRICH_FROM_STORAGE error:", err);
+          return { success: false, error: "Fehler bei der Datenübernahme aus dem Dokument." };
+        }
+      }
+
       default:
         return { success: false, error: `Action ${actionCode} not implemented in MVP` };
     }
