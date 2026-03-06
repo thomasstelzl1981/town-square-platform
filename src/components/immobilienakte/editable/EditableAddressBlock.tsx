@@ -98,7 +98,7 @@ export function EditableAddressBlock({
           />
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-1 flex-1 flex flex-col">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <Label className="text-[11px] text-muted-foreground">Objektbeschreibung</Label>
