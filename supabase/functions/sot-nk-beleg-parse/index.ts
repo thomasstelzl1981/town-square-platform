@@ -258,6 +258,7 @@ PRÜFE:
         p_action_code: "nk_cross_validation",
         p_ref_type: "property",
         p_ref_id: propertyId,
+        p_user_id: user.id,
       });
 
       console.log(`[sot-nk-beleg-parse] Cross-validation: ${propertyId}/${year} → ${(validationResult as any).overall_status}`);
