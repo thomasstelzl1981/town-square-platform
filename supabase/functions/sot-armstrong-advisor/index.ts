@@ -4798,7 +4798,7 @@ serve(async (req) => {
       // Use AI to generate the actual draft content
       const isGlobalAssist = !isInMvpModule;
       const draftResult = await generateDraftResponse(message, module, supabase);
-      const suggestions = suggestActionsForMessage(message, availableActions);
+      const suggestions = suggestActionsForMessage(message, availableActions, entity);
       
       // If we got a streaming Response back, pipe it with DRAFT metadata
       if (draftResult instanceof Response && draftResult.body) {
