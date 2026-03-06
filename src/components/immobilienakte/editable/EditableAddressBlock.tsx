@@ -87,7 +87,7 @@ export function EditableAddressBlock({
           Lage & Objektbeschreibung
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2 px-4 pb-3">
+      <CardContent className="space-y-2 px-4 pb-3 flex-1 flex flex-col">
         <div className="space-y-1">
           <Label className="text-[11px] text-muted-foreground">Lagebezeichnung</Label>
           <Input 
