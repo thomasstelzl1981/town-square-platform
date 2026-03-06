@@ -69,7 +69,7 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
       if (completedIds.length > 0) {
         const { data: results } = await supabase
           .from('valuation_results')
-          .select('case_id, value_band, data_quality')
+          .select('case_id, value_band')
           .in('case_id', completedIds);
 
         resultMap = new Map(results?.map(r => [r.case_id, r]) || []);
