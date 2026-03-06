@@ -241,7 +241,7 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
                 <p className="text-sm font-medium font-mono">{v.id.slice(0, 8)}</p>
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-muted-foreground">
-                    {v.completed_at ? new Date(v.completed_at).toLocaleDateString('de-DE') : v.created_at ? new Date(v.created_at).toLocaleDateString('de-DE') : '–'}
+                    {v.updated_at ? new Date(v.updated_at).toLocaleDateString('de-DE') : v.created_at ? new Date(v.created_at).toLocaleDateString('de-DE') : '–'}
                   </p>
                   <Badge variant={v.status === 'final' ? 'default' : 'outline'} className="text-[9px]">
                     {v.status === 'final' ? 'Abgeschlossen' : v.status === 'running' ? 'Läuft...' : v.status}

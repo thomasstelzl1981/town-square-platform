@@ -70,7 +70,7 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
     y = PAGE.MARGIN_TOP;
   }
 
-  function heading(text: string, size = TYPO.H2.size) {
+  function heading(text: string, size: number = TYPO.H2.size) {
     if (y > H - 40) newPage();
     doc.setFont(TYPO.FONT_FAMILY, 'bold');
     doc.setFontSize(size);
