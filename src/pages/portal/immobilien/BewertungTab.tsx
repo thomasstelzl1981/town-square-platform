@@ -55,7 +55,7 @@ export function BewertungTab() {
     <PageShell>
       <ModulePageHeader
         title="Bewertung"
-        description="Marktwertermittlung via Sprengnetter — professionelle Gutachten für deine Immobilien"
+        description="SoT Wertermittlung — KI-gestützte Bewertung mit deterministischem Rechenkern"
       />
 
       <div className={DESIGN.FORM_GRID.FULL}>

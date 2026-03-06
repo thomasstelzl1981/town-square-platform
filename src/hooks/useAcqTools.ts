@@ -3,7 +3,6 @@
  * 
  * Standalone tools for MOD-12 AkquiseManager Tools page:
  * - Portal Search (Firecrawl + AI extraction, all portals parallel)
- * - Property Research (AI + GeoMap)
  * - Quick Calculators
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -55,7 +54,7 @@ export interface PortalRunDiagnostics {
 }
 
 export interface StandaloneResearchParams {
-  query: string; // Freetext: address, property description
+  query: string;
 }
 
 export interface StandaloneResearchResult {
@@ -90,18 +89,6 @@ export interface StandaloneResearchResult {
   };
 }
 
-export interface GeoMapResult {
-  location_score: number;
-  avg_rent_sqm: number;
-  avg_price_sqm: number;
-  vacancy_rate: number;
-  population_density: number;
-  infrastructure_score: number;
-  flood_zone: boolean;
-  noise_level: string;
-  poi_summary: string[];
-}
-
 // ============================================================================
 // PORTAL SEARCH HOOK — All 3 portals parallel, no broker search
 // ============================================================================
@@ -128,7 +115,6 @@ export function usePortalSearch() {
 
       if (error) throw error;
 
-      // Map engine results to PortalSearchResult format
       const results: PortalSearchResult[] = (data?.results || []).map((r: any, idx: number) => ({
         id: `portal_${idx}_${Date.now()}`,
         title: r.name || 'Unbenanntes Objekt',
@@ -185,34 +171,6 @@ export function useStandaloneAIResearch() {
     },
     onError: (error) => {
       toast.error('KI-Recherche fehlgeschlagen: ' + (error as Error).message);
-    },
-  });
-}
-
-// ============================================================================
-// STANDALONE GEOMAP HOOK
-// ============================================================================
-
-export function useStandaloneGeoMap() {
-  return useMutation({
-    mutationFn: async (address: string) => {
-      const { data, error } = await supabase.functions.invoke('sot-geomap-snapshot', {
-        body: {
-          address,
-          standalone: true,
-        },
-      });
-
-      if (error) throw error;
-      
-      const result = data?.data || data;
-      return result as GeoMapResult;
-    },
-    onSuccess: () => {
-      toast.success('GeoMap-Analyse abgeschlossen');
-    },
-    onError: (error) => {
-      toast.error('GeoMap-Fehler: ' + (error as Error).message);
     },
   });
 }

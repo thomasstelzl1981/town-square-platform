@@ -266,7 +266,7 @@ const PARTNER_CONTRACTS: PartnerContract[] = [
       'Affiliate-Programm über AWIN prüfen (Advertiser-Suche) oder Direktkontakt über haufe-akademie.de/partner. ' +
       'Besonders relevant: Immobilien-Fachwirt (IHK), WEG-Verwaltung, Mietrecht-Seminare. ' +
       'Integration: Deeplinks zu Seminarkategorien. Haufe bietet keinen öffentlichen API-Zugang – Katalogpflege manuell oder per Scraping. ' +
-      'Alternative Anbieter: Sprengnetter Akademie (Bewertung), DIA München (Immobilien-Zertifikate).',
+      'Alternative Anbieter: DIA München (Immobilien-Zertifikate), IVD Akademie.',
   },
 
   // ── Zuhause & Sanierung (MOD-20 / MOD-04) ──

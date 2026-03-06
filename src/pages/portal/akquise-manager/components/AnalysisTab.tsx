@@ -1,6 +1,6 @@
 /**
- * Analysis Tab — Bestand + Aufteiler nebeneinander, GeoMap + KI darunter
- * V2: Tabs aufgelöst, Side-by-Side-Layout gemäß Konsolidierungsplan
+ * Analysis Tab — Bestand + Aufteiler nebeneinander, KI darunter
+ * V3: GeoMap/Sprengnetter entfernt, SoT Valuation Engine wird in Phase 5 integriert
  */
 import * as React from 'react';
 import { DesktopOnly } from '@/components/shared/DesktopOnly';
@@ -23,7 +23,7 @@ import {
   useCreateOffer,
   useUploadOfferDocument,
   useRunAIResearch,
-  useRunGeoMap,
+  useRunValuation,
   useRunCalcBestand,
   useRunCalcAufteiler,
   useExtractFromDocument,
@@ -179,7 +179,7 @@ export function AnalysisTab({ mandateId, mandateCode }: AnalysisTabProps) {
 function OfferCard({ offer, onClick }: { offer: AcqOffer; onClick: () => void }) {
   const statusConfig = STATUS_CONFIG[offer.status] || STATUS_CONFIG.new;
   const hasCalc = offer.calc_bestand || offer.calc_aufteiler;
-  const hasGeomap = offer.geomap_data;
+  const hasValuation = offer.geomap_data; // legacy column, will be replaced by valuation_data
   const hasAI = offer.analysis_summary;
   
   return (
@@ -222,7 +222,7 @@ function OfferCard({ offer, onClick }: { offer: AcqOffer; onClick: () => void })
         </div>
         <div className="mt-4 flex items-center gap-2">
           {hasAI && <Badge variant="outline" className="text-xs"><Brain className="h-3 w-3 mr-1" />KI</Badge>}
-          {hasGeomap && <Badge variant="outline" className="text-xs"><MapPin className="h-3 w-3 mr-1" />Geo</Badge>}
+          {hasValuation && <Badge variant="outline" className="text-xs"><MapPin className="h-3 w-3 mr-1" />Bewertung</Badge>}
           {hasCalc && <Badge variant="outline" className="text-xs"><Calculator className="h-3 w-3 mr-1" />Calc</Badge>}
           <div className="flex-1" />
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -237,7 +237,7 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
   const { data: offer, isLoading } = useAcqOffer(offerId);
   const uploadDoc = useUploadOfferDocument();
   const runAI = useRunAIResearch();
-  const runGeoMap = useRunGeoMap();
+  const runValuation = useRunValuation();
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -249,7 +249,7 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
     return <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
-  interface GeoMapResult {
+  interface LocationResult {
     avgRentPerSqm?: string | number;
     avgPricePerSqm?: string | number;
     vacancyRate?: string | number;
@@ -261,7 +261,7 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
     risks?: string[];
     opportunities?: string[];
   }
-  const geo = offer.geomap_data as GeoMapResult | null;
+  const geo = offer.geomap_data as LocationResult | null; // legacy column
   const ai = offer.analysis_summary as AiSummaryResult | null;
 
   return (
@@ -287,9 +287,9 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
 
       {/* Quick Actions */}
       <div className="flex gap-3 flex-wrap">
-        <Button variant="outline" onClick={() => offer.address && runGeoMap.mutate({ offerId: offer.id, address: `${offer.address}, ${offer.postal_code} ${offer.city}` })} disabled={!offer.address || runGeoMap.isPending}>
-          {runGeoMap.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <MapPin className="h-4 w-4 mr-2" />}
-          GeoMap
+        <Button variant="outline" onClick={() => offer.address && runValuation.mutate({ offerId: offer.id, address: `${offer.address}, ${offer.postal_code} ${offer.city}` })} disabled={!offer.address || runValuation.isPending}>
+          {runValuation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <TrendingUp className="h-4 w-4 mr-2" />}
+          SoT Bewertung
         </Button>
         <Button variant="outline" onClick={() => runAI.mutate({ offerId: offer.id, mandateId })} disabled={runAI.isPending}>
           {runAI.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Brain className="h-4 w-4 mr-2" />}
@@ -326,12 +326,12 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
         />
       </div>
 
-      {/* ── GeoMap Results (full-width) ── */}
+      {/* ── Standortdaten (legacy, wird durch SoT Valuation ersetzt) ── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm">
             <MapPin className="h-4 w-4" />
-            GeoMap Standortanalyse
+            Standortdaten
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -350,7 +350,7 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <MapPin className="h-10 w-10 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">Keine GeoMap-Daten — starten Sie die Analyse oben.</p>
+              <p className="text-sm">Keine Standortdaten — SoT Bewertung starten.</p>
             </div>
           )}
         </CardContent>

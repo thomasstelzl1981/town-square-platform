@@ -52,7 +52,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   scout24: Building2,
   BRIEFDIENST: Send,
   SIMPLEFAX: Phone,
-  SPRENGNETTER: BarChart3,
+  SOT_VALUATION: BarChart3,
   UNSTRUCTURED: FileText,
   FINAPI: CreditCard,
   meta_ads: Zap,
