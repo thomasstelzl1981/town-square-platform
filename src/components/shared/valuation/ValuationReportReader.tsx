@@ -1,13 +1,15 @@
 /**
  * ValuationReportReader — Displays valuation results: ValueBand, KPIs, Methods, Financing
+ * V6.0: Added source mode display and Legal & Title block integration
  */
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { TrendingUp, Download, ArrowUpDown, Shield, Banknote, BarChart3 } from 'lucide-react';
+import { TrendingUp, Download, ArrowUpDown, Shield, Banknote, BarChart3, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
+import { ValuationLegalBlock } from './ValuationLegalBlock';
 import type {
   ValueBand,
   ValuationMethodResult,
@@ -17,6 +19,8 @@ import type {
   DebtServiceResult,
   DataQuality,
   CompStats,
+  LegalTitleBlock,
+  ValuationSourceMode,
 } from '@/engines/valuation/spec';
 
 interface Props {
@@ -29,6 +33,8 @@ interface Props {
   dataQuality: DataQuality | null;
   compStats: CompStats | null;
   executiveSummary?: string;
+  sourceMode?: ValuationSourceMode;
+  legalTitle?: LegalTitleBlock | null;
   onDownloadPdf?: () => void;
   className?: string;
 }
