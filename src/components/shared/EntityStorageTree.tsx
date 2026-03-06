@@ -9,9 +9,16 @@
  * Upload uses useUniversalUpload (2-Phase Architecture) for correct
  * documents + document_links + storage_nodes creation.
  * Files are always uploaded into the currently selected folder.
+ * 
+ * === STATE MODEL ===
+ * Single source of truth: `currentFolderId`
+ * - Updated on every navigation (column click, breadcrumb, subfolder creation)
+ * - Used for: upload target, new folder parent, drop overlay, delete context
+ * - Reset on root navigation or folder deletion
+ * - Never falls back silently to root — explicit resolution via resolveTargetFolderId()
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ColumnView } from '@/components/dms/views/ColumnView';
@@ -35,8 +42,10 @@ interface EntityStorageTreeProps {
 }
 
 export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, className }: EntityStorageTreeProps) {
+  // ── SINGLE SOURCE OF TRUTH: currentFolderId ─────────────────────────
+  // This ID controls: upload target, new folder parent, overlay text, delete context
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [columnPath, setColumnPath] = useState<string[]>([]);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -45,11 +54,40 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   const { createDMS } = useRecordCardDMS();
   const universalUpload = useUniversalUpload();
 
-  // Find entity root folder
+  // ── Root folder: deterministic via template_id, NOT oldest folder ────
   const { data: rootFolder } = useQuery({
-    queryKey: ['entity-storage-root', tenantId, entityType, entityId],
+    queryKey: ['entity-storage-root', tenantId, entityType, entityId, moduleCode],
     queryFn: async () => {
-      const { data } = await supabase
+      // PRIO 3: First try explicit ROOT marker
+      const { data: rootByTemplate } = await supabase
+        .from('storage_nodes')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('entity_type', entityType)
+        .eq('entity_id', entityId)
+        .eq('node_type', 'folder')
+        .eq('template_id', `${moduleCode}_ROOT`)
+        .limit(1)
+        .maybeSingle();
+
+      if (rootByTemplate) return rootByTemplate;
+
+      // Fallback: parent_id IS NULL for this entity (top-level folder)
+      const { data: rootByParent } = await supabase
+        .from('storage_nodes')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('entity_type', entityType)
+        .eq('entity_id', entityId)
+        .eq('node_type', 'folder')
+        .is('parent_id', null)
+        .limit(1)
+        .maybeSingle();
+
+      if (rootByParent) return rootByParent;
+
+      // Last fallback: oldest folder (legacy compatibility)
+      const { data: rootByAge } = await supabase
         .from('storage_nodes')
         .select('id')
         .eq('tenant_id', tenantId)
@@ -59,7 +97,8 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
         .order('created_at', { ascending: true })
         .limit(1)
         .maybeSingle();
-      return data;
+
+      return rootByAge;
     },
     enabled: !!tenantId && !!entityId,
   });
@@ -120,10 +159,10 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
     enabled: docIds.length > 0,
   });
 
+  // ── Navigation: always syncs currentFolderId ────────────────────────
   const handleNavigateColumn = useCallback((nodeId: string, depth: number) => {
     setColumnPath(prev => [...prev.slice(0, depth), nodeId]);
-    // SYNC: Keep selectedFolderId in sync so uploads target the visible folder
-    setSelectedFolderId(nodeId);
+    setCurrentFolderId(nodeId);
   }, []);
 
   const handleSelectFile = useCallback((item: FileManagerItem) => {
@@ -140,37 +179,39 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   }, [queryClient, tenantId, entityType, entityId]);
 
   /**
-   * Resolve the target folder for upload:
-   * - If a subfolder is explicitly selected → use that
-   * - Otherwise use last columnPath entry → use that
-   * - Otherwise → use root folder
+   * Resolve the target folder for upload — SINGLE resolution logic.
+   * Priority: currentFolderId → deepest columnPath → rootFolder
+   * This same ID is used for storage_nodes.parent_id AND document_links.node_id.
    */
   const resolveTargetFolderId = useCallback((): string | null => {
-    // Explicit selection has priority
-    if (selectedFolderId) {
-      const node = allNodes.find(n => n.id === selectedFolderId);
-      if (node) return selectedFolderId;
+    // 1. Explicit current selection (from last navigation)
+    if (currentFolderId) {
+      const exists = allNodes.some(n => n.id === currentFolderId);
+      if (exists) return currentFolderId;
+      // Stale reference — clear it
+      setCurrentFolderId(null);
     }
-    // Fallback to deepest columnPath entry
+    // 2. Deepest column path entry
     if (columnPath.length > 0) {
-      const lastSelectedId = columnPath[columnPath.length - 1];
-      const node = allNodes.find(n => n.id === lastSelectedId);
-      if (node) return lastSelectedId;
+      const lastId = columnPath[columnPath.length - 1];
+      const exists = allNodes.some(n => n.id === lastId);
+      if (exists) return lastId;
     }
+    // 3. Root folder (explicit, not silent)
     return rootFolder?.id || null;
-  }, [selectedFolderId, columnPath, allNodes, rootFolder?.id]);
+  }, [currentFolderId, columnPath, allNodes, rootFolder?.id]);
 
   /**
-   * Get the display name of the target folder for UI feedback
+   * Get display name of target folder for UI feedback
    */
-  const getTargetFolderName = useCallback((): string => {
+  const targetFolderName = useMemo((): string => {
     const targetId = resolveTargetFolderId();
-    if (!targetId) return 'Datenraum';
-    if (targetId === rootFolder?.id) return 'Datenraum';
+    if (!targetId || targetId === rootFolder?.id) return 'Datenraum';
     const node = allNodes.find(n => n.id === targetId);
     return node?.name || 'Datenraum';
   }, [resolveTargetFolderId, rootFolder?.id, allNodes]);
 
+  // ── Upload handler ───────────────────────────────────────────────────
   const handleFileDrop = useCallback(async (droppedFiles: File[]) => {
     let targetFolderId = resolveTargetFolderId();
 
@@ -194,9 +235,9 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
       return;
     }
 
-    const folderName = getTargetFolderName();
+    let successCount = 0;
+    let failCount = 0;
 
-    // Upload files via useUniversalUpload (2-Phase Architecture)
     for (const file of droppedFiles) {
       const result = await universalUpload.upload(file, {
         moduleCode,
@@ -209,19 +250,28 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
 
       if (result.error) {
         console.error('Upload failed:', result.error);
+        failCount++;
+      } else {
+        successCount++;
       }
     }
 
-    toast.success(
-      droppedFiles.length === 1
-        ? `"${droppedFiles[0].name}" in „${folderName}" hochgeladen`
-        : `${droppedFiles.length} Dateien in „${folderName}" hochgeladen`
-    );
+    // Only show success if ALL files succeeded
+    if (failCount > 0) {
+      toast.error(`${failCount} von ${droppedFiles.length} Dateien konnten nicht hochgeladen werden`);
+    }
+    if (successCount > 0) {
+      const folderLabel = targetFolderName !== 'Datenraum' ? ` in „${targetFolderName}"` : '';
+      toast.success(
+        successCount === 1
+          ? `Datei${folderLabel} hochgeladen`
+          : `${successCount} Dateien${folderLabel} hochgeladen`
+      );
+    }
 
-    // Refresh the tree
     invalidateAll();
     universalUpload.reset();
-  }, [resolveTargetFolderId, createDMS, entityType, entityId, tenantId, moduleCode, universalUpload, getTargetFolderName, invalidateAll]);
+  }, [resolveTargetFolderId, createDMS, entityType, entityId, tenantId, moduleCode, universalUpload, targetFolderName, invalidateAll]);
 
   // ── Download handler ──────────────────────────────────────────────────
   const handleDownload = useCallback(async (documentId: string) => {
@@ -242,115 +292,99 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
       if (!response.ok) throw new Error('Download URL konnte nicht erstellt werden');
       const { download_url } = await response.json();
       window.open(download_url, '_blank');
-    } catch {
+    } catch (err) {
+      console.error('Download failed:', err);
       toast.error('Download fehlgeschlagen');
     }
     setIsDownloading(false);
   }, []);
 
-  // ── Delete file handler (full cleanup) ────────────────────────────────
+  // ── Delete file handler (server-side RPC) ────────────────────────────
   const handleDeleteFile = useCallback(async (item: FileManagerItem) => {
     if (!item.documentId) return;
     if (!confirm(`"${item.name}" wirklich löschen?`)) return;
 
     setIsDeleting(true);
     try {
-      // 1. Get document for file_path
-      const doc = documents.find(d => d.id === item.documentId);
+      // Call server-side RPC for atomic delete
+      const { data: result, error: rpcError } = await supabase.rpc('delete_storage_file', {
+        p_document_id: item.documentId,
+        p_tenant_id: tenantId,
+      });
 
-      // 2. Delete document_links
-      await supabase
-        .from('document_links')
-        .delete()
-        .eq('document_id', item.documentId)
-        .eq('tenant_id', tenantId);
-
-      // 3. Delete storage_nodes file-node (if exists)
-      if (doc?.file_path) {
-        await supabase
-          .from('storage_nodes')
-          .delete()
-          .eq('tenant_id', tenantId)
-          .eq('node_type', 'file')
-          .eq('storage_path', doc.file_path);
+      if (rpcError) {
+        console.error('RPC delete_storage_file error:', rpcError);
+        throw new Error(rpcError.message);
       }
 
-      // 4. Soft-delete document record
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
-        .from('documents')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', item.documentId);
+      const response = result as { success: boolean; message: string; file_path?: string; error?: string };
 
-      // 5. Delete storage blob
-      if (doc?.file_path) {
-        await supabase.storage.from('tenant-documents').remove([doc.file_path]);
+      if (!response.success) {
+        toast.error(response.message || 'Fehler beim Löschen');
+        setIsDeleting(false);
+        return;
       }
 
-      toast.success(`"${item.name}" gelöscht`);
+      // Clean up storage blob (client-side, since storage API needs client auth)
+      if (response.file_path) {
+        const { error: blobError } = await supabase.storage
+          .from('tenant-documents')
+          .remove([response.file_path]);
+        if (blobError) {
+          console.warn('Blob cleanup failed (non-critical):', blobError);
+        }
+      }
+
+      toast.success(response.message);
       invalidateAll();
     } catch (err) {
-      console.error('Delete failed:', err);
-      toast.error('Fehler beim Löschen');
+      console.error('Delete file failed:', err);
+      toast.error(`Fehler beim Löschen: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`);
     }
     setIsDeleting(false);
-  }, [documents, tenantId, invalidateAll]);
+  }, [tenantId, invalidateAll]);
 
-  // ── Delete folder handler (with server-side guards) ───────────────────
+  // ── Delete folder handler (server-side RPC with guards) ──────────────
   const handleDeleteFolder = useCallback(async (item: FileManagerItem) => {
     if (!item.nodeId) return;
     if (!confirm(`Ordner "${item.name}" wirklich löschen?`)) return;
 
     setIsDeleting(true);
     try {
-      // Guard: Check for system folder (template_id ending with _ROOT)
-      const node = allNodes.find(n => n.id === item.nodeId);
-      if (node?.template_id?.endsWith('_ROOT')) {
-        toast.error('Systemordner können nicht gelöscht werden');
+      const { data: result, error: rpcError } = await supabase.rpc('delete_storage_folder', {
+        p_folder_id: item.nodeId,
+        p_tenant_id: tenantId,
+      });
+
+      if (rpcError) {
+        console.error('RPC delete_storage_folder error:', rpcError);
+        throw new Error(rpcError.message);
+      }
+
+      const response = result as { success: boolean; message: string; error?: string };
+
+      if (!response.success) {
+        // Show specific error from server guard
+        toast.error(response.message);
         setIsDeleting(false);
         return;
       }
 
-      // Guard: Check for child folders
-      const childFolders = allNodes.filter(n => n.parent_id === item.nodeId);
-      if (childFolders.length > 0) {
-        toast.error('Ordner enthält Unterordner — bitte zuerst leeren');
-        setIsDeleting(false);
-        return;
-      }
-
-      // Guard: Check for files in folder
-      const folderDocLinks = documentLinks.filter(l => l.node_id === item.nodeId);
-      if (folderDocLinks.length > 0) {
-        toast.error('Ordner enthält Dateien — bitte zuerst leeren');
-        setIsDeleting(false);
-        return;
-      }
-
-      // Safe to delete
-      const { error } = await supabase
-        .from('storage_nodes')
-        .delete()
-        .eq('id', item.nodeId)
-        .eq('tenant_id', tenantId);
-
-      if (error) throw error;
-
-      toast.success(`Ordner "${item.name}" gelöscht`);
+      toast.success(response.message);
       
-      // If we deleted the selected folder, go back
-      if (selectedFolderId === item.nodeId) {
-        setSelectedFolderId(null);
+      // If we deleted the current folder, navigate back
+      if (currentFolderId === item.nodeId) {
+        setCurrentFolderId(null);
         setColumnPath([]);
       }
       
       invalidateAll();
     } catch (err) {
       console.error('Folder delete failed:', err);
-      toast.error('Fehler beim Löschen des Ordners');
+      toast.error(`Fehler beim Löschen: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`);
     }
     setIsDeleting(false);
-  }, [allNodes, documentLinks, tenantId, selectedFolderId, invalidateAll]);
+  }, [tenantId, currentFolderId, invalidateAll]);
 
   // ── Unified delete dispatch ───────────────────────────────────────────
   const handleDelete = useCallback((item: FileManagerItem) => {
@@ -377,11 +411,9 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
     try {
       // Find real parent_id (undo the remap done for ColumnView display)
       let realParentId = parentId;
-      // If parent_id is null in our mapped nodes, it's actually the root folder
       const mappedNode = allNodes.find(n => n.id === parentId);
       if (mappedNode && mappedNode.parent_id === null && parentId !== rootFolder?.id) {
-        // This node was remapped — its real parent is rootFolder
-        realParentId = parentId; // The node itself is correct, we're creating under it
+        realParentId = parentId;
       }
 
       const { error } = await supabase.from('storage_nodes').insert({
@@ -404,9 +436,6 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   }, [newFolderParentId, resolveTargetFolderId, allNodes, rootFolder?.id, tenantId, entityType, entityId, moduleCode, invalidateAll]);
 
   const isUploading = universalUpload.isUploading || createDMS.isPending;
-
-  // Determine current target folder name for drop overlay
-  const targetFolderName = getTargetFolderName();
 
   // Empty state — no DMS folder yet
   if (!rootFolder?.id && !isUploading) {
