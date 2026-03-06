@@ -54,6 +54,16 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
     const loanData = getLoanChanges();
     const accountingData = getAccountingChanges();
 
+    // No-Op Check: Warnung wenn keine persistierbaren Felder geändert wurden
+    const hasAnyChanges = propertyData || unitData || leaseData || loanData || accountingData;
+    if (!hasAnyChanges) {
+      const { toast } = await import('sonner');
+      toast.warning('Keine Änderungen erkannt', {
+        description: 'Es wurden keine persistierbaren Felder geändert.',
+      });
+      return;
+    }
+
     try {
       await saveDossier.mutateAsync({
         propertyId: formData.propertyId,
