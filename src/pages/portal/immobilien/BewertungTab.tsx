@@ -203,6 +203,10 @@ export function BewertungTab() {
               dataQuality={resultObj?.dataQuality || null}
               compStats={resultObj?.compStats || null}
               executiveSummary={resultObj?.executiveSummary}
+              sourceMode="SSOT_FINAL"
+              legalTitle={resultObj?.legalTitle || null}
+              location={resultObj?.location || null}
+              comps={resultObj?.comps || []}
               onDownloadPdf={handleDownloadPdf}
             />
           ) : (
