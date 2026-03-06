@@ -12,6 +12,7 @@ import { PreviewView } from './views/PreviewView';
 import { MultiSelectView } from './views/MultiSelectView';
 import { PathNavigatorView } from './views/PathNavigatorView';
 import { BulkActionBar } from './BulkActionBar';
+import { SelectionActionBar } from './SelectionActionBar';
 import { NewFolderDialog } from './NewFolderDialog';
 import { FileDropZone } from './FileDropZone';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getModuleDisplayName } from '@/config/storageManifest';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useStorageKeyboard } from '@/hooks/useStorageKeyboard';
 
 interface StorageNode {
   id: string;
@@ -104,13 +106,26 @@ export function StorageFileManager({
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [previewItem, setPreviewItem] = useState<FileManagerItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<FileManagerItem | null>(null);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
   const [columnPath, setColumnPath] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Force list view on mobile
   const effectiveViewMode = isMobile ? 'list' : viewMode;
+
+  // Keyboard shortcuts
+  useStorageKeyboard({
+    selectedItem,
+    onDelete: (item) => handleDelete(item),
+    onOpen: (item) => {
+      if (item.type === 'file' && item.documentId) onDownload(item.documentId);
+    },
+    onClearSelection: () => setSelectedItem(null),
+    containerRef,
+  });
 
   // Breadcrumb segments
   const breadcrumbSegments = useMemo(() => {
@@ -209,6 +224,7 @@ export function StorageFileManager({
     onSelectNode(nodeId);
     setSelectedIds(new Set());
     setPreviewItem(null);
+    setSelectedItem(null);
   }, [onSelectNode]);
 
   const handleDelete = (item: FileManagerItem) => {
@@ -219,6 +235,7 @@ export function StorageFileManager({
     } else if (item.documentId) {
       onDeleteDocument(item.documentId);
     }
+    setSelectedItem(null);
   };
 
   const handleNewSubfolder = (parentNodeId: string) => {
@@ -255,7 +272,6 @@ export function StorageFileManager({
 
   const handleColumnNavigate = (nodeId: string, depth: number) => {
     setColumnPath(prev => [...prev.slice(0, depth), nodeId]);
-    // SYNC: Keep selectedNodeId in sync so uploads target the visible folder
     onSelectNode(nodeId);
   };
 
@@ -270,8 +286,16 @@ export function StorageFileManager({
     if (currentId) onSelectNode(currentId);
   };
 
+  const handleSelectedItemChange = useCallback((item: FileManagerItem | null) => {
+    setSelectedItem(item);
+  }, []);
+
   return (
-    <div className={`rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/60 dark:border-border/40 shadow-sm overflow-hidden flex flex-col relative ${isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-12rem)]'}`}>
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      className={`rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/60 dark:border-border/40 shadow-sm overflow-hidden flex flex-col relative outline-none ${isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-12rem)]'}`}
+    >
       {/* Hidden file input */}
       <input
           ref={fileInputRef}
@@ -288,7 +312,7 @@ export function StorageFileManager({
           viewMode={effectiveViewMode}
           sortField={sortField}
           sortDir={sortDir}
-          onNavigate={(nodeId) => { onSelectNode(nodeId); setSelectedIds(new Set()); setPreviewItem(null); }}
+          onNavigate={(nodeId) => { onSelectNode(nodeId); setSelectedIds(new Set()); setPreviewItem(null); setSelectedItem(null); }}
           onViewModeChange={setViewMode}
           onSortChange={handleSortChange}
           onUploadClick={handleUploadClick}
@@ -304,6 +328,22 @@ export function StorageFileManager({
             onDelete={handleBulkDelete}
             onClear={() => setSelectedIds(new Set())}
             isDownloading={isDownloading}
+          />
+        )}
+
+        {/* Selection action bar — single item */}
+        {selectedItem && selectedIds.size === 0 && (
+          <SelectionActionBar
+            item={selectedItem}
+            onOpen={selectedItem.type === 'file' ? () => {
+              if (selectedItem.documentId) onDownload(selectedItem.documentId);
+            } : undefined}
+            onDownload={selectedItem.type === 'file' && selectedItem.documentId ? () => onDownload(selectedItem.documentId!) : undefined}
+            onDelete={() => handleDelete(selectedItem)}
+            onNewSubfolder={selectedItem.type === 'folder' && selectedItem.nodeId ? () => handleNewSubfolder(selectedItem.nodeId!) : undefined}
+            onClear={() => setSelectedItem(null)}
+            isDownloading={isDownloading}
+            isDeleting={isDeleting}
           />
         )}
 
@@ -324,6 +364,8 @@ export function StorageFileManager({
               onPreview={setPreviewItem}
               onDelete={handleDelete}
               onNewSubfolder={handleNewSubfolder}
+              onSelectedItemChange={handleSelectedItemChange}
+              activeItemId={selectedItem?.id}
               isDownloading={isDownloading}
               isDeleting={isDeleting}
             />
@@ -340,6 +382,7 @@ export function StorageFileManager({
               onDownload={onDownload}
               onDelete={handleDelete}
               onNewSubfolder={handleNewSubfolder}
+              onSelectedItemChange={handleSelectedItemChange}
               isDownloading={isDownloading}
               isDeleting={isDeleting}
             />

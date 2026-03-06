@@ -18,14 +18,16 @@
  * - Never falls back silently to root — explicit resolution via resolveTargetFolderId()
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ColumnView } from '@/components/dms/views/ColumnView';
+import { SelectionActionBar } from '@/components/dms/SelectionActionBar';
 import { FileDropZone } from '@/components/dms/FileDropZone';
 import { NewFolderDialog } from '@/components/dms/NewFolderDialog';
 import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
+import { useStorageKeyboard } from '@/hooks/useStorageKeyboard';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import { Upload, Loader2 } from 'lucide-react';
@@ -44,13 +46,14 @@ interface EntityStorageTreeProps {
 
 export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, className }: EntityStorageTreeProps) {
   // ── SINGLE SOURCE OF TRUTH: currentFolderId ─────────────────────────
-  // This ID controls: upload target, new folder parent, overlay text, delete context
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [columnPath, setColumnPath] = useState<string[]>([]);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<FileManagerItem | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { createDMS } = useRecordCardDMS();
   const universalUpload = useUniversalUpload();
@@ -59,7 +62,6 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   const { data: rootFolder } = useQuery({
     queryKey: ['entity-storage-root', tenantId, entityType, entityId, moduleCode],
     queryFn: async () => {
-      // PRIO 3: First try explicit ROOT marker
       const { data: rootByTemplate } = await supabase
         .from('storage_nodes')
         .select('id')
@@ -73,7 +75,6 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
 
       if (rootByTemplate) return rootByTemplate;
 
-      // Fallback: parent_id IS NULL for this entity (top-level folder)
       const { data: rootByParent } = await supabase
         .from('storage_nodes')
         .select('id')
@@ -87,7 +88,6 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
 
       if (rootByParent) return rootByParent;
 
-      // Last fallback: oldest folder (legacy compatibility)
       const { data: rootByAge } = await supabase
         .from('storage_nodes')
         .select('id')
@@ -118,7 +118,6 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
         .eq('node_type', 'folder')
         .order('name');
       
-      // Remap root's parent_id to null for ColumnView
       return (data || []).map(n => ({
         ...n,
         parent_id: n.id === rootFolder.id ? null : (n.parent_id === rootFolder.id ? null : n.parent_id),
@@ -164,11 +163,11 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   const handleNavigateColumn = useCallback((nodeId: string, depth: number) => {
     setColumnPath(prev => [...prev.slice(0, depth), nodeId]);
     setCurrentFolderId(nodeId);
+    // Don't clear selectedItem here — ColumnView reports selection via callback
   }, []);
 
   const handleSelectFile = useCallback((item: FileManagerItem) => {
     // Single click = select + show info. Double click triggers download in ColumnView.
-    // No-op toast removed — ColumnView handles visual selection state internally.
   }, []);
 
   const invalidateAll = useCallback(() => {
@@ -178,32 +177,20 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
     queryClient.invalidateQueries({ queryKey: ['entity-storage-docs'] });
   }, [queryClient, tenantId, entityType, entityId]);
 
-  /**
-   * Resolve the target folder for upload — SINGLE resolution logic.
-   * Priority: currentFolderId → deepest columnPath → rootFolder
-   * This same ID is used for storage_nodes.parent_id AND document_links.node_id.
-   */
   const resolveTargetFolderId = useCallback((): string | null => {
-    // 1. Explicit current selection (from last navigation)
     if (currentFolderId) {
       const exists = allNodes.some(n => n.id === currentFolderId);
       if (exists) return currentFolderId;
-      // Stale reference — clear it
       setCurrentFolderId(null);
     }
-    // 2. Deepest column path entry
     if (columnPath.length > 0) {
       const lastId = columnPath[columnPath.length - 1];
       const exists = allNodes.some(n => n.id === lastId);
       if (exists) return lastId;
     }
-    // 3. Root folder (explicit, not silent)
     return rootFolder?.id || null;
   }, [currentFolderId, columnPath, allNodes, rootFolder?.id]);
 
-  /**
-   * Get display name of target folder for UI feedback
-   */
   const targetFolderName = useMemo((): string => {
     const targetId = resolveTargetFolderId();
     if (!targetId || targetId === rootFolder?.id) return 'Datenraum';
@@ -215,7 +202,6 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   const handleFileDrop = useCallback(async (droppedFiles: File[]) => {
     let targetFolderId = resolveTargetFolderId();
 
-    // Auto-create DMS folder structure if none exists
     if (!targetFolderId) {
       try {
         const result = await createDMS.mutateAsync({
@@ -256,7 +242,6 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
       }
     }
 
-    // Only show success if ALL files succeeded
     if (failCount > 0) {
       toast.error(`${failCount} von ${droppedFiles.length} Dateien konnten nicht hochgeladen werden`);
     }
@@ -306,7 +291,6 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
 
     setIsDeleting(true);
     try {
-      // Call server-side RPC for atomic delete
       const { data: result, error: rpcError } = await supabase.rpc('delete_storage_file', {
         p_document_id: item.documentId,
         p_tenant_id: tenantId,
@@ -325,7 +309,6 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
         return;
       }
 
-      // Clean up storage blob (client-side, since storage API needs client auth)
       if (response.file_path) {
         const { error: blobError } = await supabase.storage
           .from('tenant-documents')
@@ -336,6 +319,7 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
       }
 
       toast.success(response.message);
+      setSelectedItem(null);
       invalidateAll();
     } catch (err) {
       console.error('Delete file failed:', err);
@@ -364,15 +348,14 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
       const response = result as { success: boolean; message: string; error?: string };
 
       if (!response.success) {
-        // Show specific error from server guard
         toast.error(response.message);
         setIsDeleting(false);
         return;
       }
 
       toast.success(response.message);
+      setSelectedItem(null);
       
-      // If we deleted the current folder, navigate back
       if (currentFolderId === item.nodeId) {
         setCurrentFolderId(null);
         setColumnPath([]);
@@ -409,7 +392,6 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
     }
 
     try {
-      // Find real parent_id (undo the remap done for ColumnView display)
       let realParentId = parentId;
       const mappedNode = allNodes.find(n => n.id === parentId);
       if (mappedNode && mappedNode.parent_id === null && parentId !== rootFolder?.id) {
@@ -435,6 +417,21 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
     setShowNewFolderDialog(false);
   }, [newFolderParentId, resolveTargetFolderId, allNodes, rootFolder?.id, tenantId, entityType, entityId, moduleCode, invalidateAll]);
 
+  // ── Keyboard shortcuts ───────────────────────────────────────────────
+  useStorageKeyboard({
+    selectedItem,
+    onDelete: handleDelete,
+    onOpen: (item) => {
+      if (item.type === 'file' && item.documentId) handleDownload(item.documentId);
+    },
+    onClearSelection: () => setSelectedItem(null),
+    containerRef,
+  });
+
+  const handleSelectedItemChange = useCallback((item: FileManagerItem | null) => {
+    setSelectedItem(item);
+  }, []);
+
   const isUploading = universalUpload.isUploading || createDMS.isPending;
 
   // Empty state — no DMS folder yet
@@ -453,7 +450,11 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   }
 
   return (
-    <div className={cn(DESIGN.STORAGE.CONTAINER, DESIGN.STORAGE.MIN_HEIGHT, 'relative', className)}>
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      className={cn(DESIGN.STORAGE.CONTAINER, DESIGN.STORAGE.MIN_HEIGHT, 'relative outline-none flex flex-col', className)}
+    >
       {isUploading && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/60 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-2">
@@ -464,10 +465,25 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
           </div>
         </div>
       )}
+
+      {/* Selection action bar */}
+      {selectedItem && (
+        <SelectionActionBar
+          item={selectedItem}
+          onOpen={selectedItem.type === 'file' && selectedItem.documentId ? () => handleDownload(selectedItem.documentId!) : undefined}
+          onDownload={selectedItem.type === 'file' && selectedItem.documentId ? () => handleDownload(selectedItem.documentId!) : undefined}
+          onDelete={() => handleDelete(selectedItem)}
+          onNewSubfolder={selectedItem.type === 'folder' && selectedItem.nodeId ? () => handleNewSubfolder(selectedItem.nodeId!) : undefined}
+          onClear={() => setSelectedItem(null)}
+          isDownloading={isDownloading}
+          isDeleting={isDeleting}
+        />
+      )}
+
       <FileDropZone
         onDrop={handleFileDrop}
         targetFolderName={targetFolderName}
-        className="h-full"
+        className="flex-1 min-h-0"
       >
         <ColumnView
           allNodes={allNodes}
@@ -479,6 +495,7 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
           onDownload={handleDownload}
           onDelete={handleDelete}
           onNewSubfolder={handleNewSubfolder}
+          onSelectedItemChange={handleSelectedItemChange}
           isDownloading={isDownloading}
           isDeleting={isDeleting}
         />
