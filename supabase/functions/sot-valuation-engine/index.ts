@@ -823,9 +823,16 @@ Deno.serve(async (req) => {
         let compPostings: any[] = [];
         const livingArea = Number(snapshot.living_area_sqm) || 0;
 
+        // V9.1: For MFH multi-unit, search for "Wohnung" (ETW) comps and filter by avg unit size
+        const isMfhMultiUnit = !!snapshot.mfh_multi_unit;
+        const compSearchArea = isMfhMultiUnit ? (snapshot.avg_unit_area || livingArea) : livingArea;
+        const compSearchType = isMfhMultiUnit ? "Wohnung" : objectType;
+
         if (city && firecrawlKey) {
           try {
-            const queries = [`${objectType} kaufen ${city}`, `Haus kaufen ${city}`];
+            const queries = isMfhMultiUnit
+              ? [`Wohnung kaufen ${city}`, `Eigentumswohnung kaufen ${city} ${snapshot.postal_code || ''}`]
+              : [`${objectType} kaufen ${city}`, `Haus kaufen ${city}`];
             let rawResults: any[] = [];
             for (const query of queries) {
               if (rawResults.length > 0) break;
@@ -837,7 +844,7 @@ Deno.serve(async (req) => {
                 });
                 const searchData = await searchResp.json();
                 rawResults = searchData?.data || [];
-                stageLog(3, `"${query}" → ${rawResults.length} results`);
+                stageLog(3, `"${query}" → ${rawResults.length} results${isMfhMultiUnit ? ' (MFH→ETW mode)' : ''}`);
               } catch (e) { stageLog(3, `Search error: ${e}`); }
             }
 
