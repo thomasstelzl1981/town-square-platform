@@ -271,10 +271,9 @@ export function StorageFileManager({
   };
 
   return (
-    <FileDropZone onDrop={onUploadFiles} disabled={isUploading} className="h-full" targetFolderName={selectedNodeId ? (nodes.find(n => n.id === selectedNodeId)?.name || undefined) : undefined}>
-      <div className={`rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/60 dark:border-border/40 shadow-sm overflow-hidden flex flex-col relative ${isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-12rem)]'}`}>
-        {/* Hidden file input */}
-        <input
+    <div className={`rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/60 dark:border-border/40 shadow-sm overflow-hidden flex flex-col relative ${isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-12rem)]'}`}>
+      {/* Hidden file input */}
+      <input
           ref={fileInputRef}
           type="file"
           className="hidden"
