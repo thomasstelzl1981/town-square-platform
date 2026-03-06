@@ -909,11 +909,11 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
 
         if (netRent > 0) {
           const annualRent = netRent * 12;
-          const bewirtschaftungRate = 0.25;
-          assumptions.push({ text: "Bewirtschaftungskosten 25% der Nettokaltmiete", impact: "high" });
+          const bewirtschaftungRate = CALC.BEWIRTSCHAFTUNG_RATE;
+          assumptions.push({ text: `Bewirtschaftungskosten ${bewirtschaftungRate * 100}% der Nettokaltmiete`, impact: "high" });
           const netOperatingIncome = annualRent * (1 - bewirtschaftungRate);
-          const capRate = 0.045;
-          assumptions.push({ text: "Kapitalisierungszinssatz 4,5%", impact: "high" });
+          const capRate = CALC.CAP_RATE;
+          assumptions.push({ text: `Kapitalisierungszinssatz ${capRate * 100}%`, impact: "high" });
           const ertragswert = Math.round(netOperatingIncome / capRate);
 
           ertragswertResult = {
@@ -951,8 +951,8 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         if (livingArea > 0) {
           const yearBuilt = Number(snapshot.year_built) || 1980;
           const age = new Date().getFullYear() - yearBuilt;
-          const baseCostSqm = 2500;
-          const depreciationRate = Math.min(age * 0.01, 0.5);
+          const baseCostSqm = CALC.SACHWERT_BASE_COST_SQM;
+          const depreciationRate = Math.min(age * CALC.SACHWERT_ANNUAL_DEPRECIATION, CALC.SACHWERT_MAX_DEPRECIATION);
           const sachwert = Math.round(livingArea * baseCostSqm * (1 - depreciationRate));
           assumptions.push({ text: `Herstellkosten ${baseCostSqm} €/m², Alterswertminderung ${Math.round(depreciationRate * 100)}%`, impact: "medium" });
 
