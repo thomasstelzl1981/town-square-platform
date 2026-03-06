@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getCachedSignedUrl } from '@/lib/imageCache';
 import { downloadFromSignedUrl } from '@/lib/storage-url';
+import { 
   ArrowLeft, Download, FileText, MapPin, Calendar, 
   Building2, Maximize2, Handshake, MessageSquare, Zap,
   TrendingUp, Percent, PiggyBank, Home
