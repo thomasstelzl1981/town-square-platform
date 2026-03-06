@@ -112,14 +112,16 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
   const handleDeleteCase = async (caseId: string) => {
     setDeletingId(caseId);
     try {
-      // Child-first deletion order — include tenant_id for RLS compliance
-      const { error: e1 } = await (supabase.from('valuation_reports').delete() as any).eq('case_id', caseId).eq('tenant_id', tenantId);
+      // Child-first deletion order
+      // valuation_reports, valuation_results, valuation_inputs only have case_id (no tenant_id)
+      // valuation_cases has tenant_id
+      const { error: e1 } = await (supabase.from('valuation_reports').delete() as any).eq('case_id', caseId);
       if (e1) throw new Error(`Reports: ${e1.message}`);
 
-      const { error: e2 } = await (supabase.from('valuation_results').delete() as any).eq('case_id', caseId).eq('tenant_id', tenantId);
+      const { error: e2 } = await (supabase.from('valuation_results').delete() as any).eq('case_id', caseId);
       if (e2) throw new Error(`Results: ${e2.message}`);
 
-      const { error: e3 } = await (supabase.from('valuation_inputs').delete() as any).eq('case_id', caseId).eq('tenant_id', tenantId);
+      const { error: e3 } = await (supabase.from('valuation_inputs').delete() as any).eq('case_id', caseId);
       if (e3) throw new Error(`Inputs: ${e3.message}`);
 
       const { error: e4 } = await (supabase.from('valuation_cases').delete() as any).eq('id', caseId).eq('tenant_id', tenantId);
