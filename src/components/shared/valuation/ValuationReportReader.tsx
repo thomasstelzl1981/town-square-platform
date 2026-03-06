@@ -1,12 +1,13 @@
 /**
- * ValuationReportReader — Displays valuation results: ValueBand, KPIs, Methods, Financing
- * V6.0: Added source mode display and Legal & Title block integration
+ * ValuationReportReader — Displays valuation results: ValueBand, KPIs, Methods, Financing,
+ * Location Analysis, Comp Postings, Legal Block
+ * V6.1: Added Location Block, Comp Postings List, PDF download integration
  */
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { TrendingUp, Download, ArrowUpDown, Shield, Banknote, BarChart3, Database } from 'lucide-react';
+import { TrendingUp, Download, ArrowUpDown, Shield, Banknote, BarChart3, Database, MapPin, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import { ValuationLegalBlock } from './ValuationLegalBlock';
@@ -19,6 +20,8 @@ import type {
   DebtServiceResult,
   DataQuality,
   CompStats,
+  CompPosting,
+  LocationAnalysis,
   LegalTitleBlock,
   ValuationSourceMode,
 } from '@/engines/valuation/spec';
@@ -35,6 +38,8 @@ interface Props {
   executiveSummary?: string;
   sourceMode?: ValuationSourceMode;
   legalTitle?: LegalTitleBlock | null;
+  location?: LocationAnalysis | null;
+  comps?: CompPosting[];
   onDownloadPdf?: () => void;
   className?: string;
 }
@@ -65,6 +70,8 @@ export function ValuationReportReader({
   executiveSummary,
   sourceMode,
   legalTitle,
+  location,
+  comps,
   onDownloadPdf,
   className,
 }: Props) {
@@ -144,6 +151,161 @@ export function ValuationReportReader({
           </div>
         </CardContent>
       </Card>
+
+      {/* Location Analysis */}
+      {location && (
+        <Card>
+          <CardContent className="py-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Standortanalyse</span>
+              <Badge variant="outline" className="ml-auto text-[10px]">
+                Score: {location.overallScore}/100
+              </Badge>
+            </div>
+
+            {/* Dimension scores */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              {location.dimensions.map((dim) => (
+                <div key={dim.key} className="p-2 rounded-lg border text-center space-y-1">
+                  <p className="text-[10px] text-muted-foreground">{dim.label}</p>
+                  <p className="text-lg font-bold text-primary">{dim.score}</p>
+                  <p className="text-[9px] text-muted-foreground">/10</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Top POIs per dimension */}
+            {location.dimensions.some(d => d.topPois?.length > 0) && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Nächste Einrichtungen</p>
+                {location.dimensions.filter(d => d.topPois?.length > 0).map(dim => (
+                  <div key={dim.key} className="text-xs">
+                    <span className="text-muted-foreground">{dim.label}: </span>
+                    {dim.topPois.slice(0, 2).map((poi, i) => (
+                      <span key={i}>
+                        {i > 0 && ', '}
+                        {poi.name} ({poi.distanceMeters < 1000 ? `${poi.distanceMeters}m` : `${(poi.distanceMeters / 1000).toFixed(1)}km`})
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Reachability */}
+            {location.reachability?.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Erreichbarkeit</p>
+                {location.reachability.map((r, i) => (
+                  <div key={i} className="flex items-center gap-3 text-xs">
+                    <span className="w-32 shrink-0 text-muted-foreground">{r.destinationName}</span>
+                    {r.drivingMinutes != null && <span>🚗 {r.drivingMinutes} min</span>}
+                    {r.transitMinutes != null && <span>🚇 {r.transitMinutes} min</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Maps */}
+            {(location.microMapUrl || location.macroMapUrl) && (
+              <div className="grid grid-cols-2 gap-2">
+                {location.microMapUrl && (
+                  <img src={location.microMapUrl} alt="Micro Map" className="rounded-lg border w-full h-auto" />
+                )}
+                {location.macroMapUrl && (
+                  <img src={location.macroMapUrl} alt="Macro Map" className="rounded-lg border w-full h-auto" />
+                )}
+              </div>
+            )}
+
+            {/* Narrative */}
+            {location.narrative && (
+              <p className="text-xs text-muted-foreground leading-relaxed">{location.narrative}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Comp Postings List */}
+      {comps && comps.length > 0 && (
+        <Card>
+          <CardContent className="py-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Vergleichsobjekte</span>
+              <Badge variant="outline" className="ml-auto text-[10px]">
+                {comps.length} Treffer
+              </Badge>
+            </div>
+
+            {/* CompStats summary */}
+            {compStats && (
+              <div className="grid grid-cols-3 gap-2 text-xs text-center">
+                <div className="p-2 rounded-md bg-muted/50">
+                  <p className="font-semibold text-foreground">{fmtEur(compStats.medianPriceSqm)}</p>
+                  <p className="text-muted-foreground">Median €/m²</p>
+                </div>
+                <div className="p-2 rounded-md bg-muted/50">
+                  <p className="font-semibold text-foreground">{fmtEur(compStats.p25PriceSqm)}</p>
+                  <p className="text-muted-foreground">P25 €/m²</p>
+                </div>
+                <div className="p-2 rounded-md bg-muted/50">
+                  <p className="font-semibold text-foreground">{fmtEur(compStats.p75PriceSqm)}</p>
+                  <p className="text-muted-foreground">P75 €/m²</p>
+                </div>
+              </div>
+            )}
+
+            <Separator />
+
+            {/* Comp list (top 10) */}
+            <div className="space-y-2">
+              {comps.slice(0, 10).map((c) => (
+                <div key={c.id} className="flex items-center gap-3 text-xs p-2 rounded-lg border hover:bg-muted/30 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{c.title || '–'}</p>
+                    <p className="text-muted-foreground">
+                      {c.area}m² · {c.rooms ? `${c.rooms} Zi` : ''} {c.yearBuilt ? `· ${c.yearBuilt}` : ''} {c.distanceKm != null ? `· ${c.distanceKm.toFixed(1)}km` : ''}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-semibold">{fmtEur(c.price)}</p>
+                    <p className="text-muted-foreground">{fmtEur(c.priceSqm)}/m²</p>
+                  </div>
+                  <Badge variant="outline" className="text-[9px] shrink-0">{c.portal}</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* CompStats only (without postings list) */}
+      {(!comps || comps.length === 0) && compStats && (
+        <Card>
+          <CardContent className="py-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Vergleichsmarkt</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-xs text-center">
+              <div className="p-2 rounded-md bg-muted/50">
+                <p className="font-semibold text-foreground">{fmtEur(compStats.medianPriceSqm)}</p>
+                <p className="text-muted-foreground">Median €/m²</p>
+              </div>
+              <div className="p-2 rounded-md bg-muted/50">
+                <p className="font-semibold text-foreground">{compStats.dedupedCount}</p>
+                <p className="text-muted-foreground">Objekte</p>
+              </div>
+              <div className="p-2 rounded-md bg-muted/50">
+                <p className="font-semibold text-foreground">{fmtEur(compStats.p25PriceSqm)} – {fmtEur(compStats.p75PriceSqm)}</p>
+                <p className="text-muted-foreground">IQR €/m²</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Financing Scenarios */}
       {financing.length > 0 && (
