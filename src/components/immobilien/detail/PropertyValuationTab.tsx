@@ -195,6 +195,8 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
         generatedAt: new Date().toISOString(),
         sourceMode: 'SSOT_FINAL',
         legalTitle: r.legalTitle || null,
+        beleihungswert: r.beleihungswert || null,
+        geminiResearch: r.geminiResearch || null,
       });
       toast.success('PDF erstellt');
     } catch (e) {
