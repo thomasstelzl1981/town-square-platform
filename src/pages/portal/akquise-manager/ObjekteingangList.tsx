@@ -43,6 +43,14 @@ const FILTER_CHIPS = [
   { value: 'presented', label: 'Präsentiert' },
 ];
 
+const SOURCE_CHIPS = [
+  { value: 'all', label: 'Alle Quellen' },
+  { value: 'portal', label: 'Portal-Treffer' },
+  { value: 'upload', label: 'Upload' },
+  { value: 'email', label: 'E-Mail' },
+  { value: 'manual', label: 'Manuell' },
+];
+
 export function ObjekteingangList() {
   const navigate = useNavigate();
   const { data: mandates = [], isLoading: loadingMandates } = useAcqMandatesForManager();
