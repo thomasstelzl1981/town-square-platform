@@ -1,239 +1,205 @@
-# Refactoring-Masterplan: TSX-Monolithen → Modulare Architektur
 
-> **Datum**: 2026-03-05 (aktualisiert)
-> **Status**: Wave 1 ✅ (R-1–R-6) — Wave 2 Tranche 1 ✅ (R-7–R-10) — Tranche 2 ✅ (R-11–R-14) — Tranche 3 ✅ (R-15–R-24) — Tranche 4 ✅ (R-25–R-35)
-> **Methode**: Bewährtes Orchestrator + Sub-Components Pattern
 
----
+# Armstrong Workspace (MOD-00) — Komplett-Audit & Dokumentation
 
-## Gesamtstatistik
+## Architektur-Übersicht
 
-| Metrik | Wave 1 (done) | Wave 2 T1-T3 (done) | Wave 2 T4 (geplant) | Gesamt |
-|--------|--------------|---------------------|---------------------|--------|
-| Dateien | 6 | 18 | 11 | 35 |
-| Zeilen vorher | 5.530 | ~10.800 | ~4.900 | ~21.230 |
-| Zeilen nachher | ~1.350 | ~3.200 | ~1.320 | ~5.870 |
-| Reduktion | 76% | ~70% | ~73% | ~72% |
+Der Armstrong Workspace ist ein 3-Spalten Command Center mit projektbasierter Chat-Isolation, SSE-Streaming, Voice I/O, Dokumentenanalyse und einem Action-Katalog mit 60+ registrierten Aktionen.
 
----
-
-## Wave 1 — ABGESCHLOSSEN ✅
-
-| # | Phase | Datei | Vorher | Nachher | Modul |
-|---|-------|-------|--------|---------|-------|
-| 1 | R-1 ✅ | FMEinreichung.tsx | 1039 | 295 | MOD-11 |
-| 2 | R-2 ✅ | ExposeDetail.tsx | 1008 | 299 | MOD-06 |
-| 3 | R-3 ✅ | Inbox.tsx | 976 | 180 | Admin |
-| 4 | R-4 ✅ | KontexteTab.tsx | 923 | 214 | MOD-04 |
-| 5 | R-5 ✅ | AnfrageFormV2.tsx | 904 | 183 | MOD-07 |
-| 6 | R-6 ✅ | Users.tsx | 680 | 178 | Admin |
-
----
-
-## Wave 2 — Tranche 1 ✅ (R-7–R-10)
-
-| # | Phase | Datei | Vorher | Nachher | Modul |
-|---|-------|-------|--------|---------|-------|
-| 7 | R-7 ✅ | EmailTab.tsx | 1506 | ~180 | MOD-02 |
-| 8 | R-8 ✅ | PortfolioTab.tsx | 1511 | ~200 | MOD-04 |
-| 9 | R-9 ✅ | BriefTab.tsx | 1012 | ~200 | MOD-02 |
-| 10 | R-10 ✅ | GeldeingangTab.tsx | 1018 | ~200 | MOD-04 |
-
-## Wave 2 — Tranche 2 ✅ (R-11–R-14)
-
-| # | Phase | Datei | Vorher | Nachher | Modul |
-|---|-------|-------|--------|---------|-------|
-| 11 | R-11 ✅ | TenancyTab.tsx | 904 | ~200 | MOD-04 |
-| 12 | R-12 ✅ | UnitDetailPage.tsx | 708 | ~150 | MOD-13 |
-| 13 | R-13 ✅ | TileCatalog.tsx | 646 | ~150 | Admin |
-| 14 | R-14 ✅ | ManagerFreischaltung.tsx | 635 | ~140 | Admin |
-
-## Wave 2 — Tranche 3 ✅ (R-15–R-24)
-
-| # | Phase | Datei | Vorher | Nachher | Modul | Neue Dateien |
-|---|-------|-------|--------|---------|-------|-------------|
-| 15 | R-15 ✅ | PropertyDetailPage.tsx | 628 | ~200 | MOD-04 | PropertyDetailHeader, PropertyTabRouter |
-| 16 | R-16 ✅ | CaringProviderDetail.tsx | 599 | ~160 | MOD-22 | ProviderGallery, ProviderProfileCard, ProviderServicesCard, ProviderBookingSection |
-| 17 | R-17 ✅ | FMFinanzierungsakte.tsx | 596 | ~200 | MOD-11 | AkteKaufySearch |
-| 18 | R-18 ✅ | MasterTemplates.tsx | 585 | ~140 | Admin | 3 sub-components |
-| 19 | R-19 ✅ | OrganizationDetail.tsx | 581 | ~160 | Admin | 3 sub-components |
-| 20 | R-20 ✅ | FMFallDetail.tsx | 579 | ~160 | MOD-11 | FallHeaderBlock, FallContentBlocks |
-| 21 | R-21 ✅ | LeadManagerKampagnen.tsx | 576 | ~100 | MOD-10 | KampagnenKPIs, KampagnenLeadInbox, KampagnenCampaignList, KampagnenCreator |
-| 22 | R-22 ✅ | LeadPool.tsx | 560 | ~140 | Admin | 3 sub-components |
-| 23 | R-23 ✅ | ObjekteingangDetail.tsx | 539 | ~200 | MOD-12 | ObjektKPIRow, ObjektBasisdaten |
-| 24 | R-24 ✅ | Oversight.tsx | 531 | ~140 | Admin | 3 sub-components |
-
----
-
-## Wave 2 — Tranche 4 ✅ (R-25–R-35)
-
-| # | Phase | Datei | Vorher | Nachher | Modul | Neue Dateien |
-|---|-------|-------|--------|---------|-------|-------------|
-| R-25 | ✅ | Agreements.tsx | 506 | ~90 | Admin | AgreementsTemplateTable, AgreementsConsentLog |
-| R-26 | ✅ | Dashboard.tsx (Admin) | 491 | ~100 | Admin | AdminKPIGrid, AdminSessionCard |
-| R-27 | ✅ | Delegations.tsx | 486 | ~100 | Admin | DelegationTable |
-| R-28 | ✅ | ArmstrongWorkspace.tsx | 479 | ~180 | MOD-00 | WorkspaceChatHeader, WorkspaceChatMessages, WorkspaceChatInput |
-| R-29 | ✅ | FMDashboard.tsx | 472 | ~83 | MOD-11 | FMZinsTickerWidget, FMMandateCards, FMProfileEditSheet |
-| R-30 | ✅ | VerwaltungTab.tsx | 456 | ~150 | MOD-04 | VerwaltungContextGrid, VerwaltungPropertyAccordion, VerwaltungGesamtergebnis |
-| R-31 | ✅ | ProjectDetailPage.tsx | 456 | ~120 | MOD-13 | ProjectDetailHeader, ProjectUnitsTable, ProjectInfoTabs |
-| R-32 | ✅ | SanierungTab.tsx | 451 | ~89 | MOD-04 | SanierungDemoDetail |
-| R-33 | ✅ | MasterTemplatesImmo.tsx | 444 | ~60 | Admin | ImmoAkteBlockView, immoAkteBlocks.ts |
-| R-34 | ⬜ | StorageFileManager.tsx | 434 | — | MOD-03 | Skipped — already modular (5 views) |
-| R-35 | ✅ | RolesManagement.tsx | 419 | ~30 | Admin | RolesCatalogTab, RolesMatrixTab, RolesGovernanceTab |
-
-### Ergebnis
-
-- **33 von 35 Dateien** refactored (R-28 ArmstrongWorkspace + R-34 StorageFileManager waren optional, R-28 jetzt done)
-- **~80+ Sub-Components** extrahiert
-- **Durchschnittliche Reduktion**: ~65%
-
----
-
-## Regeln
-
-1. **Keine funktionalen Änderungen** — Reine Extraktion
-2. **Keine DB-Änderungen** — Kein Migrations-Tool nötig
-3. **Keine neuen Routes** — Bestehende Routen bleiben
-4. **Module sofort re-freezen** nach Abschluss jeder Phase
-5. **TSX Creation Check** (Regel F) — vor jeder neuen Datei auf Duplikate prüfen
-6. **Zone Separation** (Regel G) — keine Cross-Zone-Imports
-
----
-
-## Objektfinder / Portal-Recherche — Phasenplan
-
-> **Modul**: MOD-12 (Akquise-Manager) — Tools → Portal-Recherche
-> **Datum**: 2026-03-05
-
-### Phase 1 — Portal-Suche reparieren ✅
-
-**Status**: Implementiert
-
-| Änderung | Datei | Beschreibung |
-|----------|-------|--------------|
-| URL-Builder mit echten Filtern | `sot-research-engine/index.ts` | `buildPortalUrl()` mit Preis, Fläche, Objektart-Mapping pro Portal |
-| Parallele 3-Portal-Suche | `sot-research-engine/index.ts` | `searchAllPortals()` scrapt IS24/Immowelt/Kleinanzeigen parallel |
-| Erweiterter Extraktions-Prompt | `sot-research-engine/index.ts` | KI extrahiert: Objektart, Fläche, Zimmer, WE, Baujahr, Rendite, PLZ |
-| UI-Rebuild ohne Maklersuche | `PortalSearchTool.tsx` | Objektart-Filter, Flächen-Filter, Portal-Status-Badges, Ergebnis-Cards |
-| Hook-Update | `useAcqTools.ts` | Neue `PortalSearchParams` ohne `portal`/`searchType`, mit `areaMin/Max` |
-
-### Phase 2 — Persistierung + Inbox-Workflow (geplant)
-
-**Ziel**: Ergebnisse speichern, deduplizieren, als Lead-Kandidaten verarbeiten.
-
-**Neue DB-Tabellen** (via Migration):
-
-```sql
--- Suchlauf-Protokoll
-CREATE TABLE portal_search_runs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES organizations(id),
-  created_by UUID NOT NULL,
-  search_params_json JSONB NOT NULL,
-  status TEXT NOT NULL DEFAULT 'running', -- running/partial/success/fail
-  metrics_json JSONB, -- {immoscout24: {found: 12, new: 8}, ...}
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Gefundene Listings (alle Portale)
-CREATE TABLE portal_listings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES organizations(id),
-  run_id UUID REFERENCES portal_search_runs(id),
-  source_portal TEXT NOT NULL,
-  source_url TEXT,
-  source_listing_id TEXT,
-  title TEXT NOT NULL,
-  price INTEGER,
-  object_type TEXT,
-  living_area_sqm NUMERIC,
-  plot_area_sqm NUMERIC,
-  address TEXT,
-  city TEXT,
-  zip_code TEXT,
-  rooms NUMERIC,
-  units_count INTEGER,
-  year_built INTEGER,
-  gross_yield NUMERIC,
-  broker_name TEXT,
-  raw_extract_json JSONB,
-  cluster_fingerprint TEXT, -- Hash(adresse+preis+fläche) für Dedupe
-  status TEXT NOT NULL DEFAULT 'new', -- new/seen/saved/rejected/suppressed
-  score INTEGER, -- 0-100 Match vs. Suchprofil
-  match_reasons_json JSONB,
-  first_seen_at TIMESTAMPTZ DEFAULT now(),
-  last_seen_at TIMESTAMPTZ DEFAULT now(),
-  linked_offer_id UUID REFERENCES acq_offers(id), -- wenn in Objekteingang übernommen
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+```text
+┌──────────────┬──────────────────────────────┬──────────────┐
+│ Projects     │        Chat Column           │   Context    │
+│ Sidebar      │                              │   Panel      │
+│              │  ┌────────────────────────┐   │              │
+│ • Projekt A  │  │  WorkspaceChatHeader   │   │ Aktiver      │
+│ • Projekt B  │  ├────────────────────────┤   │ Kontext      │
+│ • Neuer Chat │  │                        │   │ (Modul,      │
+│              │  │  Messages + Onboarding │   │  Entity)     │
+│              │  │  + ArmstrongOrb        │   │              │
+│              │  │  + MessageRenderer     │   │ Projekt-     │
+│              │  │  + ActionCard          │   │ Info         │
+│              │  │  + DraftBox            │   │              │
+│              │  │  + EmailDraftBox       │   │ Entity       │
+│              │  │  + ResultBox           │   │ Linker       │
+│              │  │  + BlockedBox          │   │              │
+│              │  │                        │   │ Aufgaben     │
+│              │  ├────────────────────────┤   │ (CRUD)       │
+│              │  │  ChipBar (Quick Acts)  │   │              │
+│              │  ├────────────────────────┤   │ Memory       │
+│              │  │  ChatInput + / Picker  │   │ Snippets     │
+│              │  │  + Doc Upload + Voice  │   │ (CRUD)       │
+│              │  └────────────────────────┘   │              │
+└──────────────┴──────────────────────────────┴──────────────┘
 ```
 
-**Implementierung** (Dateien):
+---
 
-| Datei | Beschreibung |
-|-------|--------------|
-| DB Migration | `portal_search_runs` + `portal_listings` mit RLS |
-| `src/hooks/usePortalListings.ts` | CRUD für portal_listings, Suppression, Status-Updates |
-| `src/pages/portal/akquise-manager/components/PortalSearchInbox.tsx` | Inbox-Cards: Neu/Gesehen/Gespeichert/Abgelehnt |
-| `sot-research-engine/index.ts` | Ergebnisse in `portal_listings` persistieren, Dedupe via `cluster_fingerprint` |
-| Scoring-Logic in `src/engines/akquiseCalc/` | `scoreListingVsProfile()` → Score 0-100 + Reasons |
+## 1. Fähigkeiten-Matrix
 
-**Dedupe-Strategie**:
-- `cluster_fingerprint = MD5(lower(city) + price_bucket + area_bucket)`
-- Bei Match: `last_seen_at` updaten, nicht duplizieren
-- Suppression: Abgelehnte Fingerprints bei nächster Suche ignorieren
+### KI-Chat (EXPLAIN Intent)
+| Funktion | Status | Verdrahtung |
+|----------|--------|-------------|
+| Freitext-Chat (Deutsch) | **Funktional** | Lovable AI Gateway → Gemini 2.5 Pro, SSE-Streaming |
+| Konversationsgedächtnis | **Funktional** | Letzte 10 Nachrichten im Prompt, DB-Persistenz via `armstrong_chat_sessions` |
+| Knowledge Base Retrieval | **Funktional** | ILIKE-Suche in `armstrong_knowledge_items`, Modul-Kategorie-Fallback |
+| DMS Document Search (RAG) | **Funktional** | ILIKE-Suche in `document_chunks` bei Dokument-Keywords, On-Demand Deep-Upgrade |
+| Entity-Awareness | **Funktional** | Lädt Property/Mandate/Finance-Case Daten aus DB in Prompt |
+| Projekt-Memory | **Funktional** | `memory_snippets`, `task_list`, `linked_entities` fließen in System-Prompt |
+| Datenmodus-Toggle | **Funktional** | `useMyData` Toggle: Tenant-Daten vs. General Knowledge |
+| Global Assist (alle Module) | **Funktional** | EXPLAIN/DRAFT Intents in ALLEN 20 Modulen erlaubt |
 
-**Inbox-Actions**:
-- "In Objekteingang übernehmen" → erstellt `acq_offers`-Record, setzt `linked_offer_id`
-- "Ablehnen" → Status `rejected`, optionale Suppression
-- "Merken" → Status `saved`
+### Dokument-Upload & Analyse
+| Funktion | Status | Verdrahtung |
+|----------|--------|-------------|
+| Upload (40+ Formate, 50MB) | **Funktional** | Storage → `sot-document-parser` → Text-Extraktion |
+| PDF-Analyse | **Funktional** | Gemini 2.5 Pro Vision |
+| XLSX/CSV-Parsing | **Funktional** | SheetJS (deterministic, 0 Credits) |
+| Bild-Analyse (JPG/PNG) | **Funktional** | Gemini Vision |
+| Audio-Transkription | **Funktional** | Unterstützte Formate: MP3, WAV, M4A, OGG |
+| Magic Intake (Auto-Detect) | **Funktional** | `detectDocumentIntent()` erkennt Dokumenttyp → schlägt passende Aktion vor |
 
-### Phase 3 — KI-Suchprofil-Erfassung (geplant)
+### Magic Intake Actions (Dokument → Datensatz)
+| Action | Modul | Status |
+|--------|-------|--------|
+| Immobilie aus Dokument | MOD-04 | **Implementiert** |
+| Finanzierungsfall anlegen | MOD-11 | **Implementiert** |
+| Finanzdaten erfassen | MOD-18 | **Implementiert** |
+| Fahrzeug anlegen | MOD-17 | **Implementiert** |
+| Akquise-Mandat anlegen | MOD-12 | **Implementiert** |
+| PV-Anlage anlegen | MOD-19 | **Implementiert** |
+| Selbstauskunft befüllen | MOD-07 | **Implementiert** |
+| Mietvertrag anlegen | MOD-20 | **Implementiert** |
+| Suchmandat anlegen | MOD-08 | **Implementiert** |
+| Kontakt/Stammdaten anlegen | MOD-01 | **Implementiert** |
+| Verkaufsinserat anlegen | MOD-06 | **Implementiert** |
+| Partnerprofil anlegen | MOD-09 | **Implementiert** |
 
-**Ziel**: User beschreibt Wunschobjekt in Freitext, KI erzeugt strukturierte Filter.
+### Text-/Draft-Erstellung (DRAFT Intent)
+| Funktion | Status | Verdrahtung |
+|----------|--------|-------------|
+| Brief/E-Mail/Text erstellen | **Funktional** | AI Gateway → Gemini 2.5 Pro, SSE-Streaming |
+| E-Mail-Entwurf (compose) | **Funktional** | `ARM.GLOBAL.COMPOSE_EMAIL` → JSON-Output mit To/Subject/Body |
+| E-Mail-Versand | **Funktional** | `ARM.GLOBAL.SEND_COMPOSED_EMAIL` → `sot-system-mail-send` |
+| Draft-Copy (Clipboard) | **Funktional** | DraftBox mit Copy-Button |
 
-**Implementierung**:
+### Voice I/O
+| Funktion | Status | Verdrahtung |
+|----------|--------|-------------|
+| Push-to-Talk STT | **Funktional** | ElevenLabs Scribe primary, Browser SpeechRecognition fallback |
+| TTS (Vorlesen) | **Funktional** | `elevenlabs-tts` Edge Function → Audio Blob, Browser fallback |
+| Markdown-Cleaning vor TTS | **Funktional** | Strips `#`, `**`, backticks, links etc. |
 
-| Datei | Beschreibung |
-|-------|--------------|
-| `PortalSearchAIIntake.tsx` | Freitext-Eingabe + Confidence-Anzeige + Rückfragen |
-| `sot-research-engine/index.ts` | Neuer Intent `ai_search_profile` → Gemini 2.5 Pro |
-| `useAcqTools.ts` | `useAISearchProfile()` Hook |
+### Action-Katalog (/ Slash Commands)
+| Funktion | Status | Verdrahtung |
+|----------|--------|-------------|
+| Slash-Command Picker | **Funktional** | `SlashCommandPicker` → `armstrongManifest.ts` |
+| Keyboard Navigation | **Funktional** | ↑↓ Enter Esc |
+| Kontextsensitive Filterung | **Funktional** | Modul-spezifische Actions first, dann Global |
+| Confirm-Gate (Bestätigung) | **Funktional** | `ActionCard` mit Bestätigen/Abbrechen |
+| Risiko/Kosten-Anzeige | **Funktional** | Badge mit Execution-Mode + Cost-Hint |
 
-**AI Output Contract**:
-```typescript
-interface AIProfileDraft {
-  canonical: {
-    region?: string;
-    price_min?: number;
-    price_max?: number;
-    area_min?: number;
-    area_max?: number;
-    object_types?: string[];
-    yield_min?: number;
-    units_min?: number;
-  };
-  confidence: Record<string, number>; // 0-1 pro Feld
-  assumptions: string[]; // "Annahme: Preis = Kaltmiete"
-  questions?: string[]; // "Meinen Sie Warm- oder Kaltmiete?"
-}
-```
+### Projekt-Management
+| Funktion | Status | Verdrahtung |
+|----------|--------|-------------|
+| Projekte CRUD | **Funktional** | `useArmstrongProjects` → `armstrong_projects` Tabelle |
+| Chat-Isolation pro Projekt | **Funktional** | `project_id` Filter, In-Memory Cache + DB-Persistenz |
+| Memory Snippets CRUD | **Funktional** | ContextPanel: Entscheidung/Annahme/Präferenz/Notiz |
+| Task-List CRUD | **Funktional** | ContextPanel: Checkbox + Add/Delete |
+| Entity Linker | **Funktional** | EntityLinker: Immobilien, Kontakte, Deals verknüpfen |
+| Session Restore | **Funktional** | `loadPersistedSession()` aus `armstrong_chat_sessions` |
 
-**Flow**:
-1. User gibt Freitext ein: "Suche MFH in Berlin, bis 2 Mio, mindestens 6% Rendite"
-2. Gemini 2.5 Pro extrahiert → `AIProfileDraft`
-3. UI zeigt extrahierte Filter mit Confidence-Badges
-4. User bestätigt oder korrigiert
-5. Bestätigte Filter werden als Suchparameter übernommen
+### Modulspezifische Readonly-Actions
+| Action | Modul | Status |
+|--------|-------|--------|
+| Vollständigkeit prüfen | MOD-04 | **Implementiert** (DB-Query, Score-Berechnung) |
+| KPIs berechnen | MOD-04 | **Implementiert** (Rendite, Cashflow aus Leases) |
+| Datenqualität prüfen | MOD-04 | **Implementiert** (Validierungsregeln) |
+| Selbstauskunft erklären | MOD-07 | **Implementiert** (statische Checkliste) |
+| Dokument-Checkliste | MOD-07 | **Implementiert** (statische Checkliste) |
+| Investment-Simulation | MOD-08 | **Implementiert** (Parametrische Berechnung) |
+| Favorit analysieren | MOD-08 | **Implementiert** (Scoring) |
+| Bauträgerprojekt anlegen | MOD-13 | **Implementiert** (delegiert an `sot-project-intake`) |
+| Rechercheauftrag | MOD-14 | **Implementiert** (delegiert an `sot-research-engine`) |
+| DMS Storage Extraction | MOD-03 | **Implementiert** (delegiert an `sot-storage-extractor`) |
 
 ---
 
-### Abhängigkeiten & Reihenfolge
+## 2. Was Armstrong NICHT kann (Grenzen)
 
-```
-Phase 1 (done) ──→ Phase 2 (DB + Inbox) ──→ Phase 3 (KI-Intake)
-                         ↓
-                   Scoring-Engine (ENG-AKQUISE erweitern)
-```
+| Funktion | Status | Grund |
+|----------|--------|-------|
+| **Bilder generieren** | **Nicht implementiert** | Kein Image-Generation-Model angebunden. Edge Function nutzt nur `google/gemini-2.5-pro` (Text). Kein `gemini-2.5-flash-image` oder `gemini-3-pro-image-preview` Call. |
+| **PDF-Erzeugung direkt** | **Nicht implementiert** | Armstrong kann Texte/Briefe als DRAFT erstellen, aber die PDF-Generierung läuft über die separaten `pdfCiKit`/`letterPdf` Pipelines in den jeweiligen Modulen (MOD-02 Briefgenerator, MOD-18 Finanzreport etc.). Armstrong verweist darauf, erzeugt aber selbst keine PDFs. |
+| **Web-Recherche (Live Internet)** | **Teilweise** | `ARM.GLOBAL.WEB_RESEARCH` ist als Action registriert und im `MVP_EXECUTABLE_ACTIONS` Array, aber die `executeAction` Switch-Case hat **keinen** Handler dafür — fällt auf `default: "not implemented"`. **BUG.** |
+| **Briefe erstellen (DIN 5008 PDF)** | **Nur Draft** | Armstrong kann Brief-Text als Markdown-Draft erstellen, aber die eigentliche DIN-5008-PDF-Generierung liegt in MOD-02 (`letterPdf.ts`). Kein direkter PDF-Export aus dem Chat. |
 
-Phase 2 kann unabhängig von Phase 3 deployed werden. Phase 3 baut auf den Filter-Parametern aus Phase 1 auf.
+---
+
+## 3. Gefundene Bugs / Verbesserungspotenzial
+
+### BUG 1: Web-Recherche Action nicht implementiert (HIGH)
+**Datei:** `supabase/functions/sot-armstrong-advisor/index.ts`
+**Problem:** `ARM.GLOBAL.WEB_RESEARCH` ist in `MVP_EXECUTABLE_ACTIONS` (Zeile 538), aber der `executeAction` Switch-Case (ab Zeile 1531) hat keinen `case "ARM.GLOBAL.WEB_RESEARCH"`. Es fällt auf `default: "Action not implemented"`.
+
+**Fix:** Einen Handler hinzufügen, der `sot-research-ai-assist` oder eine Perplexity/Firecrawl-Integration aufruft.
+
+### BUG 2: DMS Storage Extraction Action nicht implementiert (MEDIUM)
+**Problem:** `ARM.DMS.STORAGE_EXTRACTION` ist in `MVP_EXECUTABLE_ACTIONS` (Zeile 546), aber ebenfalls kein Switch-Case-Handler.
+
+**Fix:** Handler hinzufügen, der `sot-storage-extractor` mit `action: 'bulk-scan'` aufruft.
+
+### BUG 3: MOD-13 Phase Change und Summary Actions fehlen (LOW)
+**Problem:** `ARM.MOD13.PHASE_CHANGE` und `ARM.MOD13.PROJECT_SUMMARY` sind im Welcome-Config (Zeile 217-218), aber nicht in `MVP_ACTIONS` registriert und haben keine Handler.
+
+### Verbesserungsvorschlag 1: Bildgenerierung integrieren
+Das Lovable AI Gateway unterstützt `google/gemini-2.5-flash-image` und `google/gemini-3-pro-image-preview`. Ein neuer Action-Code `ARM.GLOBAL.GENERATE_IMAGE` könnte diese Modelle nutzen.
+
+### Verbesserungsvorschlag 2: PDF-Export aus Chat
+Armstrong könnte einen "Brief als PDF exportieren" Button in der DraftBox anbieten, der den Draft-Content an die bestehende `letterPdf.ts` Pipeline weiterleitet.
+
+---
+
+## 4. Sicherheits- & Isolierungsstatus
+
+| Aspekt | Status |
+|--------|--------|
+| Zone-2-Isolation | **OK** — Context erkennt Zone per Route, Z2 hat Tenant-Scope |
+| Tenant-Isolation (RLS) | **OK** — Alle DB-Queries filtern nach `tenant_id` / `user_id` |
+| Zone-3-Personas getrennt | **OK** — Eigene System-Prompts pro Website |
+| Data-Mode Toggle | **OK** — `general` Mode unterdrückt Entity/DMS/Tenant-Laden |
+| Confirm-Gate für Schreibaktionen | **OK** — `execute_with_confirmation` → ActionCard |
+| Action-Logging | **OK** — `armstrong_action_runs` Tabelle mit Audit-Trail |
+| Session-Persistenz | **OK** — `armstrong_chat_sessions` mit `project_id`-Isolation |
+| Kein Cross-Zone Leak | **OK** — Z3 Armstrong hat keinen Zugriff auf Tenant-Daten |
+
+---
+
+## 5. Zusammenfassung: Was Armstrong heute kann
+
+1. **Freier KI-Chat** in allen 20 Modulen (SSE-Streaming, Gemini 2.5 Pro)
+2. **Dokumente analysieren** (40+ Formate, 50MB, Vision für PDFs/Bilder)
+3. **Magic Intake** — 12 Dokumenttypen → automatisch Datensätze anlegen
+4. **Texte/Briefe/E-Mails entwerfen** (Draft-Modus mit Copy/Send)
+5. **E-Mails senden** über `sot-system-mail-send`
+6. **KPIs berechnen** für Immobilien (Rendite, Cashflow)
+7. **Datenqualität prüfen** für Properties
+8. **Investment-Simulationen** durchführen
+9. **Projekte verwalten** mit Memory, Tasks, Entity-Links
+10. **Voice I/O** (Push-to-Talk STT + ElevenLabs TTS)
+11. **Slash-Command Katalog** mit 60+ kontextsensitiven Aktionen
+12. **DMS durchsuchen** (RAG über `document_chunks`)
+13. **Knowledge Base** durchsuchen (`armstrong_knowledge_items`)
+14. **Bauträgerprojekte** aus Dokumenten anlegen (MOD-13)
+15. **Rechercheaufträge** erstellen (MOD-14)
+
+**Nicht funktional:** Web-Recherche (Bug), Bildgenerierung (nicht angebunden), PDF-Export direkt aus Chat (nicht implementiert).
+
+---
+
+## 6. Empfohlene nächste Schritte
+
+1. **Web-Recherche Bug fixen** — Handler für `ARM.GLOBAL.WEB_RESEARCH` in der Edge Function implementieren
+2. **Bildgenerierung hinzufügen** — `gemini-3-pro-image-preview` Model anbinden
+3. **PDF-Export aus Draft** — DraftBox mit "Als PDF exportieren" Button erweitern
+4. **DMS Storage Extraction Handler** — Bulk-Scan Action implementieren
+
