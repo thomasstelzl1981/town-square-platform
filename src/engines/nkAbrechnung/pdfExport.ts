@@ -1,16 +1,15 @@
 /**
  * PDF-Export fuer formell wirksame Nebenkostenabrechnung
  * 
- * Erzeugt ein PDF gemaess den formellen Anforderungen:
- * - Gesamtkosten pro Position
- * - Verteilerschluessel + Anteil
- * - Vorauszahlungen
- * - Saldo (Nachzahlung/Guthaben)
- * - Einspruchsfrist-Hinweis
+ * Migrated to CI-A pdfCiKit for consistent header/footer.
  */
 
 import jsPDF from 'jspdf';
 import { NKSettlementMatrix } from './spec';
+import {
+  PAGE, COLOR, TYPO, SPACING,
+  drawCiHeader, drawCiFooter, addFootersToAllPages,
+} from '@/lib/pdf';
 
 const EUR = (v: number) =>
   new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(v);
@@ -27,33 +26,35 @@ const KEY_LABELS: Record<string, string> = {
 
 export function generateNKPdf(matrix: NKSettlementMatrix): jsPDF {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 20;
-  const contentWidth = pageWidth - 2 * margin;
-  let y = 25;
+  const margin = PAGE.MARGIN_LEFT;
+  const contentWidth = PAGE.CONTENT_WIDTH;
 
-  // Header
-  doc.setFontSize(9);
-  doc.setTextColor(100);
-  doc.text('Vermieter', margin, y);
-  y += 12;
+  // CI-A Header
+  let y = drawCiHeader(doc, {
+    title: 'Betriebskostenabrechnung',
+    subtitle: `${matrix.header.propertyName} · ${matrix.header.unitLabel}`,
+  });
+
+  y += 4;
 
   // Empfaenger
   doc.setFontSize(11);
-  doc.setTextColor(0);
+  doc.setTextColor(COLOR.INK[0], COLOR.INK[1], COLOR.INK[2]);
+  doc.setFont(TYPO.FONT_FAMILY, 'bold');
   doc.text(matrix.header.tenantName, margin, y);
   y += 6;
   doc.setFontSize(9);
+  doc.setFont(TYPO.FONT_FAMILY, 'normal');
   doc.text(matrix.header.propertyName, margin, y);
-  y += 12;
+  y += 10;
 
   // Betreff
   doc.setFontSize(13);
-  doc.setFont(undefined!, 'bold');
+  doc.setFont(TYPO.FONT_FAMILY, 'bold');
   doc.text('Betriebskostenabrechnung', margin, y);
   y += 6;
   doc.setFontSize(10);
-  doc.setFont(undefined!, 'normal');
+  doc.setFont(TYPO.FONT_FAMILY, 'normal');
   doc.text(
     `für den Zeitraum ${formatDate(matrix.header.periodStart)} – ${formatDate(matrix.header.periodEnd)}`,
     margin,
@@ -73,25 +74,27 @@ export function generateNKPdf(matrix: NKSettlementMatrix): jsPDF {
   // Tabelle Header
   const cols = [margin, margin + 55, margin + 85, margin + 115, margin + 145];
   doc.setFontSize(8);
-  doc.setFont(undefined!, 'bold');
+  doc.setFont(TYPO.FONT_FAMILY, 'bold');
+  doc.setTextColor(COLOR.MUTED[0], COLOR.MUTED[1], COLOR.MUTED[2]);
   doc.text('Kostenart', cols[0], y);
   doc.text('Schlüssel', cols[1], y);
   doc.text('Haus gesamt', cols[2], y);
   doc.text('Anteil', cols[3], y);
   y += 2;
-  doc.setDrawColor(180);
+  doc.setDrawColor(COLOR.BORDER[0], COLOR.BORDER[1], COLOR.BORDER[2]);
   doc.line(margin, y, margin + contentWidth, y);
   y += 5;
 
   // Zeilen
-  doc.setFont(undefined!, 'normal');
+  doc.setFont(TYPO.FONT_FAMILY, 'normal');
+  doc.setTextColor(COLOR.INK[0], COLOR.INK[1], COLOR.INK[2]);
   const apportionableRows = matrix.rows.filter((r) => r.isApportionable);
   const nonApportionableRows = matrix.rows.filter((r) => !r.isApportionable);
 
   for (const row of apportionableRows) {
     if (y > 260) {
       doc.addPage();
-      y = 25;
+      y = PAGE.MARGIN_TOP + SPACING.HEADER_HEIGHT;
     }
     doc.text(row.label, cols[0], y);
     doc.text(KEY_LABELS[row.keyType] || row.keyType, cols[1], y);
@@ -108,31 +111,31 @@ export function generateNKPdf(matrix: NKSettlementMatrix): jsPDF {
   // Nicht umlagefaehig (Hinweis)
   if (nonApportionableRows.length > 0) {
     doc.setFontSize(7);
-    doc.setTextColor(120);
+    doc.setTextColor(COLOR.MUTED[0], COLOR.MUTED[1], COLOR.MUTED[2]);
     doc.text('Nicht umlagefähige Kosten (zur Information):', margin, y);
     y += 4;
     for (const row of nonApportionableRows) {
       doc.text(`  ${row.label}: ${EUR(row.totalHouse)}`, margin, y);
       y += 4;
     }
-    doc.setTextColor(0);
+    doc.setTextColor(COLOR.INK[0], COLOR.INK[1], COLOR.INK[2]);
     y += 4;
   }
 
   // Summary
   doc.setFontSize(10);
-  doc.setFont(undefined!, 'bold');
+  doc.setFont(TYPO.FONT_FAMILY, 'bold');
   const summaryX = margin + 80;
   doc.text('Summe umlagefähige Kosten:', margin, y);
   doc.text(EUR(matrix.summary.totalApportionable), summaryX, y);
   y += 6;
 
-  doc.setFont(undefined!, 'normal');
+  doc.setFont(TYPO.FONT_FAMILY, 'normal');
   doc.text('Vorauszahlungen:', margin, y);
   doc.text(EUR(matrix.summary.totalPrepaid), summaryX, y);
   y += 8;
 
-  doc.setFont(undefined!, 'bold');
+  doc.setFont(TYPO.FONT_FAMILY, 'bold');
   doc.setFontSize(12);
   const balanceLabel = matrix.summary.balance >= 0 ? 'Nachzahlung' : 'Guthaben';
   doc.text(`${balanceLabel}:`, margin, y);
@@ -141,7 +144,7 @@ export function generateNKPdf(matrix: NKSettlementMatrix): jsPDF {
 
   // Zahlungshinweis
   doc.setFontSize(9);
-  doc.setFont(undefined!, 'normal');
+  doc.setFont(TYPO.FONT_FAMILY, 'normal');
   if (matrix.summary.balance > 0) {
     doc.text(
       `Bitte überweisen Sie den Betrag von ${EUR(matrix.summary.balance)} innerhalb von 30 Tagen.`,
@@ -159,16 +162,15 @@ export function generateNKPdf(matrix: NKSettlementMatrix): jsPDF {
 
   // Rechtshinweis
   doc.setFontSize(7);
-  doc.setTextColor(120);
+  doc.setTextColor(COLOR.MUTED[0], COLOR.MUTED[1], COLOR.MUTED[2]);
   doc.text(
     'Einwendungen gegen diese Abrechnung sind innerhalb von 12 Monaten nach Zugang geltend zu machen (§ 556 Abs. 3 BGB).',
     margin,
     y
   );
-  y += 8;
 
-  // Fusszeile
-  doc.text(`Erstellt am: ${new Date().toLocaleDateString('de-DE')}`, margin, y);
+  // CI-A Footers on all pages
+  addFootersToAllPages(doc, { confidential: false });
 
   return doc;
 }
