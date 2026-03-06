@@ -96,8 +96,8 @@ export function EditableIdentityBlock({
           </div>
         </div>
 
-        {/* Row 2: Objektart + Status */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Row 2: Objektart + Status (+ Wohneinheiten bei MFH) */}
+        <div className={`grid ${isMfh ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
           <div className="space-y-1">
             <Label className="text-[11px] text-muted-foreground">Objektart</Label>
             <Select value={propertyType || ''} onValueChange={(v) => onFieldChange('propertyType', v)}>
@@ -111,6 +111,20 @@ export function EditableIdentityBlock({
               </SelectContent>
             </Select>
           </div>
+          {isMfh && (
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Wohneinheiten</Label>
+              <Input
+                type="number"
+                min="1"
+                max="999"
+                value={unitCountActual || ''}
+                onChange={(e) => onFieldChange('unitCountActual', e.target.value ? parseInt(e.target.value) : undefined)}
+                className="h-7 text-xs"
+                placeholder="z.B. 6"
+              />
+            </div>
+          )}
           <div className="space-y-1">
             <Label className="text-[11px] text-muted-foreground">Status</Label>
             <Select value={status} onValueChange={(v) => onFieldChange('propertyStatus', v as PropertyStatus)}>

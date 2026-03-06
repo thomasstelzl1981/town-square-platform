@@ -134,6 +134,7 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
           reportingRegime={formData.reportingRegime}
           buildYear={formData.buildYear}
           wegFlag={formData.wegFlag}
+          unitCountActual={formData.unitCountActual}
           street={formData.street}
           houseNumber={formData.houseNumber}
           postalCode={formData.postalCode}
