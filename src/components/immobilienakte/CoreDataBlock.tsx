@@ -18,6 +18,7 @@ export function CoreDataBlock({
   areaLivingSqm,
   roomsCount,
   bathroomsCount,
+  plotAreaSqm,
   heatingType,
   energySource,
   energyCertificateValue,
