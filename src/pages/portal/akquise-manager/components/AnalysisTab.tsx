@@ -287,9 +287,9 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
 
       {/* Quick Actions */}
       <div className="flex gap-3 flex-wrap">
-        <Button variant="outline" onClick={() => offer.address && runGeoMap.mutate({ offerId: offer.id, address: `${offer.address}, ${offer.postal_code} ${offer.city}` })} disabled={!offer.address || runGeoMap.isPending}>
-          {runGeoMap.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <MapPin className="h-4 w-4 mr-2" />}
-          GeoMap
+        <Button variant="outline" onClick={() => offer.address && runValuation.mutate({ offerId: offer.id, address: `${offer.address}, ${offer.postal_code} ${offer.city}` })} disabled={!offer.address || runValuation.isPending}>
+          {runValuation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <TrendingUp className="h-4 w-4 mr-2" />}
+          SoT Bewertung
         </Button>
         <Button variant="outline" onClick={() => runAI.mutate({ offerId: offer.id, mandateId })} disabled={runAI.isPending}>
           {runAI.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Brain className="h-4 w-4 mr-2" />}
