@@ -1,34 +1,29 @@
 /**
- * ValuationReportReader — Premium Bewertungsgutachten Web-Reader
- * Editorial-quality report layout with visual location assets, premium comps, and CI-A design.
- * V7.0: Full premium redesign — editorial structure, visual maps, premium KPIs
+ * ValuationReportReader — Kurzgutachten Web-Reader V9.0
+ * 11 inline sections matching the 12-page PDF structure.
+ * Scrollable vertical layout — every section visible in sequence.
  */
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
-  TrendingUp, Download, ArrowUpDown, Shield, Banknote, BarChart3,
+  TrendingUp, Download, Shield, Banknote, BarChart3,
   Database, MapPin, Building2, FileText, AlertTriangle, CheckCircle2,
-  Navigation, Clock, Compass, Star
+  Navigation, Clock, Compass, Star, Landmark, Ruler, Hammer,
+  ArrowUpDown, Scale, Search, Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import { ValuationLegalBlock } from './ValuationLegalBlock';
 import type {
-  ValueBand,
-  ValuationMethodResult,
-  FinancingScenario,
-  StressTestResult,
-  LienProxy,
-  DebtServiceResult,
-  DataQuality,
-  CompStats,
-  CompPosting,
-  LocationAnalysis,
-  LegalTitleBlock,
-  ValuationSourceMode,
+  ValueBand, ValuationMethodResult, FinancingScenario, StressTestResult,
+  LienProxy, DebtServiceResult, DataQuality, CompStats, CompPosting,
+  LocationAnalysis, LegalTitleBlock, ValuationSourceMode,
+  BeleihungswertResult, GeminiResearchResult,
 } from '@/engines/valuation/spec';
+
+// ─── Props ────────────────────────────────────────────────────────────
 
 interface Props {
   valueBand: ValueBand | null;
@@ -44,33 +39,42 @@ interface Props {
   legalTitle?: LegalTitleBlock | null;
   location?: LocationAnalysis | null;
   comps?: CompPosting[];
+  beleihungswert?: BeleihungswertResult | null;
+  geminiResearch?: GeminiResearchResult | null;
   onDownloadPdf?: () => void;
   className?: string;
 }
+
+// ─── Formatting ───────────────────────────────────────────────────────
 
 const fmtEur = (v: number | null | undefined) =>
   v != null
     ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v)
     : '–';
 
+const fmtEur2 = (v: number | null | undefined) =>
+  v != null
+    ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)
+    : '–';
+
 const fmtPct = (v: number | null | undefined) =>
-  v != null ? `${(v * 100).toFixed(1)}%` : '–';
+  v != null ? `${(v * 100).toFixed(1)} %` : '–';
+
+const fmtNum = (v: number | null | undefined, digits = 2) =>
+  v != null ? v.toLocaleString('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '–';
 
 const trafficColor: Record<string, string> = {
   green: 'text-emerald-600 bg-emerald-500/10 border-emerald-200',
   yellow: 'text-yellow-600 bg-yellow-500/10 border-yellow-200',
   red: 'text-red-600 bg-red-500/10 border-red-200',
 };
+const trafficIcon: Record<string, string> = { green: '✓', yellow: '⚠', red: '✗' };
 
-const trafficIcon: Record<string, string> = {
-  green: '✓',
-  yellow: '⚠',
-  red: '✗',
-};
+// ─── UI Primitives ────────────────────────────────────────────────────
 
-/** Premium section header component */
-function SectionHeader({ icon: Icon, title, subtitle, badge }: {
+function SectionHeader({ icon: Icon, number: num, title, subtitle, badge }: {
   icon: React.ComponentType<{ className?: string }>;
+  number?: number;
   title: string;
   subtitle?: string;
   badge?: React.ReactNode;
@@ -82,7 +86,10 @@ function SectionHeader({ icon: Icon, title, subtitle, badge }: {
           <Icon className="h-4 w-4 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+          <h3 className="text-sm font-semibold tracking-tight">
+            {num != null && <span className="text-muted-foreground mr-1.5">{num}.</span>}
+            {title}
+          </h3>
           {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
         </div>
         {badge}
@@ -92,11 +99,8 @@ function SectionHeader({ icon: Icon, title, subtitle, badge }: {
   );
 }
 
-/** Premium KPI card */
 function KpiCard({ label, value, sublabel, tone }: {
-  label: string;
-  value: string;
-  sublabel?: string;
+  label: string; value: string; sublabel?: string;
   tone?: 'default' | 'success' | 'warning' | 'danger' | 'accent';
 }) {
   const toneClasses: Record<string, string> = {
@@ -115,143 +119,171 @@ function KpiCard({ label, value, sublabel, tone }: {
   );
 }
 
+/** Two-column data row */
+function DataRow({ label, value, bold, muted }: { label: string; value: string; bold?: boolean; muted?: boolean }) {
+  return (
+    <div className="flex justify-between items-baseline gap-4 py-1.5">
+      <span className={cn('text-xs', muted ? 'text-muted-foreground' : 'text-muted-foreground')}>{label}</span>
+      <span className={cn('text-xs text-right', bold ? 'font-bold text-foreground' : 'font-medium')}>{value}</span>
+    </div>
+  );
+}
+
+/** Section divider line inside a card */
+function SectionDivider() {
+  return <div className="border-t my-3" />;
+}
+
+// ─── Helpers to extract params ────────────────────────────────────────
+
+function getMethodParams(methods: ValuationMethodResult[], key: string): Record<string, number | string> {
+  return methods.find(m => m.method === key)?.params ?? {};
+}
+function getMethodValue(methods: ValuationMethodResult[], key: string): number {
+  return methods.find(m => m.method === key)?.value ?? 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════════════
+
 export function ValuationReportReader({
-  valueBand,
-  methods,
-  financing,
-  stressTests,
-  lienProxy,
-  debtService,
-  dataQuality,
-  compStats,
-  executiveSummary,
-  sourceMode,
-  legalTitle,
-  location,
-  comps,
-  onDownloadPdf,
-  className,
+  valueBand, methods, financing, stressTests, lienProxy, debtService,
+  dataQuality, compStats, executiveSummary, sourceMode, legalTitle,
+  location, comps, beleihungswert, geminiResearch, onDownloadPdf, className,
 }: Props) {
   if (!valueBand) return null;
 
-  return (
-    <div className={cn('space-y-6', className)}>
+  const ertragParams = getMethodParams(methods, 'ertrag');
+  const sachwertParams = getMethodParams(methods, 'sachwert_proxy');
+  const compValue = getMethodValue(methods, 'comp_proxy');
+  const ertragValue = getMethodValue(methods, 'ertrag');
+  const sachwertValue = getMethodValue(methods, 'sachwert_proxy');
 
-      {/* ═══════════════════════════════════════════════════════
-          HERO: Value Band + Source Mode + PDF Action
-          ═══════════════════════════════════════════════════════ */}
+  return (
+    <div className={cn('space-y-5', className)}>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 1 — DECKBLATT: Marktwert + Beleihungswert + StreetView
+          ═══════════════════════════════════════════════════════════════ */}
       <Card className="overflow-hidden">
-        {/* Accent bar */}
         <div className="h-1 bg-gradient-to-r from-primary via-primary/80 to-primary/40" />
+
+        {/* StreetView Hero */}
+        {location?.streetViewUrl && (
+          <div className="w-full aspect-[21/9] overflow-hidden">
+            <img src={location.streetViewUrl} alt="Straßenansicht" className="w-full h-full object-cover" loading="lazy" />
+          </div>
+        )}
+
         <CardContent className="p-6 space-y-5">
           <div className="flex items-start justify-between gap-4">
-            <div className="space-y-3">
+            <div className="space-y-2">
               {sourceMode && (
-                <Badge
-                  variant={sourceMode === 'SSOT_FINAL' ? 'default' : 'outline'}
-                  className={cn('text-[10px]', sourceMode === 'SSOT_FINAL' && 'bg-primary/90')}
-                >
+                <Badge variant={sourceMode === 'SSOT_FINAL' ? 'default' : 'outline'} className={cn('text-[10px]', sourceMode === 'SSOT_FINAL' && 'bg-primary/90')}>
                   <Database className="h-3 w-3 mr-1" />
                   {sourceMode === 'SSOT_FINAL' ? 'SSOT (Final)' : 'Exposé Draft'}
                 </Badge>
               )}
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">
-                  SoT Bewertungsgutachten
-                </p>
-                <p className="text-xs text-muted-foreground mb-1">Wertband (P25 – P50 – P75)</p>
-                <div className="flex items-baseline gap-3">
-                  <span className="text-sm text-muted-foreground font-medium">{fmtEur(valueBand.p25)}</span>
-                  <span className="text-3xl font-bold text-primary tracking-tight">{fmtEur(valueBand.p50)}</span>
-                  <span className="text-sm text-muted-foreground font-medium">{fmtEur(valueBand.p75)}</span>
-                </div>
-              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
+                Kurzgutachten · Verkehrswertermittlung
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Stichtag: {new Date().toLocaleDateString('de-DE')}
+              </p>
             </div>
             {onDownloadPdf && (
               <Button size="sm" variant="outline" onClick={onDownloadPdf} className="shrink-0">
-                <Download className="h-3.5 w-3.5 mr-1.5" />
-                PDF Gutachten
+                <Download className="h-3.5 w-3.5 mr-1.5" /> PDF Gutachten
               </Button>
             )}
           </div>
 
-          {/* KPI Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <KpiCard
-              label="Marktwert"
-              value={fmtEur(valueBand.p50)}
-              sublabel="Punktschätzung"
-              tone="accent"
-            />
-            <KpiCard
-              label="Konfidenz"
-              value={`${(valueBand.confidenceScore * 100).toFixed(0)}%`}
-              sublabel={valueBand.confidence}
-              tone={valueBand.confidenceScore >= 0.7 ? 'success' : valueBand.confidenceScore >= 0.4 ? 'warning' : 'danger'}
-            />
-            {dataQuality && (
+          {/* Hero KPIs */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-5 rounded-xl border-2 border-primary/20 bg-primary/5 text-center space-y-2">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Marktwert</p>
+              <p className="text-3xl font-bold tracking-tight text-primary">{fmtEur(valueBand.p50)}</p>
+              <p className="text-xs text-muted-foreground">{fmtEur(valueBand.p25)} – {fmtEur(valueBand.p75)}</p>
+            </div>
+            {beleihungswert ? (
+              <div className="p-5 rounded-xl border-2 border-emerald-200/50 bg-emerald-500/5 text-center space-y-2">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Beleihungswert</p>
+                <p className="text-3xl font-bold tracking-tight text-emerald-700">{fmtEur(beleihungswert.beleihungswert)}</p>
+                <p className="text-xs text-muted-foreground">{fmtPct(beleihungswert.beleihungswertQuote)} vom Marktwert</p>
+              </div>
+            ) : (
               <KpiCard
-                label="Datenlage"
-                value={`${dataQuality.completenessPercent.toFixed(0)}%`}
-                sublabel={`${dataQuality.fieldsVerified} verifiziert`}
-                tone={dataQuality.completenessPercent >= 70 ? 'success' : 'warning'}
+                label="Konfidenz"
+                value={`${(valueBand.confidenceScore * 100).toFixed(0)}%`}
+                sublabel={valueBand.confidence}
+                tone={valueBand.confidenceScore >= 0.7 ? 'success' : valueBand.confidenceScore >= 0.4 ? 'warning' : 'danger'}
               />
             )}
-            {lienProxy && (
-              <KpiCard
-                label="LTV-Fenster"
-                value={`${fmtPct(lienProxy.safeLtvWindow[0])} – ${fmtPct(lienProxy.safeLtvWindow[1])}`}
-                sublabel="Sicherer Bereich"
-              />
-            )}
+          </div>
+
+          {/* Data quality row */}
+          <div className="grid grid-cols-3 gap-3">
+            <KpiCard label="Konfidenz" value={`${(valueBand.confidenceScore * 100).toFixed(0)}%`} sublabel={valueBand.confidence} tone={valueBand.confidenceScore >= 0.7 ? 'success' : 'warning'} />
+            {dataQuality && <KpiCard label="Datenlage" value={`${dataQuality.completenessPercent.toFixed(0)}%`} sublabel={`${dataQuality.fieldsVerified} verifiziert`} tone={dataQuality.completenessPercent >= 70 ? 'success' : 'warning'} />}
+            {lienProxy && <KpiCard label="LTV-Fenster" value={`${fmtPct(lienProxy.safeLtvWindow[0])} – ${fmtPct(lienProxy.safeLtvWindow[1])}`} sublabel="Sicherer Bereich" />}
           </div>
         </CardContent>
       </Card>
 
-      {/* ═══════════════════════════════════════════════════════
-          EXECUTIVE SUMMARY
-          ═══════════════════════════════════════════════════════ */}
-      {executiveSummary && (
-        <Card className={DESIGN.CARD.READING}>
-          <SectionHeader
-            icon={FileText}
-            title="Executive Summary"
-            subtitle="Zusammenfassung der Bewertungsergebnisse"
-          />
-          <p className="text-sm leading-relaxed text-foreground/90">{executiveSummary}</p>
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 2 — GRUNDBUCH & EIGENTUM
+          ═══════════════════════════════════════════════════════════════ */}
+      {legalTitle && sourceMode === 'SSOT_FINAL' && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <SectionHeader icon={Landmark} number={2} title="Grundbuch & Eigentum" subtitle="Grundbuchdaten, Eigentumsverhältnisse" />
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+              {legalTitle.landRegisterCourt && <DataRow label="Amtsgericht" value={legalTitle.landRegisterCourt} />}
+              {legalTitle.landRegisterSheet && <DataRow label="Grundbuchblatt" value={legalTitle.landRegisterSheet} />}
+              {legalTitle.landRegisterVolume && <DataRow label="Band" value={legalTitle.landRegisterVolume} />}
+              {legalTitle.parcelNumber && <DataRow label="Flurstück" value={legalTitle.parcelNumber} />}
+              {legalTitle.ownershipSharePercent != null && <DataRow label="Eigentumsanteil" value={`${legalTitle.ownershipSharePercent}%`} />}
+              {legalTitle.wegFlag && <DataRow label="WEG" value={`Ja${legalTitle.teNumber ? ` (TE: ${legalTitle.teNumber})` : ''}`} />}
+              {legalTitle.meaShare != null && <DataRow label="MEA" value={legalTitle.meaShare.toString()} />}
+            </div>
+            <div className="flex gap-2 flex-wrap pt-2">
+              <Badge variant={legalTitle.landRegisterExtractAvailable ? 'secondary' : 'outline'} className="text-[10px]">
+                {legalTitle.landRegisterExtractAvailable ? '✓' : '✗'} Grundbuchauszug
+              </Badge>
+              <Badge variant={legalTitle.partitionDeclarationAvailable ? 'secondary' : 'outline'} className="text-[10px]">
+                {legalTitle.partitionDeclarationAvailable ? '✓' : '✗'} Teilungserklärung
+              </Badge>
+            </div>
+            {legalTitle.encumbrancesNote && (
+              <div className="flex items-start gap-2 p-2.5 rounded-lg bg-yellow-500/10 text-yellow-700 text-[10px]">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>{legalTitle.encumbrancesNote}</span>
+              </div>
+            )}
+          </CardContent>
         </Card>
       )}
 
-      {/* ═══════════════════════════════════════════════════════
-          STANDORTANALYSE — Hero Visual Section
-          ═══════════════════════════════════════════════════════ */}
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 3 — STANDORTANALYSE (Maps, POIs, Erreichbarkeit)
+          ═══════════════════════════════════════════════════════════════ */}
       {location && (
         <Card>
           <CardContent className="p-6 space-y-5">
             <SectionHeader
-              icon={MapPin}
-              title="Standortanalyse"
-              subtitle="Lage, Umfeld & Erreichbarkeit"
-              badge={
-                <Badge variant="outline" className="text-xs font-semibold">
-                  {location.overallScore}<span className="text-muted-foreground font-normal">/100</span>
-                </Badge>
-              }
+              icon={MapPin} number={3} title="Standortanalyse" subtitle="Lage, Umfeld & Erreichbarkeit"
+              badge={<Badge variant="outline" className="text-xs font-semibold">{location.overallScore}<span className="text-muted-foreground font-normal">/100</span></Badge>}
             />
 
-            {/* Maps — Hero Visual Row */}
-            {(location.microMapUrl || location.macroMapUrl || (location as any).streetViewUrl) && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Maps Row */}
+            {(location.microMapUrl || location.macroMapUrl) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {location.microMapUrl && (
                   <div className="space-y-1.5">
                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Mikrolage</p>
                     <div className="rounded-xl overflow-hidden border shadow-sm aspect-[4/3]">
-                      <img
-                        src={location.microMapUrl}
-                        alt="Mikrolage"
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
+                      <img src={location.microMapUrl} alt="Mikrolage" className="w-full h-full object-cover" loading="lazy" />
                     </div>
                   </div>
                 )}
@@ -259,57 +291,34 @@ export function ValuationReportReader({
                   <div className="space-y-1.5">
                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Makrolage</p>
                     <div className="rounded-xl overflow-hidden border shadow-sm aspect-[4/3]">
-                      <img
-                        src={location.macroMapUrl}
-                        alt="Makrolage"
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    </div>
-                  </div>
-                )}
-                {(location as any).streetViewUrl && (
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Straßenansicht</p>
-                    <div className="rounded-xl overflow-hidden border shadow-sm aspect-[4/3]">
-                      <img
-                        src={(location as any).streetViewUrl}
-                        alt="Street View"
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
+                      <img src={location.macroMapUrl} alt="Makrolage" className="w-full h-full object-cover" loading="lazy" />
                     </div>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Dimension Scorecards */}
+            {/* Dimension Scores */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {location.dimensions.map((dim) => {
-                const score = dim.score;
-                const tone = score >= 8 ? 'text-emerald-600' : score >= 5 ? 'text-primary' : 'text-yellow-600';
+                const s = dim.score;
+                const tone = s >= 8 ? 'text-emerald-600' : s >= 5 ? 'text-primary' : 'text-yellow-600';
                 return (
                   <div key={dim.key} className="p-3 rounded-xl border bg-muted/20 text-center space-y-1">
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{dim.label}</p>
                     <p className={cn('text-2xl font-bold', tone)}>{dim.score}</p>
                     <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={cn('h-full rounded-full', score >= 8 ? 'bg-emerald-500' : score >= 5 ? 'bg-primary' : 'bg-yellow-500')}
-                        style={{ width: `${score * 10}%` }}
-                      />
+                      <div className={cn('h-full rounded-full', s >= 8 ? 'bg-emerald-500' : s >= 5 ? 'bg-primary' : 'bg-yellow-500')} style={{ width: `${s * 10}%` }} />
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* POIs — Visual Grid */}
+            {/* POIs */}
             {location.dimensions.some(d => d.topPois?.length > 0) && (
               <div className="space-y-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Nächste Einrichtungen
-                </p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nächste Einrichtungen</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {location.dimensions.filter(d => d.topPois?.length > 0).map(dim => (
                     <div key={dim.key} className="flex items-start gap-2.5 p-2.5 rounded-lg border bg-muted/10">
@@ -346,14 +355,8 @@ export function ValuationReportReader({
                       <Navigation className="h-3.5 w-3.5 text-primary shrink-0" />
                       <span className="font-medium flex-1 min-w-0 truncate">{r.destinationName}</span>
                       <div className="flex items-center gap-2.5 shrink-0 text-muted-foreground">
-                        {r.drivingMinutes != null && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" /> {r.drivingMinutes}'
-                          </span>
-                        )}
-                        {r.transitMinutes != null && (
-                          <span className="flex items-center gap-1">🚇 {r.transitMinutes}'</span>
-                        )}
+                        {r.drivingMinutes != null && <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {r.drivingMinutes}'</span>}
+                        {r.transitMinutes != null && <span className="flex items-center gap-1">🚇 {r.transitMinutes}'</span>}
                       </div>
                     </div>
                   ))}
@@ -361,34 +364,159 @@ export function ValuationReportReader({
               </div>
             )}
 
-            {/* Narrative */}
             {location.narrative && (
-              <div className="pt-2 border-t">
-                <p className="text-xs leading-relaxed text-muted-foreground">{location.narrative}</p>
-              </div>
+              <div className="pt-2 border-t"><p className="text-xs leading-relaxed text-muted-foreground">{location.narrative}</p></div>
             )}
           </CardContent>
         </Card>
       )}
 
-      {/* ═══════════════════════════════════════════════════════
-          VERGLEICHSANGEBOTE — Premium Comps
-          ═══════════════════════════════════════════════════════ */}
-      {comps && comps.length > 0 && (
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 4 — BODENWERT & RESTNUTZUNGSDAUER
+          ═══════════════════════════════════════════════════════════════ */}
+      <Card>
+        <CardContent className="p-6 space-y-4">
+          <SectionHeader icon={Ruler} number={4} title="Bodenwert & Restnutzungsdauer" subtitle="Grundstückswert und RND-Berechnung" />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Bodenwert */}
+            <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Bodenwert</p>
+              {ertragParams.plotAreaSqm && <DataRow label="Grundstücksfläche" value={`${fmtNum(Number(ertragParams.plotAreaSqm), 0)} m²`} />}
+              {geminiResearch?.bodenrichtwert ? (
+                <>
+                  <DataRow label="Bodenrichtwert" value={`${fmtNum(geminiResearch.bodenrichtwert.bodenrichtwertEurSqm)} €/m²`} />
+                  <DataRow label="Quelle" value={geminiResearch.bodenrichtwert.quelle} muted />
+                </>
+              ) : (
+                <DataRow label="Bodenrichtwert" value={ertragParams.bodenwertProxy ? `${fmtEur(Number(ertragParams.bodenwertProxy))} (Proxy)` : '–'} />
+              )}
+              <SectionDivider />
+              <DataRow label="BODENWERT" value={fmtEur(Number(ertragParams.bodenwertProxy) || 0)} bold />
+            </div>
+
+            {/* RND */}
+            <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Restnutzungsdauer</p>
+              {ertragParams.gesamtnutzungsdauer && <DataRow label="Gesamtnutzungsdauer" value={`${ertragParams.gesamtnutzungsdauer} Jahre`} />}
+              {ertragParams.alter && <DataRow label="Alter" value={`${ertragParams.alter} Jahre`} />}
+              {ertragParams.modernisierungsbonus && <DataRow label="Modernisierungsbonus" value={`+${ertragParams.modernisierungsbonus} Jahre`} />}
+              <SectionDivider />
+              <DataRow label="RESTNUTZUNGSDAUER" value={`${ertragParams.restnutzungsdauer || ertragParams.rnd || '–'} Jahre`} bold />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 5 — ERTRAGSWERT (Marktwert)
+          ═══════════════════════════════════════════════════════════════ */}
+      {ertragValue > 0 && (
         <Card>
-          <CardContent className="p-6 space-y-5">
+          <CardContent className="p-6 space-y-4">
+            <SectionHeader icon={TrendingUp} number={5} title="Ertragswert (Marktwert)" subtitle="Ertragswertverfahren nach ImmoWertV" />
+
+            <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Rohertrag</p>
+              <DataRow label="Jahresmiete (Ist)" value={fmtEur2(Number(ertragParams.netColdRentYearly) || 0)} />
+            </div>
+
+            <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Bewirtschaftungskosten (BWK)</p>
+              {ertragParams.verwaltung && <DataRow label="Verwaltung" value={fmtEur2(Number(ertragParams.verwaltung))} />}
+              {ertragParams.instandhaltung && <DataRow label="Instandhaltung" value={fmtEur2(Number(ertragParams.instandhaltung))} />}
+              {ertragParams.mietausfallwagnis && <DataRow label="Mietausfallwagnis" value={fmtEur2(Number(ertragParams.mietausfallwagnis))} />}
+              {ertragParams.nichtUmlagefaehig && <DataRow label="Modernisierungsrisiko" value={fmtEur2(Number(ertragParams.nichtUmlagefaehig))} />}
+              <SectionDivider />
+              <DataRow label="BWK Gesamt" value={fmtEur2(Number(ertragParams.bewirtschaftungAbzug) || 0)} bold />
+            </div>
+
+            <div className="space-y-1 p-4 rounded-xl border bg-primary/5">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Ertragsableitung</p>
+              <DataRow label="Reinertrag" value={fmtEur2(Number(ertragParams.reinertrag) || 0)} />
+              <DataRow label="Liegenschaftszins" value={fmtPct(Number(ertragParams.liegenschaftszins) || 0)} />
+              {geminiResearch?.liegenschaftszins && (
+                <DataRow label="Quelle Liegenschaftszins" value={geminiResearch.liegenschaftszins.quelle} muted />
+              )}
+              <DataRow label="Restnutzungsdauer" value={`${ertragParams.restnutzungsdauer || ertragParams.rnd || '–'} Jahre`} />
+              <DataRow label="Barwertfaktor" value={fmtNum(Number(ertragParams.barwertfaktor))} />
+              <SectionDivider />
+              <DataRow label="ERTRAGSWERT (MWT)" value={fmtEur(ertragValue)} bold />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 6 — ERTRAGSWERT (Beleihungswert) — BelWertV
+          ═══════════════════════════════════════════════════════════════ */}
+      {beleihungswert && beleihungswert.ertragswertBelwertv > 0 && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
             <SectionHeader
-              icon={Building2}
-              title="Vergleichsangebote"
-              subtitle={`${comps.length} Vergleichsobjekte aus Immobilienportalen`}
-              badge={
-                <Badge variant="outline" className="text-xs">
-                  {comps.length} Treffer
-                </Badge>
-              }
+              icon={Shield} number={6} title="Ertragswert (Beleihungswert)"
+              subtitle="Berechnung nach BelWertV mit 5,0% Liegenschaftszins"
+              badge={<Badge variant="outline" className="text-[10px]">BelWertV</Badge>}
             />
 
-            {/* CompStats Summary — Premium KPI Row */}
+            <div className="space-y-1 p-4 rounded-xl border bg-emerald-500/5">
+              <DataRow label="Liegenschaftszins (BelWertV §12)" value="5,0 %" />
+              <DataRow label="BWK (konservativ)" value={fmtEur2(beleihungswert.bwkBelwertv || 0)} />
+              <DataRow label="Sicherheitsabschlag" value={fmtPct(beleihungswert.sicherheitsabschlag)} />
+              <SectionDivider />
+              <DataRow label="ERTRAGSWERT (BWT)" value={fmtEur(beleihungswert.ertragswertBelwertv)} bold />
+            </div>
+
+            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/30 text-[10px] text-muted-foreground">
+              <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>Liegenschaftszins gem. §12 BelWertV mindestens 5,0% für Wohnimmobilien. Konservative BWK-Ansätze gem. BelWertV.</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 7 — SACHWERT (Marktwert + Beleihungswert)
+          ═══════════════════════════════════════════════════════════════ */}
+      {sachwertValue > 0 && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <SectionHeader icon={Hammer} number={7} title="Sachwert" subtitle="Sachwertverfahren (NHK 2010)" />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Marktwert</p>
+                {sachwertParams.nhkPerSqm && <DataRow label="NHK 2010" value={`${fmtNum(Number(sachwertParams.nhkPerSqm), 0)} €/m²`} />}
+                {sachwertParams.bpiFactor && <DataRow label="BPI-Index" value={fmtNum(Number(sachwertParams.bpiFactor))} />}
+                {sachwertParams.zeitwertGebaeude && <DataRow label="Zeitwert Gebäude" value={fmtEur(Number(sachwertParams.zeitwertGebaeude))} />}
+                <SectionDivider />
+                <DataRow label="SACHWERT (MWT)" value={fmtEur(sachwertValue)} bold />
+              </div>
+
+              {beleihungswert && beleihungswert.sachwertBelwertv > 0 && (
+                <div className="space-y-1 p-4 rounded-xl border bg-emerald-500/5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Beleihungswert</p>
+                  <DataRow label="Sachwert vor Abschlag" value={fmtEur(sachwertValue)} />
+                  <DataRow label="Sicherheitsabschlag 10%" value={`−${fmtEur(Math.round(sachwertValue * 0.1))}`} />
+                  <SectionDivider />
+                  <DataRow label="SACHWERT (BWT)" value={fmtEur(beleihungswert.sachwertBelwertv)} bold />
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 8 — VERGLEICHSWERT
+          ═══════════════════════════════════════════════════════════════ */}
+      {(comps && comps.length > 0) && (
+        <Card>
+          <CardContent className="p-6 space-y-5">
+            <SectionHeader icon={Building2} number={8} title="Vergleichswert" subtitle={`${comps.length} Vergleichsobjekte aus Immobilienportalen`}
+              badge={<Badge variant="outline" className="text-xs">{comps.length} Treffer</Badge>}
+            />
+
             {compStats && (
               <div className="grid grid-cols-3 gap-3">
                 <KpiCard label="Median €/m²" value={fmtEur(compStats.medianPriceSqm)} tone="accent" />
@@ -397,9 +525,8 @@ export function ValuationReportReader({
               </div>
             )}
 
-            {/* Comp Table — Premium Layout */}
+            {/* Comp Table */}
             <div className="rounded-xl border overflow-hidden">
-              {/* Table Header */}
               <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 px-4 py-2.5 bg-muted/30 border-b text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
                 <span>Objekt</span>
                 <span className="text-right w-20">Preis</span>
@@ -407,44 +534,34 @@ export function ValuationReportReader({
                 <span className="text-right w-16">€/m²</span>
                 <span className="text-right w-14">Entf.</span>
               </div>
-              {/* Table Rows */}
               {comps.slice(0, 10).map((c, idx) => (
-                <div
-                  key={c.id}
-                  className={cn(
-                    'grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3 text-xs items-center transition-colors',
-                    idx % 2 === 1 && 'bg-muted/10',
-                    'hover:bg-muted/20'
-                  )}
-                >
+                <div key={c.id} className={cn('grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3 text-xs items-center transition-colors', idx % 2 === 1 && 'bg-muted/10', 'hover:bg-muted/20')}>
                   <div className="min-w-0 flex items-center gap-2">
                     <Badge variant="outline" className="text-[8px] shrink-0 px-1.5">{c.portal}</Badge>
                     <span className="font-medium truncate">{c.title || '–'}</span>
-                    {c.rooms && <span className="text-muted-foreground shrink-0">{c.rooms} Zi</span>}
-                    {c.yearBuilt && <span className="text-muted-foreground shrink-0">· {c.yearBuilt}</span>}
                   </div>
                   <span className="text-right font-semibold w-20">{fmtEur(c.price)}</span>
                   <span className="text-right text-muted-foreground w-14">{c.area}m²</span>
                   <span className="text-right font-medium w-16">{fmtEur(c.priceSqm)}</span>
-                  <span className="text-right text-muted-foreground w-14">
-                    {c.distanceKm != null ? `${c.distanceKm.toFixed(1)}km` : '–'}
-                  </span>
+                  <span className="text-right text-muted-foreground w-14">{c.distanceKm != null ? `${c.distanceKm.toFixed(1)}km` : '–'}</span>
                 </div>
               ))}
             </div>
+
+            {compValue > 0 && (
+              <div className="p-4 rounded-xl border bg-primary/5">
+                <DataRow label="VERGLEICHSWERT (MWT)" value={fmtEur(compValue)} bold />
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
 
-      {/* CompStats only (without postings list) */}
+      {/* CompStats only fallback */}
       {(!comps || comps.length === 0) && compStats && (
         <Card>
           <CardContent className="p-6 space-y-5">
-            <SectionHeader
-              icon={Building2}
-              title="Vergleichsmarkt"
-              subtitle="Aggregierte Marktdaten"
-            />
+            <SectionHeader icon={Building2} number={8} title="Vergleichsmarkt" subtitle="Aggregierte Marktdaten" />
             <div className="grid grid-cols-3 gap-3">
               <KpiCard label="Median €/m²" value={fmtEur(compStats.medianPriceSqm)} tone="accent" />
               <KpiCard label="Objekte" value={compStats.dedupedCount.toString()} sublabel={`von ${compStats.count} roh`} />
@@ -454,80 +571,67 @@ export function ValuationReportReader({
         </Card>
       )}
 
-      {/* ═══════════════════════════════════════════════════════
-          BEWERTUNGSMETHODEN
-          ═══════════════════════════════════════════════════════ */}
-      <Card>
-        <CardContent className="p-6 space-y-5">
-          <SectionHeader
-            icon={BarChart3}
-            title="Bewertungsmethoden"
-            subtitle="Verfahrensübersicht & Gewichtung"
-          />
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 9 — VORSCHLAGSWERTE & AI-QUELLEN
+          ═══════════════════════════════════════════════════════════════ */}
+      {geminiResearch && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <SectionHeader icon={Search} number={9} title="Vorschlagswerte (KI-Recherche)" subtitle="Gemini-recherchierte Marktdaten"
+              badge={<Badge variant="outline" className="text-[10px]">AI</Badge>}
+            />
 
-          {/* Methods */}
-          <div className="space-y-3">
-            {methods.map((m) => (
-              <div key={m.method} className="flex items-center gap-4 p-3 rounded-xl border bg-muted/10">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold capitalize">{m.method.replace('_', ' ')}</p>
-                  {m.notes.length > 0 && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{m.notes[0]}</p>
-                  )}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Liegenschaftszins */}
+              {geminiResearch.liegenschaftszins && (
+                <div className="p-4 rounded-xl border bg-muted/10 space-y-1">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Liegenschaftszins</p>
+                  <DataRow label="Empfohlen (MWT)" value={fmtPct(geminiResearch.liegenschaftszins.marktwertZins)} />
+                  <DataRow label="Spanne" value={`${fmtPct(geminiResearch.liegenschaftszins.min)} – ${fmtPct(geminiResearch.liegenschaftszins.max)}`} />
+                  <DataRow label="BelWertV (fest)" value="5,0 %" muted />
+                  <DataRow label="Quelle" value={geminiResearch.liegenschaftszins.quelle} muted />
                 </div>
-                <span className="text-sm font-bold shrink-0">{fmtEur(m.value)}</span>
-                <Badge
-                  variant="secondary"
-                  className={cn(
-                    'text-[10px] shrink-0',
-                    m.confidence === 'high' && 'bg-emerald-500/10 text-emerald-600',
-                    m.confidence === 'medium' && 'bg-yellow-500/10 text-yellow-600'
-                  )}
-                >
-                  {m.confidence}
-                </Badge>
-              </div>
-            ))}
-          </div>
+              )}
 
-          {/* Weighting visual */}
-          <div className="pt-3 border-t space-y-2.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Gewichtung</p>
-            {valueBand.weightingTable.map((w) => (
-              <div key={w.method} className="flex items-center gap-3 text-xs">
-                <span className="w-28 shrink-0 capitalize text-muted-foreground font-medium">{w.method.replace('_', ' ')}</span>
-                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full transition-all"
-                    style={{ width: `${w.weight * 100}%` }}
-                  />
+              {/* Bodenrichtwert */}
+              {geminiResearch.bodenrichtwert && (
+                <div className="p-4 rounded-xl border bg-muted/10 space-y-1">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Bodenrichtwert</p>
+                  <DataRow label="Richtwert" value={`${fmtNum(geminiResearch.bodenrichtwert.bodenrichtwertEurSqm)} €/m²`} />
+                  <DataRow label="Nutzungsart" value={geminiResearch.bodenrichtwert.artDerNutzung} />
+                  <DataRow label="Quelle" value={geminiResearch.bodenrichtwert.quelle} muted />
                 </div>
-                <span className="text-muted-foreground w-10 text-right font-medium">{(w.weight * 100).toFixed(0)}%</span>
-                <span className="text-foreground w-24 text-right font-semibold">{fmtEur(w.value)}</span>
-              </div>
-            ))}
-          </div>
+              )}
 
-          {/* Reasoning */}
-          {valueBand.reasoning && (
-            <div className="pt-3 border-t">
-              <p className="text-xs text-muted-foreground leading-relaxed">{valueBand.reasoning}</p>
+              {/* Vergleichsmieten */}
+              {geminiResearch.vergleichsmieten && (
+                <div className="p-4 rounded-xl border bg-muted/10 space-y-1">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Vergleichsmieten</p>
+                  <DataRow label="Min" value={`${fmtNum(geminiResearch.vergleichsmieten.mieteMin)} €/m²`} />
+                  <DataRow label="Median" value={`${fmtNum(geminiResearch.vergleichsmieten.mieteMedian)} €/m²`} />
+                  <DataRow label="Max" value={`${fmtNum(geminiResearch.vergleichsmieten.mieteMax)} €/m²`} />
+                  <DataRow label="Quelle" value={geminiResearch.vergleichsmieten.quelle} muted />
+                </div>
+              )}
             </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* ═══════════════════════════════════════════════════════
-          FINANZIERBARKEIT
-          ═══════════════════════════════════════════════════════ */}
+            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/30 text-[10px] text-muted-foreground">
+              <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>AI-generierte Marktdaten basieren auf öffentlich verfügbaren Quellen und können von amtlichen Werten abweichen. Keine Gewähr.</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 10 — KENNZAHLEN & FINANZIERUNG
+          ═══════════════════════════════════════════════════════════════ */}
       {financing.length > 0 && (
         <Card>
           <CardContent className="p-6 space-y-5">
-            <SectionHeader
-              icon={Banknote}
-              title="Finanzierbarkeit"
-              subtitle="Szenarienvergleich für typische Darlehensstrukturen"
-            />
+            <SectionHeader icon={Banknote} number={10} title="Wirtschaftliche Kennzahlen & Finanzierung" subtitle="Renditekennzahlen und Finanzierungsszenarien" />
+
+            {/* Financing scenarios */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {financing.map((f) => (
                 <div key={f.name} className={cn('p-4 rounded-xl border space-y-3', trafficColor[f.trafficLight])}>
@@ -541,28 +645,14 @@ export function ValuationReportReader({
                   </div>
                   <Separator />
                   <div className="space-y-1.5 text-[11px]">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">LTV</span>
-                      <span className="font-medium">{fmtPct(f.ltv)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Zins</span>
-                      <span className="font-medium">{fmtPct(f.interestRate)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Eigenkapital</span>
-                      <span className="font-medium">{fmtEur(f.equity)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Darlehen</span>
-                      <span className="font-medium">{fmtEur(f.loanAmount)}</span>
-                    </div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">LTV</span><span className="font-medium">{fmtPct(f.ltv)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Zins</span><span className="font-medium">{fmtPct(f.interestRate)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">EK</span><span className="font-medium">{fmtEur(f.equity)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Darlehen</span><span className="font-medium">{fmtEur(f.loanAmount)}</span></div>
                     {f.cashflowAfterDebt != null && (
                       <div className="flex justify-between pt-1.5 border-t">
                         <span className="text-muted-foreground">CF nach KD</span>
-                        <span className={cn('font-semibold', f.cashflowAfterDebt >= 0 ? 'text-emerald-600' : 'text-red-600')}>
-                          {fmtEur(f.cashflowAfterDebt)}/a
-                        </span>
+                        <span className={cn('font-semibold', f.cashflowAfterDebt >= 0 ? 'text-emerald-600' : 'text-red-600')}>{fmtEur(f.cashflowAfterDebt)}/a</span>
                       </div>
                     )}
                   </div>
@@ -573,124 +663,97 @@ export function ValuationReportReader({
         </Card>
       )}
 
-      {/* ═══════════════════════════════════════════════════════
-          STRESS-TESTS
-          ═══════════════════════════════════════════════════════ */}
-      {stressTests.length > 0 && (
-        <Card>
-          <CardContent className="p-6 space-y-5">
-            <SectionHeader
-              icon={ArrowUpDown}
-              title="Stress-Tests & Kapitaldienstfähigkeit"
-              subtitle="Sensitivitätsanalyse bei Zins- und Mietveränderung"
-            />
-            <div className="rounded-xl border overflow-hidden">
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-4 py-2.5 bg-muted/30 border-b text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                <span>Szenario</span>
-                <span className="text-right w-24">Rate/mtl.</span>
-                <span className="text-right w-16">DSCR</span>
-                <span className="text-center w-12">Status</span>
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 11 — ERGEBNISÜBERSICHT
+          ═══════════════════════════════════════════════════════════════ */}
+      <Card className="overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-primary via-primary/80 to-primary/40" />
+        <CardContent className="p-6 space-y-5">
+          <SectionHeader icon={Scale} number={11} title="Ergebnisübersicht" subtitle="Zusammenfassung aller Bewertungsverfahren" />
+
+          {/* Results Table */}
+          <div className="rounded-xl border overflow-hidden">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-x-6 px-4 py-2.5 bg-muted/30 border-b text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+              <span>Verfahren</span>
+              <span className="text-right w-28">Marktwert</span>
+              {beleihungswert && <span className="text-right w-28">Beleihungswert</span>}
+            </div>
+
+            {methods.map((m, idx) => (
+              <div key={m.method} className={cn('grid grid-cols-[1fr_auto_auto] gap-x-6 px-4 py-3 text-xs items-center', idx % 2 === 1 && 'bg-muted/10')}>
+                <span className="font-medium capitalize">{m.method.replace('_', ' ')}</span>
+                <span className="text-right font-semibold w-28">{fmtEur(m.value)}</span>
+                {beleihungswert && (
+                  <span className="text-right text-muted-foreground w-28">
+                    {m.method === 'ertrag' ? fmtEur(beleihungswert.ertragswertBelwertv) :
+                     m.method === 'sachwert_proxy' ? fmtEur(beleihungswert.sachwertBelwertv) : '–'}
+                  </span>
+                )}
               </div>
-              {stressTests.map((st, idx) => (
-                <div
-                  key={st.label}
-                  className={cn(
-                    'grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-4 py-3 text-xs items-center',
-                    idx % 2 === 1 && 'bg-muted/10'
-                  )}
-                >
-                  <span className="font-medium">{st.label}</span>
-                  <span className="text-right font-semibold w-24">{fmtEur(st.monthlyRate)}</span>
-                  <span className="text-right text-muted-foreground w-16">{st.dscr?.toFixed(2) || '–'}</span>
-                  <div className="flex justify-center w-12">
-                    <Badge className={cn('text-[9px] px-1.5', trafficColor[st.trafficLight])}>
-                      {trafficIcon[st.trafficLight]}
-                    </Badge>
-                  </div>
+            ))}
+          </div>
+
+          {/* Weighting */}
+          <div className="space-y-2.5">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Gewichtung</p>
+            {valueBand.weightingTable.map((w) => (
+              <div key={w.method} className="flex items-center gap-3 text-xs">
+                <span className="w-28 shrink-0 capitalize text-muted-foreground font-medium">{w.method.replace('_', ' ')}</span>
+                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${w.weight * 100}%` }} />
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                <span className="text-muted-foreground w-10 text-right font-medium">{(w.weight * 100).toFixed(0)}%</span>
+                <span className="text-foreground w-24 text-right font-semibold">{fmtEur(w.value)}</span>
+              </div>
+            ))}
+          </div>
 
-      {/* ═══════════════════════════════════════════════════════
-          BELEIHUNGSWERT
-          ═══════════════════════════════════════════════════════ */}
-      {lienProxy && (
-        <Card>
-          <CardContent className="p-6 space-y-5">
-            <SectionHeader
-              icon={Shield}
-              title="Beleihungswert (Proxy)"
-              subtitle="Geschätzte Beleihungswertspanne nach BelWertV"
-            />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <KpiCard label="Marktwert P50" value={fmtEur(lienProxy.marketValueP50)} tone="accent" />
-              <KpiCard label="Abschlag" value={fmtPct(lienProxy.totalDiscount)} />
-              <KpiCard label="Beleihung niedrig" value={fmtEur(lienProxy.lienValueLow)} />
-              <KpiCard label="Beleihung hoch" value={fmtEur(lienProxy.lienValueHigh)} />
-            </div>
+          {valueBand.reasoning && (
+            <div className="pt-3 border-t"><p className="text-xs text-muted-foreground leading-relaxed">{valueBand.reasoning}</p></div>
+          )}
 
-            {lienProxy.riskDrivers.length > 0 && (
-              <div className="space-y-2 pt-3 border-t">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Risikotreiber</p>
-                {lienProxy.riskDrivers.map((rd) => (
-                  <div key={rd.factor} className="flex items-center gap-3 text-xs p-2 rounded-lg bg-red-500/5 border border-red-200/30">
-                    <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                    <span className="flex-1 font-medium">{rd.factor}</span>
-                    <span className="text-red-600 font-semibold">−{fmtPct(rd.discountPercent)}</span>
-                  </div>
-                ))}
+          {/* Final Result Hero */}
+          <div className="grid grid-cols-2 gap-4 pt-3">
+            <div className="p-5 rounded-xl border-2 border-primary/30 bg-primary/5 text-center">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-1">MARKTWERT</p>
+              <p className="text-3xl font-bold text-primary">{fmtEur(valueBand.p50)}</p>
+            </div>
+            {beleihungswert && (
+              <div className="p-5 rounded-xl border-2 border-emerald-200/60 bg-emerald-500/5 text-center">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-1">BELEIHUNGSWERT</p>
+                <p className="text-3xl font-bold text-emerald-700">{fmtEur(beleihungswert.beleihungswert)}</p>
               </div>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* ═══════════════════════════════════════════════════════
-          DATENLAGE
-          ═══════════════════════════════════════════════════════ */}
-      {dataQuality && (
-        <Card>
-          <CardContent className="p-6 space-y-5">
-            <SectionHeader
-              icon={TrendingUp}
-              title="Datenlage & Evidenzbasis"
-              subtitle="Vollständigkeit und Herkunft der Bewertungsgrundlagen"
-              badge={
-                <Badge variant="outline" className="text-xs">
-                  {dataQuality.completenessPercent.toFixed(0)}% vollständig
-                </Badge>
-              }
-            />
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 rounded-xl border bg-emerald-500/5 text-center space-y-1">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 mx-auto" />
-                <p className="text-lg font-bold text-emerald-600">{dataQuality.fieldsVerified}</p>
-                <p className="text-[10px] text-muted-foreground">Verifiziert</p>
-              </div>
-              <div className="p-3 rounded-xl border bg-yellow-500/5 text-center space-y-1">
-                <Star className="h-4 w-4 text-yellow-600 mx-auto" />
-                <p className="text-lg font-bold text-yellow-600">{dataQuality.fieldsDerived}</p>
-                <p className="text-[10px] text-muted-foreground">Abgeleitet</p>
-              </div>
-              <div className="p-3 rounded-xl border bg-muted/30 text-center space-y-1">
-                <AlertTriangle className="h-4 w-4 text-muted-foreground mx-auto" />
-                <p className="text-lg font-bold">{dataQuality.fieldsMissing}</p>
-                <p className="text-[10px] text-muted-foreground">Fehlend</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════
-          RECHT & EIGENTUM
-          ═══════════════════════════════════════════════════════ */}
-      {legalTitle && sourceMode === 'SSOT_FINAL' && (
-        <ValuationLegalBlock legalTitle={legalTitle} />
-      )}
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 12 — RECHTLICHE HINWEISE
+          ═══════════════════════════════════════════════════════════════ */}
+      <Card>
+        <CardContent className="p-6 space-y-4">
+          <SectionHeader icon={FileText} number={12} title="Rechtliche Hinweise" subtitle="Haftungsausschluss und Annahmen" />
+          <div className="text-xs leading-relaxed text-muted-foreground space-y-3">
+            <p>
+              Dieses Kurzgutachten dient ausschließlich der internen Werteinschätzung und stellt kein
+              Verkehrswertgutachten nach §194 BauGB dar. Es ersetzt nicht die Bewertung durch einen
+              öffentlich bestellten und vereidigten Sachverständigen.
+            </p>
+            <p>
+              AI-gestützte Marktdaten (Liegenschaftszins, Bodenrichtwert, Vergleichsmieten) basieren
+              auf öffentlich verfügbaren Quellen und können von amtlichen Werten abweichen.
+            </p>
+          </div>
+          {executiveSummary && (
+            <>
+              <SectionDivider />
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Executive Summary</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">{executiveSummary}</p>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
