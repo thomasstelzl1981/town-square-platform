@@ -205,9 +205,9 @@ export default function PMKalender() {
 
   // Stats based on PLC phases
   const stats = useMemo(() => [
-    { label: 'Anfragen', count: cases.filter(c => c.current_phase === 'requested').length, dot: 'bg-amber-500' },
-    { label: 'Bestätigt', count: cases.filter(c => ['provider_confirmed', 'deposit_pending', 'deposit_paid'].includes(c.current_phase)).length, dot: 'bg-primary' },
-    { label: 'Eingecheckt', count: cases.filter(c => c.current_phase === 'checked_in').length, dot: 'bg-emerald-500' },
+    { label: 'Anfragen', count: cases.filter(c => ['search_initiated', 'provider_selected', 'deposit_requested'].includes(c.current_phase)).length, dot: 'bg-amber-500' },
+    { label: 'Bestätigt', count: cases.filter(c => ['deposit_paid', 'provider_confirmed'].includes(c.current_phase)).length, dot: 'bg-primary' },
+    { label: 'Eingecheckt', count: cases.filter(c => ['checked_in', 'checked_out'].includes(c.current_phase)).length, dot: 'bg-emerald-500' },
     { label: 'Abgeschlossen', count: cases.filter(c => c.current_phase === 'closed_completed').length, dot: 'bg-muted-foreground' },
   ], [cases]);
 
