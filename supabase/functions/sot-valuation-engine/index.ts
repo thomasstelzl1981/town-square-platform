@@ -1032,12 +1032,26 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
                 { type: "function", function: { name: "extract_comps" } },
               );
 
+              // V8.0: Post-processing with price_per_sqm calculation + plausibility + dedup
+              const seenUrls = new Set<string>();
               compPostings = (compsExtracted?.postings || [])
                 .filter((p: any) => p.price && p.price > 0)
                 .map((p: any) => ({
                   ...p,
-                  price_per_sqm: p.price_per_sqm || (p.living_area_sqm ? Math.round(p.price / p.living_area_sqm) : null),
-                }));
+                  price_per_sqm: p.price_per_sqm || (p.living_area_sqm && p.living_area_sqm > 0 ? Math.round(p.price / p.living_area_sqm) : null),
+                }))
+                .filter((p: any) => {
+                  // Plausibility: price_per_sqm between 500 and 15000
+                  if (p.price_per_sqm && (p.price_per_sqm < 500 || p.price_per_sqm > 15000)) return false;
+                  // Area plausibility: ±50% of target if target known
+                  if (livingArea > 0 && p.living_area_sqm) {
+                    if (p.living_area_sqm < livingArea * 0.5 || p.living_area_sqm > livingArea * 1.5) return false;
+                  }
+                  // URL dedup
+                  if (p.url && seenUrls.has(p.url)) return false;
+                  if (p.url) seenUrls.add(p.url);
+                  return true;
+                });
 
               if (compPostings.length > 0) {
                 const prices = compPostings
