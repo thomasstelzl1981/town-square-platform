@@ -1,10 +1,11 @@
 /**
  * ValuationPreflight — Credit gate + source summary before starting a valuation
+ * V6.0: Shows source mode badge (SSOT vs Draft)
  */
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Zap, FileText, Globe, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Zap, FileText, Globe, CheckCircle2, AlertTriangle, Loader2, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PreflightOutput } from '@/engines/valuation/spec';
 import { VALUATION_CREDITS_PER_CASE } from '@/engines/valuation/spec';
