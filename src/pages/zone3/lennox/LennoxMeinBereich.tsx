@@ -182,12 +182,12 @@ export default function LennoxMeinBereich() {
     if (!selectedProviderId) { toast.error('Bitte Anbieter wählen'); return; }
     if (!z3User || !z3SessionToken) return;
 
-    const selectedSvc = services.find((s: any) => s.title === bookingService);
+    // bookingService now holds the service ID directly (not title)
 
     createCase.mutate({
       session_token: z3SessionToken,
       provider_id: selectedProviderId,
-      service_id: selectedSvc?.id || null,
+      service_id: bookingService || null,
       customer_notes: bookingNotes || null,
       scheduled_start: bookingDate || null,
       scheduled_end: bookingDateEnd || null,
@@ -350,7 +350,7 @@ export default function LennoxMeinBereich() {
                   className={selectCls} style={{ borderColor: C.sand, background: C.cream }}>
                   <option value="">— Service wählen —</option>
                   {services.map((s: any) => (
-                    <option key={s.id} value={s.title}>{s.title} {s.price_cents ? `(${(s.price_cents / 100).toFixed(2)} €)` : ''}</option>
+                    <option key={s.id} value={s.id}>{s.title} {s.price_cents ? `(${(s.price_cents / 100).toFixed(2)} €)` : ''}</option>
                   ))}
                 </select>
               </div>

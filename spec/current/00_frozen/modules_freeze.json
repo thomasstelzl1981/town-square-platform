@@ -9,7 +9,7 @@
     "MOD-02": { "frozen": true, "frozen_at": "2026-03-05T10:00:00.000Z", "reason": "Full freeze — All modules locked" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-04": { "frozen": true, "frozen_at": "2026-03-06T16:00:00.000Z", "reason": "Re-frozen after PDF-CI Phase 2: Portfolio PDF button integrated in PortfolioTab via registry" },
-    "MOD-05": { "frozen": true, "frozen_at": "2026-03-05T10:00:00.000Z", "reason": "Full freeze — All modules locked" },
+    "MOD-05": { "frozen": true, "frozen_at": "2026-03-06T18:00:00.000Z", "reason": "Re-frozen after Deep Audit: PetsCaring error fallback added" },
     "MOD-06": { "frozen": true, "frozen_at": "2026-03-06T16:00:00.000Z", "reason": "Re-frozen after PDF-CI Phase 2: Exposé PDF button integrated in ExposeDetail via registry" },
     "MOD-07": { "frozen": true, "frozen_at": "2026-03-05T22:00:00.000Z", "reason": "Re-frozen after R-5 refactoring: AnfrageFormV2.tsx split into 4 FormSections + Footer + anfrageFormTypes.ts + anfrageFormPrimitives.tsx" },
     "MOD-08": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
@@ -26,6 +26,6 @@
     "MOD-19": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-20": { "frozen": true, "frozen_at": "2026-03-05T10:00:00.000Z", "reason": "Full freeze — All modules locked" },
     "MOD-21": { "frozen": true, "frozen_at": "2026-03-02T11:00:00.000Z", "reason": "REMOVED — Module deactivated and all artifacts deleted" },
-    "MOD-22": { "frozen": true, "frozen_at": "2026-03-06T16:00:00.000Z", "reason": "Re-frozen after PDF-CI Phase 2: PMFinanzen migrated to shared generateInvoicePdf" }
+    "MOD-22": { "frozen": true, "frozen_at": "2026-03-06T18:00:00.000Z", "reason": "Re-frozen after Deep Audit: PMKalender migrated from useBookings to useCasesForProvider (PLC)" }
   }
 }

@@ -23,7 +23,7 @@ export default function LennoxStartseite() {
   const [searchLocation, setSearchLocation] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
 
-  const { data: providers = [], isLoading } = useSearchProviders(
+  const { data: providers = [], isLoading, isError } = useSearchProviders(
     hasSearched ? searchLocation : undefined
   );
 
@@ -148,6 +148,10 @@ export default function LennoxStartseite() {
           {isLoading ? (
             <div className="flex justify-center py-12">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" style={{ borderColor: C.forest }} />
+            </div>
+          ) : isError ? (
+            <div className="text-center py-8">
+              <p className="text-sm" style={{ color: C.barkMuted }}>Suche fehlgeschlagen — bitte versuche es erneut.</p>
             </div>
           ) : providers.length === 0 ? (
             <div className="space-y-6">
