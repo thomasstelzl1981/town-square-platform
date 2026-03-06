@@ -133,28 +133,41 @@ export function DatenraumTab({ propertyId, tenantId, propertyCode }: DatenraumTa
   const handleDeleteDocument = useCallback(async (documentId: string) => {
     setIsDeleting(true);
     try {
-      const { error } = await supabase.from('document_links').delete().eq('document_id', documentId).eq('object_id', propertyId);
-      if (error) throw error;
-      toast.success('Dokument entfernt');
+      const { data: result, error: rpcError } = await supabase.rpc('delete_storage_file', {
+        p_document_id: documentId,
+        p_tenant_id: tenantId,
+      });
+      if (rpcError) throw new Error(rpcError.message);
+      const response = result as { success: boolean; message: string; file_path?: string };
+      if (!response.success) throw new Error(response.message);
+      if (response.file_path) {
+        await supabase.storage.from('tenant-documents').remove([response.file_path]);
+      }
+      toast.success('Dokument gelöscht');
       invalidate();
-    } catch {
-      toast.error('Fehler beim Löschen');
+    } catch (err: any) {
+      toast.error(err?.message || 'Fehler beim Löschen');
     }
     setIsDeleting(false);
-  }, [propertyId, invalidate]);
+  }, [tenantId, invalidate]);
 
   const handleDeleteFolder = useCallback(async (nodeId: string) => {
     setIsDeleting(true);
     try {
-      const { error } = await supabase.from('storage_nodes').delete().eq('id', nodeId);
-      if (error) throw error;
+      const { data: result, error: rpcError } = await supabase.rpc('delete_storage_folder', {
+        p_folder_id: nodeId,
+        p_tenant_id: tenantId,
+      });
+      if (rpcError) throw new Error(rpcError.message);
+      const response = result as { success: boolean; message: string };
+      if (!response.success) throw new Error(response.message);
       toast.success('Ordner gelöscht');
       invalidate();
-    } catch {
-      toast.error('Fehler beim Löschen');
+    } catch (err: any) {
+      toast.error(err?.message || 'Fehler beim Löschen');
     }
     setIsDeleting(false);
-  }, [invalidate]);
+  }, [tenantId, invalidate]);
 
   const handleCreateFolder = useCallback(async (name: string, parentId: string | null) => {
     setIsCreatingFolder(true);
