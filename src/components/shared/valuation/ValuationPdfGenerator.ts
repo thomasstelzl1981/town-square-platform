@@ -32,6 +32,8 @@ export interface ValuationPdfData {
   executiveSummary: string;
   caseId: string;
   generatedAt: string;
+  sourceMode?: ValuationSourceMode;
+  legalTitle?: LegalTitleBlock | null;
 }
 
 const EUR = (v: number) =>
