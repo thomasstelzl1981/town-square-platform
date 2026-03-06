@@ -80,14 +80,14 @@ export function EditableAddressBlock({
   };
 
   return (
-    <Card>
+    <Card className="h-full flex flex-col">
       <CardHeader className="pb-2 pt-3 px-4">
         <CardTitle className="text-sm flex items-center gap-2">
           <MapPin className="h-3.5 w-3.5" />
           Lage & Objektbeschreibung
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2 px-4 pb-3">
+      <CardContent className="space-y-2 px-4 pb-3 flex-1 flex flex-col">
         <div className="space-y-1">
           <Label className="text-[11px] text-muted-foreground">Lagebezeichnung</Label>
           <Input 
@@ -98,7 +98,7 @@ export function EditableAddressBlock({
           />
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-1 flex-1 flex flex-col">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <Label className="text-[11px] text-muted-foreground">Objektbeschreibung</Label>
@@ -123,8 +123,7 @@ export function EditableAddressBlock({
             value={description || ''} 
             onChange={(e) => onFieldChange('description', e.target.value)}
             placeholder="Strukturierte Beschreibung zu Lage, Mikrolage und Objekteigenschaften..."
-            rows={4}
-            className="text-xs"
+            className="text-xs flex-1 min-h-[200px]"
           />
         </div>
       </CardContent>
