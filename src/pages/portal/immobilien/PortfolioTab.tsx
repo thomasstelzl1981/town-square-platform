@@ -254,7 +254,12 @@ export function PortfolioTab() {
   // ── Render ──
   return (
     <PageShell>
-      <ModulePageHeader title="Portfolio" description="Übersicht und Verwaltung deiner Immobilien und Einheiten" />
+      <ModulePageHeader title="Portfolio" description="Übersicht und Verwaltung deiner Immobilien und Einheiten" actions={
+        <Button variant="outline" size="sm" onClick={handlePortfolioPdfExport} disabled={isPdfGenerating || !hasData}>
+          <FileText className="h-4 w-4 mr-2" />
+          {isPdfGenerating ? 'Generiert…' : 'Portfolio PDF'}
+        </Button>
+      } />
 
       <CreateContextDialog open={showCreateContextDialog || !!editContext} onOpenChange={(open) => { if (!open) { setShowCreateContextDialog(false); setEditContext(null); } }} editContext={editContext} />
       {assignContextId && <PropertyContextAssigner open={!!assignContextId} onOpenChange={(open) => { if (!open) setAssignContextId(null); }} contextId={assignContextId} contextName={assignContextName} />}

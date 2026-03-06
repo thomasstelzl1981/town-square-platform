@@ -54,10 +54,6 @@ export function ProfilePreviewSection({
                 <Download className="h-4 w-4 mr-2" />
                 PDF exportieren
               </Button>
-              <Button variant="outline" size="sm" onClick={() => window.print()} disabled={!previewData}>
-                <Printer className="h-4 w-4 mr-2" />
-                Drucken
-              </Button>
             </div>
           </div>
         </CardHeader>

@@ -697,13 +697,7 @@ export function FinanzberichtSection() {
           </CardContent>
         </Card>
 
-        {/* ═══ SEKTION 9: PDF-Export ═══ */}
-        <PdfExportFooter
-          contentRef={contentRef}
-          documentTitle={`Vermögensauskunft ${new Date().toLocaleDateString('de-DE')}`}
-          moduleName="Finanzanalyse"
-          subtitle="Strukturierter Gesamtbericht"
-        />
+        {/* PDF Export moved to header button + consent gate dialog */}
       </div>
     </div>
   );
