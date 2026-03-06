@@ -259,6 +259,8 @@ export interface UnitDossierData {
   energyCertValue?: number;
   energyCertValidUntil?: string;
   featuresTags?: string[];
+  coreRenovated?: boolean;
+  renovationYear?: number;
 
   // Block D: Legal
   landRegisterCourt?: string;
