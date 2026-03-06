@@ -43,25 +43,7 @@ export function useUnitDossier(unitId: string | undefined) {
         .from('units')
         .select(`
           *,
-          properties!inner (
-            id,
-            tenant_id,
-            code,
-            address,
-            city,
-            postal_code,
-            property_type,
-            year_built,
-            market_value,
-            purchase_price,
-            weg_flag,
-            land_register_refs,
-            manager_contact,
-            total_area_sqm,
-            energy_source,
-            heating_type,
-            description
-          )
+          properties!inner (*)
         `)
         .eq('id', unitId)
         .eq('tenant_id', activeTenantId)
