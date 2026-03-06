@@ -896,24 +896,37 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         if (city && firecrawlKey) {
           stageLog(3, "Searching for comps via Firecrawl");
           try {
-            const searchQuery = `${objectType} kaufen ${city} ${livingArea ? `ca. ${livingArea}m²` : ""}`;
-            const searchResp = await fetch("https://api.firecrawl.dev/v1/search", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${firecrawlKey}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                query: searchQuery,
-                limit: 20,
-                lang: "de",
-                country: "de",
-                scrapeOptions: { formats: ["markdown"] },
-              }),
-            });
-
-            const searchData = await searchResp.json();
-            const rawResults = searchData?.data || [];
+          // V7.0: Broader search strategy with fallback
+          const primaryQuery = `Mehrfamilienhaus kaufen ${city}`;
+          const relaxedQuery = `Haus kaufen ${city}`;
+          
+          let rawResults: any[] = [];
+          
+          for (const query of [primaryQuery, relaxedQuery]) {
+            if (rawResults.length > 0) break;
+            stageLog(3, `Searching: "${query}"`);
+            try {
+              const searchResp = await fetch("https://api.firecrawl.dev/v1/search", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${firecrawlKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  query,
+                  limit: 20,
+                  lang: "de",
+                  country: "de",
+                  scrapeOptions: { formats: ["markdown"] },
+                }),
+              });
+              const searchData = await searchResp.json();
+              rawResults = searchData?.data || [];
+              stageLog(3, `Query "${query}" returned ${rawResults.length} results`);
+            } catch (e) {
+              stageLog(3, `Search error for "${query}": ${e}`);
+            }
+          }
 
             if (rawResults.length > 0) {
               const compTexts = rawResults
@@ -924,7 +937,7 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
               const compsExtracted = await callAI(
                 lovableApiKey!,
                 "google/gemini-2.5-flash",
-                `Du extrahierst Vergleichsangebote (Comps) aus Immobilien-Suchergebnissen. Extrahiere pro Angebot: title, price (EUR), living_area_sqm, price_per_sqm, rooms, year_built, url. Ignoriere irrelevante Ergebnisse.`,
+                `Du extrahierst Vergleichsangebote (Comps) aus Immobilien-Suchergebnissen. Extrahiere pro Angebot: title, price (EUR), living_area_sqm, price_per_sqm, rooms, year_built, url, address, portal (z.B. immoscout24, immowelt, ebay-kleinanzeigen). Ignoriere irrelevante Ergebnisse (Mietwohnungen, Gewerbeobjekte, Grundstücke ohne Gebäude).`,
                 compTexts,
                 [
                   {
@@ -947,6 +960,8 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
                                 rooms: { type: "number" },
                                 year_built: { type: "number" },
                                 url: { type: "string" },
+                                address: { type: "string" },
+                                portal: { type: "string" },
                               },
                               required: ["title"],
                             },
@@ -985,7 +1000,7 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
                     p75: prices[Math.floor(prices.length * 0.75)],
                     min: prices[0],
                     max: prices[prices.length - 1],
-                    search_query: searchQuery,
+                    search_query: primaryQuery,
                   };
                 }
               }
@@ -1006,7 +1021,16 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
 
         const assumptions: any[] = [];
 
-        // 4.1 Ertragswert
+        // V7.0: Bodenwert berechnen (für Ertragswert UND Sachwert)
+        const plotAreaSqm = Number(snapshot.plot_area_sqm) || Number(snapshot.grundstueck_flaeche) || 0;
+        const locationScore = locationAnalysis.global_score || 0;
+        const bodenrichtwertProxy = getBodenrichtwertProxy(snapshot.city || "", locationScore);
+        const bodenwert = plotAreaSqm > 0 ? Math.round(plotAreaSqm * bodenrichtwertProxy) : 0;
+        if (bodenwert > 0) {
+          assumptions.push({ text: `Bodenwert-Proxy: ${bodenrichtwertProxy} €/m² × ${plotAreaSqm} m² = ${bodenwert.toLocaleString('de')} €`, impact: "high" });
+        }
+
+        // 4.1 Ertragswert (ImmoWertV-konform: NOI/Liegenschaftszins + Bodenwert)
         let ertragswertResult: any = null;
         const netRent = Number(snapshot.net_cold_rent_monthly) || 0;
         const askingPrice = Number(snapshot.asking_price) || 0;
@@ -1017,8 +1041,9 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
           assumptions.push({ text: `Bewirtschaftungskosten ${bewirtschaftungRate * 100}% der Nettokaltmiete`, impact: "high" });
           const netOperatingIncome = annualRent * (1 - bewirtschaftungRate);
           const capRate = CALC.CAP_RATE;
-          assumptions.push({ text: `Kapitalisierungszinssatz ${capRate * 100}%`, impact: "high" });
-          const ertragswert = Math.round(netOperatingIncome / capRate);
+          assumptions.push({ text: `Liegenschaftszinssatz ${capRate * 100}%`, impact: "high" });
+          const gebaeude_ertragswert = Math.round(netOperatingIncome / capRate);
+          const ertragswert = gebaeude_ertragswert + bodenwert;
 
           ertragswertResult = {
             method: "ertragswert",
@@ -1029,6 +1054,8 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
               bewirtschaftung_rate: bewirtschaftungRate,
               noi: netOperatingIncome,
               cap_rate: capRate,
+              gebaeude_ertragswert,
+              bodenwert,
               gross_yield: askingPrice > 0 ? Math.round((annualRent / askingPrice) * 10000) / 100 : null,
             },
           };
