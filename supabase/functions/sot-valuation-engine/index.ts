@@ -1277,6 +1277,7 @@ Deno.serve(async (req) => {
 WICHTIG: Nenne Marktwert UND Beleihungswert.`,
             `Objekt: ${snapshot.formatted_address || snapshot.address || "Unbekannt"}
 Objektart: ${calcObjectType}, Fläche: ${livingArea}m², Baujahr: ${sachYearBuilt}
+${snapshot.mfh_multi_unit ? `HINWEIS: MFH mit ${snapshot.units_detail?.length || 0} Wohneinheiten (Ø ${snapshot.avg_unit_area}m²). Bewertung auf Basis von ETW-Vergleichspreisen (Einzelwohnungsbewertung).` : ''}
 Marktwert (P50): ${valueBand.p50?.toLocaleString("de")} €
 Beleihungswert: ${beleihungswertFinal?.toLocaleString("de")} € (Quote: ${(beleihungswertQuote * 100).toFixed(0)}%)
 Wertband: ${valueBand.p25?.toLocaleString("de")} – ${valueBand.p75?.toLocaleString("de")} €
@@ -1284,7 +1285,7 @@ Liegenschaftszins MWT: ${(liegenschaftszinsMWT * 100).toFixed(2)}% (${liegenscha
 Bodenrichtwert: ${bodenrichtwert} €/m² (${bodenrichtwertSource})
 Standort-Score: ${locationScore}/100
 DSCR: ${dscr}
-Comps: ${compPostings.length} Vergleichsangebote
+Comps: ${compPostings.length} Vergleichsangebote${snapshot.mfh_multi_unit ? ' (ETW-basiert)' : ''}
 Datenbasis: ${sourceMode === "SSOT_FINAL" ? "SSOT (verifiziert)" : "Draft"}`,
           );
         } catch (_) { executiveSummary = "Summary konnte nicht generiert werden."; }
