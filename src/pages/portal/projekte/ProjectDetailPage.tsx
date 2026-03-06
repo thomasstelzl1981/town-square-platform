@@ -87,7 +87,7 @@ export default function ProjectDetailPage() {
         <TabsContent value="valuation">
           <ProjectValuationSection
             projectId={project.id}
-            projectName={project.name || project.code}
+            projectName={project.name || project.project_code}
             address={project.address}
           />
         </TabsContent>

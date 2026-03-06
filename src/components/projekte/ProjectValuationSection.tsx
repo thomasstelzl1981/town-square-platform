@@ -17,25 +17,14 @@ interface ProjectValuationSectionProps {
 }
 
 export function ProjectValuationSection({ projectId, projectName, address }: ProjectValuationSectionProps) {
-  const {
-    state,
-    isLoading,
-    runPreflight,
-    runValuation,
-    reset,
-  } = useValuationCase();
+  const valuation = useValuationCase();
 
-  const handleStart = async () => {
-    const preflight = await runPreflight({
-      propertyId: projectId,
-      sourceContext: 'MOD_13_INBOX',
-    });
-    if (preflight?.approved) {
-      await runValuation();
-    }
+  const runParams = {
+    propertyId: projectId,
+    sourceContext: 'MOD_13_INBOX' as const,
   };
 
-  const statusLabel = state.status === 'idle' ? 'Keine Bewertung' : state.status;
+  const statusLabel = valuation.state.status === 'idle' ? 'Keine Bewertung' : valuation.state.status;
 
   return (
     <div className="space-y-4">
@@ -52,36 +41,43 @@ export function ProjectValuationSection({ projectId, projectName, address }: Pro
                 </CardDescription>
               </div>
             </div>
-            <Badge variant={state.status === 'completed' ? 'default' : 'secondary'} className="text-xs">
+            <Badge variant={valuation.state.resultData ? 'default' : 'secondary'} className="text-xs">
               {statusLabel}
             </Badge>
           </div>
         </CardHeader>
         <CardContent>
-          {state.status === 'idle' && (
-            <Button onClick={handleStart} disabled={isLoading} size="sm">
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-              Projekt bewerten
-            </Button>
-          )}
-
-          {state.status === 'preflight' && state.preflight && (
+          {valuation.state.status === 'idle' && !valuation.state.preflight && (
             <ValuationPreflight
-              data={state.preflight}
-              onConfirm={() => runValuation()}
-              onCancel={reset}
-              isLoading={isLoading}
+              preflight={null}
+              isLoading={valuation.isLoading}
+              onCheckPreflight={() => valuation.runPreflight(runParams)}
+              onStartValuation={() => valuation.runValuation(runParams)}
             />
           )}
 
-          {(state.status === 'running' || state.status === 'pending') && (
-            <ValuationPipeline stages={state.stages} currentStage={state.currentStage} />
+          {valuation.state.preflight && valuation.state.status !== 'running' && !valuation.state.resultData && (
+            <ValuationPreflight
+              preflight={valuation.state.preflight}
+              isLoading={valuation.isLoading}
+              onCheckPreflight={() => valuation.runPreflight(runParams)}
+              onStartValuation={() => valuation.runValuation(runParams)}
+            />
           )}
 
-          {state.status === 'failed' && (
+          {valuation.state.status === 'running' && (
+            <ValuationPipeline
+              stages={valuation.state.stages}
+              currentStage={valuation.state.currentStage}
+              status={valuation.state.status}
+              error={valuation.state.error}
+            />
+          )}
+
+          {valuation.state.status === 'failed' && (
             <div className="space-y-2">
-              <p className="text-sm text-destructive">{state.error || 'Bewertung fehlgeschlagen'}</p>
-              <Button variant="outline" size="sm" onClick={reset}>
+              <p className="text-sm text-destructive">{valuation.state.error || 'Bewertung fehlgeschlagen'}</p>
+              <Button variant="outline" size="sm" onClick={valuation.reset}>
                 <RotateCcw className="h-4 w-4 mr-2" /> Erneut versuchen
               </Button>
             </div>
@@ -89,18 +85,25 @@ export function ProjectValuationSection({ projectId, projectName, address }: Pro
         </CardContent>
       </Card>
 
-      {state.status === 'completed' && state.resultData && (
+      {valuation.state.resultData && (
         <Card>
           <CardContent className="pt-6">
             <ValuationReportReader
-              data={state.resultData}
-              sourceMode={state.sourceMode}
-              legalTitle={projectName}
-              location={address || undefined}
-              comps={state.resultData?.comps}
+              valueBand={valuation.state.resultData.valueBand}
+              methods={valuation.state.resultData.methods || []}
+              financing={valuation.state.resultData.financing || []}
+              stressTests={valuation.state.resultData.stressTests || []}
+              lienProxy={valuation.state.resultData.lienProxy || null}
+              debtService={valuation.state.resultData.debtService || null}
+              dataQuality={valuation.state.resultData.dataQuality || null}
+              compStats={valuation.state.resultData.compStats || null}
+              executiveSummary={valuation.state.resultData.executiveSummary}
+              sourceMode={valuation.state.sourceMode}
+              location={valuation.state.resultData.location || null}
+              comps={valuation.state.resultData.comps || []}
             />
             <div className="mt-4 flex justify-end">
-              <Button variant="outline" size="sm" onClick={reset}>
+              <Button variant="outline" size="sm" onClick={valuation.reset}>
                 <RotateCcw className="h-4 w-4 mr-2" /> Neue Bewertung
               </Button>
             </div>
