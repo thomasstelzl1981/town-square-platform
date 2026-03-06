@@ -1204,7 +1204,7 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
             method: "sachwert_proxy",
             value: sachwert,
             confidence: bodenwert > 0 ? 0.45 : 0.3,
-            params: { base_cost_sqm: baseCostSqm, depreciation: depreciationRate, age, gebaeude_sachwert: gebaeudeSachwert, bodenwert, marktanpassung },
+            params: { base_cost_sqm: baseCostSqm, depreciation: depreciationRate, age: sachAge, gebaeude_sachwert: gebaeudeSachwert, bodenwert, marktanpassung },
           };
         }
 
