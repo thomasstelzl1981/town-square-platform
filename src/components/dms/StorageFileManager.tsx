@@ -255,6 +255,8 @@ export function StorageFileManager({
 
   const handleColumnNavigate = (nodeId: string, depth: number) => {
     setColumnPath(prev => [...prev.slice(0, depth), nodeId]);
+    // SYNC: Keep selectedNodeId in sync so uploads target the visible folder
+    onSelectNode(nodeId);
   };
 
   const handleNavigatePath = (path: string) => {
@@ -269,7 +271,7 @@ export function StorageFileManager({
   };
 
   return (
-    <FileDropZone onDrop={onUploadFiles} disabled={isUploading} className="h-full">
+    <FileDropZone onDrop={onUploadFiles} disabled={isUploading} className="h-full" targetFolderName={selectedNodeId ? (nodes.find(n => n.id === selectedNodeId)?.name || undefined) : undefined}>
       <div className={`rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/60 dark:border-border/40 shadow-sm overflow-hidden flex flex-col relative ${isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-12rem)]'}`}>
         {/* Hidden file input */}
         <input
