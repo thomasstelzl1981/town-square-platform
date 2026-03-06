@@ -5,6 +5,10 @@
  * 1. DMS-Ordner in storage_nodes erstellen
  * 2. Sortierkachel in inbox_sort_containers erstellen
  * 3. Sortierregeln in inbox_sort_rules erstellen
+ *
+ * NOTE: File uploads are handled by useUniversalUpload (2-Phase Architecture).
+ * The uploadFile mutation was removed — it used wrong column names and
+ * did not create documents + document_links records.
  */
 
 import { useMutation } from '@tanstack/react-query';
@@ -112,51 +116,5 @@ export function useRecordCardDMS() {
     },
   });
 
-  const uploadFile = useMutation({
-    mutationFn: async ({ file, entityType, entityId, tenantId, folderId }: {
-      file: File;
-      entityType: RecordCardEntityType;
-      entityId: string;
-      tenantId: string;
-      folderId: string;
-    }) => {
-      const config = RECORD_CARD_TYPES[entityType];
-      const storagePath = `${tenantId}/${config.moduleCode}/${entityId}/${file.name}`;
-
-      // Upload to blob storage
-      const { error: uploadError } = await supabase.storage
-        .from('tenant-documents')
-        .upload(storagePath, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      // Create storage_node entry
-      const { error: nodeError } = await supabase
-        .from('storage_nodes')
-        .insert({
-          tenant_id: tenantId,
-          name: file.name,
-          node_type: 'file',
-          module_code: config.moduleCode,
-          entity_type: entityType,
-          entity_id: entityId,
-          parent_id: folderId,
-          file_path: storagePath,
-          mime_type: file.type,
-          file_size: file.size,
-        } as any);
-
-      if (nodeError) throw nodeError;
-
-      return storagePath;
-    },
-    onSuccess: (_, vars) => {
-      toast.success(`"${vars.file.name}" hochgeladen`);
-    },
-    onError: () => {
-      toast.error('Upload fehlgeschlagen');
-    },
-  });
-
-  return { createDMS, uploadFile };
+  return { createDMS };
 }

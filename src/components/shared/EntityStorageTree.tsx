@@ -5,6 +5,10 @@
  * - storage_nodes: folders (entity_type + entity_id filter)
  * - documents: files (linked via document_links)
  * - document_links: maps documents to storage_nodes
+ *
+ * Upload uses useUniversalUpload (2-Phase Architecture) for correct
+ * documents + document_links + storage_nodes creation.
+ * Files are always uploaded into the currently selected folder.
  */
 
 import { useState, useCallback } from 'react';
@@ -13,9 +17,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { ColumnView } from '@/components/dms/views/ColumnView';
 import { FileDropZone } from '@/components/dms/FileDropZone';
 import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
+import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
-import { Upload, Loader2 } from 'lucide-react';
+import { Upload, Loader2, FolderOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import type { RecordCardEntityType } from '@/config/recordCardManifest';
 import type { FileManagerItem } from '@/components/dms/views/ListView';
@@ -31,7 +36,8 @@ interface EntityStorageTreeProps {
 export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, className }: EntityStorageTreeProps) {
   const [columnPath, setColumnPath] = useState<string[]>([]);
   const queryClient = useQueryClient();
-  const { createDMS, uploadFile } = useRecordCardDMS();
+  const { createDMS } = useRecordCardDMS();
+  const universalUpload = useUniversalUpload();
 
   // Find entity root folder
   const { data: rootFolder } = useQuery({
@@ -121,13 +127,42 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   const invalidateAll = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['entity-storage-root', tenantId, entityType, entityId] });
     queryClient.invalidateQueries({ queryKey: ['entity-storage-nodes', tenantId, entityType, entityId] });
+    queryClient.invalidateQueries({ queryKey: ['entity-storage-doc-links'] });
+    queryClient.invalidateQueries({ queryKey: ['entity-storage-docs'] });
   }, [queryClient, tenantId, entityType, entityId]);
 
-  const handleFileDrop = useCallback(async (droppedFiles: File[]) => {
-    let folderId = rootFolder?.id;
+  /**
+   * Resolve the target folder for upload:
+   * - If a subfolder is selected in columnPath → use that
+   * - Otherwise → use root folder
+   */
+  const resolveTargetFolderId = useCallback((): string | null => {
+    // The last entry in columnPath is the deepest selected folder
+    if (columnPath.length > 0) {
+      const lastSelectedId = columnPath[columnPath.length - 1];
+      // Verify this node actually exists in allNodes
+      const node = allNodes.find(n => n.id === lastSelectedId);
+      if (node) return lastSelectedId;
+    }
+    return rootFolder?.id || null;
+  }, [columnPath, allNodes, rootFolder?.id]);
 
-    // Auto-create DMS folder if none exists
-    if (!folderId) {
+  /**
+   * Get the display name of the target folder for UI feedback
+   */
+  const getTargetFolderName = useCallback((): string => {
+    const targetId = resolveTargetFolderId();
+    if (!targetId) return 'Datenraum';
+    if (targetId === rootFolder?.id) return 'Datenraum';
+    const node = allNodes.find(n => n.id === targetId);
+    return node?.name || 'Datenraum';
+  }, [resolveTargetFolderId, rootFolder?.id, allNodes]);
+
+  const handleFileDrop = useCallback(async (droppedFiles: File[]) => {
+    let targetFolderId = resolveTargetFolderId();
+
+    // Auto-create DMS folder structure if none exists
+    if (!targetFolderId) {
       try {
         const result = await createDMS.mutateAsync({
           entityType,
@@ -135,27 +170,47 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
           entityName: `${entityType}-${entityId.slice(0, 8)}`,
           tenantId,
         });
-        folderId = result.folderId;
+        targetFolderId = result.folderId;
       } catch {
         return;
       }
     }
 
-    // Upload files
-    for (const file of droppedFiles) {
-      await uploadFile.mutateAsync({
-        file,
-        entityType,
-        entityId,
-        tenantId,
-        folderId: folderId!,
-      });
+    if (!targetFolderId) {
+      toast.error('Kein Zielordner gefunden');
+      return;
     }
 
-    invalidateAll();
-  }, [rootFolder?.id, entityType, entityId, tenantId, createDMS, uploadFile, invalidateAll]);
+    const folderName = getTargetFolderName();
 
-  const isUploading = uploadFile.isPending || createDMS.isPending;
+    // Upload files via useUniversalUpload (2-Phase Architecture)
+    for (const file of droppedFiles) {
+      const result = await universalUpload.upload(file, {
+        moduleCode,
+        entityId,
+        objectType: entityType,
+        objectId: entityId,
+        parentNodeId: targetFolderId,
+        source: 'entity-storage-tree',
+      });
+
+      if (result.error) {
+        console.error('Upload failed:', result.error);
+      }
+    }
+
+    toast.success(
+      droppedFiles.length === 1
+        ? `"${droppedFiles[0].name}" in "${folderName}" hochgeladen`
+        : `${droppedFiles.length} Dateien in "${folderName}" hochgeladen`
+    );
+
+    // Refresh the tree
+    invalidateAll();
+    universalUpload.reset();
+  }, [resolveTargetFolderId, createDMS, entityType, entityId, tenantId, moduleCode, universalUpload, getTargetFolderName, invalidateAll]);
+
+  const isUploading = universalUpload.isUploading || createDMS.isPending;
 
   // Empty state — no DMS folder yet
   if (!rootFolder?.id && !isUploading) {
@@ -172,12 +227,24 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
     );
   }
 
+  // Determine current target folder name for drop overlay
+  const targetFolderName = getTargetFolderName();
+
   return (
-    <FileDropZone onDrop={handleFileDrop} className={className}>
+    <FileDropZone
+      onDrop={handleFileDrop}
+      className={className}
+      dropOverlayLabel={`Dateien in "${targetFolderName}" ablegen`}
+    >
       <div className={cn(DESIGN.STORAGE.CONTAINER, DESIGN.STORAGE.MIN_HEIGHT, 'relative')}>
         {isUploading && (
           <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/60 backdrop-blur-sm">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-xs text-muted-foreground">
+                {universalUpload.progress.message || 'Wird hochgeladen…'}
+              </p>
+            </div>
           </div>
         )}
         <ColumnView
