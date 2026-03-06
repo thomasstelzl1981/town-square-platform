@@ -1074,12 +1074,24 @@ Deno.serve(async (req) => {
         const beleihungswertFinal = beleihungswert === Infinity ? Math.round(valueBand.p50 * 0.80) : beleihungswert;
         const beleihungswertQuote = valueBand.p50 > 0 ? Math.round((beleihungswertFinal / valueBand.p50) * 100) / 100 : 0;
 
+        // Compute BelWertV details for display
+        const bwkBelwertvValue = netRent > 0 ? (() => {
+          const ar = netRent * 12;
+          const bew = CALC.BEWIRTSCHAFTUNG_BELWERTV;
+          return Math.round(ar * bew.verwaltungPercent + livingArea * bew.instandhaltungPerSqmYear + ar * bew.mietausfallPercent + ar * bew.nichtUmlagefaehigPercent);
+        })() : 0;
+        const reinertagBelwertvValue = netRent > 0 ? Math.round(netRent * 12 - bwkBelwertvValue) : 0;
+        const bwfBelwertvValue = barwertfaktor(CALC.BELWERTV_LIEGENSCHAFTSZINS, rnd);
+
         const beleihungswertResult = {
           ertragswert_belwertv: ertragswertBelwertv,
           sachwert_belwertv: sachwertBelwertv,
           beleihungswert: beleihungswertFinal,
           beleihungswert_quote: beleihungswertQuote,
           sicherheitsabschlag: CALC.BELWERTV_SICHERHEITSABSCHLAG,
+          bwk_belwertv: bwkBelwertvValue,
+          reinertrag_belwertv: reinertagBelwertvValue,
+          barwertfaktor_belwertv: Math.round(bwfBelwertvValue * 100) / 100,
         };
 
         // ═══ 4.8 Financing ═══

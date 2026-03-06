@@ -698,7 +698,7 @@ export function ValuationReportReader({
                 <span className="text-right font-semibold w-28">{fmtEur(m.value)}</span>
                 {beleihungswert && (
                   <span className="text-right text-muted-foreground w-28">
-                    {m.method === 'ertrag' ? fmtEur(beleihungswert.ertragswertBelwertv) :
+                    {m.method === 'ertragswert' ? fmtEur(beleihungswert.ertragswertBelwertv) :
                      m.method === 'sachwert_proxy' ? fmtEur(beleihungswert.sachwertBelwertv) : '–'}
                   </span>
                 )}
