@@ -1233,7 +1233,12 @@ Deno.serve(async (req) => {
             case_id: caseId, value_band: valueBand, valuation_methods: methods,
             financing: financingScenarios, stress_tests: stressTests,
             lien_proxy: lienProxy, debt_service: debtService,
-            location_analysis: locationAnalysis,
+            location_analysis: {
+              ...locationAnalysis,
+              // V9.1: Embed unit details in location_analysis for downstream access
+              mfh_multi_unit: !!snapshot.mfh_multi_unit,
+              units_detail: snapshot.units_detail || [],
+            },
             comp_stats: compStats, comp_postings: compPostings.slice(0, 10),
             sensitivity: {},
             charts: {},
