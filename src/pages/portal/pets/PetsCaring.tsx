@@ -33,7 +33,7 @@ export default function PetsCaring() {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchTriggered, setSearchTriggered] = useState(true);
 
-  const { data: providers = [], isLoading } = useSearchProviders(
+  const { data: providers = [], isLoading, isError } = useSearchProviders(
     searchTriggered ? searchLocation : undefined,
     searchTriggered ? selectedCategory : undefined,
   );
