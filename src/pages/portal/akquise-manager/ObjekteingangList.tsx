@@ -55,6 +55,7 @@ export function ObjekteingangList() {
   const navigate = useNavigate();
   const { data: mandates = [], isLoading: loadingMandates } = useAcqMandatesForManager();
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
+  const [sourceFilter, setSourceFilter] = React.useState<string>('all');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedMandateId, setSelectedMandateId] = React.useState<string | null>(null);
 
