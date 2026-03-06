@@ -157,15 +157,9 @@ export default function PropertyDetailPage() {
     marginalTaxRate: contextData?.marginal_tax_rate || 0.42,
   };
 
-  const getDocumentTitle = () => {
-    const prefix = property.code ? `${property.code} – ` : '';
-    const labels: Record<string, string> = { akte: 'Immobilienakte', expose: 'Exposé', features: 'Features', tenancy: 'Mietverhältnis', datenraum: 'Datenraum' };
-    return `${labels[activeTab] || ''}: ${prefix}${property.address}`;
-  };
-
   return (
     <PageShell fullWidth={splitView}>
-      <div ref={contentRef}>
+      <div>
         <PropertyDetailHeader property={property} propertyId={id} isDemo={isDemo} splitView={splitView} onSplitViewChange={setSplitView} onDelete={() => setShowDeleteDialog(true)} />
 
         {splitView ? (
