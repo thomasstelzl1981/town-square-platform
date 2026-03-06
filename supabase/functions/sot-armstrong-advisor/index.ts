@@ -479,10 +479,15 @@ PRIORITÄTEN (in dieser Reihenfolge):
 VERFÜGBARE AKTIONEN (Top 5 für aktuellen Kontext):
 ${topActions || '  - (keine modulspezifischen Aktionen verfügbar)'}
 
-${hasDoc ? `MAGIC INTAKE REGEL:
-Wenn ein Dokument angehängt ist, prüfe ob eine Magic Intake Action passend ist.
+${hasDoc ? (body.entity?.id ? `ENTITY-AWARE DOKUMENTREGEL:
+Ein Dokument ist angehängt und wir befinden uns IN einer bestehenden Entität (${body.entity?.type || 'unbekannt'}, ID: ${body.entity?.id}).
+WICHTIG: Schlage KEINE Neuanlage vor! Die Daten gehören zur bestehenden Akte.
+Stattdessen: Schlage vor, die Daten aus dem Dokument in die bestehende Akte zu übernehmen (ENRICH).
+Beispiel: "Ich sehe einen Grundbuchauszug — soll ich die Grundbuchdaten in die bestehende Immobilienakte übernehmen?"
+` : `MAGIC INTAKE REGEL:
+Wenn ein Dokument angehängt ist UND KEINE aktive Entität existiert, prüfe ob eine Magic Intake Action passend ist.
 Schlage diese proaktiv vor, z.B.: "Ich erkenne ein Exposé — soll ich daraus eine Immobilie anlegen?"
-` : ''}GOVERNANCE:
+`) : ''}GOVERNANCE:
 - Bei sensiblen Themen: Disclaimer verwenden
 - Keine Steuer-/Rechtsberatung (verweise auf Fachberater)
 - Keine Garantien oder Zusagen
@@ -544,6 +549,9 @@ const MVP_EXECUTABLE_ACTIONS = [
 
   // DMS Storage Extraction
   "ARM.DMS.STORAGE_EXTRACTION",
+  
+  // MOD-04 Enrichment (document → existing property)
+  "ARM.MOD04.ENRICH_FROM_STORAGE",
 
   // Zone 3 Lead Capture Actions
   "ARM.Z3.KAUFY.CAPTURE_LEAD",
@@ -1190,6 +1198,25 @@ const MVP_ACTIONS: ActionDefinition[] = [
     credits_estimate: 1,
     status: "active",
   },
+  // MOD-04: Enrich existing property from document data
+  {
+    action_code: "ARM.MOD04.ENRICH_FROM_STORAGE",
+    title_de: "Daten aus Dokument in Akte übernehmen",
+    description_de: "Liest extrahierte Daten aus einem Dokument im Datenraum und überträgt sie in die bestehende Immobilienakte (z.B. Grundbuchdaten, Flurstück, Eigentümer)",
+    zones: ["Z2"] as Zone[],
+    module: "MOD-04" as Module,
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["documents", "document_structured_data", "storage_nodes"],
+    data_scopes_write: ["properties", "units"],
+    side_effects: ["modifies_property_record"],
+    cost_model: "free",
+    cost_hint_cents: 0,
+    credits_estimate: 0,
+    status: "active",
+  },
 ];
 
 // =============================================================================
@@ -1271,6 +1298,10 @@ function classifyIntent(message: string, actionRequest: ActionRequest | undefine
     "datenraum analysieren", "datenraum durchsuchbar", "storage extrahieren",
     "alle dokumente analysieren", "bulk extraktion", "datenraum vorbereiten",
     "armstrong zugriff", "dokumente indexieren", "datenraum scannen",
+    // Enrich from Storage (document → existing record)
+    "grundbuch auslesen", "daten übernehmen", "akte befüllen", "enrich",
+    "in die akte", "daten aus dokument", "grundbuchdaten", "dokument auslesen",
+    "akte anreichern", "felder übernehmen", "daten eintragen",
   ];
   if (actionKeywords.some(kw => lowerMsg.includes(kw))) {
     return "ACTION";
@@ -1303,9 +1334,11 @@ function filterActionsForContext(
 
 function suggestActionsForMessage(
   message: string,
-  availableActions: ActionDefinition[]
+  availableActions: ActionDefinition[],
+  entity?: { type?: string; id?: string }
 ): SuggestedAction[] {
   const lowerMsg = message.toLowerCase();
+  const hasActiveEntity = !!(entity?.id);
   const suggestions: SuggestedAction[] = [];
   
   for (const action of availableActions) {
@@ -1382,12 +1415,27 @@ function suggestActionsForMessage(
       why = "Startet eine Kontaktrecherche mit Kontaktbuch-Abgleich";
     }
     
-    // Magic Intake: MOD-04
+    // ENRICH: MOD-04 — Prioritized when entity context exists
+    if (action.action_code === "ARM.MOD04.ENRICH_FROM_STORAGE" && hasActiveEntity && entity?.type === "property" &&
+        (lowerMsg.includes("grundbuch") || lowerMsg.includes("daten übernehmen") || lowerMsg.includes("akte befüllen") ||
+         lowerMsg.includes("auslesen") || lowerMsg.includes("in die akte") || lowerMsg.includes("enrich") ||
+         lowerMsg.includes("daten aus dokument") || lowerMsg.includes("felder übernehmen") || lowerMsg.includes("daten eintragen") ||
+         lowerMsg.includes("dokument") || lowerMsg.includes("übertrag"))) {
+      relevance += 10;
+      why = "Überträgt Daten aus dem Dokument in die bestehende Immobilienakte";
+    }
+    
+    // Magic Intake: MOD-04 — SUPPRESS when active entity exists
     if (action.action_code === "ARM.MOD04.MAGIC_INTAKE_PROPERTY" && 
         (lowerMsg.includes("immobilie anlegen") || lowerMsg.includes("kaufvertrag") || lowerMsg.includes("objekt anlegen") ||
          lowerMsg.includes("wohnung anlegen") || lowerMsg.includes("haus anlegen") || lowerMsg.includes("grundstück") ||
          lowerMsg.includes("leg die immobilie an") || (lowerMsg.includes("immobilie") && lowerMsg.includes("dokument")))) {
-      relevance += 5;
+      if (hasActiveEntity && entity?.type === "property") {
+        // SUPPRESS: Don't suggest creating a new property when we're already inside one
+        relevance = 0;
+      } else {
+        relevance += 5;
+      }
       why = "Erstellt eine Immobilie aus dem hochgeladenen Dokument";
     }
     
@@ -3370,6 +3418,132 @@ Format: Markdown mit Überschriften, Aufzählungen und ggf. Tabellen.`
         }
       }
 
+      // =====================================================================
+      // ARM.MOD04.ENRICH_FROM_STORAGE — Enrich existing property from document
+      // =====================================================================
+      case "ARM.MOD04.ENRICH_FROM_STORAGE": {
+        try {
+          if (!entity.id || entity.type !== "property") {
+            return { success: false, error: "Diese Aktion erfordert eine aktive Immobilienakte. Bitte öffnen Sie zuerst eine Immobilie." };
+          }
+
+          const propertyId = entity.id;
+          const tenantId = userContext.org_id;
+
+          // Step 1: Load structured data from documents linked to this property
+          const { data: structuredDocs, error: sdError } = await supabase
+            .from("document_structured_data")
+            .select("id, document_id, doc_category, extracted_fields, extraction_confidence, created_at")
+            .eq("property_id", propertyId)
+            .order("created_at", { ascending: false })
+            .limit(20);
+
+          if (sdError) {
+            console.error("[Armstrong] ENRICH_FROM_STORAGE - structured data query error:", sdError);
+            return { success: false, error: "Fehler beim Laden der Dokumentdaten." };
+          }
+
+          if (!structuredDocs || structuredDocs.length === 0) {
+            return {
+              success: false,
+              error: "Keine extrahierten Dokumentdaten gefunden. Bitte laden Sie zuerst ein Dokument (z.B. Grundbuchauszug) in den Datenraum hoch und lassen Sie es von Armstrong analysieren (Datenraum-Extraktion).",
+            };
+          }
+
+          // Step 2: Find the best document (prefer Grundbuchauszug, then newest)
+          const grundbuchDoc = structuredDocs.find(
+            (d: any) => d.doc_category?.toLowerCase()?.includes("grundbuch")
+          );
+          const targetDoc = grundbuchDoc || structuredDocs[0];
+          const fields = (targetDoc as any).extracted_fields || {};
+
+          // Step 3: Map extracted fields to properties columns
+          const updatePayload: Record<string, any> = {};
+          const fieldMappings: Array<{ source: string; target: string; label: string }> = [
+            { source: "amtsgericht", target: "land_register_court", label: "Amtsgericht" },
+            { source: "grundbuchbezirk", target: "land_register_volume", label: "Grundbuchbezirk" },
+            { source: "blatt_nr", target: "land_register_sheet", label: "Grundbuchblatt" },
+            { source: "flurstueck", target: "parcel_number", label: "Flurstück" },
+          ];
+
+          // Build refs object for complex data
+          const refsData: Record<string, any> = {};
+          if (fields.eigentuemer) refsData.eigentuemer = fields.eigentuemer;
+          if (fields.abteilung_ii_lasten) refsData.abteilung_ii = fields.abteilung_ii_lasten;
+          if (fields.abteilung_iii_hypotheken) refsData.abteilung_iii = fields.abteilung_iii_hypotheken;
+
+          // Load current property to check which fields are already filled
+          const { data: currentProperty } = await supabase
+            .from("properties")
+            .select("land_register_court, land_register_volume, land_register_sheet, parcel_number, land_register_refs")
+            .eq("id", propertyId)
+            .single();
+
+          const preview: string[] = [];
+          let fieldsUpdated = 0;
+
+          for (const mapping of fieldMappings) {
+            const value = fields[mapping.source];
+            if (value) {
+              const currentValue = currentProperty?.[mapping.target as keyof typeof currentProperty];
+              if (!currentValue) {
+                updatePayload[mapping.target] = String(value);
+                preview.push(`✅ **${mapping.label}**: ${value}`);
+                fieldsUpdated++;
+              } else {
+                preview.push(`⏭️ **${mapping.label}**: bereits vorhanden (${currentValue})`);
+              }
+            }
+          }
+
+          if (Object.keys(refsData).length > 0) {
+            const existingRefs = (currentProperty?.land_register_refs as Record<string, any>) || {};
+            updatePayload.land_register_refs = { ...existingRefs, ...refsData };
+            if (refsData.eigentuemer) preview.push(`✅ **Eigentümer**: ${typeof refsData.eigentuemer === 'string' ? refsData.eigentuemer : JSON.stringify(refsData.eigentuemer).substring(0, 100)}`);
+            if (refsData.abteilung_ii) preview.push(`✅ **Abt. II (Lasten)**: ${Array.isArray(refsData.abteilung_ii) ? refsData.abteilung_ii.length + ' Einträge' : 'vorhanden'}`);
+            if (refsData.abteilung_iii) preview.push(`✅ **Abt. III (Hypotheken)**: ${Array.isArray(refsData.abteilung_iii) ? refsData.abteilung_iii.length + ' Einträge' : 'vorhanden'}`);
+            fieldsUpdated += Object.keys(refsData).length;
+          }
+
+          if (Object.keys(updatePayload).length === 0) {
+            return {
+              success: true,
+              output: {
+                fields_updated: 0,
+                message: "Alle Felder sind bereits ausgefüllt — keine Änderungen nötig.",
+                preview: preview.join("\n"),
+              },
+            };
+          }
+
+          // Step 4: Perform the update
+          updatePayload.updated_at = new Date().toISOString();
+          const { error: updateError } = await supabase
+            .from("properties")
+            .update(updatePayload)
+            .eq("id", propertyId);
+
+          if (updateError) {
+            console.error("[Armstrong] ENRICH_FROM_STORAGE - update error:", updateError);
+            return { success: false, error: `Fehler beim Aktualisieren der Immobilienakte: ${updateError.message}` };
+          }
+
+          return {
+            success: true,
+            output: {
+              fields_updated: fieldsUpdated,
+              document_category: (targetDoc as any).doc_category || "unbekannt",
+              confidence: (targetDoc as any).extraction_confidence,
+              preview: preview.join("\n"),
+              message: `${fieldsUpdated} Feld(er) erfolgreich in die Immobilienakte übernommen.`,
+            },
+          };
+        } catch (err) {
+          console.error("[Armstrong] ENRICH_FROM_STORAGE error:", err);
+          return { success: false, error: "Fehler bei der Datenübernahme aus dem Dokument." };
+        }
+      }
+
       default:
         return { success: false, error: `Action ${actionCode} not implemented in MVP` };
     }
@@ -4685,7 +4859,7 @@ serve(async (req) => {
       // Enable Global Assist Mode when not in MVP module
       const isGlobalAssist = !isInMvpModule;
       const explainResult = await generateExplainResponse(message, module, supabase, isGlobalAssist, buildContextBlock(body, userContext), body, userContext, availableActions, projectContext);
-      const suggestions = suggestActionsForMessage(message, availableActions);
+      const suggestions = suggestActionsForMessage(message, availableActions, entity);
       
       // If we got a Response object back, it's a streaming response from the AI gateway
       if (explainResult instanceof Response && explainResult.body) {
@@ -4750,7 +4924,7 @@ serve(async (req) => {
       // Use AI to generate the actual draft content
       const isGlobalAssist = !isInMvpModule;
       const draftResult = await generateDraftResponse(message, module, supabase);
-      const suggestions = suggestActionsForMessage(message, availableActions);
+      const suggestions = suggestActionsForMessage(message, availableActions, entity);
       
       // If we got a streaming Response back, pipe it with DRAFT metadata
       if (draftResult instanceof Response && draftResult.body) {
@@ -4804,7 +4978,7 @@ serve(async (req) => {
     }
     
     if (intent === "ACTION") {
-      const suggestions = suggestActionsForMessage(message, availableActions);
+      const suggestions = suggestActionsForMessage(message, availableActions, entity);
       
       if (suggestions.length === 0) {
         return new Response(
