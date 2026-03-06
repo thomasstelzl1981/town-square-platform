@@ -21,6 +21,7 @@ import type {
   LienProxy, DebtServiceResult, DataQuality, CompStats, CompPosting,
   LocationAnalysis, LegalTitleBlock, ValuationSourceMode,
   BeleihungswertResult, GeminiResearchResult, ValuationUnitDetail,
+  CanonicalPropertySnapshot,
 } from '@/engines/valuation/spec';
 
 // ─── Props ────────────────────────────────────────────────────────────
