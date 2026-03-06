@@ -84,6 +84,12 @@ export function SystemBar() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [temperature, setTemperature] = useState<number | null>(null);
 
+  // ── Armstrong Favicon ──
+  useEffect(() => {
+    const cleanup = applyBrandFavicon('armstrong');
+    return cleanup;
+  }, []);
+
   const isAtPortalRoot = location.pathname.replace(/\/+$/, '') === '/portal';
 
   const handleHomeClick = () => {
