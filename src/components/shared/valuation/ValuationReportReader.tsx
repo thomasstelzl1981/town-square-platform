@@ -421,27 +421,30 @@ export function ValuationReportReader({
 
             <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Rohertrag</p>
-              <DataRow label="Jahresmiete (Ist)" value={fmtEur2(Number(ertragParams.netColdRentYearly) || 0)} />
+              <DataRow label="Jahresmiete (Ist)" value={fmtEur2(Number(ertragParams.annual_rent) || 0)} />
             </div>
 
             <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Bewirtschaftungskosten (BWK)</p>
               {ertragParams.verwaltung && <DataRow label="Verwaltung" value={fmtEur2(Number(ertragParams.verwaltung))} />}
               {ertragParams.instandhaltung && <DataRow label="Instandhaltung" value={fmtEur2(Number(ertragParams.instandhaltung))} />}
-              {ertragParams.mietausfallwagnis && <DataRow label="Mietausfallwagnis" value={fmtEur2(Number(ertragParams.mietausfallwagnis))} />}
+              {ertragParams.mietausfall && <DataRow label="Mietausfallwagnis" value={fmtEur2(Number(ertragParams.mietausfall))} />}
               {ertragParams.nichtUmlagefaehig && <DataRow label="Modernisierungsrisiko" value={fmtEur2(Number(ertragParams.nichtUmlagefaehig))} />}
               <SectionDivider />
-              <DataRow label="BWK Gesamt" value={fmtEur2(Number(ertragParams.bewirtschaftungAbzug) || 0)} bold />
+              <DataRow label="BWK Gesamt" value={`${fmtEur2(Number(ertragParams.bewirtschaftung_abzug) || 0)} (${fmtPct(Number(ertragParams.bewirtschaftung_rate) || 0)})`} bold />
             </div>
 
             <div className="space-y-1 p-4 rounded-xl border bg-primary/5">
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Ertragsableitung</p>
               <DataRow label="Reinertrag" value={fmtEur2(Number(ertragParams.reinertrag) || 0)} />
-              <DataRow label="Liegenschaftszins" value={fmtPct(Number(ertragParams.liegenschaftszins) || 0)} />
-              {geminiResearch?.liegenschaftszins && (
-                <DataRow label="Quelle Liegenschaftszins" value={geminiResearch.liegenschaftszins.quelle} muted />
+              <DataRow label="Liegenschaftszins" value={fmtPct(Number(ertragParams.cap_rate) || 0)} />
+              {ertragParams.cap_rate_source && (
+                <DataRow label="Quelle Liegenschaftszins" value={String(ertragParams.cap_rate_source)} muted />
               )}
-              <DataRow label="Restnutzungsdauer" value={`${ertragParams.restnutzungsdauer || ertragParams.rnd || '–'} Jahre`} />
+              {geminiResearch?.liegenschaftszins && (
+                <DataRow label="Quelle (Gemini)" value={geminiResearch.liegenschaftszins.quelle ?? String(geminiResearch.liegenschaftszins.quelle || '')} muted />
+              )}
+              <DataRow label="Restnutzungsdauer" value={`${ertragParams.restnutzungsdauer || '–'} Jahre`} />
               <DataRow label="Barwertfaktor" value={fmtNum(Number(ertragParams.barwertfaktor))} />
               <SectionDivider />
               <DataRow label="ERTRAGSWERT (MWT)" value={fmtEur(ertragValue)} bold />
