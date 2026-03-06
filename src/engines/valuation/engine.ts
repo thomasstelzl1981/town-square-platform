@@ -1,5 +1,5 @@
 /**
- * ENG-VALUATION — SoT Valuation Engine V5.0
+ * ENG-VALUATION — SoT Valuation Engine V6.0
  * 
  * ENGINE FILE: Pure deterministic functions (NO side effects, NO DB calls, NO UI imports)
  * 
@@ -7,7 +7,9 @@
  * KI-Extraktion, Normalisierung, Narrative and Report-Text are handled by the Edge Function
  * orchestrator (sot-valuation-engine), NOT here.
  * 
- * @version 1.0.0
+ * V6.0: Added SSOT snapshot builder, merge/diff logic, legal title extraction
+ * 
+ * @version 2.0.0
  */
 
 import type {
@@ -32,6 +34,11 @@ import type {
   CompStats,
   TrafficLight,
   ConfidenceLevel,
+  SSOTPropertyData,
+  LegalTitleBlock,
+  ExistingLoanData,
+  DiffEntry,
+  ValuationSourceMode,
 } from './spec';
 
 import {
@@ -40,6 +47,243 @@ import {
   DEFAULT_FINANCING_SCENARIOS,
   DEFAULT_STRESS_TESTS,
 } from './spec';
+
+// ============================================================================
+// V6.0: SSOT SNAPSHOT BUILDER
+// ============================================================================
+
+/**
+ * Build a CanonicalPropertySnapshot from structured SSOT data (MOD-04 tables).
+ * This is the PRIMARY data source in SSOT_FINAL mode.
+ */
+export function buildSnapshotFromSSOT(data: SSOTPropertyData): CanonicalPropertySnapshot {
+  const { property, units, leases, loans } = data;
+
+  // Aggregate unit data
+  const totalAreaSqm = units.reduce((sum, u) => sum + (u.area_sqm || 0), 0) || property.total_area_sqm || null;
+  const totalRooms = units.reduce((sum, u) => sum + (u.rooms || 0), 0) || null;
+  const totalHausgeld = units.reduce((sum, u) => sum + (u.hausgeld_monthly || 0), 0) || null;
+  const totalParkingSpots = units.reduce((sum, u) => sum + (u.parking_count || 0), 0) || null;
+  const totalMeaShare = units.length === 1 ? units[0].mea_share : null;
+
+  // Aggregate lease data for rent
+  const activeLeases = leases.filter(l => l.status === 'active' || l.status === 'aktiv');
+  const totalNetColdRent = activeLeases.reduce((sum, l) => sum + (l.rent_cold_eur || 0), 0) || null;
+  const netColdRentPerSqm = totalNetColdRent && totalAreaSqm ? Math.round((totalNetColdRent / totalAreaSqm) * 100) / 100 : null;
+
+  // Determine rental status
+  let rentalStatus: CanonicalPropertySnapshot['rentalStatus'] = null;
+  if (activeLeases.length > 0 && units.length > 0) {
+    rentalStatus = activeLeases.length >= units.length ? 'fully_rented' : 'partially_rented';
+  }
+
+  // Map condition
+  const conditionMap: Record<string, CanonicalPropertySnapshot['condition']> = {
+    'neu': 'new', 'new': 'new',
+    'renoviert': 'renovated', 'renovated': 'renovated',
+    'gut': 'good', 'good': 'good',
+    'mittel': 'average', 'average': 'average',
+    'schlecht': 'poor', 'poor': 'poor',
+    'sanierungsbedürftig': 'derelict', 'derelict': 'derelict',
+  };
+
+  // Map object type
+  const typeMap: Record<string, CanonicalPropertySnapshot['objectType']> = {
+    'ETW': 'etw', 'etw': 'etw', 'Eigentumswohnung': 'etw',
+    'MFH': 'mfh', 'mfh': 'mfh', 'Mehrfamilienhaus': 'mfh',
+    'EFH': 'efh', 'efh': 'efh', 'Einfamilienhaus': 'efh',
+    'DHH': 'dhh', 'dhh': 'dhh', 'Doppelhaushälfte': 'dhh',
+    'Gewerbe': 'gew', 'gew': 'gew',
+    'Mixed': 'mixed', 'mixed': 'mixed',
+    'Grundstück': 'grundstueck', 'grundstueck': 'grundstueck',
+  };
+
+  // Build legal title block
+  const legalTitle = buildLegalTitleBlock(data);
+
+  // Build existing loan data
+  const existingLoanData = buildExistingLoanData(loans);
+
+  return {
+    sourceMode: 'SSOT_FINAL',
+    address: property.address || '',
+    postalCode: property.postal_code || '',
+    city: property.city || '',
+    lat: property.latitude ?? undefined,
+    lng: property.longitude ?? undefined,
+    objectType: typeMap[property.property_type] || 'other',
+    livingAreaSqm: totalAreaSqm,
+    plotAreaSqm: property.plot_area_sqm || null,
+    usableAreaSqm: null,
+    commercialAreaSqm: null,
+    rooms: totalRooms,
+    units: units.length || null,
+    floors: null,
+    parkingSpots: totalParkingSpots,
+    yearBuilt: property.year_built,
+    condition: conditionMap[property.condition_grade || ''] || null,
+    energyClass: property.energy_certificate_value || null,
+    modernizations: [],
+    askingPrice: property.market_value || property.purchase_price || null,
+    netColdRentMonthly: totalNetColdRent,
+    netColdRentPerSqm,
+    hausgeldMonthly: totalHausgeld,
+    vacancyRate: null,
+    rentalStatus,
+    purchasePrice: property.purchase_price || null,
+    acquisitionCosts: property.acquisition_costs || null,
+    notaryDate: null,
+    legalTitle,
+    existingLoanData,
+    groundBookEntry: property.land_register_court ? `${property.land_register_court} Blatt ${property.land_register_sheet || '–'}` : null,
+    partitionDeclaration: property.weg_flag ? true : null,
+    providerName: null,
+    providerContact: null,
+  };
+}
+
+/**
+ * Build LegalTitleBlock from SSOT property data.
+ */
+export function buildLegalTitleBlock(data: SSOTPropertyData): LegalTitleBlock {
+  const p = data.property;
+  return {
+    landRegisterCourt: p.land_register_court || null,
+    landRegisterSheet: p.land_register_sheet || null,
+    landRegisterVolume: p.land_register_volume || null,
+    parcelNumber: p.parcel_number || null,
+    ownershipSharePercent: p.ownership_share_percent || null,
+    wegFlag: p.weg_flag || false,
+    teNumber: p.te_number || null,
+    unitOwnershipNr: p.unit_ownership_nr || null,
+    meaShare: data.units.length === 1 ? data.units[0].mea_share || null : null,
+    landRegisterExtractAvailable: !!(p.land_register_court && p.land_register_sheet),
+    partitionDeclarationAvailable: p.weg_flag && !!p.te_number,
+    encumbrancesNote: 'Belastungen nicht automatisch ausgewertet — manuelle Prüfung empfohlen',
+  };
+}
+
+/**
+ * Build ExistingLoanData from SSOT loans (uses first/primary loan).
+ */
+export function buildExistingLoanData(loans: SSOTPropertyData['loans']): ExistingLoanData | null {
+  if (!loans || loans.length === 0) return null;
+  const primary = loans[0];
+  return {
+    outstandingBalance: primary.outstanding_balance_eur || null,
+    interestRatePercent: primary.interest_rate_percent || null,
+    repaymentRatePercent: primary.repayment_rate_percent || null,
+    annuityMonthly: primary.annuity_monthly_eur || null,
+    fixedInterestEndDate: primary.fixed_interest_end_date || null,
+    bankName: primary.bank_name || null,
+  };
+}
+
+/**
+ * Create a default (empty) snapshot for DRAFT_INTAKE mode.
+ */
+export function createDraftSnapshot(): CanonicalPropertySnapshot {
+  return {
+    sourceMode: 'DRAFT_INTAKE',
+    address: '', postalCode: '', city: '',
+    objectType: 'other',
+    livingAreaSqm: null, plotAreaSqm: null, usableAreaSqm: null, commercialAreaSqm: null,
+    rooms: null, units: null, floors: null, parkingSpots: null,
+    yearBuilt: null, condition: null, energyClass: null, modernizations: [],
+    askingPrice: null, netColdRentMonthly: null, netColdRentPerSqm: null,
+    hausgeldMonthly: null, vacancyRate: null, rentalStatus: null,
+    purchasePrice: null, acquisitionCosts: null, notaryDate: null,
+    legalTitle: null, existingLoanData: null,
+    groundBookEntry: null, partitionDeclaration: null,
+    providerName: null, providerContact: null,
+  };
+}
+
+// ============================================================================
+// V6.0: MERGE & DIFF LOGIC
+// ============================================================================
+
+/** Fields that can be compared between SSOT and Extracted */
+const MERGE_FIELDS: { key: keyof CanonicalPropertySnapshot; label: string }[] = [
+  { key: 'address', label: 'Adresse' },
+  { key: 'postalCode', label: 'PLZ' },
+  { key: 'city', label: 'Stadt' },
+  { key: 'objectType', label: 'Objektart' },
+  { key: 'livingAreaSqm', label: 'Wohnfläche (m²)' },
+  { key: 'plotAreaSqm', label: 'Grundstücksfläche (m²)' },
+  { key: 'rooms', label: 'Zimmer' },
+  { key: 'units', label: 'Einheiten' },
+  { key: 'yearBuilt', label: 'Baujahr' },
+  { key: 'askingPrice', label: 'Angebotspreis' },
+  { key: 'netColdRentMonthly', label: 'Nettokaltmiete (mtl.)' },
+  { key: 'hausgeldMonthly', label: 'Hausgeld (mtl.)' },
+  { key: 'condition', label: 'Zustand' },
+  { key: 'energyClass', label: 'Energieklasse' },
+  { key: 'parkingSpots', label: 'Stellplätze' },
+];
+
+/**
+ * Merge two snapshots: SSOT wins, Extracted fills gaps.
+ * Returns the merged snapshot (SSOT fields always preserved).
+ */
+export function mergeSnapshots(
+  ssot: CanonicalPropertySnapshot,
+  extracted: Partial<CanonicalPropertySnapshot>
+): CanonicalPropertySnapshot {
+  const merged = { ...ssot };
+
+  for (const { key } of MERGE_FIELDS) {
+    const ssotVal = ssot[key];
+    const extractedVal = extracted[key];
+
+    // SSOT wins if it has a value
+    if (ssotVal === null || ssotVal === undefined || ssotVal === '' || ssotVal === 0) {
+      if (extractedVal !== null && extractedVal !== undefined && extractedVal !== '') {
+        (merged as any)[key] = extractedVal;
+      }
+    }
+  }
+
+  return merged;
+}
+
+/**
+ * Detect differences between SSOT snapshot and extracted data.
+ * Only returns entries where both have a non-null value AND they differ.
+ */
+export function detectDiffs(
+  ssot: CanonicalPropertySnapshot,
+  extracted: Partial<CanonicalPropertySnapshot>
+): DiffEntry[] {
+  const diffs: DiffEntry[] = [];
+
+  for (const { key, label } of MERGE_FIELDS) {
+    const ssotVal = ssot[key];
+    const extractedVal = extracted[key];
+
+    // Both must have values to create a diff
+    if (
+      ssotVal !== null && ssotVal !== undefined && ssotVal !== '' &&
+      extractedVal !== null && extractedVal !== undefined && extractedVal !== ''
+    ) {
+      // Compare values (handle number vs string)
+      const ssotStr = String(ssotVal);
+      const extractedStr = String(extractedVal);
+
+      if (ssotStr !== extractedStr) {
+        diffs.push({
+          field: key,
+          fieldLabel: label,
+          ssotValue: ssotVal as any,
+          extractedValue: extractedVal as any,
+          decision: 'pending',
+        });
+      }
+    }
+  }
+
+  return diffs;
+}
 
 // ============================================================================
 // ERTRAGSWERT (Capitalized Earnings Method)
@@ -131,7 +375,6 @@ export function deriveErtragswertParams(
 
 /**
  * Calculate a comparison value proxy from deduplicated portal listings stats.
- * Applies simple adjustments based on property characteristics.
  */
 export function calculateCompProxy(
   compStats: CompStats,
@@ -152,7 +395,6 @@ export function calculateCompProxy(
   const area = snapshot.livingAreaSqm || snapshot.usableAreaSqm || 80;
   const basePriceSqm = compStats.p50PriceSqm;
   
-  // Apply adjustments (each is a multiplier delta, e.g. +0.05 = +5%)
   const lageAdj = adjusters.lageAdjust || 0;
   const zustandAdj = adjusters.zustandAdjust || 0;
   const flächeAdj = adjusters.flächeAdjust || 0;
@@ -161,7 +403,6 @@ export function calculateCompProxy(
   const adjustedPriceSqm = basePriceSqm * totalAdj;
   const value = Math.round(adjustedPriceSqm * area);
   
-  // Confidence based on sample size + IQR
   const cvScore = compStats.stdDevPriceSqm > 0 
     ? 1 - Math.min(1, compStats.stdDevPriceSqm / compStats.meanPriceSqm)
     : 0.5;
@@ -213,7 +454,6 @@ export function calculateSachwertProxy(snapshot: CanonicalPropertySnapshot): Val
     };
   }
   
-  // Determine cost cluster
   let cluster: string;
   if (yearBuilt < 1950) cluster = 'pre_1950';
   else if (yearBuilt < 1970) cluster = '1950_1970';
@@ -223,14 +463,13 @@ export function calculateSachwertProxy(snapshot: CanonicalPropertySnapshot): Val
   
   const herstellkostenPerSqm = HERSTELLKOSTEN_CLUSTERS[cluster];
   const age = new Date().getFullYear() - yearBuilt;
-  const alterswertminderung = Math.min(0.70, age * 0.01); // max 70% depreciation
+  const alterswertminderung = Math.min(0.70, age * 0.01);
   
   const herstellkostenGesamt = area * herstellkostenPerSqm;
   const nachAbschreibung = herstellkostenGesamt * (1 - alterswertminderung);
   
-  // Bodenwert proxy
   const plotArea = snapshot.plotAreaSqm || area * 0.5;
-  const bodenwertProxy = plotArea * 150; // conservative default
+  const bodenwertProxy = plotArea * 150;
   
   const value = Math.round(nachAbschreibung + bodenwertProxy);
 
@@ -275,14 +514,12 @@ export function fuseValueBand(methods: ValuationMethodResult[], customWeights?: 
     };
   }
   
-  // Default weights by method
   const defaultWeights: Record<string, number> = {
     ertrag: 0.55,
     comp_proxy: 0.35,
     sachwert_proxy: 0.10,
   };
   
-  // Apply custom weights or defaults
   const weights = validMethods.map(m => ({
     method: m.method,
     weight: customWeights?.[m.method] ?? defaultWeights[m.method] ?? 0.1,
@@ -291,24 +528,20 @@ export function fuseValueBand(methods: ValuationMethodResult[], customWeights?: 
     confidenceScore: m.confidenceScore,
   }));
   
-  // Normalize weights
   const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0);
   weights.forEach(w => { w.weight = w.weight / totalWeight; });
   
-  // Weighted average = P50
   const p50 = Math.round(weights.reduce((sum, w) => sum + w.value * w.weight, 0));
   
-  // P25/P75 from spread of values
   const allValues = validMethods.map(m => m.value).sort((a, b) => a - b);
   const spread = allValues.length > 1
     ? (allValues[allValues.length - 1] - allValues[0]) / p50
-    : 0.15; // default 15% spread if single method
+    : 0.15;
   
   const halfSpread = Math.max(0.05, Math.min(0.20, spread / 2));
   const p25 = Math.round(p50 * (1 - halfSpread));
   const p75 = Math.round(p50 * (1 + halfSpread));
   
-  // Overall confidence
   const avgConfidence = weights.reduce((sum, w) => sum + w.confidenceScore * w.weight, 0);
   const confidence: ConfidenceLevel = avgConfidence > 0.65 ? 'high' : avgConfidence > 0.4 ? 'medium' : 'low';
 
@@ -431,17 +664,15 @@ export function calculateStressTests(
 
 /**
  * Calculate SoT Lien Proxy (conservative valuation for LTV estimation).
- * NOT a bank Beleihungswert — clearly labeled as proxy.
  */
 export function calculateLienProxy(
   valueBand: ValueBand,
   dataQuality: DataQuality,
-  locationScore: number // 0–100
+  locationScore: number
 ): LienProxy {
   const riskDrivers: LienProxyRiskDriver[] = [];
   let totalDiscount = 0;
   
-  // Data quality discount
   if (dataQuality.completenessPercent < 60) {
     const disc = 0.10;
     riskDrivers.push({ factor: 'Datenlücken', discountPercent: disc * 100, reasoning: `Completeness nur ${dataQuality.completenessPercent}%` });
@@ -452,7 +683,6 @@ export function calculateLienProxy(
     totalDiscount += disc;
   }
   
-  // Location risk
   if (locationScore < 40) {
     const disc = 0.08;
     riskDrivers.push({ factor: 'Standort-Risiko', discountPercent: disc * 100, reasoning: `Standort-Score nur ${locationScore}/100` });
@@ -463,19 +693,17 @@ export function calculateLienProxy(
     totalDiscount += disc;
   }
   
-  // Confidence discount
   if (valueBand.confidenceScore < 0.4) {
     const disc = 0.08;
     riskDrivers.push({ factor: 'Niedrige Bewertungs-Confidence', discountPercent: disc * 100, reasoning: `Confidence Score ${valueBand.confidenceScore}` });
     totalDiscount += disc;
   }
   
-  // Base safety margin
   const baseSafetyMargin = 0.10;
   riskDrivers.push({ factor: 'Sicherheitsabschlag (Basis)', discountPercent: baseSafetyMargin * 100, reasoning: 'Standard-Sicherheitsabschlag für Proxy' });
   totalDiscount += baseSafetyMargin;
   
-  totalDiscount = Math.min(totalDiscount, 0.40); // cap at 40%
+  totalDiscount = Math.min(totalDiscount, 0.40);
   
   const lienValueHigh = Math.round(valueBand.p50 * (1 - totalDiscount));
   const lienValueLow = Math.round(valueBand.p25 * (1 - totalDiscount));
@@ -520,7 +748,7 @@ export function calculateDSCR(
   
   const cashflowAfterDebt = Math.round(annualNetRent - annualDebtService);
   const breakEvenRentMonthly = annualDebtService > 0 
-    ? Math.round(annualDebtService * 1.1 / 12) // 1.1x for DSCR=1.1
+    ? Math.round(annualDebtService * 1.1 / 12)
     : null;
   
   const isViable = dscr !== null ? dscr >= 1.1 : null;
@@ -550,11 +778,7 @@ export function calculateSensitivity(
 ): SensitivityMatrix {
   const variations: SensitivityVariation[] = [];
   
-  // Rent sensitivity ±10%
   if (snapshot.netColdRentMonthly) {
-    const rentUp = snapshot.netColdRentMonthly * 1.10;
-    const rentDown = snapshot.netColdRentMonthly * 0.90;
-    // Rough: 1% rent change ≈ 1% value change for Ertragswert
     variations.push({
       parameter: 'Miete +10%',
       delta: 0.10,
@@ -569,23 +793,20 @@ export function calculateSensitivity(
     });
   }
   
-  // CapEx sensitivity ±20% (impacts via Bewirtschaftung)
   variations.push({
     parameter: 'Instandhaltung +20%',
     delta: 0.20,
-    resultingValue: Math.round(baseP50 * 0.97), // ~3% impact
+    resultingValue: Math.round(baseP50 * 0.97),
     deltaFromBase: Math.round(baseP50 * -0.03),
   });
   
-  // Interest rate sensitivity
   variations.push({
     parameter: 'Zins +2%',
     delta: 0.02,
-    resultingValue: Math.round(baseP50 * 0.92), // ~8% impact via Ertragswert
+    resultingValue: Math.round(baseP50 * 0.92),
     deltaFromBase: Math.round(baseP50 * -0.08),
   });
   
-  // Vacancy sensitivity
   variations.push({
     parameter: 'Leerstand +5%',
     delta: 0.05,
@@ -605,6 +826,7 @@ export function calculateSensitivity(
  */
 export function normalizeSnapshot(raw: Partial<CanonicalPropertySnapshot>): CanonicalPropertySnapshot {
   return {
+    sourceMode: raw.sourceMode || 'DRAFT_INTAKE',
     address: raw.address || '',
     postalCode: raw.postalCode || '',
     city: raw.city || '',
@@ -629,6 +851,11 @@ export function normalizeSnapshot(raw: Partial<CanonicalPropertySnapshot>): Cano
     hausgeldMonthly: raw.hausgeldMonthly ?? null,
     vacancyRate: raw.vacancyRate ?? null,
     rentalStatus: raw.rentalStatus ?? null,
+    purchasePrice: raw.purchasePrice ?? null,
+    acquisitionCosts: raw.acquisitionCosts ?? null,
+    notaryDate: raw.notaryDate ?? null,
+    legalTitle: raw.legalTitle ?? null,
+    existingLoanData: raw.existingLoanData ?? null,
     groundBookEntry: raw.groundBookEntry ?? null,
     partitionDeclaration: raw.partitionDeclaration ?? null,
     providerName: raw.providerName ?? null,
@@ -642,7 +869,6 @@ export function normalizeSnapshot(raw: Partial<CanonicalPropertySnapshot>): Cano
 export function runPlausibilityChecks(snapshot: CanonicalPropertySnapshot): PlausibilityWarning[] {
   const warnings: PlausibilityWarning[] = [];
   
-  // Price per sqm check
   if (snapshot.askingPrice && snapshot.livingAreaSqm) {
     const priceSqm = snapshot.askingPrice / snapshot.livingAreaSqm;
     if (priceSqm < 500) {
@@ -653,7 +879,6 @@ export function runPlausibilityChecks(snapshot: CanonicalPropertySnapshot): Plau
     }
   }
   
-  // Rent per sqm check
   if (snapshot.netColdRentPerSqm) {
     if (snapshot.netColdRentPerSqm < 3) {
       warnings.push({ field: 'netColdRentPerSqm', severity: 'warning', message: `Miete sehr niedrig (${snapshot.netColdRentPerSqm} €/m²)` });
@@ -663,7 +888,6 @@ export function runPlausibilityChecks(snapshot: CanonicalPropertySnapshot): Plau
     }
   }
   
-  // Year built plausibility
   if (snapshot.yearBuilt) {
     const currentYear = new Date().getFullYear();
     if (snapshot.yearBuilt < 1800 || snapshot.yearBuilt > currentYear + 2) {
@@ -671,12 +895,10 @@ export function runPlausibilityChecks(snapshot: CanonicalPropertySnapshot): Plau
     }
   }
   
-  // Area consistency
   if (snapshot.livingAreaSqm && snapshot.usableAreaSqm && snapshot.usableAreaSqm < snapshot.livingAreaSqm) {
     warnings.push({ field: 'usableAreaSqm', severity: 'warning', message: 'Nutzfläche < Wohnfläche — prüfen' });
   }
   
-  // Rent vs Area consistency
   if (snapshot.netColdRentMonthly && snapshot.livingAreaSqm) {
     const derivedPerSqm = snapshot.netColdRentMonthly / snapshot.livingAreaSqm;
     if (snapshot.netColdRentPerSqm && Math.abs(derivedPerSqm - snapshot.netColdRentPerSqm) > 2) {
@@ -709,6 +931,9 @@ export function scoreDataQuality(
   let missing = 0;
   let criticalGaps = 0;
   
+  // V6.0: SSOT_FINAL mode gets a boost — all SSOT fields count as verified
+  const isSSOT = snapshot.sourceMode === 'SSOT_FINAL';
+  
   for (const field of allFields) {
     const val = (snapshot as any)[field];
     const ev = evidence.find(e => e.field === field);
@@ -716,6 +941,9 @@ export function scoreDataQuality(
     if (val === null || val === undefined || val === '') {
       missing++;
       if (criticalFields.includes(field)) criticalGaps++;
+    } else if (isSSOT) {
+      // In SSOT mode, all present fields are considered verified
+      verified++;
     } else if (ev && (ev.confidence === 'verified' || ev.confidence === 'extracted')) {
       verified++;
     } else {
