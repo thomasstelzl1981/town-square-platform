@@ -205,7 +205,7 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
     }
 
     // Fallback: pipeline finished but no resultData (e.g. DB insert failed)
-    if (state.status !== 'idle' && state.status !== 'running') {
+    if (state.status !== 'idle') {
       return (
         <Card className="border-destructive/30">
           <CardContent className="flex flex-col items-center py-12 text-center space-y-3">
