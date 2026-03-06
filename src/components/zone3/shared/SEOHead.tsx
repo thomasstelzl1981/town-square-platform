@@ -336,6 +336,7 @@ export function SEOHead({ brand, page, faq, services, article, breadcrumbs }: SE
     // ── Cleanup ──
     return () => {
       document.title = prevTitle;
+      cleanupFavicon();
       metas.forEach((el) => el.remove());
       ldScripts.forEach((el) => el.remove());
       if (createdCanonical && canonical) canonical.remove();
