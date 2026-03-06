@@ -9,7 +9,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getCachedSignedUrl } from '@/lib/imageCache';
-import { 
+import { downloadFromSignedUrl } from '@/lib/storage-url';
   ArrowLeft, Download, FileText, MapPin, Calendar, 
   Building2, Maximize2, Handshake, MessageSquare, Zap,
   TrendingUp, Percent, PiggyBank, Home

@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 import { Upload, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { RecordCardEntityType } from '@/config/recordCardManifest';
-import type { FileManagerItem } from '@/components/dms/views/ListView';
+import { downloadFromSignedUrl } from '@/lib/storage-url';
 
 interface EntityStorageTreeProps {
   tenantId: string;

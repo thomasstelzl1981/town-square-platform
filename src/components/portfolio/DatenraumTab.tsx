@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { StorageFileManager } from '@/components/dms/StorageFileManager';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
+import { downloadFromSignedUrl } from '@/lib/storage-url';
 
 interface DatenraumTabProps {
   propertyId: string;

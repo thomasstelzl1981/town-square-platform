@@ -15,7 +15,7 @@ import { Mail, Copy, FileText, Download, AlertCircle, CheckCircle, Clock, Loader
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { resolveStorageSignedUrl } from '@/lib/storage-url';
+import { downloadFromSignedUrl } from '@/lib/storage-url';
 import { useNavigate } from 'react-router-dom';
 interface InboundEmail {
   id: string;
