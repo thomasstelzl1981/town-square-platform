@@ -426,6 +426,9 @@ export interface LocationAnalysis {
   macroMapBase64?: string | null;
   streetViewBase64?: string | null;
   narrative: string;
+  /** V9.1: MFH Unit-aware valuation */
+  unitsDetail?: ValuationUnitDetail[] | null;
+  mfhMultiUnit?: boolean;
   narrativeConfidence: ConfidenceLevel;
 }
 
