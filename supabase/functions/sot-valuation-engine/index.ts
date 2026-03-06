@@ -30,6 +30,32 @@ const CREDITS_REQUIRED = 20;
 const ACTION_CODE = "valuation_engine";
 const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
+// ─── Valuation Calc Constants (mirrored from src/engines/valuation/spec.ts) ───
+// These MUST stay in sync with the client-side engine spec.
+const CALC = {
+  BEWIRTSCHAFTUNG_RATE: 0.25,
+  CAP_RATE: 0.045,
+  SACHWERT_BASE_COST_SQM: 2500,
+  SACHWERT_MAX_DEPRECIATION: 0.5,
+  SACHWERT_ANNUAL_DEPRECIATION: 0.01,
+  VALUE_BAND_SPREAD: 0.10,
+  METHOD_WEIGHTS: { ertragswert: 0.5, comp_proxy: 0.35, sachwert_proxy: 0.15 } as Record<string, number>,
+  FINANCING_SCENARIOS: [
+    { name: "konservativ", ltv: 0.6, interest: 0.038, repayment: 0.03 },
+    { name: "realistisch", ltv: 0.75, interest: 0.035, repayment: 0.02 },
+    { name: "offensiv", ltv: 0.9, interest: 0.04, repayment: 0.015 },
+  ],
+  LIEN_BASE_DISCOUNT: 0.15,
+  LIEN_LTV_SAFE: 0.6,
+  LIEN_LTV_MAX: 0.75,
+  DSCR_VIABLE_THRESHOLD: 1.1,
+  STRESS_TESTS: [
+    { scenario: "Zins +2%", interest_delta: 0.02 },
+    { scenario: "Miete -10%", rent_factor: 0.9 },
+    { scenario: "CapEx +20%", price_factor: 1.2 },
+  ],
+} as const;
+
 // ─── Helpers ───
 
 function json(data: unknown, status = 200) {
