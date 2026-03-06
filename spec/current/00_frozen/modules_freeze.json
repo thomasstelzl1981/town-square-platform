@@ -16,7 +16,7 @@
     "MOD-09": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-10": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-11": { "frozen": true, "frozen_at": "2026-03-05T21:00:00.000Z", "reason": "Re-frozen after R-1 refactoring: FMEinreichung.tsx split into 5 Cards + fmEinreichungTypes.ts + fmEinreichungHelpers.tsx" },
-    "MOD-12": { "frozen": false, "frozen_at": "2026-03-06T20:00:00.000Z", "reason": "UNFROZEN for ENG-VALUATION Phases A+D: useRunValuation wiring + Objekteingang Bewertungs-Step" },
+    "MOD-12": { "frozen": true, "frozen_at": "2026-03-06T21:00:00.000Z", "reason": "Re-frozen after ENG-VALUATION Phases A+D: useRunValuation wired to Edge Function, Objekteingang Bewertungs-Step with ValuationPipeline+ReportReader" },
     "MOD-13": { "frozen": true, "frozen_at": "2026-03-06T14:00:00.000Z", "reason": "Re-frozen after PDF-CI SSOT: registered in template registry" },
     "MOD-14": { "frozen": true, "frozen_at": "2026-03-06T00:00:00.000Z", "reason": "Re-frozen after ElevenLabs voice selection + AgentSyncCard added to Zone 2 KiTelefonPage" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
