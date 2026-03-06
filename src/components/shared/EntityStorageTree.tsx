@@ -234,7 +234,6 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
     <FileDropZone
       onDrop={handleFileDrop}
       className={className}
-      dropOverlayLabel={`Dateien in "${targetFolderName}" ablegen`}
     >
       <div className={cn(DESIGN.STORAGE.CONTAINER, DESIGN.STORAGE.MIN_HEIGHT, 'relative')}>
         {isUploading && (
