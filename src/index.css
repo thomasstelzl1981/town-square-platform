@@ -992,3 +992,31 @@ html[data-density="compact"] table th {
 html[data-density="compact"] .widget-grid {
   gap: 1rem;
 }
+
+/* =============================================================================
+   GLOBAL PRINT CSS — Zone 2 PDF Page-Print Support
+   ============================================================================= */
+@media print {
+  .no-print,
+  .pdf-hide {
+    display: none !important;
+  }
+
+  .avoid-break {
+    break-inside: avoid;
+  }
+
+  .page-break {
+    break-before: page;
+  }
+
+  @page {
+    size: A4;
+    margin: 18mm 16mm 16mm 18mm;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
