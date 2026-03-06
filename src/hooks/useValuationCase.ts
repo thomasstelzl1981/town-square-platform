@@ -88,7 +88,10 @@ export function useValuationCase() {
           tenantId: activeOrganization.id,
           userId: user.id,
           sourceMode,
-          ...params,
+          property_id: params.propertyId || undefined,
+          offer_id: params.offerId || undefined,
+          source_urls: params.sourceUrls,
+          source_context: params.sourceContext,
         },
       });
       if (error) throw new Error(error.message);
@@ -134,7 +137,10 @@ export function useValuationCase() {
           tenantId: activeOrganization.id,
           userId: user.id,
           sourceMode,
-          ...params,
+          property_id: params.propertyId || undefined,
+          offer_id: params.offerId || undefined,
+          source_urls: params.sourceUrls,
+          source_context: params.sourceContext,
         },
       });
 

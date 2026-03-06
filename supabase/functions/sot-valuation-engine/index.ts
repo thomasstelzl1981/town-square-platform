@@ -30,6 +30,32 @@ const CREDITS_REQUIRED = 20;
 const ACTION_CODE = "valuation_engine";
 const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
+// ─── Valuation Calc Constants (mirrored from src/engines/valuation/spec.ts) ───
+// These MUST stay in sync with the client-side engine spec.
+const CALC = {
+  BEWIRTSCHAFTUNG_RATE: 0.25,
+  CAP_RATE: 0.045,
+  SACHWERT_BASE_COST_SQM: 2500,
+  SACHWERT_MAX_DEPRECIATION: 0.5,
+  SACHWERT_ANNUAL_DEPRECIATION: 0.01,
+  VALUE_BAND_SPREAD: 0.10,
+  METHOD_WEIGHTS: { ertragswert: 0.5, comp_proxy: 0.35, sachwert_proxy: 0.15 } as Record<string, number>,
+  FINANCING_SCENARIOS: [
+    { name: "konservativ", ltv: 0.6, interest: 0.038, repayment: 0.03 },
+    { name: "realistisch", ltv: 0.75, interest: 0.035, repayment: 0.02 },
+    { name: "offensiv", ltv: 0.9, interest: 0.04, repayment: 0.015 },
+  ],
+  LIEN_BASE_DISCOUNT: 0.15,
+  LIEN_LTV_SAFE: 0.6,
+  LIEN_LTV_MAX: 0.75,
+  DSCR_VIABLE_THRESHOLD: 1.1,
+  STRESS_TESTS: [
+    { scenario: "Zins +2%", interest_delta: 0.02 },
+    { scenario: "Miete -10%", rent_factor: 0.9 },
+    { scenario: "CapEx +20%", price_factor: 1.2 },
+  ],
+} as const;
+
 // ─── Helpers ───
 
 function json(data: unknown, status = 200) {
@@ -883,11 +909,11 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
 
         if (netRent > 0) {
           const annualRent = netRent * 12;
-          const bewirtschaftungRate = 0.25;
-          assumptions.push({ text: "Bewirtschaftungskosten 25% der Nettokaltmiete", impact: "high" });
+          const bewirtschaftungRate = CALC.BEWIRTSCHAFTUNG_RATE;
+          assumptions.push({ text: `Bewirtschaftungskosten ${bewirtschaftungRate * 100}% der Nettokaltmiete`, impact: "high" });
           const netOperatingIncome = annualRent * (1 - bewirtschaftungRate);
-          const capRate = 0.045;
-          assumptions.push({ text: "Kapitalisierungszinssatz 4,5%", impact: "high" });
+          const capRate = CALC.CAP_RATE;
+          assumptions.push({ text: `Kapitalisierungszinssatz ${capRate * 100}%`, impact: "high" });
           const ertragswert = Math.round(netOperatingIncome / capRate);
 
           ertragswertResult = {
@@ -925,8 +951,8 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         if (livingArea > 0) {
           const yearBuilt = Number(snapshot.year_built) || 1980;
           const age = new Date().getFullYear() - yearBuilt;
-          const baseCostSqm = 2500;
-          const depreciationRate = Math.min(age * 0.01, 0.5);
+          const baseCostSqm = CALC.SACHWERT_BASE_COST_SQM;
+          const depreciationRate = Math.min(age * CALC.SACHWERT_ANNUAL_DEPRECIATION, CALC.SACHWERT_MAX_DEPRECIATION);
           const sachwert = Math.round(livingArea * baseCostSqm * (1 - depreciationRate));
           assumptions.push({ text: `Herstellkosten ${baseCostSqm} €/m², Alterswertminderung ${Math.round(depreciationRate * 100)}%`, impact: "medium" });
 
@@ -943,18 +969,17 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         let valueBand: any = { p25: 0, p50: 0, p75: 0, confidence: 0 };
 
         if (methods.length > 0) {
-          const weights: Record<string, number> = { ertragswert: 0.5, comp_proxy: 0.35, sachwert_proxy: 0.15 };
           let totalWeight = 0;
           let weightedSum = 0;
 
           for (const m of methods) {
-            const w = weights[m.method] || 0.1;
+            const w = CALC.METHOD_WEIGHTS[m.method] || 0.1;
             weightedSum += m.value * w * m.confidence;
             totalWeight += w * m.confidence;
           }
 
           const p50 = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
-          const spread = 0.1;
+          const spread = CALC.VALUE_BAND_SPREAD;
           valueBand = {
             p25: Math.round(p50 * (1 - spread)),
             p50,
@@ -963,7 +988,7 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
             weighting: methods.map((m: any) => ({
               method: m.method,
               value: m.value,
-              weight: weights[m.method] || 0.1,
+              weight: CALC.METHOD_WEIGHTS[m.method] || 0.1,
               confidence: m.confidence,
             })),
           };
@@ -975,9 +1000,7 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         const existingLoan = snapshot.existing_loan;
 
         const financingScenarios = [
-          { name: "konservativ", ltv: 0.6, interest: 0.038, repayment: 0.03 },
-          { name: "realistisch", ltv: 0.75, interest: 0.035, repayment: 0.02 },
-          { name: "offensiv", ltv: 0.9, interest: 0.04, repayment: 0.015 },
+          ...CALC.FINANCING_SCENARIOS,
           // V6.0: Add actual financing scenario if loan data exists
           ...(existingLoan && existingLoan.outstanding_balance ? [{
             name: "aktuell (SSOT)",
@@ -1031,9 +1054,9 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         // 4.7 Lien proxy
         const lienProxy = {
           market_value_band: valueBand,
-          risk_discount: 0.15 + (dataQuality.completeness < 70 ? 0.1 : 0) + (locationAnalysis.available ? 0 : 0.05),
-          lien_value: Math.round(valueBand.p50 * (1 - 0.15)),
-          ltv_window: { safe: 0.6, max: 0.75 },
+          risk_discount: CALC.LIEN_BASE_DISCOUNT + (dataQuality.completeness < 70 ? 0.1 : 0) + (locationAnalysis.available ? 0 : 0.05),
+          lien_value: Math.round(valueBand.p50 * (1 - CALC.LIEN_BASE_DISCOUNT)),
+          ltv_window: { safe: CALC.LIEN_LTV_SAFE, max: CALC.LIEN_LTV_MAX },
           risk_drivers: [
             ...(dataQuality.completeness < 70 ? ["Datenlücken in kritischen Feldern"] : []),
             ...(!locationAnalysis.available ? ["Keine Standortdaten verfügbar"] : []),
@@ -1053,8 +1076,8 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         const debtService = {
           dscr,
           break_even_rent: breakEvenRent,
-          is_viable: dscr >= 1.1,
-          annual_noi: netRent * 12 * 0.75,
+          is_viable: dscr >= CALC.DSCR_VIABLE_THRESHOLD,
+          annual_noi: netRent * 12 * (1 - CALC.BEWIRTSCHAFTUNG_RATE),
           annual_debt_service: baseScenario.annual_debt_service,
         };
 
