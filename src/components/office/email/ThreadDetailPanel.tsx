@@ -14,6 +14,7 @@ import {
   ChevronDown, ChevronRight, MessageSquare, Loader2, AlertCircle, RefreshCw,
 } from 'lucide-react';
 import type { EmailThread, EmailAccount } from './emailTypes';
+import { SendToObjekteingangButton } from './SendToObjekteingangButton';
 
 interface ThreadDetailPanelProps {
   thread: EmailThread;
