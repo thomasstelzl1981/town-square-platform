@@ -136,6 +136,27 @@ function SectionDivider() {
   return <div className="border-t my-3" />;
 }
 
+// ─── Label helpers ────────────────────────────────────────────────────
+
+const OBJECT_TYPE_LABELS: Record<string, string> = {
+  etw: 'Eigentumswohnung', mfh: 'Mehrfamilienhaus', efh: 'Einfamilienhaus',
+  dhh: 'Doppelhaushälfte', gew: 'Gewerbe', mixed: 'Mischnutzung',
+  grundstueck: 'Grundstück', other: 'Sonstige',
+};
+const objectTypeLabel = (t: string) => OBJECT_TYPE_LABELS[t] || t;
+
+const CONDITION_LABELS: Record<string, string> = {
+  new: 'Neubau', renovated: 'Renoviert', good: 'Gut', average: 'Durchschnittlich',
+  poor: 'Schlecht', derelict: 'Abrissreif',
+};
+const conditionLabel = (c: string) => CONDITION_LABELS[c] || c;
+
+const RENTAL_STATUS_LABELS: Record<string, string> = {
+  fully_rented: 'Voll vermietet', partially_rented: 'Teilweise vermietet',
+  vacant: 'Leerstehend', owner_occupied: 'Eigengenutzt',
+};
+const rentalStatusLabel = (s: string) => RENTAL_STATUS_LABELS[s] || s;
+
 // ─── Helpers to extract params ────────────────────────────────────────
 
 function getMethodParams(methods: ValuationMethodResult[], key: string): Record<string, number | string> {

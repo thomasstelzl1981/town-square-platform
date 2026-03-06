@@ -5,3 +5,4 @@ export { ValuationDiffReview } from './ValuationDiffReview';
 export { ValuationLegalBlock } from './ValuationLegalBlock';
 export { generateValuationPdf, type ValuationPdfData } from './ValuationPdfGenerator';
 export { ValuationCompare } from './ValuationCompare';
+export { ValuationPhotoGrid } from './ValuationPhotoGrid';

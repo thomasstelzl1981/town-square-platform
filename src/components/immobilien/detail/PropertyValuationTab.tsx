@@ -283,6 +283,7 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
             comps={r.comps || []}
             beleihungswert={r.beleihungswert || null}
             geminiResearch={r.geminiResearch || null}
+            snapshot={r.snapshot || null}
             onDownloadPdf={handleDownloadPdf}
           />
         </div>
