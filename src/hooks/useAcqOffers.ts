@@ -41,7 +41,7 @@ export interface AcqOffer {
   extracted_data: unknown;
   extraction_confidence: number | null;
   analysis_summary: unknown;
-  valuation_data: unknown;
+  geomap_data: unknown;
   calc_bestand: unknown;
   calc_aufteiler: unknown;
   provider_name: string | null;
