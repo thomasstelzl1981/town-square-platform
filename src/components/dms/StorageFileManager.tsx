@@ -271,10 +271,9 @@ export function StorageFileManager({
   };
 
   return (
-    <FileDropZone onDrop={onUploadFiles} disabled={isUploading} className="h-full" targetFolderName={selectedNodeId ? (nodes.find(n => n.id === selectedNodeId)?.name || undefined) : undefined}>
-      <div className={`rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/60 dark:border-border/40 shadow-sm overflow-hidden flex flex-col relative ${isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-12rem)]'}`}>
-        {/* Hidden file input */}
-        <input
+    <div className={`rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/60 dark:border-border/40 shadow-sm overflow-hidden flex flex-col relative ${isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-12rem)]'}`}>
+      {/* Hidden file input */}
+      <input
           ref={fileInputRef}
           type="file"
           className="hidden"
@@ -308,8 +307,9 @@ export function StorageFileManager({
           />
         )}
 
-        {/* Content */}
-        <div className="flex-1 min-h-0">
+        {/* Content — Drop zone scoped to content area only */}
+        <FileDropZone onDrop={onUploadFiles} disabled={isUploading} className="flex-1 min-h-0" targetFolderName={selectedNodeId ? (nodes.find(n => n.id === selectedNodeId)?.name || undefined) : undefined}>
+        <div className="h-full">
           {effectiveViewMode === 'list' && (
             <ListView
               items={items}
@@ -388,6 +388,7 @@ export function StorageFileManager({
             />
           )}
         </div>
+        </FileDropZone>
 
         {/* Status bar */}
         <div className="px-4 py-2 border-t border-border/30 text-xs text-muted-foreground flex items-center gap-2">
@@ -431,6 +432,5 @@ export function StorageFileManager({
           isCreating={isCreatingFolder}
         />
       </div>
-    </FileDropZone>
   );
 }

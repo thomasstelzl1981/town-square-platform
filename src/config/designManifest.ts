@@ -119,7 +119,7 @@ export const STORAGE = {
   /** Standard-Ansicht ist immer Spalten */
   DEFAULT_VIEW: 'columns' as const,
   /** Spaltenbreite für Drag-and-Drop */
-  COLUMN_WIDTH: 'w-[260px] min-w-[260px]',
+  COLUMN_WIDTH: 'w-[320px] min-w-[320px]',
   /** Zeilenhöhe für greifbare Drag-Targets */
   ROW_PADDING: 'px-3 py-2.5',
   /** Sichtbares Gitter — Spalten-Trenner */
