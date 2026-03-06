@@ -8,7 +8,6 @@ import { ChevronDown, Calculator, FolderOpen, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
   PortalSearchTool,
-  PortalSearchInbox,
   AISearchProfileIntake,
   PropertyResearchTool,
   StandaloneCalculatorPanel,
