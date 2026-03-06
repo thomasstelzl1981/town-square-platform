@@ -1332,7 +1332,7 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
           dscr,
           break_even_rent: breakEvenRent,
           is_viable: dscr >= CALC.DSCR_VIABLE_THRESHOLD,
-          annual_noi: netRent * 12 * (1 - CALC.BEWIRTSCHAFTUNG_RATE),
+          annual_noi: netRent * 12 * (1 - (CALC.BEWIRTSCHAFTUNG.verwaltungPercent + CALC.BEWIRTSCHAFTUNG.mietausfallPercent + CALC.BEWIRTSCHAFTUNG.nichtUmlagefaehigPercent) - (livingArea > 0 ? (CALC.BEWIRTSCHAFTUNG.instandhaltungPerSqmYear * livingArea) / (netRent * 12 || 1) : 0.05)),
           annual_debt_service: baseScenario.annual_debt_service,
         };
 
