@@ -898,7 +898,9 @@ Deno.serve(async (req) => {
                 }))
                 .filter((p: any) => {
                   if (p.price_per_sqm && (p.price_per_sqm < 500 || p.price_per_sqm > 15000)) return false;
-                  if (livingArea > 0 && p.living_area_sqm && (p.living_area_sqm < livingArea * 0.5 || p.living_area_sqm > livingArea * 1.5)) return false;
+                  // V9.1: For MFH multi-unit, filter comps by avg unit area instead of total area
+                  const filterArea = compSearchArea;
+                  if (filterArea > 0 && p.living_area_sqm && (p.living_area_sqm < filterArea * 0.5 || p.living_area_sqm > filterArea * 1.5)) return false;
                   if (p.url && seenUrls.has(p.url)) return false;
                   if (p.url) seenUrls.add(p.url);
                   return true;
