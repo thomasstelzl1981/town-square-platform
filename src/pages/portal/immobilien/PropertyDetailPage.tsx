@@ -21,7 +21,7 @@ import { ArrowLeft, Loader2, Building2 } from 'lucide-react';
 import { useLegalConsent } from '@/hooks/useLegalConsent';
 import { EditableUnitDossierView } from '@/components/immobilienakte';
 import { InventoryInvestmentSimulation } from '@/components/immobilienakte/InventoryInvestmentSimulation';
-import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
+
 import { PageShell } from '@/components/shared/PageShell';
 import { useArmstrongProactiveDispatcher } from '@/hooks/useArmstrongProactiveDispatcher';
 import { PropertyDetailHeader, PropertyTabRouter } from '@/components/immobilien/detail';
