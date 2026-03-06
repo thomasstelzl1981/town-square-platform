@@ -933,6 +933,16 @@ Deno.serve(async (req) => {
 
         const assumptions: any[] = [];
         const calcObjectType = snapshot.object_type || "other";
+
+        // V9.1: Log MFH multi-unit mode
+        if (snapshot.mfh_multi_unit) {
+          stageLog(4, `MFH-Einheitenbewertung: ${snapshot.units_detail?.length || 0} Einheiten, Ø ${snapshot.avg_unit_area}m²`);
+          assumptions.push({
+            text: `MFH mit ${snapshot.units_detail?.length || 0} Wohneinheiten — Vergleichswert basiert auf ETW-Comps (Ø ${snapshot.avg_unit_area}m²) statt MFH-Gesamtvergleich`,
+            impact: "high",
+          });
+        }
+
         const locationScore = locationAnalysis.global_score || 0;
 
         // V9.0: Bodenwert — use Gemini research first, then proxy
