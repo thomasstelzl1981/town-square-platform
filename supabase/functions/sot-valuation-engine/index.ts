@@ -32,14 +32,38 @@ const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 // ─── Valuation Calc Constants (mirrored from src/engines/valuation/spec.ts) ───
 // These MUST stay in sync with the client-side engine spec.
+
+/** Herstellkosten-Cluster nach Baujahr (NHK 2010 Basis, Normalherstellung) */
+function getHerstellkostenSqm(yearBuilt: number): number {
+  // Baupreisindex-Korrektor 2010→2026 ≈ +38% (BPI Wohngebäude)
+  const BPI_FACTOR = 1.38;
+  let base: number;
+  if (yearBuilt < 1950) base = 1100;
+  else if (yearBuilt < 1970) base = 1300;
+  else if (yearBuilt < 1990) base = 1500;
+  else if (yearBuilt < 2005) base = 1800;
+  else if (yearBuilt < 2015) base = 2100;
+  else base = 2400;
+  return Math.round(base * BPI_FACTOR);
+}
+
+/** Bodenrichtwert-Proxy nach Lageklasse */
+function getBodenrichtwertProxy(city: string, locationScore: number): number {
+  // Grobe Einordnung: Score > 70 = gute Lage, > 50 = mittlere, sonst einfach
+  if (locationScore >= 70) return 400;  // gute Lage Mittelstadt
+  if (locationScore >= 50) return 280;  // mittlere Lage
+  return 180;                           // einfache Lage / ländlich
+}
+
 const CALC = {
   BEWIRTSCHAFTUNG_RATE: 0.25,
   CAP_RATE: 0.045,
-  SACHWERT_BASE_COST_SQM: 2500,
   SACHWERT_MAX_DEPRECIATION: 0.5,
   SACHWERT_ANNUAL_DEPRECIATION: 0.01,
   VALUE_BAND_SPREAD: 0.10,
-  METHOD_WEIGHTS: { ertragswert: 0.5, comp_proxy: 0.35, sachwert_proxy: 0.15 } as Record<string, number>,
+  METHOD_WEIGHTS_3: { ertragswert: 0.50, comp_proxy: 0.35, sachwert_proxy: 0.15 } as Record<string, number>,
+  METHOD_WEIGHTS_2_NO_COMP: { ertragswert: 0.75, sachwert_proxy: 0.25 } as Record<string, number>,
+  METHOD_WEIGHTS_2_NO_ERTRAG: { comp_proxy: 0.70, sachwert_proxy: 0.30 } as Record<string, number>,
   FINANCING_SCENARIOS: [
     { name: "konservativ", ltv: 0.6, interest: 0.038, repayment: 0.03 },
     { name: "realistisch", ltv: 0.75, interest: 0.035, repayment: 0.02 },
