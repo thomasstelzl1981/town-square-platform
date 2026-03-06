@@ -549,6 +549,9 @@ const MVP_EXECUTABLE_ACTIONS = [
 
   // DMS Storage Extraction
   "ARM.DMS.STORAGE_EXTRACTION",
+  
+  // MOD-04 Enrichment (document → existing property)
+  "ARM.MOD04.ENRICH_FROM_STORAGE",
 
   // Zone 3 Lead Capture Actions
   "ARM.Z3.KAUFY.CAPTURE_LEAD",
