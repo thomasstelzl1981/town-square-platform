@@ -426,7 +426,22 @@ export interface LocationAnalysis {
   macroMapBase64?: string | null;
   streetViewBase64?: string | null;
   narrative: string;
+  /** V9.1: MFH Unit-aware valuation */
+  unitsDetail?: ValuationUnitDetail[] | null;
+  mfhMultiUnit?: boolean;
   narrativeConfidence: ConfidenceLevel;
+}
+
+// ============================================================================
+// V9.1: MFH UNIT DETAIL (für Einzelwohnungs-basierte Bewertung)
+// ============================================================================
+
+export interface ValuationUnitDetail {
+  id: string;
+  areaSqm: number;
+  rooms: number | null;
+  floor: number | null;
+  rentCold: number | null;
 }
 
 // ============================================================================

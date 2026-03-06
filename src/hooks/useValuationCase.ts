@@ -453,6 +453,15 @@ export function useValuationCase() {
             streetViewBase64: loc.maps_base64?.street_view ?? null,
             narrative: loc.narrative ?? '',
             narrativeConfidence: 'medium' as const,
+            // V9.1: MFH unit-aware fields
+            unitsDetail: (loc.units_detail ?? []).map((u: any) => ({
+              id: u.id ?? '',
+              areaSqm: u.area_sqm ?? 0,
+              rooms: u.rooms ?? null,
+              floor: u.floor ?? null,
+              rentCold: u.rent_cold ?? null,
+            })),
+            mfhMultiUnit: loc.mfh_multi_unit ?? false,
           };
         })(),
         // Comp postings mapping

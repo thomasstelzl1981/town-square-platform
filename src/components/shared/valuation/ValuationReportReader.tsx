@@ -20,7 +20,7 @@ import type {
   ValueBand, ValuationMethodResult, FinancingScenario, StressTestResult,
   LienProxy, DebtServiceResult, DataQuality, CompStats, CompPosting,
   LocationAnalysis, LegalTitleBlock, ValuationSourceMode,
-  BeleihungswertResult, GeminiResearchResult,
+  BeleihungswertResult, GeminiResearchResult, ValuationUnitDetail,
 } from '@/engines/valuation/spec';
 
 // ─── Props ────────────────────────────────────────────────────────────
@@ -221,6 +221,52 @@ export function ValuationReportReader({
               />
             )}
           </div>
+
+          {/* V9.1: MFH Unit-aware — Einheiten-Tabelle */}
+          {location?.mfhMultiUnit && location.unitsDetail && location.unitsDetail.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
+                  <Building2 className="h-3 w-3 mr-1" />
+                  MFH-Einheitenbewertung
+                </Badge>
+                <span className="text-[10px] text-muted-foreground">
+                  Bewertung auf Basis einzelner Wohneinheiten (ETW-Vergleich)
+                </span>
+              </div>
+              <div className="rounded-lg border overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-muted/50">
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Einheit</th>
+                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">Fläche</th>
+                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">Zimmer</th>
+                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">Etage</th>
+                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">Kaltmiete</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {location.unitsDetail.map((unit, idx) => (
+                      <tr key={unit.id || idx} className="border-t">
+                        <td className="px-3 py-1.5 font-medium">WE-{String(idx + 1).padStart(2, '0')}</td>
+                        <td className="px-3 py-1.5 text-right">{unit.areaSqm > 0 ? `${fmtNum(unit.areaSqm, 1)} m²` : '–'}</td>
+                        <td className="px-3 py-1.5 text-right">{unit.rooms ?? '–'}</td>
+                        <td className="px-3 py-1.5 text-right">{unit.floor != null ? `${unit.floor}. OG` : '–'}</td>
+                        <td className="px-3 py-1.5 text-right">{unit.rentCold != null ? fmtEur(unit.rentCold) : '–'}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t bg-muted/30 font-medium">
+                      <td className="px-3 py-1.5">Gesamt</td>
+                      <td className="px-3 py-1.5 text-right">{fmtNum(location.unitsDetail.reduce((s, u) => s + (u.areaSqm || 0), 0), 1)} m²</td>
+                      <td className="px-3 py-1.5 text-right">{location.unitsDetail.reduce((s, u) => s + (u.rooms || 0), 0) || '–'}</td>
+                      <td className="px-3 py-1.5 text-right"></td>
+                      <td className="px-3 py-1.5 text-right">{fmtEur(location.unitsDetail.reduce((s, u) => s + (u.rentCold || 0), 0))}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Data quality row */}
           <div className="grid grid-cols-3 gap-3">

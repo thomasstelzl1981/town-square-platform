@@ -460,6 +460,26 @@ function buildServerSSOTSnapshot(ssotData: any): Record<string, any> {
     encumbrances_note: "Belastungen nicht automatisch ausgewertet — manuelle Prüfung empfohlen",
   };
 
+  // V9.1: MFH multi-unit detection
+  const isMfh = ['MFH', 'mfh', 'Mehrfamilienhaus'].includes(p.property_type || '');
+  const mfhMultiUnit = isMfh && units.length > 1;
+  const unitsDetail = units.length > 0 ? units.map((u: any) => {
+    // Find matching lease for this unit
+    const unitLease = activeLeases.find((l: any) => l.unit_id === u.id);
+    return {
+      id: u.id,
+      area_sqm: u.area_sqm || 0,
+      rooms: u.rooms || null,
+      floor: u.floor || null,
+      rent_cold: unitLease?.rent_cold_eur || u.current_monthly_rent || null,
+    };
+  }) : [];
+
+  // V9.1: For MFH multi-unit, calculate average unit size for comp filtering
+  const avgUnitArea = mfhMultiUnit && unitsDetail.length > 0
+    ? Math.round(unitsDetail.reduce((s: number, u: any) => s + (u.area_sqm || 0), 0) / unitsDetail.length)
+    : null;
+
   return {
     source_mode: "SSOT_FINAL",
     address: p.address || "",
@@ -492,6 +512,10 @@ function buildServerSSOTSnapshot(ssotData: any): Record<string, any> {
       fixed_interest_end: primaryLoan.fixed_interest_end_date,
       bank_name: primaryLoan.bank_name,
     } : null,
+    // V9.1: MFH unit-aware fields
+    mfh_multi_unit: mfhMultiUnit,
+    units_detail: unitsDetail,
+    avg_unit_area: avgUnitArea,
   };
 }
 
@@ -669,10 +693,13 @@ Deno.serve(async (req) => {
         const yearBuilt = snapshot.year_built || null;
         const condition = snapshot.condition || null;
 
+        // V9.1: For MFH multi-unit, research as "Wohnung" (ETW) for accurate per-unit pricing
+        const researchObjectType = snapshot.mfh_multi_unit ? "Eigentumswohnung" : objectType;
+
         const [geminiLZ, geminiBRW, geminiVM] = await Promise.all([
           researchLiegenschaftszins(lovableApiKey!, objectType, city, postalCode, yearBuilt),
           researchBodenrichtwert(lovableApiKey!, snapshot.address || "", city, postalCode),
-          researchVergleichsmieten(lovableApiKey!, objectType, city, postalCode, yearBuilt, condition),
+          researchVergleichsmieten(lovableApiKey!, researchObjectType, city, postalCode, yearBuilt, condition),
         ]);
 
         const geminiResearch = {
@@ -796,9 +823,16 @@ Deno.serve(async (req) => {
         let compPostings: any[] = [];
         const livingArea = Number(snapshot.living_area_sqm) || 0;
 
+        // V9.1: For MFH multi-unit, search for "Wohnung" (ETW) comps and filter by avg unit size
+        const isMfhMultiUnit = !!snapshot.mfh_multi_unit;
+        const compSearchArea = isMfhMultiUnit ? (snapshot.avg_unit_area || livingArea) : livingArea;
+        const compSearchType = isMfhMultiUnit ? "Wohnung" : objectType;
+
         if (city && firecrawlKey) {
           try {
-            const queries = [`${objectType} kaufen ${city}`, `Haus kaufen ${city}`];
+            const queries = isMfhMultiUnit
+              ? [`Wohnung kaufen ${city}`, `Eigentumswohnung kaufen ${city} ${snapshot.postal_code || ''}`]
+              : [`${objectType} kaufen ${city}`, `Haus kaufen ${city}`];
             let rawResults: any[] = [];
             for (const query of queries) {
               if (rawResults.length > 0) break;
@@ -810,7 +844,7 @@ Deno.serve(async (req) => {
                 });
                 const searchData = await searchResp.json();
                 rawResults = searchData?.data || [];
-                stageLog(3, `"${query}" → ${rawResults.length} results`);
+                stageLog(3, `"${query}" → ${rawResults.length} results${isMfhMultiUnit ? ' (MFH→ETW mode)' : ''}`);
               } catch (e) { stageLog(3, `Search error: ${e}`); }
             }
 
@@ -864,7 +898,9 @@ Deno.serve(async (req) => {
                 }))
                 .filter((p: any) => {
                   if (p.price_per_sqm && (p.price_per_sqm < 500 || p.price_per_sqm > 15000)) return false;
-                  if (livingArea > 0 && p.living_area_sqm && (p.living_area_sqm < livingArea * 0.5 || p.living_area_sqm > livingArea * 1.5)) return false;
+                  // V9.1: For MFH multi-unit, filter comps by avg unit area instead of total area
+                  const filterArea = compSearchArea;
+                  if (filterArea > 0 && p.living_area_sqm && (p.living_area_sqm < filterArea * 0.5 || p.living_area_sqm > filterArea * 1.5)) return false;
                   if (p.url && seenUrls.has(p.url)) return false;
                   if (p.url) seenUrls.add(p.url);
                   return true;
@@ -897,6 +933,16 @@ Deno.serve(async (req) => {
 
         const assumptions: any[] = [];
         const calcObjectType = snapshot.object_type || "other";
+
+        // V9.1: Log MFH multi-unit mode
+        if (snapshot.mfh_multi_unit) {
+          stageLog(4, `MFH-Einheitenbewertung: ${snapshot.units_detail?.length || 0} Einheiten, Ø ${snapshot.avg_unit_area}m²`);
+          assumptions.push({
+            text: `MFH mit ${snapshot.units_detail?.length || 0} Wohneinheiten — Vergleichswert basiert auf ETW-Comps (Ø ${snapshot.avg_unit_area}m²) statt MFH-Gesamtvergleich`,
+            impact: "high",
+          });
+        }
+
         const locationScore = locationAnalysis.global_score || 0;
 
         // V9.0: Bodenwert — use Gemini research first, then proxy
@@ -1008,13 +1054,23 @@ Deno.serve(async (req) => {
         }
 
         // ═══ 4.3 Comp Proxy ═══
+        // V9.1: For MFH multi-unit, compStats.p50 is based on ETW-comps (€/m² for apartments)
+        // but we apply it to TOTAL livingArea — giving the correct higher aggregate value
         let compProxyResult: any = null;
         if (compStats.available && livingArea > 0) {
           const compValue = Math.round(compStats.p50 * livingArea);
+          const mfhNote = snapshot.mfh_multi_unit
+            ? `MFH-Einheitenbewertung: ${snapshot.units_detail?.length || 0} Einheiten, Ø ${snapshot.avg_unit_area}m², ETW-Comps angewandt auf ${livingArea}m² Gesamtfläche`
+            : undefined;
           compProxyResult = {
             method: "comp_proxy", value: compValue,
             confidence: compStats.count_with_price_sqm >= 5 ? 0.6 : 0.4,
-            params: { median_price_sqm: compStats.p50, living_area: livingArea, comp_count: compStats.count_with_price_sqm },
+            params: {
+              median_price_sqm: compStats.p50, living_area: livingArea,
+              comp_count: compStats.count_with_price_sqm,
+              comp_search_type: snapshot.mfh_multi_unit ? 'ETW (MFH-Einheitenbewertung)' : objectType,
+              ...(mfhNote ? { mfh_unit_note: mfhNote } : {}),
+            },
           };
         }
 
@@ -1187,7 +1243,12 @@ Deno.serve(async (req) => {
             case_id: caseId, value_band: valueBand, valuation_methods: methods,
             financing: financingScenarios, stress_tests: stressTests,
             lien_proxy: lienProxy, debt_service: debtService,
-            location_analysis: locationAnalysis,
+            location_analysis: {
+              ...locationAnalysis,
+              // V9.1: Embed unit details in location_analysis for downstream access
+              mfh_multi_unit: !!snapshot.mfh_multi_unit,
+              units_detail: snapshot.units_detail || [],
+            },
             comp_stats: compStats, comp_postings: compPostings.slice(0, 10),
             sensitivity: {},
             charts: {},
@@ -1226,6 +1287,7 @@ Deno.serve(async (req) => {
 WICHTIG: Nenne Marktwert UND Beleihungswert.`,
             `Objekt: ${snapshot.formatted_address || snapshot.address || "Unbekannt"}
 Objektart: ${calcObjectType}, Fläche: ${livingArea}m², Baujahr: ${sachYearBuilt}
+${snapshot.mfh_multi_unit ? `HINWEIS: MFH mit ${snapshot.units_detail?.length || 0} Wohneinheiten (Ø ${snapshot.avg_unit_area}m²). Bewertung auf Basis von ETW-Vergleichspreisen (Einzelwohnungsbewertung).` : ''}
 Marktwert (P50): ${valueBand.p50?.toLocaleString("de")} €
 Beleihungswert: ${beleihungswertFinal?.toLocaleString("de")} € (Quote: ${(beleihungswertQuote * 100).toFixed(0)}%)
 Wertband: ${valueBand.p25?.toLocaleString("de")} – ${valueBand.p75?.toLocaleString("de")} €
@@ -1233,7 +1295,7 @@ Liegenschaftszins MWT: ${(liegenschaftszinsMWT * 100).toFixed(2)}% (${liegenscha
 Bodenrichtwert: ${bodenrichtwert} €/m² (${bodenrichtwertSource})
 Standort-Score: ${locationScore}/100
 DSCR: ${dscr}
-Comps: ${compPostings.length} Vergleichsangebote
+Comps: ${compPostings.length} Vergleichsangebote${snapshot.mfh_multi_unit ? ' (ETW-basiert)' : ''}
 Datenbasis: ${sourceMode === "SSOT_FINAL" ? "SSOT (verifiziert)" : "Draft"}`,
           );
         } catch (_) { executiveSummary = "Summary konnte nicht generiert werden."; }
