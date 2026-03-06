@@ -281,8 +281,8 @@ export function useValuationCase() {
     if (!raw) return null;
     const lienValue = raw.lien_value ?? raw.lienValue ?? 0;
     return {
-      marketValueP50: raw.market_value_p50 ?? raw.marketValueP50 ?? raw.p50 ?? 0,
-      totalDiscount: raw.total_discount ?? raw.totalDiscount ?? 0,
+      marketValueP50: raw.market_value_p50 ?? raw.marketValueP50 ?? raw.market_value_band?.p50 ?? raw.p50 ?? 0,
+      totalDiscount: raw.total_discount ?? raw.totalDiscount ?? raw.risk_discount ?? 0,
       lienValueLow: raw.lien_value_low ?? raw.lienValueLow ?? Math.round(lienValue * 0.95),
       lienValueHigh: raw.lien_value_high ?? raw.lienValueHigh ?? Math.round(lienValue * 1.05),
       safeLtvWindow: raw.safe_ltv_window ?? raw.safeLtvWindow ??

@@ -453,7 +453,7 @@ export function addHeadersToPages(doc: jsPDF, opts: CiHeaderOptions, startPage =
 export { EUR, DATE_DE };
 
 export const PCT = (v: number) =>
-  v.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
+  (v * 100).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
 
 export const NUM = (v: number) =>
   v.toLocaleString('de-DE', { maximumFractionDigits: 0 });
