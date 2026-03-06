@@ -326,12 +326,12 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
         />
       </div>
 
-      {/* ── GeoMap Results (full-width) ── */}
+      {/* ── Standortdaten (legacy, wird durch SoT Valuation ersetzt) ── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm">
             <MapPin className="h-4 w-4" />
-            GeoMap Standortanalyse
+            Standortdaten
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -350,7 +350,7 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <MapPin className="h-10 w-10 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">Keine GeoMap-Daten — starten Sie die Analyse oben.</p>
+              <p className="text-sm">Keine Standortdaten — SoT Bewertung starten.</p>
             </div>
           )}
         </CardContent>

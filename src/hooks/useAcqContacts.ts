@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 // TYPES
 // ============================================================================
 
-export type ContactStagingSource = 'engine' | 'apify' | 'firecrawl' | 'manual' | 'geomap' | 'kontaktbuch';
+export type ContactStagingSource = 'engine' | 'apify' | 'firecrawl' | 'manual' | 'valuation' | 'kontaktbuch';
 export type ContactStagingStatus = 'pending' | 'approved' | 'rejected' | 'merged';
 
 export interface ContactStaging {
