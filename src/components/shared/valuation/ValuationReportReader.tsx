@@ -63,6 +63,8 @@ export function ValuationReportReader({
   dataQuality,
   compStats,
   executiveSummary,
+  sourceMode,
+  legalTitle,
   onDownloadPdf,
   className,
 }: Props) {
