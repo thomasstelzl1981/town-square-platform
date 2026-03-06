@@ -1,6 +1,6 @@
 {
   "version": "9.0",
-  "updated_at": "2026-03-05T22:00:00.000Z",
+  "updated_at": "2026-03-06T14:00:00.000Z",
   "description": "SSOT for module freeze states. Lovable and all AI assistants MUST check this file before modifying any module code. If a module is frozen, changes to its paths are NOT ALLOWED without explicit unfreeze.",
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
