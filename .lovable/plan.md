@@ -1,81 +1,71 @@
 
 
-## Analyse: Armstrong schlägt fälschlicherweise Neuanlage statt Anreicherung vor
+## Implementierungsplan: ARM.MOD04.ENRICH_FROM_STORAGE
 
-### Ursache (3 Stellen)
+UNFREEZE INFRA-edge_functions wurde bestätigt. Alle Änderungen betreffen eine einzelne Datei:
 
-1. **System-Prompt (Zeile 482-484):** Eine pauschale "MAGIC INTAKE REGEL" sagt Armstrong, bei jedem angehängten Dokument eine Neuanlage vorzuschlagen — ohne zu prüfen, ob bereits eine aktive Entität existiert.
+**Datei:** `supabase/functions/sot-armstrong-advisor/index.ts`
 
-2. **Intent-Classifier (Zeile 1385-1392):** Keywords wie "grundstück", "immobilie + dokument" boosten `MAGIC_INTAKE_PROPERTY` mit +5, egal ob `entity.id` gesetzt ist. Es gibt keinen Gegencheck.
+### 6 Änderungsstellen
 
-3. **Fehlende Aktion:** `ARM.MOD04.ENRICH_FROM_STORAGE` existiert weder im Manifest, noch im MVP_ACTIONS-Array, noch im Execution-Handler.
+**1. System-Prompt (Zeile 482-485) — Entity-aware Magic Intake Regel**
 
-### Lösung (4 Schritte)
+Ersetze die pauschale "MAGIC INTAKE REGEL" durch eine kontextbewusste Version:
+- Wenn `body.entity?.id` gesetzt ist: Instruiere Armstrong, KEINE Neuanlage vorzuschlagen, sondern ENRICH
+- Wenn keine Entität: Bisherige Magic Intake Regel beibehalten
 
-**Alle Änderungen in `supabase/functions/sot-armstrong-advisor/index.ts`** — erfordert UNFREEZE INFRA-edge_functions.
+**2. MVP_EXECUTABLE_ACTIONS (nach Zeile 546) — Neuen Eintrag hinzufügen**
 
-#### 1. System-Prompt: Entity-aware Magic Intake Regel
+Füge `"ARM.MOD04.ENRICH_FROM_STORAGE"` in die Liste ein (nach `ARM.DMS.STORAGE_EXTRACTION`).
 
-Zeile 482-485 ersetzen durch kontextbewusste Logik:
+**3. MVP_ACTIONS (nach Zeile 1192) — Action-Definition hinzufügen**
 
-```
-MAGIC INTAKE REGEL:
-- Wenn ein Dokument angehängt ist UND KEINE aktive Entität existiert:
-  → Prüfe ob eine Magic Intake Action passt und schlage Neuanlage vor.
-- Wenn ein Dokument angehängt ist UND eine aktive Entität existiert (z.B. Immobilie):
-  → KEINE Neuanlage vorschlagen!
-  → Stattdessen: Daten aus dem Dokument in die bestehende Akte übernehmen (ENRICH).
-  → Beispiel: "Ich sehe einen Grundbuchauszug — soll ich die Grundbuchdaten in die Akte übernehmen?"
-```
+Neue ActionDefinition:
+- action_code: `ARM.MOD04.ENRICH_FROM_STORAGE`
+- title_de: "Daten aus Dokument in Akte übernehmen"
+- module: MOD-04, risk_level: medium, execution_mode: execute_with_confirmation
+- data_scopes_read: documents, document_structured_data, storage_nodes
+- data_scopes_write: properties, units
 
-#### 2. Intent-Classifier: ENRICH vor INTAKE priorisieren
+**4. Intent-Classifier Keywords (Zeile 1270-1274) — Neue Keywords**
 
-In `suggestActionsForMessage()` (Zeile 1385-1392):
-- **Neue Regel:** Wenn `entity.id` gesetzt ist UND `entity.type === "property"`, dann `MAGIC_INTAKE_PROPERTY` NICHT boosten, sondern stattdessen `ENRICH_FROM_STORAGE` boosten.
-- Dazu muss `suggestActionsForMessage` den `entity`-Parameter erhalten (aktuell bekommt die Funktion nur `message` und `availableActions`).
+Neue Keywords für den ACTION-Intent:
+- "grundbuch auslesen", "daten übernehmen", "akte befüllen", "enrich", "in die akte", "daten aus dokument", "grundbuchdaten", "dokument auslesen"
 
-#### 3. ENRICH_FROM_STORAGE als MVP-Action registrieren
+**5. suggestActionsForMessage (Zeile 1304-1508) — Entity-aware Boost**
 
-In `MVP_ACTIONS[]` und `MVP_EXECUTABLE_ACTIONS[]`:
-```typescript
-{
-  action_code: "ARM.MOD04.ENRICH_FROM_STORAGE",
-  title_de: "Daten aus Dokument in Akte übernehmen",
-  description_de: "Liest extrahierte Daten aus einem Dokument im Datenraum und überträgt sie in die bestehende Immobilienakte",
-  zones: ["Z2"],
-  module: "MOD-04",
-  risk_level: "medium",
-  execution_mode: "execute_with_confirmation",
-  ...
-}
-```
+- Signatur erweitern: `suggestActionsForMessage(message, availableActions, entity?)` 
+- Neue ENRICH-Boost-Regel: Wenn `entity?.id` + `entity.type === "property"` + Grundbuch-/Daten-Keywords → ENRICH +10 Relevanz
+- MAGIC_INTAKE_PROPERTY unterdrücken wenn `entity?.id` gesetzt: Relevanz auf 0 setzen
+- Alle 3 Call-Sites (Zeilen 4688, 4753, 4807) aktualisieren um `entity` weiterzugeben
 
-#### 4. Execution-Handler: `case "ARM.MOD04.ENRICH_FROM_STORAGE"`
+**6. Execution-Handler (vor Zeile 3373 `default:`) — Neuer Case**
 
-Neuer Case in `executeAction()`:
+Neuer `case "ARM.MOD04.ENRICH_FROM_STORAGE"`:
 1. Prüfe `entity.id` + `entity.type === "property"` — Pflicht
-2. Lade `document_structured_data` für diese Property (gefiltert nach `doc_category` z.B. `grundbuchauszug`)
-3. Falls kein extrahierter Datensatz: Suche in `storage_nodes` nach zugeordneten Dokumenten, triggere ggf. `sot-storage-extractor`
-4. Mappe extrahierte Felder → `properties`-Spalten (land_register_court, land_register_sheet, parcel_number etc.)
+2. Lade `document_structured_data` für diese Property (via `property_id` + `tenant_id`)
+3. Falls keine Daten: Suche `storage_nodes` mit `entity_id = property_id`, triggere on-demand `sot-storage-extractor`
+4. Mappe `extracted_fields` → `properties`-Update:
+   - `amtsgericht` → `land_register_court`
+   - `grundbuchbezirk` → `land_register_volume` (Bezirk als Band)
+   - `blatt_nr` → `land_register_sheet`
+   - `flurstueck` → `parcel_number`
+   - `eigentuemer` → in `land_register_refs` als JSONB
+   - `abteilung_ii_lasten`, `abteilung_iii_hypotheken` → in `land_register_refs` als JSONB
 5. Nur NULL-Felder überschreiben (oder alle mit Preview)
-6. Rückgabe: Markdown-Preview der gefundenen Daten + Bestätigungs-Gate
+6. Rückgabe: Markdown-Preview mit gefundenen Daten + Anzahl aktualisierter Felder
 
-### Betroffene Dateien
+### Keine DB-Migration nötig
 
-| Datei | Änderung |
-|---|---|
-| `supabase/functions/sot-armstrong-advisor/index.ts` | System-Prompt, Intent-Classifier, MVP_ACTIONS, Execution-Handler |
-
-### Voraussetzung
-
-**UNFREEZE INFRA-edge_functions** ist erforderlich, da `supabase/functions/*` frozen ist.
+Alle Spalten (`land_register_court`, `land_register_sheet`, `land_register_volume`, `parcel_number`, `land_register_refs`) existieren bereits in der `properties`-Tabelle.
 
 ### Testmatrix
 
 | Szenario | Erwartet |
 |---|---|
-| Innerhalb einer Immobilie: "Lies den Grundbuchauszug aus" | Armstrong schlägt ENRICH vor, NICHT Neuanlage |
-| Ohne aktive Entität: "Leg die Immobilie aus dem Kaufvertrag an" | Armstrong schlägt MAGIC_INTAKE vor |
-| ENRICH bestätigt | Grundbuchdaten werden in properties geschrieben |
-| ENRICH ohne extrahierte Daten | Armstrong meldet "Keine extrahierten Daten gefunden" |
+| In Immobilienakte: "Lies den Grundbuchauszug aus" | Armstrong schlägt ENRICH vor, NICHT Neuanlage |
+| Ohne aktive Entität: "Leg Immobilie aus Kaufvertrag an" | Armstrong schlägt MAGIC_INTAKE vor |
+| ENRICH bestätigt + document_structured_data vorhanden | Grundbuchdaten in properties geschrieben |
+| ENRICH bestätigt + keine extrahierten Daten | Armstrong meldet "Keine extrahierten Daten gefunden" |
+| System-Prompt enthält entity.id | "ENTITY-AWARE DOKUMENTREGEL" statt "MAGIC INTAKE REGEL" |
 
