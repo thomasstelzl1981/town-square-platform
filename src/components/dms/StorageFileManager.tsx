@@ -255,6 +255,8 @@ export function StorageFileManager({
 
   const handleColumnNavigate = (nodeId: string, depth: number) => {
     setColumnPath(prev => [...prev.slice(0, depth), nodeId]);
+    // SYNC: Keep selectedNodeId in sync so uploads target the visible folder
+    onSelectNode(nodeId);
   };
 
   const handleNavigatePath = (path: string) => {
