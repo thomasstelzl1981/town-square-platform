@@ -1191,9 +1191,9 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         // 4.3 Sachwert Proxy (V8.0: AfA 70%, BPI, Marktanpassung, Bodenwert-Heuristik)
         let sachwertResult: any = null;
         if (livingArea > 0) {
-          const yearBuilt = Number(snapshot.year_built) || 1980;
-          const age = new Date().getFullYear() - yearBuilt;
-          const baseCostSqm = getHerstellkostenSqm(yearBuilt);
+          const sachYearBuilt = Number(snapshot.year_built) || 1980;
+          const sachAge = new Date().getFullYear() - sachYearBuilt;
+          const baseCostSqm = getHerstellkostenSqm(sachYearBuilt);
           const depreciationRate = Math.min(age * CALC.SACHWERT_ANNUAL_DEPRECIATION, CALC.SACHWERT_MAX_DEPRECIATION);
           const gebaeudeSachwert = Math.round(livingArea * baseCostSqm * (1 - depreciationRate));
           const marktanpassung = getMarktanpassungsfaktor(locationScore);
