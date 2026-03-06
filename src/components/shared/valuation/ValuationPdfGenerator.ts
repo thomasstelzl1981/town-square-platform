@@ -14,6 +14,8 @@ import type {
   CompPosting,
   LocationAnalysis,
   CanonicalPropertySnapshot,
+  LegalTitleBlock,
+  ValuationSourceMode,
 } from '@/engines/valuation/spec';
 
 export interface ValuationPdfData {
