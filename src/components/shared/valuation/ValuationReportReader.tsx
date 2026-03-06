@@ -76,6 +76,15 @@ export function ValuationReportReader({
       <Card className={DESIGN.CARD.CONTENT}>
         <div className="flex items-start justify-between gap-4">
           <div>
+            {sourceMode && (
+              <Badge 
+                variant={sourceMode === 'SSOT_FINAL' ? 'default' : 'outline'} 
+                className={cn('text-[10px] mb-2', sourceMode === 'SSOT_FINAL' && 'bg-primary/90')}
+              >
+                <Database className="h-3 w-3 mr-1" />
+                {sourceMode === 'SSOT_FINAL' ? 'SSOT (Final)' : 'Exposé Draft'}
+              </Badge>
+            )}
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Wertband (P25 – P75)</p>
             <div className="flex items-baseline gap-2">
               <span className="text-xs text-muted-foreground">{fmtEur(valueBand.p25)}</span>
