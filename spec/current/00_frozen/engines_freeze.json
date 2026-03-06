@@ -8,7 +8,7 @@
     "ENG-PROVISION": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/engines/provision/*", "reason": "Full freeze — PLC Audit wave" },
     "ENG-BWA": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/engines/bewirtschaftung/*", "reason": "Full freeze — PLC Audit wave" },
     "ENG-PROJEKT": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/projektCalc/*", "reason": "Production freeze" },
-    "ENG-NK": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/nkAbrechnung/*", "reason": "Production freeze" },
+    "ENG-NK": { "frozen": true, "frozen_at": "2026-03-06T14:00:00.000Z", "path": "src/engines/nkAbrechnung/*", "reason": "Re-frozen after PDF-CI SSOT: pdfExport.ts migrated to CI-A pdfCiKit" },
     "ENG-DEMODATA": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/demoData/*", "reason": "Production freeze" },
     "ENG-FINUEB": { "frozen": true, "frozen_at": "2026-03-01T12:00:00.000Z", "path": "src/engines/finanzuebersicht/*", "reason": "Production freeze" },
     "ENG-VORSORGE": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/vorsorgeluecke/*", "reason": "Production freeze" },

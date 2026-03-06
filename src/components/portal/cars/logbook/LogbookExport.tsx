@@ -1,5 +1,6 @@
 /**
  * LogbookExport — PDF & CSV export (Tab E)
+ * Migrated to CI-A pdfCiKit for consistent header/footer.
  */
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +14,10 @@ import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { getJsPDF } from '@/lib/lazyJspdf';
 import { toast } from 'sonner';
+import {
+  PAGE, COLOR, TYPO,
+  drawCiHeader, addFootersToAllPages,
+} from '@/lib/pdf';
 
 interface Props { logbookId: string; }
 
@@ -56,23 +61,36 @@ export function LogbookExport({ logbookId }: Props) {
   async function exportPdf() {
     setExporting('pdf');
     try {
+      const monthLabel = months.find(m => m.value === selectedMonth)?.label || selectedMonth;
       const jsPDF = await getJsPDF();
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
-      doc.setFontSize(16);
-      doc.text(`Fahrtenbuch — ${months.find(m => m.value === selectedMonth)?.label}`, 14, 20);
-
-      doc.setFontSize(9);
-      doc.text(`Gesamt: ${totalKm.toFixed(1)} km | Geschäftlich: ${businessKm.toFixed(1)} km | Privat: ${privateKm.toFixed(1)} km`, 14, 28);
-
-      let y = 36;
-      // Header
-      doc.setFontSize(7);
-      doc.setFont(undefined!, 'bold');
-      ['Datum', 'Start', 'Ziel', 'km', 'Typ', 'Zweck', 'Partner'].forEach((h, i) => {
-        doc.text(h, 14 + [0, 25, 75, 125, 140, 165, 220][i], y);
+      // CI-A Header
+      drawCiHeader(doc, {
+        title: 'Fahrtenbuch',
+        subtitle: monthLabel,
       });
-      doc.setFont(undefined!, 'normal');
+
+      // Summary line
+      let y = PAGE.MARGIN_TOP + 18;
+      doc.setFontSize(9);
+      doc.setFont(TYPO.FONT_FAMILY, 'normal');
+      doc.setTextColor(COLOR.MUTED[0], COLOR.MUTED[1], COLOR.MUTED[2]);
+      doc.text(`Gesamt: ${totalKm.toFixed(1)} km | Geschäftlich: ${businessKm.toFixed(1)} km | Privat: ${privateKm.toFixed(1)} km`, PAGE.MARGIN_LEFT, y);
+
+      y += 8;
+      // Table Header
+      doc.setFontSize(7);
+      doc.setFont(TYPO.FONT_FAMILY, 'bold');
+      doc.setTextColor(COLOR.MUTED[0], COLOR.MUTED[1], COLOR.MUTED[2]);
+      const colPositions = [0, 25, 75, 125, 140, 165, 220];
+      const headerLabels = ['Datum', 'Start', 'Ziel', 'km', 'Typ', 'Zweck', 'Partner'];
+      headerLabels.forEach((h, i) => {
+        doc.text(h, PAGE.MARGIN_LEFT + colPositions[i], y);
+      });
+
+      doc.setFont(TYPO.FONT_FAMILY, 'normal');
+      doc.setTextColor(COLOR.INK[0], COLOR.INK[1], COLOR.INK[2]);
       y += 5;
 
       for (const trip of trips) {
@@ -86,9 +104,12 @@ export function LogbookExport({ logbookId }: Props) {
           (trip.purpose || '').substring(0, 30),
           (trip.business_partner || '').substring(0, 25),
         ];
-        row.forEach((v, i) => doc.text(v, 14 + [0, 25, 75, 125, 140, 165, 220][i], y));
+        row.forEach((v, i) => doc.text(v, PAGE.MARGIN_LEFT + colPositions[i], y));
         y += 4;
       }
+
+      // CI-A Footers
+      addFootersToAllPages(doc, { confidential: false });
 
       doc.save(`Fahrtenbuch_${selectedMonth}.pdf`);
       toast.success('PDF exportiert');
