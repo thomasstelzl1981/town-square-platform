@@ -44,6 +44,12 @@ import type {
 import {
   BEWIRTSCHAFTUNG_DEFAULTS,
   HERSTELLKOSTEN_CLUSTERS,
+  BPI_FACTOR,
+  LIEGENSCHAFTSZINS_BY_TYPE,
+  GESAMTNUTZUNGSDAUER_BY_TYPE,
+  PLOT_AREA_HEURISTIC_BY_TYPE,
+  BODENRICHTWERT_STUFEN,
+  BODENRICHTWERT_FLOOR,
   DEFAULT_FINANCING_SCENARIOS,
   DEFAULT_STRESS_TESTS,
 } from './spec';
@@ -351,11 +357,16 @@ export function deriveErtragswertParams(
   const area = snapshot.livingAreaSqm || snapshot.usableAreaSqm || 0;
   const yearBuilt = snapshot.yearBuilt || 1980;
   const age = new Date().getFullYear() - yearBuilt;
+  const objectType = snapshot.objectType || 'other';
   
-  const restnutzungsdauer = assumptions.restnutzungsdauer || Math.max(10, 80 - age);
-  const liegenschaftszins = assumptions.liegenschaftszins || 0.05;
-  const bodenwertPerSqm = assumptions.bodenwertPerSqm || 150;
-  const plotArea = snapshot.plotAreaSqm || area * 0.5;
+  const gnd = GESAMTNUTZUNGSDAUER_BY_TYPE[objectType] || 70;
+  const restnutzungsdauer = assumptions.restnutzungsdauer || Math.max(10, gnd - age);
+  const liegenschaftszins = assumptions.liegenschaftszins || LIEGENSCHAFTSZINS_BY_TYPE[objectType] || 0.045;
+  
+  // Bodenwert: use actual plot area or heuristic
+  const plotHeuristic = PLOT_AREA_HEURISTIC_BY_TYPE[objectType] || 1.0;
+  const plotArea = snapshot.plotAreaSqm || (area * plotHeuristic);
+  const bodenwertPerSqm = assumptions.bodenwertPerSqm || BODENRICHTWERT_FLOOR;
 
   return {
     netColdRentYearly: rent * 12,
@@ -442,6 +453,7 @@ export function calculateCompProxy(
 export function calculateSachwertProxy(snapshot: CanonicalPropertySnapshot): ValuationMethodResult {
   const area = snapshot.livingAreaSqm || snapshot.usableAreaSqm || 0;
   const yearBuilt = snapshot.yearBuilt || 1980;
+  const objectType = snapshot.objectType || 'other';
   
   if (area <= 0) {
     return {
@@ -461,15 +473,18 @@ export function calculateSachwertProxy(snapshot: CanonicalPropertySnapshot): Val
   else if (yearBuilt < 2010) cluster = '1990_2010';
   else cluster = 'post_2010';
   
-  const herstellkostenPerSqm = HERSTELLKOSTEN_CLUSTERS[cluster];
+  const herstellkostenPerSqmBase = HERSTELLKOSTEN_CLUSTERS[cluster];
+  const herstellkostenPerSqm = Math.round(herstellkostenPerSqmBase * BPI_FACTOR);
   const age = new Date().getFullYear() - yearBuilt;
   const alterswertminderung = Math.min(0.70, age * 0.01);
   
   const herstellkostenGesamt = area * herstellkostenPerSqm;
   const nachAbschreibung = herstellkostenGesamt * (1 - alterswertminderung);
   
-  const plotArea = snapshot.plotAreaSqm || area * 0.5;
-  const bodenwertProxy = plotArea * 150;
+  // Bodenwert: use actual plot area or heuristic by type
+  const plotHeuristic = PLOT_AREA_HEURISTIC_BY_TYPE[objectType] || 1.0;
+  const plotArea = snapshot.plotAreaSqm || (area * plotHeuristic);
+  const bodenwertProxy = plotArea * BODENRICHTWERT_FLOOR;
   
   const value = Math.round(nachAbschreibung + bodenwertProxy);
 
@@ -480,16 +495,19 @@ export function calculateSachwertProxy(snapshot: CanonicalPropertySnapshot): Val
     confidenceScore: 0.35,
     params: {
       herstellkostenPerSqm,
+      herstellkostenPerSqmBase,
+      bpiFactor: BPI_FACTOR,
       cluster,
       alterswertminderung: Math.round(alterswertminderung * 100),
       herstellkostenGesamt: Math.round(herstellkostenGesamt),
       nachAbschreibung: Math.round(nachAbschreibung),
       bodenwertProxy: Math.round(bodenwertProxy),
+      plotArea: Math.round(plotArea),
     },
     notes: [
       'Vereinfachter Sachwert als Plausibilitäts-Check',
-      `Herstellkosten ${herstellkostenPerSqm} €/m² (Cluster: ${cluster})`,
-      `Alterswertminderung: ${Math.round(alterswertminderung * 100)}%`,
+      `Herstellkosten ${herstellkostenPerSqm} €/m² (Basis ${herstellkostenPerSqmBase} × BPI ${BPI_FACTOR}, Cluster: ${cluster})`,
+      `Alterswertminderung: ${Math.round(alterswertminderung * 100)}% (max 70%)`,
     ],
   };
 }
