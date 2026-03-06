@@ -193,32 +193,48 @@ export function FinanceDocumentsManager() {
     }
   };
 
-  // ── Delete ──
+  // ── Delete (unified: server-side RPCs) ──
   const deleteMutation = useMutation({
     mutationFn: async (documentId: string) => {
-      const doc = allDocuments.find(d => d.id === documentId);
-      if (!doc) return;
-      await supabase.from('document_links').delete().eq('document_id', documentId);
-      await supabase.from('documents').delete().eq('id', documentId);
-      if (doc.file_path) {
-        await supabase.storage.from('tenant-documents').remove([doc.file_path]);
+      if (!activeTenantId) throw new Error('Kein Mandant');
+      const { data: result, error: rpcError } = await supabase.rpc('delete_storage_file', {
+        p_document_id: documentId,
+        p_tenant_id: activeTenantId,
+      });
+      if (rpcError) throw new Error(rpcError.message);
+      const response = result as { success: boolean; message: string; file_path?: string };
+      if (!response.success) throw new Error(response.message);
+      if (response.file_path) {
+        await supabase.storage.from('tenant-documents').remove([response.file_path]);
       }
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-documents'] });
       queryClient.invalidateQueries({ queryKey: ['document-links'] });
+      queryClient.invalidateQueries({ queryKey: ['storage-nodes'] });
       toast.success('Dokument gelöscht');
     },
+    onError: (error: Error) => toast.error(error.message || 'Löschen fehlgeschlagen'),
   });
 
   const deleteFolder = useMutation({
     mutationFn: async (nodeId: string) => {
-      await supabase.from('storage_nodes').delete().eq('id', nodeId);
+      if (!activeTenantId) throw new Error('Kein Mandant');
+      const { data: result, error: rpcError } = await supabase.rpc('delete_storage_folder', {
+        p_folder_id: nodeId,
+        p_tenant_id: activeTenantId,
+      });
+      if (rpcError) throw new Error(rpcError.message);
+      const response = result as { success: boolean; message: string };
+      if (!response.success) throw new Error(response.message);
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['storage-nodes'] });
       toast.success('Ordner gelöscht');
     },
+    onError: (error: Error) => toast.error(error.message || 'Löschen fehlgeschlagen'),
   });
 
   const createFolder = useMutation({
