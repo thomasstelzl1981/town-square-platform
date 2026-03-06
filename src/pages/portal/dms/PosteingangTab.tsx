@@ -152,7 +152,11 @@ export function PosteingangTab() {
       });
       if (error) throw error;
       const url = resolveStorageSignedUrl(data.download_url);
-      window.open(url, '_blank');
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.click();
     } catch {
       toast.error('Download fehlgeschlagen');
     }

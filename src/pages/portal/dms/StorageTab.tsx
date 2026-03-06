@@ -228,7 +228,11 @@ export function StorageTab() {
         body: { document_id: documentId },
       });
       if (response.error) throw response.error;
-      window.open(response.data.download_url, '_blank');
+      const a = document.createElement('a');
+      a.href = response.data.download_url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.click();
       return response.data;
     },
     onError: () => toast.error('Download fehlgeschlagen'),
