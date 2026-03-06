@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Ruler, DoorOpen, Thermometer, Zap, LandPlot } from 'lucide-react';
+import { Ruler, DoorOpen, Thermometer, Zap, LandPlot, Wrench } from 'lucide-react';
 
 interface CoreDataBlockProps {
   areaLivingSqm: number;
