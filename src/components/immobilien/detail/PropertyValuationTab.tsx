@@ -176,6 +176,8 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
             legalTitle={r.legalTitle || null}
             location={r.location || null}
             comps={r.comps || []}
+            beleihungswert={r.beleihungswert || null}
+            geminiResearch={r.geminiResearch || null}
             onDownloadPdf={handleDownloadPdf}
           />
         </div>
