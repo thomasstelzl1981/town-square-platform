@@ -35,13 +35,13 @@ export function BewertungTab() {
   });
 
   const { data: valuations, isLoading: valLoading } = useQuery({
-    queryKey: ['property-valuations', activeOrganization?.id],
+    queryKey: ['valuation-cases-list', activeOrganization?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('property_valuations')
-        .select('*')
+        .from('valuation_cases')
+        .select('id, status, source_mode, created_at, updated_at')
         .eq('tenant_id', activeOrganization!.id)
-        .eq('status', 'completed')
+        .eq('status', 'final')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
