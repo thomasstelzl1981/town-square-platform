@@ -1054,9 +1054,9 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         // 4.7 Lien proxy
         const lienProxy = {
           market_value_band: valueBand,
-          risk_discount: 0.15 + (dataQuality.completeness < 70 ? 0.1 : 0) + (locationAnalysis.available ? 0 : 0.05),
-          lien_value: Math.round(valueBand.p50 * (1 - 0.15)),
-          ltv_window: { safe: 0.6, max: 0.75 },
+          risk_discount: CALC.LIEN_BASE_DISCOUNT + (dataQuality.completeness < 70 ? 0.1 : 0) + (locationAnalysis.available ? 0 : 0.05),
+          lien_value: Math.round(valueBand.p50 * (1 - CALC.LIEN_BASE_DISCOUNT)),
+          ltv_window: { safe: CALC.LIEN_LTV_SAFE, max: CALC.LIEN_LTV_MAX },
           risk_drivers: [
             ...(dataQuality.completeness < 70 ? ["Datenlücken in kritischen Feldern"] : []),
             ...(!locationAnalysis.available ? ["Keine Standortdaten verfügbar"] : []),
