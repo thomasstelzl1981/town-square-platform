@@ -180,7 +180,7 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
     if (!r?.valueBand) return;
     try {
       await generateValuationPdf({
-        snapshot: r.snapshot || { address: '', city: '', postalCode: '', objectType: null, livingAreaSqm: null, plotAreaSqm: null, usableAreaSqm: null, commercialAreaSqm: null, rooms: null, units: null, floors: null, parkingSpots: null, yearBuilt: null, condition: null, energyClass: null, modernizations: [], askingPrice: null, netColdRentMonthly: null, netColdRentPerSqm: null, hausgeldMonthly: null, vacancyRate: null, rentalStatus: null, purchasePrice: null, acquisitionCosts: null, notaryDate: null, legalTitle: null, existingLoanData: null, groundBookEntry: null, partitionDeclaration: null, providerName: null, providerContact: null },
+        snapshot: r.snapshot || {},
         valueBand: r.valueBand,
         methods: r.methods || [],
         financing: r.financing || [],

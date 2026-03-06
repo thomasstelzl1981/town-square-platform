@@ -356,6 +356,7 @@ export function useValuationCase() {
       const rawDq = inputs.snapshot?.data_quality ?? runSummary?.data_quality ?? null;
 
       const mappedResult = {
+        snapshot: inputs.snapshot ?? null,
         valueBand: mapValueBand(results.value_band),
         methods: mapMethods(results.valuation_methods ?? []),
         financing: mapFinancing(results.financing ?? []),

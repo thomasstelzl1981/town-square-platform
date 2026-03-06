@@ -178,7 +178,7 @@ export default function PropertyDetailPage() {
         )}
       </div>
 
-      <PdfExportFooter contentRef={contentRef} documentTitle={getDocumentTitle()} moduleName="MOD-04 Immobilien – Immobilienakte" />
+      
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
