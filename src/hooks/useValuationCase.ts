@@ -1,6 +1,7 @@
 /**
  * useValuationCase — Orchestrates calls to sot-valuation-engine Edge Function
  * Handles preflight, run (with SSE stage progress), and result fetching.
+ * V6.0: Supports SSOT-Final Mode via propertyId auto-detection
  */
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +12,7 @@ import type {
   ValuationStageStatus,
   PreflightOutput,
   ValuationCaseStatus,
+  ValuationSourceMode,
 } from '@/engines/valuation/spec';
 
 export interface StageProgress {
@@ -28,6 +30,7 @@ export interface ValuationCaseState {
   currentStage: ValuationStageId;
   error: string | null;
   resultData: any | null;
+  sourceMode: ValuationSourceMode;
 }
 
 const INITIAL_STATE: ValuationCaseState = {
@@ -38,13 +41,29 @@ const INITIAL_STATE: ValuationCaseState = {
   currentStage: 0,
   error: null,
   resultData: null,
+  sourceMode: 'DRAFT_INTAKE',
 };
+
+export interface ValuationRunParams {
+  propertyId?: string;
+  offerId?: string;
+  sourceUrls?: string[];
+  sourceContext: 'MOD_04' | 'ACQUIARY_TOOLS' | 'MOD_13_INBOX';
+}
 
 export function useValuationCase() {
   const { activeOrganization, user } = useAuth();
   const [state, setState] = useState<ValuationCaseState>(INITIAL_STATE);
   const [isLoading, setIsLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  /** Derive source mode from params */
+  const deriveSourceMode = (params: ValuationRunParams): ValuationSourceMode => {
+    if (params.propertyId && params.sourceContext === 'MOD_04') {
+      return 'SSOT_FINAL';
+    }
+    return 'DRAFT_INTAKE';
+  };
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
@@ -53,18 +72,14 @@ export function useValuationCase() {
   }, []);
 
   /** Step 1: Preflight — check credits & sources */
-  const runPreflight = useCallback(async (params: {
-    propertyId?: string;
-    offerId?: string;
-    sourceUrls?: string[];
-    sourceContext: 'MOD_04' | 'ACQUIARY_TOOLS' | 'MOD_13_INBOX';
-  }) => {
+  const runPreflight = useCallback(async (params: ValuationRunParams) => {
     if (!activeOrganization || !user) {
       toast.error('Nicht angemeldet');
       return null;
     }
+    const sourceMode = deriveSourceMode(params);
     setIsLoading(true);
-    setState(s => ({ ...s, status: 'preflight', error: null }));
+    setState(s => ({ ...s, status: 'preflight', error: null, sourceMode }));
 
     try {
       const { data, error } = await supabase.functions.invoke('sot-valuation-engine', {
@@ -72,6 +87,7 @@ export function useValuationCase() {
           action: 'preflight',
           tenantId: activeOrganization.id,
           userId: user.id,
+          sourceMode,
           ...params,
         },
       });
@@ -92,16 +108,12 @@ export function useValuationCase() {
   }, [activeOrganization, user]);
 
   /** Step 2: Run full pipeline */
-  const runValuation = useCallback(async (params: {
-    propertyId?: string;
-    offerId?: string;
-    sourceUrls?: string[];
-    sourceContext: 'MOD_04' | 'ACQUIARY_TOOLS' | 'MOD_13_INBOX';
-  }) => {
+  const runValuation = useCallback(async (params: ValuationRunParams) => {
     if (!activeOrganization || !user) {
       toast.error('Nicht angemeldet');
       return null;
     }
+    const sourceMode = deriveSourceMode(params);
     setIsLoading(true);
     setState(s => ({
       ...s,
@@ -110,6 +122,7 @@ export function useValuationCase() {
       stages: [],
       currentStage: 0,
       resultData: null,
+      sourceMode,
     }));
 
     abortRef.current = new AbortController();
@@ -120,6 +133,7 @@ export function useValuationCase() {
           action: 'run',
           tenantId: activeOrganization.id,
           userId: user.id,
+          sourceMode,
           ...params,
         },
       });

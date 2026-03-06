@@ -254,6 +254,11 @@ export function ValuationReportReader({
           </CardContent>
         </Card>
       )}
+
+      {/* Legal & Title Block (SSOT-Final only) */}
+      {legalTitle && sourceMode === 'SSOT_FINAL' && (
+        <ValuationLegalBlock legalTitle={legalTitle} />
+      )}
     </div>
   );
 }
