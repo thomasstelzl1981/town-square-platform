@@ -1,13 +1,15 @@
 /**
  * ValuationReportReader — Displays valuation results: ValueBand, KPIs, Methods, Financing
+ * V6.0: Added source mode display and Legal & Title block integration
  */
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { TrendingUp, Download, ArrowUpDown, Shield, Banknote, BarChart3 } from 'lucide-react';
+import { TrendingUp, Download, ArrowUpDown, Shield, Banknote, BarChart3, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
+import { ValuationLegalBlock } from './ValuationLegalBlock';
 import type {
   ValueBand,
   ValuationMethodResult,
@@ -17,6 +19,8 @@ import type {
   DebtServiceResult,
   DataQuality,
   CompStats,
+  LegalTitleBlock,
+  ValuationSourceMode,
 } from '@/engines/valuation/spec';
 
 interface Props {
@@ -29,6 +33,8 @@ interface Props {
   dataQuality: DataQuality | null;
   compStats: CompStats | null;
   executiveSummary?: string;
+  sourceMode?: ValuationSourceMode;
+  legalTitle?: LegalTitleBlock | null;
   onDownloadPdf?: () => void;
   className?: string;
 }
@@ -57,6 +63,8 @@ export function ValuationReportReader({
   dataQuality,
   compStats,
   executiveSummary,
+  sourceMode,
+  legalTitle,
   onDownloadPdf,
   className,
 }: Props) {
@@ -68,6 +76,15 @@ export function ValuationReportReader({
       <Card className={DESIGN.CARD.CONTENT}>
         <div className="flex items-start justify-between gap-4">
           <div>
+            {sourceMode && (
+              <Badge 
+                variant={sourceMode === 'SSOT_FINAL' ? 'default' : 'outline'} 
+                className={cn('text-[10px] mb-2', sourceMode === 'SSOT_FINAL' && 'bg-primary/90')}
+              >
+                <Database className="h-3 w-3 mr-1" />
+                {sourceMode === 'SSOT_FINAL' ? 'SSOT (Final)' : 'Exposé Draft'}
+              </Badge>
+            )}
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Wertband (P25 – P75)</p>
             <div className="flex items-baseline gap-2">
               <span className="text-xs text-muted-foreground">{fmtEur(valueBand.p25)}</span>

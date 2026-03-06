@@ -1,20 +1,22 @@
 /**
- * ENG-VALUATION — SoT Valuation Engine V5.0
+ * ENG-VALUATION — SoT Valuation Engine V6.0
  * 
  * SPEC FILE: Types, Interfaces, Constants, Defaults (NO logic)
  * 
  * Purpose: KI-gestützte Immobilienbewertung mit deterministischem Rechenkern
- * Entry Points: MOD-04 (Immobilienakte), MOD-12 (Acquiary Tools), MOD-13 (Inbox)
+ * Entry Points: MOD-04 (Immobilienakte/SSOT-Final), MOD-12 (Acquiary Tools), MOD-13 (Inbox)
  * Credits: 20 Credits pro Bewertungsfall (fix)
  * 
- * @version 1.0.0
+ * V6.0 Changes: SSOT-Final Mode, FieldSource tracking, LegalTitleBlock, DiffReview
+ * 
+ * @version 2.0.0
  */
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
-export const VALUATION_ENGINE_VERSION = '1.0.0';
+export const VALUATION_ENGINE_VERSION = '2.0.0';
 export const VALUATION_CREDITS_PER_CASE = 20;
 export const VALUATION_MAX_FILES = 20;
 export const VALUATION_MAX_PAGES = 120;
@@ -105,6 +107,59 @@ export type ConfidenceLevel = 'high' | 'medium' | 'low';
 export type FieldConfidence = 'verified' | 'extracted' | 'derived' | 'assumed' | 'missing';
 
 // ============================================================================
+// V6.0: SOURCE MODE & FIELD PROVENANCE
+// ============================================================================
+
+/** Determines whether valuation uses SSOT property data or extracted data */
+export type ValuationSourceMode = 'SSOT_FINAL' | 'DRAFT_INTAKE';
+
+/** Origin of a data field value */
+export type FieldSource = 'SSOT' | 'Extracted' | 'User' | 'Derived';
+
+/** Wrapper for any snapshot field with provenance tracking */
+export interface SnapshotField<T> {
+  value: T;
+  source: FieldSource;
+  confidence: number; // 0.0–1.0
+  evidenceRefs: string[]; // doc/page/url references
+}
+
+/** A single diff entry for SSOT vs Extracted comparison */
+export interface DiffEntry {
+  field: string;
+  fieldLabel: string;
+  ssotValue: string | number | boolean | null;
+  extractedValue: string | number | boolean | null;
+  decision: 'ssot_kept' | 'ssot_updated' | 'ignored' | 'pending';
+}
+
+/** Legal & Title information from SSOT (Grundbuch, WEG, etc.) */
+export interface LegalTitleBlock {
+  landRegisterCourt: string | null;
+  landRegisterSheet: string | null;
+  landRegisterVolume: string | null;
+  parcelNumber: string | null;
+  ownershipSharePercent: number | null;
+  wegFlag: boolean;
+  teNumber: string | null;
+  unitOwnershipNr: string | null;
+  meaShare: number | null;
+  landRegisterExtractAvailable: boolean;
+  partitionDeclarationAvailable: boolean;
+  encumbrancesNote: string;
+}
+
+/** Existing loan data from SSOT */
+export interface ExistingLoanData {
+  outstandingBalance: number | null;
+  interestRatePercent: number | null;
+  repaymentRatePercent: number | null;
+  annuityMonthly: number | null;
+  fixedInterestEndDate: string | null;
+  bankName: string | null;
+}
+
+// ============================================================================
 // STAGE DEFINITIONS
 // ============================================================================
 
@@ -125,10 +180,13 @@ export const VALUATION_STAGES: ValuationStageDefinition[] = [
 ];
 
 // ============================================================================
-// CANONICAL PROPERTY SNAPSHOT
+// CANONICAL PROPERTY SNAPSHOT (V6.0 Extended)
 // ============================================================================
 
 export interface CanonicalPropertySnapshot {
+  // V6.0: Source tracking
+  sourceMode: ValuationSourceMode;
+  
   // Identity
   address: string;
   postalCode: string;
@@ -163,7 +221,18 @@ export interface CanonicalPropertySnapshot {
   vacancyRate: number | null;
   rentalStatus: 'fully_rented' | 'partially_rented' | 'vacant' | 'owner_occupied' | null;
   
-  // Extras
+  // V6.0: Transaction/Price anchors from SSOT
+  purchasePrice: number | null;
+  acquisitionCosts: number | null;
+  notaryDate: string | null;
+  
+  // V6.0: Legal & Title
+  legalTitle: LegalTitleBlock | null;
+  
+  // V6.0: Existing financing from SSOT
+  existingLoanData: ExistingLoanData | null;
+  
+  // Legacy fields
   groundBookEntry: string | null;
   partitionDeclaration: boolean | null;
   providerName: string | null;
@@ -434,7 +503,7 @@ export interface PlausibilityWarning {
 }
 
 // ============================================================================
-// REPORT
+// REPORT (V6.0 Extended)
 // ============================================================================
 
 export type ReportChapter = 
@@ -442,6 +511,7 @@ export type ReportChapter =
   | 'executive_summary'
   | 'object_profile'
   | 'data_quality'
+  | 'legal_title'
   | 'location'
   | 'comps'
   | 'valuation_method'
@@ -456,6 +526,7 @@ export const REPORT_CHAPTERS: { key: ReportChapter; title: string; pageTarget: n
   { key: 'executive_summary', title: 'Executive Summary', pageTarget: 1 },
   { key: 'object_profile', title: 'Objektprofil', pageTarget: 1 },
   { key: 'data_quality', title: 'Datenlage & Annahmen', pageTarget: 1 },
+  { key: 'legal_title', title: 'Recht & Eigentum', pageTarget: 1 },
   { key: 'location', title: 'Standortanalyse', pageTarget: 1 },
   { key: 'comps', title: 'Vergleichsangebote', pageTarget: 1 },
   { key: 'valuation_method', title: 'Bewertung: Methodik & Ergebnis', pageTarget: 1 },
@@ -477,6 +548,8 @@ export interface PreflightOutput {
   limitsOk: boolean;
   googleApiAvailable: boolean;
   scraperAvailable: boolean;
+  sourceMode: ValuationSourceMode;
+  sourceModeLabel: string;
 }
 
 export interface IntakeOutput {
@@ -484,6 +557,7 @@ export interface IntakeOutput {
   extractedFields: EvidenceEntry[];
   missingFields: MissingField[];
   evidenceMap: EvidenceEntry[];
+  diffs: DiffEntry[];
 }
 
 export interface NormLocationOutput {
@@ -517,7 +591,7 @@ export interface ReportOutput {
 }
 
 // ============================================================================
-// FULL CASE AGGREGATE
+// FULL CASE AGGREGATE (V6.0 Extended)
 // ============================================================================
 
 export interface ValuationCase {
@@ -525,6 +599,9 @@ export interface ValuationCase {
   tenantId: string;
   sourceContext: ValuationSourceContext;
   sourceRef: string | null;
+  sourceMode: ValuationSourceMode;
+  propertyId: string | null;
+  draftSourceRef: string | null;
   status: ValuationCaseStatus;
   creditsCharged: number;
   currentStage: ValuationStageId;
@@ -532,4 +609,64 @@ export interface ValuationCase {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// ============================================================================
+// SSOT PROPERTY DATA SHAPES (for Edge Function input)
+// ============================================================================
+
+/** Raw SSOT property data fetched from MOD-04 tables */
+export interface SSOTPropertyData {
+  property: {
+    id: string;
+    address: string;
+    city: string;
+    postal_code: string;
+    property_type: string;
+    year_built: number | null;
+    market_value: number | null;
+    purchase_price: number | null;
+    acquisition_costs: number | null;
+    total_area_sqm: number | null;
+    plot_area_sqm: number | null;
+    latitude: number | null;
+    longitude: number | null;
+    land_register_court: string | null;
+    land_register_sheet: string | null;
+    land_register_volume: string | null;
+    parcel_number: string | null;
+    weg_flag: boolean;
+    te_number: string | null;
+    ownership_share_percent: number | null;
+    unit_ownership_nr: string | null;
+    condition_grade: string | null;
+    energy_certificate_value: string | null;
+  };
+  units: Array<{
+    id: string;
+    area_sqm: number | null;
+    rooms: number | null;
+    hausgeld_monthly: number | null;
+    current_monthly_rent: number | null;
+    condition_grade: string | null;
+    mea_share: number | null;
+    parking_count: number | null;
+  }>;
+  leases: Array<{
+    id: string;
+    rent_cold_eur: number | null;
+    nk_advance_eur: number | null;
+    heating_advance_eur: number | null;
+    status: string | null;
+    start_date: string | null;
+  }>;
+  loans: Array<{
+    id: string;
+    outstanding_balance_eur: number | null;
+    interest_rate_percent: number | null;
+    repayment_rate_percent: number | null;
+    annuity_monthly_eur: number | null;
+    fixed_interest_end_date: string | null;
+    bank_name: string | null;
+  }>;
 }
