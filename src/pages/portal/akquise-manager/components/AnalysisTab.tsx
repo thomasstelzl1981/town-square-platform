@@ -249,7 +249,7 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
     return <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
-  interface GeoMapResult {
+  interface LocationResult {
     avgRentPerSqm?: string | number;
     avgPricePerSqm?: string | number;
     vacancyRate?: string | number;
@@ -261,7 +261,7 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
     risks?: string[];
     opportunities?: string[];
   }
-  const geo = offer.geomap_data as GeoMapResult | null;
+  const geo = offer.geomap_data as LocationResult | null; // legacy column
   const ai = offer.analysis_summary as AiSummaryResult | null;
 
   return (
