@@ -34,13 +34,10 @@ export default function AkquiseTools() {
         {/* 0. KI-Suchprofil (Phase 3) */}
         <AISearchProfileIntake onApply={handleAIApply} />
 
-        {/* 1. Portal-Recherche (Phase 1 + 2 Persistierung) */}
+        {/* 1. Portal-Recherche — Treffer fließen direkt in Objekteingang */}
         <PortalSearchTool initialParams={searchParams} />
 
-        {/* 2. Objekt-Inbox (Phase 2) */}
-        <PortalSearchInbox />
-
-        {/* 3. Immobilienbewertung (inkl. GeoMap + Sprengnetter) */}
+        {/* 2. Immobilienbewertung (inkl. GeoMap + Sprengnetter) */}
         <PropertyResearchTool />
 
         {/* 4. Exposé-Upload & Analyse (persistiert in Objekteingang) */}

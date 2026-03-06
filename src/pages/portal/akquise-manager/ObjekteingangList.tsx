@@ -173,7 +173,7 @@ export function ObjekteingangList() {
         })}
       </WidgetGrid>
 
-      {/* Filter Chips */}
+      {/* Filter Chips: Status */}
       <div className="flex items-center gap-3 flex-wrap">
         {FILTER_CHIPS.map(chip => (
           <button
@@ -194,6 +194,30 @@ export function ObjekteingangList() {
             )}
           </button>
         ))}
+
+        <span className="text-border">|</span>
+
+        {/* Filter Chips: Source */}
+        {SOURCE_CHIPS.map(chip => (
+          <button
+            key={`src-${chip.value}`}
+            onClick={() => setSourceFilter(chip.value)}
+            className={cn(
+              'px-3 py-1.5 rounded-full text-xs font-medium transition-colors border',
+              sourceFilter === chip.value
+                ? 'bg-accent text-accent-foreground border-accent'
+                : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
+            )}
+          >
+            {chip.label}
+            {chip.value !== 'all' && (
+              <span className="ml-1.5 opacity-70">
+                {allOffers.filter(o => o.source_type === chip.value).length}
+              </span>
+            )}
+          </button>
+        ))}
+
         <div className="flex-1" />
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
