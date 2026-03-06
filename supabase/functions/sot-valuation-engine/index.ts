@@ -1077,21 +1077,22 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
           };
         }
 
-        // 4.3 Sachwert Proxy
+        // 4.3 Sachwert Proxy (V7.0: Herstellkosten-Cluster + Bodenwert)
         let sachwertResult: any = null;
         if (livingArea > 0) {
           const yearBuilt = Number(snapshot.year_built) || 1980;
           const age = new Date().getFullYear() - yearBuilt;
-          const baseCostSqm = CALC.SACHWERT_BASE_COST_SQM;
+          const baseCostSqm = getHerstellkostenSqm(yearBuilt);
           const depreciationRate = Math.min(age * CALC.SACHWERT_ANNUAL_DEPRECIATION, CALC.SACHWERT_MAX_DEPRECIATION);
-          const sachwert = Math.round(livingArea * baseCostSqm * (1 - depreciationRate));
-          assumptions.push({ text: `Herstellkosten ${baseCostSqm} €/m², Alterswertminderung ${Math.round(depreciationRate * 100)}%`, impact: "medium" });
+          const gebaeudeSachwert = Math.round(livingArea * baseCostSqm * (1 - depreciationRate));
+          const sachwert = gebaeudeSachwert + bodenwert;
+          assumptions.push({ text: `Herstellkosten ${baseCostSqm} €/m² (Bj. ${yearBuilt}, BPI-korrigiert), AWM ${Math.round(depreciationRate * 100)}%, Bodenwert ${bodenwert.toLocaleString('de')} €`, impact: "medium" });
 
           sachwertResult = {
             method: "sachwert_proxy",
             value: sachwert,
-            confidence: 0.3,
-            params: { base_cost_sqm: baseCostSqm, depreciation: depreciationRate, age },
+            confidence: bodenwert > 0 ? 0.45 : 0.3,
+            params: { base_cost_sqm: baseCostSqm, depreciation: depreciationRate, age, gebaeude_sachwert: gebaeudeSachwert, bodenwert },
           };
         }
 
