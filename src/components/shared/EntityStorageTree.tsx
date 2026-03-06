@@ -16,11 +16,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ColumnView } from '@/components/dms/views/ColumnView';
 import { FileDropZone } from '@/components/dms/FileDropZone';
+import { NewFolderDialog } from '@/components/dms/NewFolderDialog';
 import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
-import { Upload, Loader2, FolderOpen } from 'lucide-react';
+import { Upload, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { RecordCardEntityType } from '@/config/recordCardManifest';
 import type { FileManagerItem } from '@/components/dms/views/ListView';
@@ -35,6 +36,11 @@ interface EntityStorageTreeProps {
 
 export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, className }: EntityStorageTreeProps) {
   const [columnPath, setColumnPath] = useState<string[]>([]);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
+  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const queryClient = useQueryClient();
   const { createDMS } = useRecordCardDMS();
   const universalUpload = useUniversalUpload();
@@ -116,6 +122,8 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
 
   const handleNavigateColumn = useCallback((nodeId: string, depth: number) => {
     setColumnPath(prev => [...prev.slice(0, depth), nodeId]);
+    // SYNC: Keep selectedFolderId in sync so uploads target the visible folder
+    setSelectedFolderId(nodeId);
   }, []);
 
   const handleSelectFile = useCallback((item: FileManagerItem) => {
@@ -133,19 +141,24 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
 
   /**
    * Resolve the target folder for upload:
-   * - If a subfolder is selected in columnPath → use that
+   * - If a subfolder is explicitly selected → use that
+   * - Otherwise use last columnPath entry → use that
    * - Otherwise → use root folder
    */
   const resolveTargetFolderId = useCallback((): string | null => {
-    // The last entry in columnPath is the deepest selected folder
+    // Explicit selection has priority
+    if (selectedFolderId) {
+      const node = allNodes.find(n => n.id === selectedFolderId);
+      if (node) return selectedFolderId;
+    }
+    // Fallback to deepest columnPath entry
     if (columnPath.length > 0) {
       const lastSelectedId = columnPath[columnPath.length - 1];
-      // Verify this node actually exists in allNodes
       const node = allNodes.find(n => n.id === lastSelectedId);
       if (node) return lastSelectedId;
     }
     return rootFolder?.id || null;
-  }, [columnPath, allNodes, rootFolder?.id]);
+  }, [selectedFolderId, columnPath, allNodes, rootFolder?.id]);
 
   /**
    * Get the display name of the target folder for UI feedback
@@ -201,8 +214,8 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
 
     toast.success(
       droppedFiles.length === 1
-        ? `"${droppedFiles[0].name}" in "${folderName}" hochgeladen`
-        : `${droppedFiles.length} Dateien in "${folderName}" hochgeladen`
+        ? `"${droppedFiles[0].name}" in „${folderName}" hochgeladen`
+        : `${droppedFiles.length} Dateien in „${folderName}" hochgeladen`
     );
 
     // Refresh the tree
@@ -210,12 +223,195 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
     universalUpload.reset();
   }, [resolveTargetFolderId, createDMS, entityType, entityId, tenantId, moduleCode, universalUpload, getTargetFolderName, invalidateAll]);
 
+  // ── Download handler ──────────────────────────────────────────────────
+  const handleDownload = useCallback(async (documentId: string) => {
+    setIsDownloading(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-dms-download-url`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.session?.access_token}`,
+          },
+          body: JSON.stringify({ document_id: documentId }),
+        }
+      );
+      if (!response.ok) throw new Error('Download URL konnte nicht erstellt werden');
+      const { download_url } = await response.json();
+      window.open(download_url, '_blank');
+    } catch {
+      toast.error('Download fehlgeschlagen');
+    }
+    setIsDownloading(false);
+  }, []);
+
+  // ── Delete file handler (full cleanup) ────────────────────────────────
+  const handleDeleteFile = useCallback(async (item: FileManagerItem) => {
+    if (!item.documentId) return;
+    if (!confirm(`"${item.name}" wirklich löschen?`)) return;
+
+    setIsDeleting(true);
+    try {
+      // 1. Get document for file_path
+      const doc = documents.find(d => d.id === item.documentId);
+
+      // 2. Delete document_links
+      await supabase
+        .from('document_links')
+        .delete()
+        .eq('document_id', item.documentId)
+        .eq('tenant_id', tenantId);
+
+      // 3. Delete storage_nodes file-node (if exists)
+      if (doc?.file_path) {
+        await supabase
+          .from('storage_nodes')
+          .delete()
+          .eq('tenant_id', tenantId)
+          .eq('node_type', 'file')
+          .eq('storage_path', doc.file_path);
+      }
+
+      // 4. Soft-delete document record
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any)
+        .from('documents')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', item.documentId);
+
+      // 5. Delete storage blob
+      if (doc?.file_path) {
+        await supabase.storage.from('tenant-documents').remove([doc.file_path]);
+      }
+
+      toast.success(`"${item.name}" gelöscht`);
+      invalidateAll();
+    } catch (err) {
+      console.error('Delete failed:', err);
+      toast.error('Fehler beim Löschen');
+    }
+    setIsDeleting(false);
+  }, [documents, tenantId, invalidateAll]);
+
+  // ── Delete folder handler (with server-side guards) ───────────────────
+  const handleDeleteFolder = useCallback(async (item: FileManagerItem) => {
+    if (!item.nodeId) return;
+    if (!confirm(`Ordner "${item.name}" wirklich löschen?`)) return;
+
+    setIsDeleting(true);
+    try {
+      // Guard: Check for system folder (template_id ending with _ROOT)
+      const node = allNodes.find(n => n.id === item.nodeId);
+      if (node?.template_id?.endsWith('_ROOT')) {
+        toast.error('Systemordner können nicht gelöscht werden');
+        setIsDeleting(false);
+        return;
+      }
+
+      // Guard: Check for child folders
+      const childFolders = allNodes.filter(n => n.parent_id === item.nodeId);
+      if (childFolders.length > 0) {
+        toast.error('Ordner enthält Unterordner — bitte zuerst leeren');
+        setIsDeleting(false);
+        return;
+      }
+
+      // Guard: Check for files in folder
+      const folderDocLinks = documentLinks.filter(l => l.node_id === item.nodeId);
+      if (folderDocLinks.length > 0) {
+        toast.error('Ordner enthält Dateien — bitte zuerst leeren');
+        setIsDeleting(false);
+        return;
+      }
+
+      // Safe to delete
+      const { error } = await supabase
+        .from('storage_nodes')
+        .delete()
+        .eq('id', item.nodeId)
+        .eq('tenant_id', tenantId);
+
+      if (error) throw error;
+
+      toast.success(`Ordner "${item.name}" gelöscht`);
+      
+      // If we deleted the selected folder, go back
+      if (selectedFolderId === item.nodeId) {
+        setSelectedFolderId(null);
+        setColumnPath([]);
+      }
+      
+      invalidateAll();
+    } catch (err) {
+      console.error('Folder delete failed:', err);
+      toast.error('Fehler beim Löschen des Ordners');
+    }
+    setIsDeleting(false);
+  }, [allNodes, documentLinks, tenantId, selectedFolderId, invalidateAll]);
+
+  // ── Unified delete dispatch ───────────────────────────────────────────
+  const handleDelete = useCallback((item: FileManagerItem) => {
+    if (item.type === 'folder') {
+      handleDeleteFolder(item);
+    } else {
+      handleDeleteFile(item);
+    }
+  }, [handleDeleteFolder, handleDeleteFile]);
+
+  // ── New subfolder handler ─────────────────────────────────────────────
+  const handleNewSubfolder = useCallback((parentNodeId: string) => {
+    setNewFolderParentId(parentNodeId);
+    setShowNewFolderDialog(true);
+  }, []);
+
+  const handleCreateFolder = useCallback(async (name: string) => {
+    const parentId = newFolderParentId || resolveTargetFolderId();
+    if (!parentId) {
+      toast.error('Kein übergeordneter Ordner gefunden');
+      return;
+    }
+
+    try {
+      // Find real parent_id (undo the remap done for ColumnView display)
+      let realParentId = parentId;
+      // If parent_id is null in our mapped nodes, it's actually the root folder
+      const mappedNode = allNodes.find(n => n.id === parentId);
+      if (mappedNode && mappedNode.parent_id === null && parentId !== rootFolder?.id) {
+        // This node was remapped — its real parent is rootFolder
+        realParentId = parentId; // The node itself is correct, we're creating under it
+      }
+
+      const { error } = await supabase.from('storage_nodes').insert({
+        tenant_id: tenantId,
+        parent_id: realParentId,
+        name,
+        node_type: 'folder',
+        entity_type: entityType,
+        entity_id: entityId,
+        module_code: moduleCode,
+      });
+      if (error) throw error;
+      toast.success(`Ordner „${name}" erstellt`);
+      invalidateAll();
+    } catch (err) {
+      console.error('Create folder failed:', err);
+      toast.error('Fehler beim Erstellen des Ordners');
+    }
+    setShowNewFolderDialog(false);
+  }, [newFolderParentId, resolveTargetFolderId, allNodes, rootFolder?.id, tenantId, entityType, entityId, moduleCode, invalidateAll]);
+
   const isUploading = universalUpload.isUploading || createDMS.isPending;
+
+  // Determine current target folder name for drop overlay
+  const targetFolderName = getTargetFolderName();
 
   // Empty state — no DMS folder yet
   if (!rootFolder?.id && !isUploading) {
     return (
-      <FileDropZone onDrop={handleFileDrop} className={className}>
+      <FileDropZone onDrop={handleFileDrop} className={className} targetFolderName={targetFolderName}>
         <div className={cn(DESIGN.STORAGE.CONTAINER, DESIGN.STORAGE.MIN_HEIGHT, 'flex items-center justify-center')}>
           <div className="flex flex-col items-center gap-3 text-muted-foreground">
             <Upload className="h-8 w-8 opacity-40" />
@@ -227,13 +423,11 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
     );
   }
 
-  // Determine current target folder name for drop overlay
-  const targetFolderName = getTargetFolderName();
-
   return (
     <FileDropZone
       onDrop={handleFileDrop}
       className={className}
+      targetFolderName={targetFolderName}
     >
       <div className={cn(DESIGN.STORAGE.CONTAINER, DESIGN.STORAGE.MIN_HEIGHT, 'relative')}>
         {isUploading && (
@@ -253,8 +447,20 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
           columnPath={columnPath}
           onNavigateColumn={handleNavigateColumn}
           onSelectFile={handleSelectFile}
+          onDownload={handleDownload}
+          onDelete={handleDelete}
+          onNewSubfolder={handleNewSubfolder}
+          isDownloading={isDownloading}
+          isDeleting={isDeleting}
         />
       </div>
+
+      <NewFolderDialog
+        open={showNewFolderDialog}
+        onOpenChange={setShowNewFolderDialog}
+        onCreateFolder={handleCreateFolder}
+        isCreating={false}
+      />
     </FileDropZone>
   );
 }

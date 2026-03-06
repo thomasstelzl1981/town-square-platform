@@ -9,9 +9,11 @@ interface FileDropZoneProps {
   disabled?: boolean;
   children: ReactNode;
   className?: string;
+  /** Display name of the target folder for contextual drop feedback */
+  targetFolderName?: string;
 }
 
-export function FileDropZone({ onDrop, disabled, children, className }: FileDropZoneProps) {
+export function FileDropZone({ onDrop, disabled, children, className, targetFolderName }: FileDropZoneProps) {
   const isMobile = useIsMobile();
 
   const handleDrop = useCallback((accepted: File[]) => {
@@ -34,6 +36,10 @@ export function FileDropZone({ onDrop, disabled, children, className }: FileDrop
     },
   });
 
+  const dropLabel = targetFolderName
+    ? `Dateien in „${targetFolderName}" ablegen`
+    : 'Dateien hier ablegen';
+
   return (
     <div {...getRootProps()} className={cn('relative', className)}>
       <input {...getInputProps()} />
@@ -43,7 +49,7 @@ export function FileDropZone({ onDrop, disabled, children, className }: FileDrop
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary/5 border-2 border-dashed border-primary rounded-lg backdrop-blur-sm">
           <div className="flex flex-col items-center gap-2 text-primary">
             <Upload className="h-10 w-10" />
-            <p className="font-medium text-sm">Dateien hier ablegen</p>
+            <p className="font-medium text-sm">{dropLabel}</p>
           </div>
         </div>
       )}
