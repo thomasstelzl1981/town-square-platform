@@ -113,16 +113,16 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
     setDeletingId(caseId);
     try {
       // Child-first deletion order — include tenant_id for RLS compliance
-      const { error: e1 } = await supabase.from('valuation_reports').delete().eq('case_id', caseId).eq('tenant_id', tenantId);
+      const { error: e1 } = await (supabase.from('valuation_reports').delete() as any).eq('case_id', caseId).eq('tenant_id', tenantId);
       if (e1) throw new Error(`Reports: ${e1.message}`);
 
-      const { error: e2 } = await supabase.from('valuation_results').delete().eq('case_id', caseId).eq('tenant_id', tenantId);
+      const { error: e2 } = await (supabase.from('valuation_results').delete() as any).eq('case_id', caseId).eq('tenant_id', tenantId);
       if (e2) throw new Error(`Results: ${e2.message}`);
 
-      const { error: e3 } = await supabase.from('valuation_inputs').delete().eq('case_id', caseId).eq('tenant_id', tenantId);
+      const { error: e3 } = await (supabase.from('valuation_inputs').delete() as any).eq('case_id', caseId).eq('tenant_id', tenantId);
       if (e3) throw new Error(`Inputs: ${e3.message}`);
 
-      const { error: e4 } = await supabase.from('valuation_cases').delete().eq('id', caseId).eq('tenant_id', tenantId);
+      const { error: e4 } = await (supabase.from('valuation_cases').delete() as any).eq('id', caseId).eq('tenant_id', tenantId);
       if (e4) throw new Error(`Case: ${e4.message}`);
 
       toast.success('Bewertung gelöscht');
