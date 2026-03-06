@@ -1,11 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Ruler, DoorOpen, Thermometer, Zap } from 'lucide-react';
+import { Ruler, DoorOpen, Thermometer, Zap, LandPlot } from 'lucide-react';
 
 interface CoreDataBlockProps {
   areaLivingSqm: number;
   roomsCount?: number;
   bathroomsCount?: number;
+  plotAreaSqm?: number;
   heatingType?: string;
   energySource?: string;
   energyCertificateValue?: number;
