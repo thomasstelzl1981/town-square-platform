@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 import { UploadResultList } from '@/components/shared/UploadResultCard';
 import { STORAGE_MANIFEST, getSortedModules, getModuleDisplayName } from '@/config/storageManifest';
+import { StorageFileManager } from '@/components/dms/StorageFileManager';
 import { downloadFromSignedUrl } from '@/lib/storage-url';
 
 interface StorageNode {
