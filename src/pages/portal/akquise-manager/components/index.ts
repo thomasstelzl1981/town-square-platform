@@ -9,7 +9,6 @@ export { DeliveryTab } from './DeliveryTab';
 
 // Tools Components
 export { PortalSearchTool } from './PortalSearchTool';
-export { PortalSearchInbox } from './PortalSearchInbox';
 export { AISearchProfileIntake } from './AISearchProfileIntake';
 export { PropertyResearchTool } from './PropertyResearchTool';
 export { GeoMapTool } from './GeoMapTool';

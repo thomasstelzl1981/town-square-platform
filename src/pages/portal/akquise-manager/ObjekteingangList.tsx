@@ -43,41 +43,60 @@ const FILTER_CHIPS = [
   { value: 'presented', label: 'Präsentiert' },
 ];
 
+const SOURCE_CHIPS = [
+  { value: 'all', label: 'Alle Quellen' },
+  { value: 'portal_scrape', label: 'Portal-Treffer' },
+  { value: 'upload', label: 'Upload' },
+  { value: 'inbound_email', label: 'E-Mail' },
+  { value: 'manual', label: 'Manuell' },
+];
+
 export function ObjekteingangList() {
   const navigate = useNavigate();
   const { data: mandates = [], isLoading: loadingMandates } = useAcqMandatesForManager();
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
+  const [sourceFilter, setSourceFilter] = React.useState<string>('all');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedMandateId, setSelectedMandateId] = React.useState<string | null>(null);
 
   const mandateIds = mandates.map(m => m.id);
   
+  // Fetch ALL offers for this tenant (including unassigned portal results)
   const { data: allOffers = [], isLoading: loadingOffers } = useQuery({
-    queryKey: ['acq-offers-inbox', mandateIds],
+    queryKey: ['acq-offers-inbox'],
     queryFn: async () => {
-      if (mandateIds.length === 0) return [];
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('active_tenant_id')
+        .eq('id', user.id)
+        .single();
+      if (!profile?.active_tenant_id) return [];
+
       const { data, error } = await supabase
         .from('acq_offers')
         .select('*')
-        .in('mandate_id', mandateIds)
-        .order('created_at', { ascending: false });
+        .eq('tenant_id', profile.active_tenant_id)
+        .order('created_at', { ascending: false })
+        .limit(500);
       if (error) throw error;
       return data as AcqOffer[];
     },
-    enabled: mandateIds.length > 0,
   });
 
   const filteredOffers = React.useMemo(() => {
     return allOffers.filter(offer => {
       if (selectedMandateId && offer.mandate_id !== selectedMandateId) return false;
       if (statusFilter !== 'all' && offer.status !== statusFilter) return false;
+      if (sourceFilter !== 'all' && offer.source_type !== sourceFilter) return false;
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         if (!offer.title?.toLowerCase().includes(term) && !offer.address?.toLowerCase().includes(term) && !offer.city?.toLowerCase().includes(term)) return false;
       }
       return true;
     });
-  }, [allOffers, statusFilter, searchTerm, selectedMandateId]);
+  }, [allOffers, statusFilter, sourceFilter, searchTerm, selectedMandateId]);
 
   const isLoading = loadingMandates || loadingOffers;
 
@@ -154,7 +173,7 @@ export function ObjekteingangList() {
         })}
       </WidgetGrid>
 
-      {/* Filter Chips */}
+      {/* Filter Chips: Status */}
       <div className="flex items-center gap-3 flex-wrap">
         {FILTER_CHIPS.map(chip => (
           <button
@@ -175,6 +194,30 @@ export function ObjekteingangList() {
             )}
           </button>
         ))}
+
+        <span className="text-border">|</span>
+
+        {/* Filter Chips: Source */}
+        {SOURCE_CHIPS.map(chip => (
+          <button
+            key={`src-${chip.value}`}
+            onClick={() => setSourceFilter(chip.value)}
+            className={cn(
+              'px-3 py-1.5 rounded-full text-xs font-medium transition-colors border',
+              sourceFilter === chip.value
+                ? 'bg-accent text-accent-foreground border-accent'
+                : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
+            )}
+          >
+            {chip.label}
+            {chip.value !== 'all' && (
+              <span className="ml-1.5 opacity-70">
+                {allOffers.filter(o => o.source_type === chip.value).length}
+              </span>
+            )}
+          </button>
+        ))}
+
         <div className="flex-1" />
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
