@@ -14,6 +14,7 @@ import {
   ChevronDown, ChevronRight, MessageSquare, Loader2, AlertCircle, RefreshCw,
 } from 'lucide-react';
 import type { EmailThread, EmailAccount } from './emailTypes';
+import { SendToObjekteingangButton } from './SendToObjekteingangButton';
 
 interface ThreadDetailPanelProps {
   thread: EmailThread;
@@ -84,6 +85,7 @@ export function ThreadDetailPanel({
             <Button variant="ghost" size="icon" className="h-8 w-8" title="Antworten" onClick={() => onReply(latestMsg)}><Reply className="h-4 w-4" /></Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" title="Allen antworten" onClick={() => onReplyAll(latestMsg)}><ReplyAll className="h-4 w-4" /></Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" title="Weiterleiten" onClick={() => onForward(latestMsg)}><Forward className="h-4 w-4" /></Button>
+            <SendToObjekteingangButton email={latestMsg} />
           </div>
         </div>
       </div>
@@ -159,6 +161,7 @@ function ThreadMessage({
         <div className="p-4">
           <div className="flex items-center gap-1 mb-3">
             <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onReply(email)}><Reply className="h-3 w-3 mr-1" /> Antworten</Button>
+            <SendToObjekteingangButton email={email} variant="full" />
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onToggleStar(email.id, email.is_starred)}>
               <Star className={cn("h-3 w-3", email.is_starred && "text-yellow-500 fill-yellow-500")} />
             </Button>
@@ -218,6 +221,7 @@ function SingleEmailDetail({
             <Button variant="ghost" size="icon" className="h-8 w-8" title="Antworten" onClick={() => onReply(email)}><Reply className="h-4 w-4" /></Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" title="Allen antworten" onClick={() => onReplyAll(email)}><ReplyAll className="h-4 w-4" /></Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" title="Weiterleiten" onClick={() => onForward(email)}><Forward className="h-4 w-4" /></Button>
+            <SendToObjekteingangButton email={email} />
             <Separator orientation="vertical" className="h-5 mx-1" />
             <Button variant="ghost" size="icon" className="h-8 w-8" title="Markieren" onClick={() => onToggleStar(email.id, email.is_starred)} disabled={isPending.star}>
               <Star className={cn("h-4 w-4", email.is_starred && "text-yellow-500 fill-yellow-500")} />
