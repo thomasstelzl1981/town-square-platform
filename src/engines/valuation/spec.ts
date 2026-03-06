@@ -433,6 +433,18 @@ export interface LocationAnalysis {
 }
 
 // ============================================================================
+// V9.1: MFH UNIT DETAIL (für Einzelwohnungs-basierte Bewertung)
+// ============================================================================
+
+export interface ValuationUnitDetail {
+  id: string;
+  areaSqm: number;
+  rooms: number | null;
+  floor: number | null;
+  rentCold: number | null;
+}
+
+// ============================================================================
 // COMP POSTINGS
 // ============================================================================
 
