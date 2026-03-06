@@ -260,6 +260,7 @@ export interface GeminiVergleichsmietenResult {
   mieteMedian: number;
   mieteMax: number;
   quelle: string;
+  begruendung?: string | null;
   confidence: ConfidenceLevel;
 }
 
