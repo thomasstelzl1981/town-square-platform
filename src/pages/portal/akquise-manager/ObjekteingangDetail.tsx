@@ -1,6 +1,7 @@
 /**
  * ObjekteingangDetail — Orchestrator (MOD-12)
  * R-23 Refactoring: 539 → ~200 lines
+ * V6.1: Bewertungs-Step now wired to ValuationCase hook
  */
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -10,10 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Loader2, Building2, X, ThumbsUp, MessageSquare, FileText, Upload, Check, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Loader2, Building2, X, ThumbsUp, MessageSquare, FileText, Upload, Check, ChevronDown, TrendingUp, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAcqOffer, useUpdateOfferStatus, type AcqOfferStatus } from '@/hooks/useAcqOffers';
 import { useAcqMandate } from '@/hooks/useAcqMandate';
+import { useValuationCase } from '@/hooks/useValuationCase';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { BestandCalculation } from './components/BestandCalculation';
@@ -30,6 +32,7 @@ import { AUFTEILER_DEFAULTS } from '@/engines/akquiseCalc/spec';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { ObjektKPIRow, ObjektBasisdaten } from '@/components/akquise/objekteingang';
+import { ValuationPreflight, ValuationPipeline, ValuationReportReader } from '@/components/shared/valuation';
 
 // Keep QuickAnalysisBanner inline — it has complex editable price state with supabase save
 import { Input } from '@/components/ui/input';
