@@ -1000,9 +1000,7 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         const existingLoan = snapshot.existing_loan;
 
         const financingScenarios = [
-          { name: "konservativ", ltv: 0.6, interest: 0.038, repayment: 0.03 },
-          { name: "realistisch", ltv: 0.75, interest: 0.035, repayment: 0.02 },
-          { name: "offensiv", ltv: 0.9, interest: 0.04, repayment: 0.015 },
+          ...CALC.FINANCING_SCENARIOS,
           // V6.0: Add actual financing scenario if loan data exists
           ...(existingLoan && existingLoan.outstanding_balance ? [{
             name: "aktuell (SSOT)",
