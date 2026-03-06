@@ -5,7 +5,6 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { 
   PortalSearchTool,
   AISearchProfileIntake,
-  PropertyResearchTool,
 } from './components';
 import type { PortalSearchParams } from '@/hooks/useAcqTools';
 
@@ -27,8 +26,7 @@ export default function AkquiseTools() {
         {/* 1. Portal-Recherche — Treffer fließen direkt in Objekteingang */}
         <PortalSearchTool initialParams={searchParams} />
 
-        {/* 2. Immobilienbewertung (inkl. GeoMap + Sprengnetter) */}
-        <PropertyResearchTool />
+        {/* 2. SoT Bewertung — wird in Phase 5 hier integriert */}
       </div>
     </PageShell>
   );

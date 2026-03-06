@@ -10,12 +10,9 @@ export { DeliveryTab } from './DeliveryTab';
 // Tools Components
 export { PortalSearchTool } from './PortalSearchTool';
 export { AISearchProfileIntake } from './AISearchProfileIntake';
-export { PropertyResearchTool } from './PropertyResearchTool';
-export { GeoMapTool } from './GeoMapTool';
 export { AcqDataRoom } from './AcqDataRoom';
 export { QuickCalcTool } from './QuickCalcTool';
 export { ExposeDragDropUploader } from './ExposeDragDropUploader';
-
 
 // Calculation Components
 export { BestandCalculation } from './BestandCalculation';

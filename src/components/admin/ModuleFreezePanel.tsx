@@ -24,7 +24,7 @@ interface ModuleInfo {
 }
 
 export function ModuleFreezePanel() {
-  const modules: ModuleInfo[] = zone2Modules.modules.map(m => ({
+  const modules: ModuleInfo[] = (zone2Modules as any[]).map(m => ({
     code: m.code,
     name: m.name,
     base: m.base,

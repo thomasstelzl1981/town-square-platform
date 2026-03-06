@@ -9,7 +9,7 @@ export const SOURCE_CONFIG: Record<string, { label: string; icon: typeof UserPlu
   engine: { label: 'KI-Recherche', icon: Database, color: 'bg-blue-100 text-blue-700' },
   apify: { label: 'Apify', icon: Globe, color: 'bg-purple-100 text-purple-700' },
   firecrawl: { label: 'Firecrawl', icon: Search, color: 'bg-orange-100 text-orange-700' },
-  geomap: { label: 'GeoMap', icon: MapPin, color: 'bg-green-100 text-green-700' },
+  valuation: { label: 'SoT Bewertung', icon: MapPin, color: 'bg-green-100 text-green-700' },
   kontaktbuch: { label: 'Kontaktbuch', icon: BookOpen, color: 'bg-emerald-100 text-emerald-700' },
 };
 

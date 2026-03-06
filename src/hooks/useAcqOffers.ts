@@ -337,27 +337,23 @@ export function useRunAIResearch() {
 }
 
 /**
- * Run GeoMap analysis
+ * Run SoT Valuation (placeholder — will invoke sot-valuation-engine in Phase 5)
  */
-export function useRunGeoMap() {
+export function useRunValuation() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ offerId, address }: { offerId: string; address: string }) => {
-      const { data, error } = await supabase.functions.invoke('sot-geomap-snapshot', {
-        body: { offerId, address },
-      });
-
-      if (error) throw error;
-      return data;
+      // TODO: Phase 5 — invoke sot-valuation-engine edge function
+      throw new Error('SoT Valuation Engine wird in Phase 5 implementiert');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['acq-analysis-runs'] });
       queryClient.invalidateQueries({ queryKey: ['acq-offer'] });
-      toast.success('GeoMap-Analyse gestartet');
+      toast.success('SoT Bewertung gestartet');
     },
     onError: (error) => {
-      toast.error('GeoMap-Fehler: ' + (error as Error).message);
+      toast.error('Bewertungsfehler: ' + (error as Error).message);
     },
   });
 }
