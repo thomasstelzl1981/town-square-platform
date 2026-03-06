@@ -307,3 +307,6 @@ verify_jwt = false
 
 [functions.sot-project-landing-ai]
 verify_jwt = false
+
+[functions.sot-valuation-engine]
+verify_jwt = false
