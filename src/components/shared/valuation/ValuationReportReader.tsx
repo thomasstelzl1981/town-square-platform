@@ -608,8 +608,8 @@ export function ValuationReportReader({
               {geminiResearch.bodenrichtwert && (
                 <div className="p-4 rounded-xl border bg-muted/10 space-y-1">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Bodenrichtwert</p>
-                  <DataRow label="Richtwert" value={`${fmtNum((geminiResearch.bodenrichtwert as any).bodenrichtwertEurSqm ?? (geminiResearch.bodenrichtwert as any).bodenrichtwert_eur_sqm)} €/m²`} />
-                  <DataRow label="Nutzungsart" value={String((geminiResearch.bodenrichtwert as any).artDerNutzung ?? (geminiResearch.bodenrichtwert as any).art_der_nutzung ?? '–')} />
+                  <DataRow label="Richtwert" value={`${fmtNum(geminiResearch.bodenrichtwert.bodenrichtwertEurSqm)} €/m²`} />
+                  <DataRow label="Nutzungsart" value={geminiResearch.bodenrichtwert.artDerNutzung || '–'} />
                   <DataRow label="Quelle" value={geminiResearch.bodenrichtwert.quelle} muted />
                   {geminiResearch.bodenrichtwert.begruendung && <DataRow label="Begründung" value={String(geminiResearch.bodenrichtwert.begruendung)} muted />}
                 </div>
