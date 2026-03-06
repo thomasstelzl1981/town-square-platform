@@ -17,6 +17,7 @@ import {
   ProjectSalesBlock, ProjectContractsBlock, ProjectPublicationBlock,
   ProjectAufteilerCalculation,
 } from '@/components/projekte';
+import { ProjectValuationSection } from '@/components/projekte/ProjectValuationSection';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ProjectDetailHeader } from '@/components/projekte/ProjectDetailHeader';
 import { ProjectUnitsTable } from '@/components/projekte/ProjectUnitsTable';
