@@ -23,7 +23,7 @@ import {
   useCreateOffer,
   useUploadOfferDocument,
   useRunAIResearch,
-  useRunGeoMap,
+  useRunValuation,
   useRunCalcBestand,
   useRunCalcAufteiler,
   useExtractFromDocument,
