@@ -1091,7 +1091,7 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         await updateStage(4);
 
         const assumptions: any[] = [];
-        const objectType = snapshot.object_type || "other";
+        const calcObjectType = snapshot.object_type || "other";
 
         // V8.0: Bodenwert berechnen (mit Heuristik-Fallback)
         let plotAreaSqm = Number(snapshot.plot_area_sqm) || Number(snapshot.grundstueck_flaeche) || 0;
@@ -1100,9 +1100,9 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         
         // Heuristik wenn plot_area fehlt
         if (plotAreaSqm <= 0 && livingArea > 0) {
-          const heuristicFactor = getPlotAreaHeuristic(objectType);
+          const heuristicFactor = getPlotAreaHeuristic(calcObjectType);
           plotAreaSqm = Math.round(livingArea * heuristicFactor);
-          assumptions.push({ text: `Grundstücksfläche geschätzt: ${livingArea} m² × ${heuristicFactor} = ${plotAreaSqm} m² (Heuristik für ${objectType})`, impact: "medium" });
+          assumptions.push({ text: `Grundstücksfläche geschätzt: ${livingArea} m² × ${heuristicFactor} = ${plotAreaSqm} m² (Heuristik für ${calcObjectType})`, impact: "medium" });
         }
         
         const bodenwert = plotAreaSqm > 0 ? Math.round(plotAreaSqm * bodenrichtwertProxy) : 0;
@@ -1130,12 +1130,12 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
           const reinertrag = annualRent - bewirtschaftungAbzug;
           
           // Liegenschaftszins nach Objektart
-          const capRate = getLiegenschaftszins(objectType);
+          const capRate = getLiegenschaftszins(calcObjectType);
           
           // Restnutzungsdauer
           const yearBuilt = Number(snapshot.year_built) || 1980;
           const age = new Date().getFullYear() - yearBuilt;
-          const gnd = getGesamtnutzungsdauer(objectType);
+          const gnd = getGesamtnutzungsdauer(calcObjectType);
           const rnd = Math.max(10, gnd - age);
           
           // Barwertfaktor (Vervielfältiger)
@@ -1150,7 +1150,7 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
           const ertragswert = Math.max(0, ertragswertGebaeude + bodenwert);
           
           assumptions.push({ text: `Bewirtschaftung differenziert: Verwaltung ${(bew.verwaltungPercent*100).toFixed(0)}% + IH ${bew.instandhaltungPerSqmYear}€/m²/a + Mietausfall ${(bew.mietausfallPercent*100).toFixed(0)}% + Nicht-umlagef. ${(bew.nichtUmlagefaehigPercent*100).toFixed(0)}% = ${Math.round(bewirtschaftungRate*100)}% effektiv`, impact: "high" });
-          assumptions.push({ text: `Liegenschaftszins ${(capRate * 100).toFixed(1)}% (${objectType}), RND ${rnd} Jahre, Barwertfaktor ${bwf.toFixed(2)}`, impact: "high" });
+          assumptions.push({ text: `Liegenschaftszins ${(capRate * 100).toFixed(1)}% (${calcObjectType}), RND ${rnd} Jahre, Barwertfaktor ${bwf.toFixed(2)}`, impact: "high" });
 
           ertragswertResult = {
             method: "ertragswert",
