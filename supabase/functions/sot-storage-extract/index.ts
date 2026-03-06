@@ -246,6 +246,7 @@ Antworte NUR mit validem JSON:
       p_action_code: "storage_extraction",
       p_ref_type: "document",
       p_ref_id: documentId,
+      p_user_id: user.id,
     });
 
     console.log(`[sot-storage-extract] Extracted ${doc.name}: ${chunks.length} chunks, confidence ${parsed.confidence}`);

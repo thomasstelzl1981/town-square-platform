@@ -315,6 +315,7 @@ Deno.serve(async (req) => {
       p_action_code: "weg_abrechnung_parsing",
       p_ref_type: "document",
       p_ref_id: documentId,
+      p_user_id: user.id,
     });
 
     console.log(`[sot-weg-abrechnung-parse] Extracted ${positions.length} positions from ${doc.name}, confidence ${confidence}`);

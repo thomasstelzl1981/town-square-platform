@@ -111,6 +111,7 @@ Deno.serve(async (req) => {
           p_action_code: action_code || "unknown",
           p_ref_type: ref_type || null,
           p_ref_id: ref_id || null,
+          p_user_id: user.id,
         });
 
         if (error) {

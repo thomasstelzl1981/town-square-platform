@@ -292,6 +292,7 @@ Deno.serve(async (req) => {
       p_action_code: "finance_preparation",
       p_ref_type: "finance_request",
       p_ref_id: financeRequestId || propId || applicantProfileId,
+      p_user_id: user.id,
     });
 
     console.log(`[sot-finance-prepare] Prepared financing package: completeness ${analysis.completeness_score}%, bank_ready: ${analysis.bank_ready}`);
