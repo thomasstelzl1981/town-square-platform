@@ -746,10 +746,32 @@ Deno.serve(async (req) => {
 
             const globalScore = Math.round(scoreByCategory.reduce((s, c) => s + c.score, 0) / scoreByCategory.length);
 
+            // Prefetch map images as Base64 for CORS-free PDF embedding
+            const fetchImageBase64 = async (url: string): Promise<string | null> => {
+              try {
+                const resp = await fetch(url);
+                if (!resp.ok) return null;
+                const buf = await resp.arrayBuffer();
+                const bytes = new Uint8Array(buf);
+                let binary = '';
+                for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+                const contentType = resp.headers.get('content-type') || 'image/png';
+                return `data:${contentType};base64,${btoa(binary)}`;
+              } catch { return null; }
+            };
+
+            const [microB64, macroB64, streetB64] = await Promise.all([
+              fetchImageBase64(microMap),
+              fetchImageBase64(macroMap),
+              fetchImageBase64(streetView),
+            ]);
+            stageLog(2, `Map Base64 prefetch: micro=${!!microB64}, macro=${!!macroB64}, street=${!!streetB64}`);
+
             locationAnalysis = {
               available: true, geocode: geo, scores: scoreByCategory,
               global_score: globalScore, pois: poiResults, reachability,
               maps: { micro: microMap, macro: macroMap, street_view: streetView },
+              maps_base64: { micro: microB64, macro: macroB64, street_view: streetB64 },
             };
 
             // Narrative
