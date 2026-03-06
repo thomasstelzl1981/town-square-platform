@@ -317,6 +317,29 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
   }
 
   // ═══════════════════════════════════════
+  // PAGE 9: RECHT & EIGENTUM (SSOT only)
+  // ═══════════════════════════════════════
+  if (data.legalTitle && data.sourceMode === 'SSOT_FINAL') {
+    newPage();
+    heading('Recht & Eigentum');
+
+    if (data.legalTitle.landRegisterCourt) row('Grundbuchamt', data.legalTitle.landRegisterCourt);
+    if (data.legalTitle.landRegisterSheet) row('Blatt', data.legalTitle.landRegisterSheet);
+    if (data.legalTitle.landRegisterVolume) row('Band', data.legalTitle.landRegisterVolume);
+    if (data.legalTitle.parcelNumber) row('Flurstück', data.legalTitle.parcelNumber);
+    if (data.legalTitle.ownershipSharePercent != null) row('Eigentumsanteil', `${data.legalTitle.ownershipSharePercent}%`);
+    if (data.legalTitle.wegFlag) row('WEG', `Ja${data.legalTitle.teNumber ? ` (TE: ${data.legalTitle.teNumber})` : ''}`);
+    if (data.legalTitle.meaShare != null) row('MEA', data.legalTitle.meaShare.toString());
+    y += 3;
+
+    subheading('Dokumentstatus');
+    row('Grundbuchauszug', data.legalTitle.landRegisterExtractAvailable ? '✓ Vorhanden' : '✗ Nicht vorhanden');
+    row('Teilungserklärung', data.legalTitle.partitionDeclarationAvailable ? '✓ Vorhanden' : '✗ Nicht vorhanden');
+    y += 3;
+
+    body(data.legalTitle.encumbrancesNote);
+  }
+
   // FOOTER on every page
   // ═══════════════════════════════════════
   const totalPages = doc.getNumberOfPages();
