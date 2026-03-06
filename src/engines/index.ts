@@ -75,3 +75,7 @@ export * from './plc/spec';
 
 // Shared Controller Conventions
 export * from './shared/controllerConventions';
+
+// Engine 19: SoT Valuation Engine (ENG-VALUATION)
+export * from './valuation/engine';
+export * from './valuation/spec';
