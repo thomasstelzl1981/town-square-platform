@@ -77,7 +77,10 @@ export const BEWIRTSCHAFTUNG_DEFAULTS = {
   nichtUmlagefaehigPercent: 0.03,
 } as const;
 
-/** Sachwert proxy: Herstellkosten pro m² nach Baujahr-Cluster */
+/** Baupreisindex-Korrektor 2010→2026 (Statistisches Bundesamt, Wohngebäude) */
+export const BPI_FACTOR = 1.38;
+
+/** Sachwert proxy: Herstellkosten pro m² nach Baujahr-Cluster (NHK 2010 Basis, VOR BPI) */
 export const HERSTELLKOSTEN_CLUSTERS: Record<string, number> = {
   'pre_1950': 1200,
   '1950_1970': 1400,
@@ -85,6 +88,54 @@ export const HERSTELLKOSTEN_CLUSTERS: Record<string, number> = {
   '1990_2010': 2000,
   'post_2010': 2600,
 };
+
+/** Liegenschaftszinssatz nach Objektart (ImmoWertV-Standard) */
+export const LIEGENSCHAFTSZINS_BY_TYPE: Record<string, number> = {
+  'mfh': 0.05,
+  'etw': 0.035,
+  'efh': 0.03,
+  'dhh': 0.03,
+  'gew': 0.06,
+  'mixed': 0.055,
+  'grundstueck': 0.04,
+  'other': 0.045,
+};
+
+/** Gesamtnutzungsdauer nach Objektart (Jahre) */
+export const GESAMTNUTZUNGSDAUER_BY_TYPE: Record<string, number> = {
+  'mfh': 80,
+  'etw': 80,
+  'efh': 80,
+  'dhh': 80,
+  'gew': 60,
+  'mixed': 70,
+  'grundstueck': 0,
+  'other': 70,
+};
+
+/** Heuristik für Grundstücksfläche wenn plot_area_sqm fehlt (Faktor × living_area) */
+export const PLOT_AREA_HEURISTIC_BY_TYPE: Record<string, number> = {
+  'mfh': 1.5,
+  'efh': 3.0,
+  'dhh': 2.0,
+  'etw': 0.3,
+  'gew': 1.2,
+  'mixed': 1.3,
+  'grundstueck': 1.0,
+  'other': 1.0,
+};
+
+/** Bodenrichtwert-Proxy nach Lage-Score (5 Stufen) */
+export const BODENRICHTWERT_STUFEN: { maxScore: number; value: number }[] = [
+  { maxScore: 30, value: 120 },   // einfache/ländliche Lage
+  { maxScore: 45, value: 200 },   // untere Mittellage
+  { maxScore: 60, value: 300 },   // Mittellage Mittelstadt
+  { maxScore: 75, value: 400 },   // gute Lage
+  { maxScore: 100, value: 550 },  // sehr gute Lage / Großstadt
+];
+
+/** Mindest-Bodenrichtwert für Städte (Floor) */
+export const BODENRICHTWERT_FLOOR = 200;
 
 // ============================================================================
 // ENUMS & LITERALS
