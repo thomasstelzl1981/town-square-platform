@@ -220,6 +220,7 @@ function SingleEmailDetail({
             <Button variant="ghost" size="icon" className="h-8 w-8" title="Antworten" onClick={() => onReply(email)}><Reply className="h-4 w-4" /></Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" title="Allen antworten" onClick={() => onReplyAll(email)}><ReplyAll className="h-4 w-4" /></Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" title="Weiterleiten" onClick={() => onForward(email)}><Forward className="h-4 w-4" /></Button>
+            <SendToObjekteingangButton email={email} />
             <Separator orientation="vertical" className="h-5 mx-1" />
             <Button variant="ghost" size="icon" className="h-8 w-8" title="Markieren" onClick={() => onToggleStar(email.id, email.is_starred)} disabled={isPending.star}>
               <Star className={cn("h-4 w-4", email.is_starred && "text-yellow-500 fill-yellow-500")} />
