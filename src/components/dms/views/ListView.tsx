@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react';
 import { Folder, File, ChevronUp, ChevronDown } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileRowMenu } from '@/components/dms/FileRowMenu';
@@ -35,8 +36,10 @@ interface ListViewProps {
   onPreview: (item: FileManagerItem) => void;
   onDelete: (item: FileManagerItem) => void;
   onNewSubfolder: (parentNodeId: string) => void;
+  onSelectedItemChange?: (item: FileManagerItem | null) => void;
   isDownloading?: boolean;
   isDeleting?: boolean;
+  activeItemId?: string | null;
 }
 
 interface SortHeaderProps {
@@ -77,11 +80,29 @@ export function ListView({
   onPreview,
   onDelete,
   onNewSubfolder,
+  onSelectedItemChange,
   isDownloading,
   isDeleting,
+  activeItemId,
 }: ListViewProps) {
   const isMobile = useIsMobile();
   const allSelected = items.length > 0 && selectedIds.size === items.length;
+
+  const handleRowClick = useCallback((item: FileManagerItem) => {
+    if (item.type === 'folder' && item.nodeId) {
+      onNavigateFolder(item.nodeId);
+      onSelectedItemChange?.(item);
+    } else {
+      // Single click = select, report to parent
+      onSelectedItemChange?.(item);
+    }
+  }, [onNavigateFolder, onSelectedItemChange]);
+
+  const handleRowDoubleClick = useCallback((item: FileManagerItem) => {
+    if (item.type === 'file') {
+      onPreview(item);
+    }
+  }, [onPreview]);
 
   if (isMobile) {
     return (
@@ -96,6 +117,7 @@ export function ListView({
           ) : (
             items.map(item => {
               const IconComponent = item.type === 'folder' ? Folder : getFileIcon(item.mimeType);
+              const isActive = activeItemId === item.id;
               const meta = item.type === 'file'
                 ? [formatFileSize(item.size), formatType(item.mimeType), formatDate(item.createdAt)].filter(v => v !== '—').join(' · ')
                 : '';
@@ -103,16 +125,13 @@ export function ListView({
               return (
                 <div
                   key={item.id}
-                  className="group/row flex items-center gap-3 px-4 py-3 border-b border-border/30 active:bg-muted/30 transition-colors cursor-pointer"
-                  onClick={() => {
-                    if (item.type === 'folder' && item.nodeId) {
-                      onNavigateFolder(item.nodeId);
-                    } else {
-                      onPreview(item);
-                    }
-                  }}
+                  className={cn(
+                    'group/row flex items-center gap-3 px-4 py-3 border-b border-border/30 active:bg-muted/30 transition-colors cursor-pointer',
+                    isActive && 'bg-primary/10 ring-1 ring-inset ring-primary/30',
+                  )}
+                  onClick={() => handleRowClick(item)}
                 >
-                  <IconComponent className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <IconComponent className={cn('h-5 w-5 shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm truncate">{item.name}</p>
                     {meta && <p className="text-xs text-muted-foreground mt-0.5 truncate">{meta}</p>}
@@ -164,7 +183,8 @@ export function ListView({
           </div>
         ) : (
           items.map(item => {
-            const isSelected = selectedIds.has(item.id);
+            const isChecked = selectedIds.has(item.id);
+            const isActive = activeItemId === item.id;
             const IconComponent = item.type === 'folder' ? Folder : getFileIcon(item.mimeType);
 
             return (
@@ -172,24 +192,20 @@ export function ListView({
                 key={item.id}
                 className={cn(
                   'group/row grid grid-cols-[40px_1fr_100px_100px_120px_40px] items-center px-4 py-3 border-b border-border/40 dark:border-border/30 hover:bg-muted/30 transition-colors cursor-pointer gap-2',
-                  isSelected && 'bg-primary/5',
+                  isChecked && 'bg-primary/5',
+                  isActive && 'bg-primary/10 ring-1 ring-inset ring-primary/30',
                 )}
-                onClick={() => {
-                  if (item.type === 'folder' && item.nodeId) {
-                    onNavigateFolder(item.nodeId);
-                  } else {
-                    onPreview(item);
-                  }
-                }}
+                onClick={() => handleRowClick(item)}
+                onDoubleClick={() => handleRowDoubleClick(item)}
               >
                 <Checkbox
-                  checked={isSelected}
+                  checked={isChecked}
                   onCheckedChange={() => onToggleSelect(item.id)}
                   onClick={(e) => e.stopPropagation()}
                   className="justify-self-center"
                 />
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <IconComponent className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <IconComponent className={cn('h-5 w-5 shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')} />
                   <span className="text-sm truncate">{item.name}</span>
                 </div>
                 <span className="text-sm text-muted-foreground">{item.type === 'file' ? formatFileSize(item.size) : '—'}</span>

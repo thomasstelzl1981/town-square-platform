@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useRef } from 'react';
-import { Folder, ChevronRight, Download, Eye, Trash2 } from 'lucide-react';
+import { Folder, ChevronRight, Download, Eye, Trash2, FolderPlus } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -21,6 +21,7 @@ interface ColumnViewProps {
   onDownload?: (documentId: string) => void;
   onDelete?: (item: FileManagerItem) => void;
   onNewSubfolder?: (parentNodeId: string) => void;
+  onSelectedItemChange?: (item: FileManagerItem | null) => void;
   isDownloading?: boolean;
   isDeleting?: boolean;
 }
@@ -139,8 +140,35 @@ function Column({ items, selectedId, selectedFileId, onSelect, onDoubleClickFile
                   </div>
                 )}
 
-                {/* Folder context menu */}
-                {item.type === 'folder' && (
+                {/* Folder inline actions — visible when selected */}
+                {item.type === 'folder' && isHighlighted && (
+                  <div className="shrink-0 flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+                    {item.nodeId && onNewSubfolder && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => onNewSubfolder(item.nodeId!)}
+                      >
+                        <FolderPlus className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {onDelete && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-destructive hover:text-destructive"
+                        onClick={() => onDelete(toFileManagerItem())}
+                        disabled={isDeleting}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {/* Folder context menu — secondary, when NOT highlighted */}
+                {item.type === 'folder' && !isHighlighted && (
                   <div className="shrink-0" onClick={e => e.stopPropagation()}>
                     <FileRowMenu
                       type="folder"
@@ -163,7 +191,7 @@ function Column({ items, selectedId, selectedFileId, onSelect, onDoubleClickFile
   );
 }
 
-export function ColumnView({ allNodes, documents, documentLinks, columnPath, onNavigateColumn, onSelectFile, onDownload, onDelete, onNewSubfolder, isDownloading, isDeleting }: ColumnViewProps) {
+export function ColumnView({ allNodes, documents, documentLinks, columnPath, onNavigateColumn, onSelectFile, onDownload, onDelete, onNewSubfolder, onSelectedItemChange, isDownloading, isDeleting }: ColumnViewProps) {
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
 
   const buildFileManagerItem = useCallback((item: ColumnItem): FileManagerItem => {
@@ -189,11 +217,22 @@ export function ColumnView({ allNodes, documents, documentLinks, columnPath, onN
     if (item.type === 'folder' && item.nodeId) {
       onNavigateColumn(item.nodeId, depth);
       setSelectedFileId(null);
+      // Report folder selection to parent
+      const folderItem: FileManagerItem = {
+        id: item.id,
+        name: item.name,
+        type: 'folder',
+        createdAt: item.createdAt || '',
+        nodeId: item.nodeId,
+      };
+      onSelectedItemChange?.(folderItem);
     } else {
       setSelectedFileId(item.id);
-      onSelectFile(buildFileManagerItem(item));
+      const fmi = buildFileManagerItem(item);
+      onSelectFile(fmi);
+      onSelectedItemChange?.(fmi);
     }
-  }, [onNavigateColumn, onSelectFile, buildFileManagerItem]);
+  }, [onNavigateColumn, onSelectFile, buildFileManagerItem, onSelectedItemChange]);
 
   const columns = useMemo(() => {
     const result: { parentId: string | null; selectedId?: string; items: ColumnItem[] }[] = [];
