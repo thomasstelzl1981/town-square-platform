@@ -452,22 +452,22 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   }
 
   return (
-    <FileDropZone
-      onDrop={handleFileDrop}
-      className={className}
-      targetFolderName={targetFolderName}
-    >
-      <div className={cn(DESIGN.STORAGE.CONTAINER, DESIGN.STORAGE.MIN_HEIGHT, 'relative')}>
-        {isUploading && (
-          <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/60 backdrop-blur-sm">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              <p className="text-xs text-muted-foreground">
-                {universalUpload.progress.message || 'Wird hochgeladen…'}
-              </p>
-            </div>
+    <div className={cn(DESIGN.STORAGE.CONTAINER, DESIGN.STORAGE.MIN_HEIGHT, 'relative', className)}>
+      {isUploading && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <p className="text-xs text-muted-foreground">
+              {universalUpload.progress.message || 'Wird hochgeladen…'}
+            </p>
           </div>
-        )}
+        </div>
+      )}
+      <FileDropZone
+        onDrop={handleFileDrop}
+        targetFolderName={targetFolderName}
+        className="h-full"
+      >
         <ColumnView
           allNodes={allNodes}
           documents={documents}
@@ -481,7 +481,7 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
           isDownloading={isDownloading}
           isDeleting={isDeleting}
         />
-      </div>
+      </FileDropZone>
 
       <NewFolderDialog
         open={showNewFolderDialog}
@@ -489,6 +489,6 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
         onCreateFolder={handleCreateFolder}
         isCreating={false}
       />
-    </FileDropZone>
+    </div>
   );
 }
