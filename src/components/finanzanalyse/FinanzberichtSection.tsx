@@ -221,17 +221,36 @@ export function FinanzberichtSection() {
   return (
     <div className="space-y-6 mt-10">
       <Separator />
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-          <FileText className="h-5 w-5 text-primary" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <FileText className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold">Finanzbericht</h2>
+            <p className="text-sm text-muted-foreground">Strukturierte Vermögensauskunft</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-bold">Finanzbericht</h2>
-          <p className="text-sm text-muted-foreground">Strukturierte Vermögensauskunft</p>
-        </div>
+        <Button variant="outline" size="sm" onClick={handleExportClick} disabled={isGenerating}>
+          <Download className="h-4 w-4 mr-2" />
+          {isGenerating ? 'Generiert…' : 'PDF Export'}
+        </Button>
       </div>
 
-      <div ref={contentRef} className="space-y-8">
+      <PdfConsentGateDialog
+        open={consentDialogOpen}
+        onOpenChange={setConsentDialogOpen}
+        templateLabel="Finanzreport"
+        scopeChecks={[
+          { scope: 'finance:read', label: 'Rolle: Finanzdaten lesen', granted: consentsGranted['finance:read'] },
+          { scope: 'consent:finance_report', label: 'Consent: Finanzreport-Export', granted: consentsGranted['consent:finance_report'] },
+        ]}
+        onConfirm={handleConfirmExport}
+        onGrantConsent={handleGrantConsent}
+        isGenerating={isGenerating}
+      />
+
+      <div className="space-y-8">
         {/* ═══ SEKTION 1: Personen ═══ */}
         <Card className="glass-card">
           <CardContent className="p-6">
