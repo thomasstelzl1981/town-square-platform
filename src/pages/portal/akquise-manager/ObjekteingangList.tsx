@@ -61,19 +61,28 @@ export function ObjekteingangList() {
 
   const mandateIds = mandates.map(m => m.id);
   
+  // Fetch ALL offers for this tenant (including unassigned portal results)
   const { data: allOffers = [], isLoading: loadingOffers } = useQuery({
-    queryKey: ['acq-offers-inbox', mandateIds],
+    queryKey: ['acq-offers-inbox'],
     queryFn: async () => {
-      if (mandateIds.length === 0) return [];
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('active_tenant_id')
+        .eq('id', user.id)
+        .single();
+      if (!profile?.active_tenant_id) return [];
+
       const { data, error } = await supabase
         .from('acq_offers')
         .select('*')
-        .in('mandate_id', mandateIds)
-        .order('created_at', { ascending: false });
+        .eq('tenant_id', profile.active_tenant_id)
+        .order('created_at', { ascending: false })
+        .limit(500);
       if (error) throw error;
       return data as AcqOffer[];
     },
-    enabled: mandateIds.length > 0,
   });
 
   const filteredOffers = React.useMemo(() => {
