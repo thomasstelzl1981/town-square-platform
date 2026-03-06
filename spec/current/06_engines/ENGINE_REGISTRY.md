@@ -1,6 +1,6 @@
 # ENGINE REGISTRY — Single Source of Truth (SSOT)
 
-> Version 1.0 | Stand: 2026-02-18 | Maintainer: Zone 1 Governance
+> Version 1.9 | Stand: 2026-03-06 | Maintainer: Zone 1 Governance
 
 ---
 
@@ -53,17 +53,21 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 | ENG-TRIP | Trip Engine (Fahrtenbuch) | MOD-17 | ⚡ Teilweise | `src/engines/tripEngine/spec.ts`, `engine.ts` |
 | ENG-TLC | Tenancy Lifecycle Controller | MOD-04, MOD-00 | ✅ Live | `src/engines/tenancyLifecycle/spec.ts`, `engine.ts` |
 | ENG-SLC | Sales Lifecycle Controller | MOD-04, MOD-06, MOD-13 | ⚡ Teilweise | `src/engines/slc/spec.ts`, `engine.ts` |
+| ENG-FLC | Financing Lifecycle Controller | MOD-07, MOD-11, Z1 Finance | ⚡ Teilweise | `src/engines/flc/spec.ts`, `engine.ts`, `conventions.ts` |
 | ENG-FDC | Finance Data Controller | MOD-18, MOD-20, MOD-04 | ✅ Live | `src/engines/fdc/spec.ts`, `engine.ts`, `conventions.ts` |
 | ENG-PLC | Pet Service Lifecycle Controller | MOD-22, MOD-05, Z3, Z1 | ⚡ Teilweise | `src/engines/plc/spec.ts`, `engine.ts` |
 | ENG-VALUATION | SoT Valuation Engine | MOD-04, MOD-12, MOD-13 | 🔲 Geplant | `src/engines/valuation/spec.ts`, `engine.ts` |
 
-### Orchestrierung (1 Engine)
+### Orchestrierung (4 Engines)
 
 | Code | Name | Status | Billing | Ausfuehrung |
 |------|------|--------|---------|-------------|
 | ENG-TLC | Tenancy Lifecycle Controller | ✅ Live | Free + KI (1 Credit/Run) | Edge Function (`sot-tenancy-lifecycle`, Weekly CRON Sun 03:00 UTC) + Client Engine |
 | ENG-SLC | Sales Lifecycle Controller | ⚡ Teilweise | Free | Client Engine (Phase-Tracking, Drift-Detection, Stuck-Detection) |
+| ENG-FLC | Financing Lifecycle Controller | ⚡ Teilweise | Free | Client Engine (14-Phasen State Machine, 7 Quality Gates) + Edge Function (`sot-flc-lifecycle`, Daily CRON) + `sot-finance-manager-notify` |
 | ENG-PLC | Pet Service Lifecycle Controller | ⚡ Teilweise | Free | Client Engine (Marketplace Phase-Tracking, Deposit-Calculation, Stuck-Detection) |
+
+> **ENG-FLC** orchestriert Finanzierungsfaelle von Z3-Intake ueber Z1-Zuweisung bis MOD-11-Bearbeitung. 14 Phasen (INTAKE_RECEIVED → PLATFORM_FEE_PAID), 7 Quality Gates, SLA-Ueberwachung (48h Intake, 72h Manager-Annahme), idempotente E-Mail-Benachrichtigung, 25% Plattformanteil-Erzwingung.
 
 > **ENG-TLC** ist der uebergeordnete Orchestrator fuer alle Mietverhaeltnisse. Er prueft woechentlich: Zahlungsstatus, Mahnstufen, Mieterhoehungs-Berechtigung (§558 BGB), Kautionsstatus, Fristen und generiert KI-gestuetzte Next-Best-Actions via `google/gemini-2.5-pro`.
 
@@ -138,3 +142,4 @@ Jede Engine hat eine `engineVersion` die in `armstrong_action_runs.engine_versio
 | 2026-03-02 | v1.6 — ENG-FDC (Finance Data Controller) hinzugefuegt. DSGVO-konformes Governance Backbone fuer MOD-18: Registry (72 Objekte), Link Graph, Repair Actions. 12 Integritaetsregeln, Coverage Scoring, Patrol Cron (sot-fdc-patrol). |
 | 2026-03-02 | v1.7 — ENG-PLC (Pet Service Lifecycle Controller) hinzugefuegt. Marktplatz-Modell fuer Pet Services: 11-Phasen State Machine, 7.5% nicht-erstattbare Plattformgebuehr (Deposit), Stripe-Integration, Stuck-Detection. DB: pet_service_cases, pet_lifecycle_events. |
 | 2026-03-06 | v1.8 — ENG-VALUATION (SoT Valuation Engine) hinzugefuegt. Ersetzt Sprengnetter + GeoMap komplett. 6-Stage Pipeline (Preflight, Intake, Norm+Location, Comps, Calc, Report). Deterministischer Kern (Ertrag/Comp-Proxy/Sachwert). Google Maps (Geocode/Places/Routes/Static), Portal-Comps via Scraper. 12-Seiten PDF. 20 Credits/Case. DB: valuation_cases, valuation_inputs, valuation_results, valuation_reports. |
+| 2026-03-06 | v1.9 — ENG-FLC (Financing Lifecycle Controller) in Registry nachgetragen. 14-Phasen State Machine, 7 Quality Gates, Daily CRON (`sot-flc-lifecycle`), idempotente E-Mail-Orchestrierung (`sot-finance-manager-notify`). Scope: MOD-07, MOD-11, Zone 1 Finance Desk. DB: finance_lifecycle_events. |
