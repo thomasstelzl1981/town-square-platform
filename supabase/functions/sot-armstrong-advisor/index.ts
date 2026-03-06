@@ -1298,6 +1298,10 @@ function classifyIntent(message: string, actionRequest: ActionRequest | undefine
     "datenraum analysieren", "datenraum durchsuchbar", "storage extrahieren",
     "alle dokumente analysieren", "bulk extraktion", "datenraum vorbereiten",
     "armstrong zugriff", "dokumente indexieren", "datenraum scannen",
+    // Enrich from Storage (document → existing record)
+    "grundbuch auslesen", "daten übernehmen", "akte befüllen", "enrich",
+    "in die akte", "daten aus dokument", "grundbuchdaten", "dokument auslesen",
+    "akte anreichern", "felder übernehmen", "daten eintragen",
   ];
   if (actionKeywords.some(kw => lowerMsg.includes(kw))) {
     return "ACTION";
