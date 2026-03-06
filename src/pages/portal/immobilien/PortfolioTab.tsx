@@ -226,6 +226,40 @@ export function PortfolioTab() {
   const selectedContext = contexts.find(c => c.id === selectedContextId);
 
   // ── Handlers ──
+  const handlePortfolioPdfExport = useCallback(() => {
+    if (!totals || !displayUnits.length) return;
+    const ownerName = activeOrganization?.name || 'Portfolio';
+    const dossierData: PortfolioDossierData = {
+      ownerName,
+      reportDate: new Date().toLocaleDateString('de-DE'),
+      totalValue: totals.totalValue,
+      totalRentYearly: totals.totalIncome,
+      vacancyRate: 0,
+      avgYield: totals.avgYield,
+      totalDebt: totals.totalDebt,
+      totalAnnuity: totals.totalAnnuity,
+      properties: displayUnits.slice(0, 20).map(u => ({
+        address: `${u.address || ''}, ${u.city || ''}`.trim(),
+        type: u.property_type || '',
+        value: u.market_value || 0,
+        units: 1,
+        rentMonthly: (u.annual_net_cold_rent || 0) / 12,
+        yieldGross: u.market_value ? ((u.annual_net_cold_rent || 0) / u.market_value) * 100 : 0,
+        vacancy: 0,
+        status: 'Aktiv',
+      })),
+      loans: (loansData || []).slice(0, 20).map(l => ({
+        property: displayUnits.find(u => u.property_id === l.property_id)?.address || '',
+        lender: '',
+        balance: l.outstanding_balance_eur || 0,
+        rate: (l.annuity_monthly_eur || 0),
+        fixedUntil: '',
+      })),
+      riskFlags: [],
+    };
+    generatePdf(() => generatePortfolioDossier(dossierData));
+  }, [totals, displayUnits, activeOrganization, loansData, generatePdf]);
+
   const handleContextSelect = useCallback((id: string | null) => {
     const p = new URLSearchParams(searchParams);
     id ? p.set('context', id) : p.delete('context');
