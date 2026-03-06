@@ -402,6 +402,8 @@ export interface PropertyFormData {
   totalAreaSqm?: number;
   heatingType?: string;
   energySource?: string;
+  coreRenovated?: boolean;
+  renovationYear?: number;
 
   // Legal
   landRegisterCourt?: string;

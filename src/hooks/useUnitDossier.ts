@@ -258,6 +258,8 @@ export function useUnitDossier(unitId: string | undefined) {
         energyCertValue: unitData.energy_certificate_value,
         energyCertValidUntil: unitData.energy_certificate_valid_until,
         featuresTags: unitData.features_tags as string[] || [],
+        coreRenovated: (property as any).core_renovated || false,
+        renovationYear: (property as any).renovation_year,
 
         // Block D: Legal
         landRegisterCourt: property.land_register_court,
