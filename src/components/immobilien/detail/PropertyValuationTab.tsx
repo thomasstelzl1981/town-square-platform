@@ -1,15 +1,16 @@
 /**
  * PropertyValuationTab — Bewertung tab extracted from PropertyDetailPage
  * R-15 sub-component
- * V7.0: Delete fix (tenant_id + error check), Open-Case handler, re-open completed valuations
+ * V8.0: Phase 1 — Valuation Archive: Version numbers, confidence bands, delta trend, Quick-Compare
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, FileText, TrendingUp, Play, Database, Trash2, RotateCcw, AlertTriangle, Eye } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Loader2, FileText, TrendingUp, TrendingDown, Minus, Play, Database, Trash2, RotateCcw, AlertTriangle, Eye, GitCompareArrows } from 'lucide-react';
 import { useValuationCase } from '@/hooks/useValuationCase';
 import { toast } from 'sonner';
 import {
@@ -19,20 +20,37 @@ import {
   ValuationDiffReview,
   generateValuationPdf,
 } from '@/components/shared/valuation';
+import { ValuationCompare } from '@/components/shared/valuation/ValuationCompare';
 
 interface Props {
   propertyId: string;
   tenantId: string;
 }
 
+interface EnrichedCase {
+  id: string;
+  status: string;
+  source_mode: string | null;
+  created_at: string;
+  updated_at: string;
+  market_value: number | null;
+  p25: number | null;
+  p75: number | null;
+  data_quality: any | null;
+  version: number;
+  delta: number | null;
+  deltaPercent: number | null;
+}
+
 export function PropertyValuationTab({ propertyId, tenantId }: Props) {
   const [showPipeline, setShowPipeline] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
   const queryClient = useQueryClient();
   const { state, isLoading, runPreflight, runValuation, fetchResult, reset } = useValuationCase();
 
-  // Fetch existing valuations from valuation_cases (SSOT table)
+  // Fetch existing valuations from valuation_cases + results
   const { data: valuations, isLoading: loadingList } = useQuery({
     queryKey: ['valuation-cases', propertyId, tenantId],
     queryFn: async () => {
@@ -41,28 +59,60 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
         .select('id, status, source_mode, created_at, updated_at')
         .eq('property_id', propertyId)
         .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
       if (error) throw error;
+      if (!data || data.length === 0) return [];
 
-      if (data && data.length > 0) {
-        const completedIds = data.filter(c => c.status === 'final').map(c => c.id);
-        if (completedIds.length > 0) {
-          const { data: results } = await supabase
-            .from('valuation_results')
-            .select('case_id, value_band')
-            .in('case_id', completedIds);
-          
-          const resultMap = new Map(results?.map(r => [r.case_id, r.value_band]) || []);
-          return data.map(c => ({
-            ...c,
-            market_value: (() => {
-              const vb = resultMap.get(c.id) as any;
-              return vb?.p50 ?? null;
-            })(),
-          }));
-        }
+      const completedIds = data.filter(c => c.status === 'final').map(c => c.id);
+      let resultMap = new Map<string, any>();
+
+      if (completedIds.length > 0) {
+        const { data: results } = await supabase
+          .from('valuation_results')
+          .select('case_id, value_band, data_quality')
+          .in('case_id', completedIds);
+
+        resultMap = new Map(results?.map(r => [r.case_id, r]) || []);
       }
-      return data?.map(c => ({ ...c, market_value: null as number | null })) || [];
+
+      // Build enriched list: ascending order for version numbering
+      const enriched: EnrichedCase[] = data.map((c, idx) => {
+        const result = resultMap.get(c.id);
+        const vb = result?.value_band as any;
+        const marketValue = vb?.p50 ?? null;
+        const p25 = vb?.p25 ?? null;
+        const p75 = vb?.p75 ?? null;
+        const dq = result?.data_quality ?? null;
+
+        // Delta vs previous completed case
+        let delta: number | null = null;
+        let deltaPercent: number | null = null;
+        if (marketValue !== null && idx > 0) {
+          for (let j = idx - 1; j >= 0; j--) {
+            const prev = resultMap.get(data[j].id);
+            const prevMv = (prev?.value_band as any)?.p50 ?? null;
+            if (prevMv !== null) {
+              delta = marketValue - prevMv;
+              deltaPercent = prevMv > 0 ? (delta / prevMv) * 100 : null;
+              break;
+            }
+          }
+        }
+
+        return {
+          ...c,
+          market_value: marketValue,
+          p25,
+          p75,
+          data_quality: dq,
+          version: idx + 1,
+          delta,
+          deltaPercent,
+        };
+      });
+
+      // Return in descending order for display (newest first)
+      return enriched.reverse();
     },
     enabled: !!propertyId && !!tenantId,
   });
@@ -70,21 +120,19 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
   const fmt = (v: number | null) =>
     v ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v) : '–';
 
+  const fmtCompact = (v: number | null) =>
+    v ? new Intl.NumberFormat('de-DE', { notation: 'compact', maximumFractionDigits: 0 }).format(v) + ' €' : '–';
+
+  const completedCases = useMemo(() => valuations?.filter(v => v.status === 'final') || [], [valuations]);
+  const canCompare = completedCases.length >= 2;
+
   const handleStartValuation = async () => {
-    const preflight = await runPreflight({
-      propertyId,
-      sourceContext: 'MOD_04',
-    });
-    if (preflight) {
-      setShowPipeline(true);
-    }
+    const preflight = await runPreflight({ propertyId, sourceContext: 'MOD_04' });
+    if (preflight) setShowPipeline(true);
   };
 
   const handleRunValuation = async () => {
-    await runValuation({
-      propertyId,
-      sourceContext: 'MOD_04',
-    });
+    await runValuation({ propertyId, sourceContext: 'MOD_04' });
   };
 
   const handleReset = () => {
@@ -93,14 +141,11 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
     queryClient.invalidateQueries({ queryKey: ['valuation-cases', propertyId, tenantId] });
   };
 
-  /** Open an existing completed case to view its report */
   const handleOpenCase = async (caseId: string) => {
     setOpeningId(caseId);
     try {
       const result = await fetchResult(caseId);
-      if (result) {
-        setShowPipeline(true);
-      }
+      if (result) setShowPipeline(true);
     } catch (e: any) {
       console.error('Open case error:', e);
       toast.error('Gutachten konnte nicht geladen werden');
@@ -112,21 +157,14 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
   const handleDeleteCase = async (caseId: string) => {
     setDeletingId(caseId);
     try {
-      // Child-first deletion order
-      // valuation_reports, valuation_results, valuation_inputs only have case_id (no tenant_id)
-      // valuation_cases has tenant_id
       const { error: e1 } = await (supabase.from('valuation_reports').delete() as any).eq('case_id', caseId);
       if (e1) throw new Error(`Reports: ${e1.message}`);
-
       const { error: e2 } = await (supabase.from('valuation_results').delete() as any).eq('case_id', caseId);
       if (e2) throw new Error(`Results: ${e2.message}`);
-
       const { error: e3 } = await (supabase.from('valuation_inputs').delete() as any).eq('case_id', caseId);
       if (e3) throw new Error(`Inputs: ${e3.message}`);
-
       const { error: e4 } = await (supabase.from('valuation_cases').delete() as any).eq('id', caseId).eq('tenant_id', tenantId);
       if (e4) throw new Error(`Case: ${e4.message}`);
-
       toast.success('Bewertung gelöscht');
       queryClient.invalidateQueries({ queryKey: ['valuation-cases', propertyId, tenantId] });
     } catch (e: any) {
@@ -164,6 +202,24 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
       toast.error('PDF-Erstellung fehlgeschlagen');
     }
   }, [state.resultData, state.caseId]);
+
+  const handleCompare = () => {
+    if (completedCases.length >= 2) {
+      setCompareIds([completedCases[0].id, completedCases[1].id]);
+    }
+  };
+
+  // Compare view
+  if (compareIds) {
+    return (
+      <ValuationCompare
+        caseIdA={compareIds[0]}
+        caseIdB={compareIds[1]}
+        allCases={completedCases.map(c => ({ id: c.id, version: c.version, date: c.created_at }))}
+        onClose={() => setCompareIds(null)}
+      />
+    );
+  }
 
   // Pipeline view
   if (showPipeline) {
@@ -231,7 +287,6 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
       );
     }
 
-    // Fallback: pipeline finished but no resultData (e.g. DB insert failed)
     if (state.status !== 'idle') {
       return (
         <Card className="border-destructive/30">
@@ -270,18 +325,22 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
               Nutzt alle Daten aus der Immobilienakte (20 Credits)
             </p>
           </div>
-          <Button
-            size="sm"
-            onClick={handleStartValuation}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-            ) : (
-              <Play className="h-3.5 w-3.5 mr-1.5" />
+          <div className="flex items-center gap-2">
+            {canCompare && (
+              <Button size="sm" variant="outline" onClick={handleCompare}>
+                <GitCompareArrows className="h-3.5 w-3.5 mr-1.5" />
+                Vergleichen
+              </Button>
             )}
-            Bewertung starten
-          </Button>
+            <Button size="sm" onClick={handleStartValuation} disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+              ) : (
+                <Play className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              Bewertung starten
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -296,65 +355,88 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
           </CardContent>
         </Card>
       ) : (
-        valuations.map((v) => (
-          <Card
-            key={v.id}
-            className={v.status === 'final' ? 'cursor-pointer hover:border-primary/40 transition-colors' : ''}
-            onClick={() => v.status === 'final' && handleOpenCase(v.id)}
-          >
-            <CardContent className="flex items-center gap-3 py-4">
-              <div className="h-14 w-11 rounded-md bg-muted flex flex-col items-center justify-center shrink-0 border">
-                <FileText className="h-5 w-5 text-muted-foreground" />
-                <Badge variant="secondary" className="text-[9px] px-1 py-0 mt-0.5">
-                  {v.source_mode === 'SSOT_FINAL' ? 'SSOT' : 'Draft'}
-                </Badge>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium font-mono">{v.id.slice(0, 8)}</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-xs text-muted-foreground">
-                    {v.updated_at ? new Date(v.updated_at).toLocaleDateString('de-DE') : v.created_at ? new Date(v.created_at).toLocaleDateString('de-DE') : '–'}
-                  </p>
-                  <Badge variant={v.status === 'final' ? 'default' : 'outline'} className="text-[9px]">
-                    {v.status === 'final' ? 'Abgeschlossen' : v.status}
+        valuations.map((v) => {
+          const dqScore = v.data_quality?.score ?? null;
+          const dqMax = v.data_quality?.max ?? 10;
+
+          return (
+            <Card
+              key={v.id}
+              className={v.status === 'final' ? 'cursor-pointer hover:border-primary/40 transition-colors' : ''}
+              onClick={() => v.status === 'final' && handleOpenCase(v.id)}
+            >
+              <CardContent className="flex items-center gap-3 py-4">
+                {/* Version badge */}
+                <div className="h-14 w-11 rounded-md bg-muted flex flex-col items-center justify-center shrink-0 border">
+                  <span className="text-xs font-bold text-foreground">V{v.version}</span>
+                  <Badge variant="secondary" className="text-[9px] px-1 py-0 mt-0.5">
+                    {v.source_mode === 'SSOT_FINAL' ? 'SSOT' : 'Draft'}
                   </Badge>
                 </div>
-              </div>
-              <p className="text-sm font-semibold shrink-0">{fmt(v.market_value)}</p>
 
-              {/* Open button for completed cases */}
-              {v.status === 'final' && (
+                {/* Main info */}
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">
+                      Gutachten V{v.version}
+                    </p>
+                    <Badge variant={v.status === 'final' ? 'default' : 'outline'} className="text-[9px]">
+                      {v.status === 'final' ? 'Abgeschlossen' : v.status}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {v.created_at ? new Date(v.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '–'}
+                    {v.p25 != null && v.p75 != null && (
+                      <span className="ml-2 text-muted-foreground/70">
+                        Band: {fmtCompact(v.p25)} – {fmtCompact(v.p75)}
+                      </span>
+                    )}
+                  </p>
+                  {/* Data quality bar */}
+                  {dqScore != null && (
+                    <div className="flex items-center gap-2 max-w-[140px]">
+                      <Progress value={(dqScore / dqMax) * 100} className="h-1.5" />
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">{dqScore}/{dqMax}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Market value + delta */}
+                <div className="text-right shrink-0 space-y-0.5">
+                  <p className="text-sm font-semibold">{fmt(v.market_value)}</p>
+                  {v.delta != null && v.deltaPercent != null && (
+                    <div className={`flex items-center justify-end gap-0.5 text-[11px] font-medium ${v.delta > 0 ? 'text-emerald-600' : v.delta < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                      {v.delta > 0 ? <TrendingUp className="h-3 w-3" /> : v.delta < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                      <span>{v.delta > 0 ? '+' : ''}{v.deltaPercent.toFixed(1)}%</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                {v.status === 'final' && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-muted-foreground hover:text-primary shrink-0"
+                    onClick={(e) => { e.stopPropagation(); handleOpenCase(v.id); }}
+                    disabled={openingId === v.id}
+                  >
+                    {openingId === v.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
+                  </Button>
+                )}
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-8 w-8 text-muted-foreground hover:text-primary shrink-0"
-                  onClick={(e) => { e.stopPropagation(); handleOpenCase(v.id); }}
-                  disabled={openingId === v.id}
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+                  onClick={(e) => { e.stopPropagation(); handleDeleteCase(v.id); }}
+                  disabled={deletingId === v.id}
                 >
-                  {openingId === v.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Eye className="h-3.5 w-3.5" />
-                  )}
+                  {deletingId === v.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                 </Button>
-              )}
-
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
-                onClick={(e) => { e.stopPropagation(); handleDeleteCase(v.id); }}
-                disabled={deletingId === v.id}
-              >
-                {deletingId === v.id ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        ))
+              </CardContent>
+            </Card>
+          );
+        })
       )}
     </div>
   );
