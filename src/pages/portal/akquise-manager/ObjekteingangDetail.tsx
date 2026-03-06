@@ -93,6 +93,7 @@ export function ObjekteingangDetail() {
   const { data: offer, isLoading } = useAcqOffer(offerId);
   const { data: mandate } = useAcqMandate(offer?.mandate_id);
   const updateStatus = useUpdateOfferStatus();
+  const valuation = useValuationCase();
   const [absageOpen, setAbsageOpen] = React.useState(false);
   const [preisOpen, setPreisOpen] = React.useState(false);
   const [interesseOpen, setInteresseOpen] = React.useState(false);
