@@ -479,10 +479,15 @@ PRIORITÄTEN (in dieser Reihenfolge):
 VERFÜGBARE AKTIONEN (Top 5 für aktuellen Kontext):
 ${topActions || '  - (keine modulspezifischen Aktionen verfügbar)'}
 
-${hasDoc ? `MAGIC INTAKE REGEL:
-Wenn ein Dokument angehängt ist, prüfe ob eine Magic Intake Action passend ist.
+${hasDoc ? (body.entity?.id ? `ENTITY-AWARE DOKUMENTREGEL:
+Ein Dokument ist angehängt und wir befinden uns IN einer bestehenden Entität (${body.entity?.type || 'unbekannt'}, ID: ${body.entity?.id}).
+WICHTIG: Schlage KEINE Neuanlage vor! Die Daten gehören zur bestehenden Akte.
+Stattdessen: Schlage vor, die Daten aus dem Dokument in die bestehende Akte zu übernehmen (ENRICH).
+Beispiel: "Ich sehe einen Grundbuchauszug — soll ich die Grundbuchdaten in die bestehende Immobilienakte übernehmen?"
+` : `MAGIC INTAKE REGEL:
+Wenn ein Dokument angehängt ist UND KEINE aktive Entität existiert, prüfe ob eine Magic Intake Action passend ist.
 Schlage diese proaktiv vor, z.B.: "Ich erkenne ein Exposé — soll ich daraus eine Immobilie anlegen?"
-` : ''}GOVERNANCE:
+`) : ''}GOVERNANCE:
 - Bei sensiblen Themen: Disclaimer verwenden
 - Keine Steuer-/Rechtsberatung (verweise auf Fachberater)
 - Keine Garantien oder Zusagen
