@@ -1,22 +1,26 @@
 /**
- * ENG-VALUATION — SoT Valuation Engine V6.0
+ * ENG-VALUATION — SoT Valuation Engine V9.0
  * 
  * SPEC FILE: Types, Interfaces, Constants, Defaults (NO logic)
  * 
- * Purpose: KI-gestützte Immobilienbewertung mit deterministischem Rechenkern
- * Entry Points: MOD-04 (Immobilienakte/SSOT-Final), MOD-12 (Acquiary Tools), MOD-13 (Inbox)
+ * Purpose: KI-gestützte Immobilienbewertung nach Kurzgutachten-Standard (Bankenqualität)
+ * Entry Points: MOD-04 (Immobilienakte/SSOT-Final)
  * Credits: 20 Credits pro Bewertungsfall (fix)
  * 
- * V6.0 Changes: SSOT-Final Mode, FieldSource tracking, LegalTitleBlock, DiffReview
+ * V9.0 Changes:
+ * - Gemini AI Research for Liegenschaftszins, Bodenrichtwert, Vergleichsmieten
+ * - BelWertV Beleihungswert (dual-track: Marktwert + Beleihungswert)
+ * - Kurzgutachten-Standard Report (12 Seiten)
+ * - Plot area heuristic MFH updated to 2.5×
  * 
- * @version 2.0.0
+ * @version 9.0.0
  */
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
-export const VALUATION_ENGINE_VERSION = '2.0.0';
+export const VALUATION_ENGINE_VERSION = '9.0.0';
 export const VALUATION_CREDITS_PER_CASE = 20;
 export const VALUATION_MAX_FILES = 20;
 export const VALUATION_MAX_PAGES = 120;
@@ -69,12 +73,32 @@ export const DEFAULT_STRESS_TESTS = [
   { label: 'Kombination', interestDelta: 0.02, rentDelta: -0.10, capexDelta: 0.20 },
 ] as const;
 
-/** Bewirtschaftung defaults (% of gross rent) */
+/** Bewirtschaftung defaults (% of gross rent) — Marktwert-Track */
 export const BEWIRTSCHAFTUNG_DEFAULTS = {
   verwaltungPercent: 0.05,
   instandhaltungPerSqmYear: 12.0,
   mietausfallPercent: 0.02,
   nichtUmlagefaehigPercent: 0.03,
+} as const;
+
+/** V9.0: BelWertV Bewirtschaftung — konservativere Ansätze für Beleihungswert */
+export const BEWIRTSCHAFTUNG_BELWERTV = {
+  verwaltungPercent: 0.06,
+  instandhaltungPerSqmYear: 15.0,
+  mietausfallPercent: 0.04,
+  nichtUmlagefaehigPercent: 0.04,
+} as const;
+
+/** V9.0: BelWertV Constants */
+export const BELWERTV = {
+  /** BelWertV §12: Fest 5,0% Liegenschaftszins für Beleihungswert */
+  liegenschaftszinsFest: 0.05,
+  /** Sicherheitsabschlag auf Zeitwert */
+  sicherheitsabschlagProzent: 0.10,
+  /** Baunebenkosten-Zuschlag (BelWertV) */
+  baunebenkostenProzent: 0.1867,
+  /** Regionalfaktor-Default (BKI) */
+  regionalfaktorDefault: 1.0,
 } as const;
 
 /** Baupreisindex-Korrektor 2010→2026 (Statistisches Bundesamt, Wohngebäude) */
@@ -89,16 +113,16 @@ export const HERSTELLKOSTEN_CLUSTERS: Record<string, number> = {
   'post_2010': 2600,
 };
 
-/** Liegenschaftszinssatz nach Objektart (ImmoWertV-Standard) */
+/** V9.0: Liegenschaftszinssatz — Fallback-Tabelle (wird durch Gemini-Recherche überschrieben) */
 export const LIEGENSCHAFTSZINS_BY_TYPE: Record<string, number> = {
-  'mfh': 0.05,
-  'etw': 0.035,
-  'efh': 0.03,
-  'dhh': 0.03,
+  'mfh': 0.04,
+  'etw': 0.03,
+  'efh': 0.025,
+  'dhh': 0.025,
   'gew': 0.06,
-  'mixed': 0.055,
+  'mixed': 0.05,
   'grundstueck': 0.04,
-  'other': 0.045,
+  'other': 0.04,
 };
 
 /** Gesamtnutzungsdauer nach Objektart (Jahre) */
@@ -113,9 +137,9 @@ export const GESAMTNUTZUNGSDAUER_BY_TYPE: Record<string, number> = {
   'other': 70,
 };
 
-/** Heuristik für Grundstücksfläche wenn plot_area_sqm fehlt (Faktor × living_area) */
+/** V9.0: Heuristik für Grundstücksfläche — MFH jetzt 2.5× */
 export const PLOT_AREA_HEURISTIC_BY_TYPE: Record<string, number> = {
-  'mfh': 1.5,
+  'mfh': 2.5,
   'efh': 3.0,
   'dhh': 2.0,
   'etw': 0.3,
@@ -125,13 +149,13 @@ export const PLOT_AREA_HEURISTIC_BY_TYPE: Record<string, number> = {
   'other': 1.0,
 };
 
-/** Bodenrichtwert-Proxy nach Lage-Score (5 Stufen) */
+/** Bodenrichtwert-Proxy nach Lage-Score (5 Stufen) — Fallback wenn Gemini keinen Wert liefert */
 export const BODENRICHTWERT_STUFEN: { maxScore: number; value: number }[] = [
-  { maxScore: 30, value: 120 },   // einfache/ländliche Lage
-  { maxScore: 45, value: 200 },   // untere Mittellage
-  { maxScore: 60, value: 300 },   // Mittellage Mittelstadt
-  { maxScore: 75, value: 400 },   // gute Lage
-  { maxScore: 100, value: 550 },  // sehr gute Lage / Großstadt
+  { maxScore: 30, value: 120 },
+  { maxScore: 45, value: 200 },
+  { maxScore: 60, value: 300 },
+  { maxScore: 75, value: 400 },
+  { maxScore: 100, value: 550 },
 ];
 
 /** Mindest-Bodenrichtwert für Städte (Floor) */
@@ -161,21 +185,17 @@ export type FieldConfidence = 'verified' | 'extracted' | 'derived' | 'assumed' |
 // V6.0: SOURCE MODE & FIELD PROVENANCE
 // ============================================================================
 
-/** Determines whether valuation uses SSOT property data or extracted data */
 export type ValuationSourceMode = 'SSOT_FINAL' | 'DRAFT_INTAKE';
 
-/** Origin of a data field value */
 export type FieldSource = 'SSOT' | 'Extracted' | 'User' | 'Derived';
 
-/** Wrapper for any snapshot field with provenance tracking */
 export interface SnapshotField<T> {
   value: T;
   source: FieldSource;
-  confidence: number; // 0.0–1.0
-  evidenceRefs: string[]; // doc/page/url references
+  confidence: number;
+  evidenceRefs: string[];
 }
 
-/** A single diff entry for SSOT vs Extracted comparison */
 export interface DiffEntry {
   field: string;
   fieldLabel: string;
@@ -184,7 +204,6 @@ export interface DiffEntry {
   decision: 'ssot_kept' | 'ssot_updated' | 'ignored' | 'pending';
 }
 
-/** Legal & Title information from SSOT (Grundbuch, WEG, etc.) */
 export interface LegalTitleBlock {
   landRegisterCourt: string | null;
   landRegisterSheet: string | null;
@@ -200,7 +219,6 @@ export interface LegalTitleBlock {
   encumbrancesNote: string;
 }
 
-/** Existing loan data from SSOT */
 export interface ExistingLoanData {
   outstandingBalance: number | null;
   interestRatePercent: number | null;
@@ -211,6 +229,67 @@ export interface ExistingLoanData {
 }
 
 // ============================================================================
+// V9.0: GEMINI AI RESEARCH RESULTS
+// ============================================================================
+
+/** Result from Gemini research for Liegenschaftszins */
+export interface GeminiLiegenschaftszinsResult {
+  marktwertZins: number;
+  beleihungswertZins: number;
+  quelle: string;
+  stichtag: string;
+  min: number;
+  max: number;
+  confidence: ConfidenceLevel;
+}
+
+/** Result from Gemini research for Bodenrichtwert */
+export interface GeminiBodenrichtwertResult {
+  bodenrichtwertEurSqm: number;
+  stichtag: string;
+  quelle: string;
+  artDerNutzung: string;
+  confidence: ConfidenceLevel;
+}
+
+/** Result from Gemini research for Vergleichsmieten */
+export interface GeminiVergleichsmietenResult {
+  mieteMin: number;
+  mieteMedian: number;
+  mieteMax: number;
+  quelle: string;
+  confidence: ConfidenceLevel;
+}
+
+/** Combined Gemini research output */
+export interface GeminiResearchResult {
+  liegenschaftszins: GeminiLiegenschaftszinsResult | null;
+  bodenrichtwert: GeminiBodenrichtwertResult | null;
+  vergleichsmieten: GeminiVergleichsmietenResult | null;
+  researchedAt: string;
+}
+
+// ============================================================================
+// V9.0: BELEIHUNGSWERT (BelWertV)
+// ============================================================================
+
+/** Beleihungswert result — calculated per BelWertV standards */
+export interface BeleihungswertResult {
+  /** Ertragswert nach BelWertV (fester 5% Liegenschaftszins) */
+  ertragswertBelwertv: number;
+  /** Sachwert nach BelWertV (mit Sicherheitsabschlag) */
+  sachwertBelwertv: number;
+  /** Finale Beleihungswert (konservativster Wert) */
+  beleihungswert: number;
+  /** Verhältnis Beleihungswert / Marktwert */
+  beleihungswertQuote: number;
+  /** BelWertV-spezifische BWK (konservativ) */
+  bwkBelwertv: number;
+  /** Sicherheitsabschlag in % */
+  sicherheitsabschlag: number;
+}
+
+// ============================================================================
 // STAGE DEFINITIONS
 // ============================================================================
 
@@ -218,16 +297,16 @@ export interface ValuationStageDefinition {
   id: ValuationStageId;
   name: string;
   description: string;
-  estimatedDurationMs: [number, number]; // [min, max]
+  estimatedDurationMs: [number, number];
 }
 
 export const VALUATION_STAGES: ValuationStageDefinition[] = [
   { id: 0, name: 'Preflight & Credit Gate', description: 'Kosten, Quellen, Limits prüfen', estimatedDurationMs: [500, 2000] },
   { id: 1, name: 'Intake & Dokumentauslesung', description: 'Quellen sammeln, Felder extrahieren, Evidence Map', estimatedDurationMs: [15000, 40000] },
-  { id: 2, name: 'Normalisierung & Standort', description: 'Plausibilisierung, Google POIs, Karten', estimatedDurationMs: [10000, 20000] },
+  { id: 2, name: 'AI-Recherche & Standort', description: 'Gemini-Recherche (Liegenschaftszins, Bodenrichtwert), Google Maps', estimatedDurationMs: [15000, 30000] },
   { id: 3, name: 'Vergleichsangebote', description: 'Portal-Comps scrapen, normalisieren, deduplizieren', estimatedDurationMs: [10000, 30000] },
-  { id: 4, name: 'Bewertung & Finanzierung', description: 'Deterministischer Rechenkern: Wertband, Szenarien, KDF', estimatedDurationMs: [2000, 10000] },
-  { id: 5, name: 'Report Composer', description: 'Web-Reader + PDF (max 12 Seiten)', estimatedDurationMs: [10000, 20000] },
+  { id: 4, name: 'Bewertung (Marktwert + Beleihungswert)', description: 'ImmoWertV + BelWertV Kalkulation, dual-track', estimatedDurationMs: [2000, 10000] },
+  { id: 5, name: 'Report Composer', description: 'Kurzgutachten Web-Reader + PDF (12 Seiten)', estimatedDurationMs: [10000, 20000] },
 ];
 
 // ============================================================================
@@ -235,20 +314,13 @@ export const VALUATION_STAGES: ValuationStageDefinition[] = [
 // ============================================================================
 
 export interface CanonicalPropertySnapshot {
-  // V6.0: Source tracking
   sourceMode: ValuationSourceMode;
-  
-  // Identity
   address: string;
   postalCode: string;
   city: string;
   lat?: number;
   lng?: number;
-  
-  // Classification
   objectType: 'etw' | 'mfh' | 'efh' | 'dhh' | 'gew' | 'mixed' | 'grundstueck' | 'other';
-  
-  // Dimensions
   livingAreaSqm: number | null;
   plotAreaSqm: number | null;
   usableAreaSqm: number | null;
@@ -257,33 +329,21 @@ export interface CanonicalPropertySnapshot {
   units: number | null;
   floors: number | null;
   parkingSpots: number | null;
-  
-  // Condition
   yearBuilt: number | null;
   condition: 'new' | 'renovated' | 'good' | 'average' | 'poor' | 'derelict' | null;
   energyClass: string | null;
   modernizations: string[];
-  
-  // Financials
   askingPrice: number | null;
   netColdRentMonthly: number | null;
   netColdRentPerSqm: number | null;
   hausgeldMonthly: number | null;
   vacancyRate: number | null;
   rentalStatus: 'fully_rented' | 'partially_rented' | 'vacant' | 'owner_occupied' | null;
-  
-  // V6.0: Transaction/Price anchors from SSOT
   purchasePrice: number | null;
   acquisitionCosts: number | null;
   notaryDate: string | null;
-  
-  // V6.0: Legal & Title
   legalTitle: LegalTitleBlock | null;
-  
-  // V6.0: Existing financing from SSOT
   existingLoanData: ExistingLoanData | null;
-  
-  // Legacy fields
   groundBookEntry: string | null;
   partitionDeclaration: boolean | null;
   providerName: string | null;
@@ -297,10 +357,10 @@ export interface CanonicalPropertySnapshot {
 export interface EvidenceEntry {
   field: string;
   value: string | number | boolean;
-  source: string; // document name / URL / "SSOT"
-  sourceSection?: string; // page/paragraph reference
+  source: string;
+  sourceSection?: string;
   confidence: FieldConfidence;
-  confidenceScore: number; // 0.0–1.0
+  confidenceScore: number;
 }
 
 export interface MissingField {
@@ -324,7 +384,7 @@ export interface DataQuality {
   fieldsDerived: number;
   fieldsMissing: number;
   globalConfidence: ConfidenceLevel;
-  globalConfidenceScore: number; // 0.0–1.0
+  globalConfidenceScore: number;
 }
 
 // ============================================================================
@@ -334,7 +394,7 @@ export interface DataQuality {
 export interface LocationScoreDimension {
   key: string;
   label: string;
-  score: number; // 0–10
+  score: number;
   topPois: LocationPoi[];
 }
 
@@ -352,17 +412,18 @@ export interface ReachabilityEntry {
 }
 
 export interface LocationAnalysis {
-  overallScore: number; // 0–100
+  overallScore: number;
   dimensions: LocationScoreDimension[];
   reachability: ReachabilityEntry[];
   microMapUrl: string | null;
   macroMapUrl: string | null;
+  streetViewUrl: string | null;
   narrative: string;
   narrativeConfidence: ConfidenceLevel;
 }
 
 // ============================================================================
-// COMP POSTINGS (PORTAL VERGLEICHSANGEBOTE)
+// COMP POSTINGS
 // ============================================================================
 
 export interface CompPosting {
@@ -475,14 +536,14 @@ export interface FinancingScenario {
   repaymentRate: number;
   monthlyRate: number;
   annualDebtService: number;
-  cashflowAfterDebt: number | null; // null if no rent data
+  cashflowAfterDebt: number | null;
   trafficLight: TrafficLight;
 }
 
 export interface StressTestConfig {
   label: string;
   interestDelta: number;
-  rentDelta: number; // -0.10 = -10%
+  rentDelta: number;
   capexDelta: number;
 }
 
@@ -496,7 +557,7 @@ export interface StressTestResult {
 }
 
 // ============================================================================
-// LIEN PROXY (BELEIHUNGSWERT PROXY)
+// LIEN PROXY (BELEIHUNGSWERT PROXY — legacy, kept for backwards compat)
 // ============================================================================
 
 export interface LienProxyRiskDriver {
@@ -510,16 +571,16 @@ export interface LienProxy {
   totalDiscount: number;
   lienValueLow: number;
   lienValueHigh: number;
-  safeLtvWindow: [number, number]; // e.g. [0.55, 0.70]
+  safeLtvWindow: [number, number];
   riskDrivers: LienProxyRiskDriver[];
 }
 
 // ============================================================================
-// DEBT SERVICE / KAPITALDIENSTFÄHIGKEIT
+// DEBT SERVICE
 // ============================================================================
 
 export interface DebtServiceResult {
-  dscr: number | null; // Debt Service Coverage Ratio
+  dscr: number | null;
   breakEvenRentMonthly: number | null;
   isViable: boolean | null;
   cashflowAfterDebt: number | null;
@@ -532,7 +593,7 @@ export interface DebtServiceResult {
 
 export interface SensitivityVariation {
   parameter: string;
-  delta: number; // e.g. +0.10 = +10%
+  delta: number;
   resultingValue: number;
   deltaFromBase: number;
 }
@@ -554,42 +615,40 @@ export interface PlausibilityWarning {
 }
 
 // ============================================================================
-// REPORT (V6.0 Extended)
+// REPORT (V9.0: Kurzgutachten-Standard)
 // ============================================================================
 
 export type ReportChapter = 
-  | 'cover'
-  | 'executive_summary'
-  | 'object_profile'
-  | 'data_quality'
-  | 'legal_title'
-  | 'location'
-  | 'comps'
-  | 'valuation_method'
-  | 'valuation_calc'
-  | 'financing'
-  | 'stress_kdf'
-  | 'lien_risk'
-  | 'appendix';
+  | 'deckblatt'
+  | 'grundbuch'
+  | 'bodenwert'
+  | 'sachwert_marktwert'
+  | 'sachwert_beleihungswert'
+  | 'ertragswert_marktwert'
+  | 'ertragswert_beleihungswert'
+  | 'vergleichswert'
+  | 'vorschlagswerte'
+  | 'standortanalyse'
+  | 'ergebnisuebersicht'
+  | 'audit_trail';
 
 export const REPORT_CHAPTERS: { key: ReportChapter; title: string; pageTarget: number }[] = [
-  { key: 'cover', title: 'Cover + Objekt-Snapshot', pageTarget: 1 },
-  { key: 'executive_summary', title: 'Executive Summary', pageTarget: 1 },
-  { key: 'object_profile', title: 'Objektprofil', pageTarget: 1 },
-  { key: 'data_quality', title: 'Datenlage & Annahmen', pageTarget: 1 },
-  { key: 'legal_title', title: 'Recht & Eigentum', pageTarget: 1 },
-  { key: 'location', title: 'Standortanalyse', pageTarget: 1 },
-  { key: 'comps', title: 'Vergleichsangebote', pageTarget: 1 },
-  { key: 'valuation_method', title: 'Bewertung: Methodik & Ergebnis', pageTarget: 1 },
-  { key: 'valuation_calc', title: 'Bewertung: Rechenlogik', pageTarget: 1 },
-  { key: 'financing', title: 'Finanzierbarkeit', pageTarget: 1 },
-  { key: 'stress_kdf', title: 'Stress-Tests & KDF', pageTarget: 1 },
-  { key: 'lien_risk', title: 'Beleihung (Proxy) & Risiko', pageTarget: 1 },
-  { key: 'appendix', title: 'Appendix Light', pageTarget: 1 },
+  { key: 'deckblatt', title: 'Deckblatt — Marktwert & Beleihungswert', pageTarget: 1 },
+  { key: 'grundbuch', title: 'Grundbuch & Eigentum', pageTarget: 1 },
+  { key: 'bodenwert', title: 'Bodenwert & Restnutzungsdauer', pageTarget: 1 },
+  { key: 'sachwert_marktwert', title: 'Sachwert (Marktwert)', pageTarget: 1 },
+  { key: 'sachwert_beleihungswert', title: 'Sachwert (Beleihungswert)', pageTarget: 1 },
+  { key: 'ertragswert_marktwert', title: 'Ertragswert (Marktwert)', pageTarget: 1 },
+  { key: 'ertragswert_beleihungswert', title: 'Ertragswert (Beleihungswert)', pageTarget: 1 },
+  { key: 'vergleichswert', title: 'Vergleichswert', pageTarget: 1 },
+  { key: 'vorschlagswerte', title: 'Vorschlagswerte & KI-Recherche', pageTarget: 1 },
+  { key: 'standortanalyse', title: 'Standortanalyse', pageTarget: 1 },
+  { key: 'ergebnisuebersicht', title: 'Ergebnisübersicht', pageTarget: 1 },
+  { key: 'audit_trail', title: 'Geänderte Werte & Annahmen', pageTarget: 1 },
 ];
 
 // ============================================================================
-// STAGE OUTPUT SHAPES (what each stage produces)
+// STAGE OUTPUT SHAPES
 // ============================================================================
 
 export interface PreflightOutput {
@@ -617,6 +676,7 @@ export interface NormLocationOutput {
   assumptions: Assumption[];
   locationAnalysis: LocationAnalysis;
   dataQuality: DataQuality;
+  geminiResearch: GeminiResearchResult;
 }
 
 export interface CompsOutput {
@@ -633,6 +693,7 @@ export interface CalculationOutput {
   lienProxy: LienProxy;
   debtService: DebtServiceResult;
   sensitivity: SensitivityMatrix;
+  beleihungswert: BeleihungswertResult;
 }
 
 export interface ReportOutput {
@@ -642,7 +703,7 @@ export interface ReportOutput {
 }
 
 // ============================================================================
-// FULL CASE AGGREGATE (V6.0 Extended)
+// FULL CASE AGGREGATE
 // ============================================================================
 
 export interface ValuationCase {
@@ -656,17 +717,16 @@ export interface ValuationCase {
   status: ValuationCaseStatus;
   creditsCharged: number;
   currentStage: ValuationStageId;
-  stageTimings: Record<string, number>; // stageId → durationMs
+  stageTimings: Record<string, number>;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
 }
 
 // ============================================================================
-// SSOT PROPERTY DATA SHAPES (for Edge Function input)
+// SSOT PROPERTY DATA SHAPES
 // ============================================================================
 
-/** Raw SSOT property data fetched from MOD-04 tables */
 export interface SSOTPropertyData {
   property: {
     id: string;

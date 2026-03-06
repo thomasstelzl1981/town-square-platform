@@ -50,8 +50,6 @@ const ImmobilienPage = () => {
         {/* VERWALTUNG */}
         <Route path="verwaltung" element={<VerwaltungTab />} />
         
-        {/* BEWERTUNG */}
-        <Route path="bewertung" element={<BewertungTab />} />
         
         
         {/* CANONICAL: Property dossier */}
