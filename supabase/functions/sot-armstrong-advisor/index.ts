@@ -1415,12 +1415,27 @@ function suggestActionsForMessage(
       why = "Startet eine Kontaktrecherche mit Kontaktbuch-Abgleich";
     }
     
-    // Magic Intake: MOD-04
+    // ENRICH: MOD-04 — Prioritized when entity context exists
+    if (action.action_code === "ARM.MOD04.ENRICH_FROM_STORAGE" && hasActiveEntity && entity?.type === "property" &&
+        (lowerMsg.includes("grundbuch") || lowerMsg.includes("daten übernehmen") || lowerMsg.includes("akte befüllen") ||
+         lowerMsg.includes("auslesen") || lowerMsg.includes("in die akte") || lowerMsg.includes("enrich") ||
+         lowerMsg.includes("daten aus dokument") || lowerMsg.includes("felder übernehmen") || lowerMsg.includes("daten eintragen") ||
+         lowerMsg.includes("dokument") || lowerMsg.includes("übertrag"))) {
+      relevance += 10;
+      why = "Überträgt Daten aus dem Dokument in die bestehende Immobilienakte";
+    }
+    
+    // Magic Intake: MOD-04 — SUPPRESS when active entity exists
     if (action.action_code === "ARM.MOD04.MAGIC_INTAKE_PROPERTY" && 
         (lowerMsg.includes("immobilie anlegen") || lowerMsg.includes("kaufvertrag") || lowerMsg.includes("objekt anlegen") ||
          lowerMsg.includes("wohnung anlegen") || lowerMsg.includes("haus anlegen") || lowerMsg.includes("grundstück") ||
          lowerMsg.includes("leg die immobilie an") || (lowerMsg.includes("immobilie") && lowerMsg.includes("dokument")))) {
-      relevance += 5;
+      if (hasActiveEntity && entity?.type === "property") {
+        // SUPPRESS: Don't suggest creating a new property when we're already inside one
+        relevance = 0;
+      } else {
+        relevance += 5;
+      }
       why = "Erstellt eine Immobilie aus dem hochgeladenen Dokument";
     }
     
