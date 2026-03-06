@@ -1198,6 +1198,25 @@ const MVP_ACTIONS: ActionDefinition[] = [
     credits_estimate: 1,
     status: "active",
   },
+  // MOD-04: Enrich existing property from document data
+  {
+    action_code: "ARM.MOD04.ENRICH_FROM_STORAGE",
+    title_de: "Daten aus Dokument in Akte übernehmen",
+    description_de: "Liest extrahierte Daten aus einem Dokument im Datenraum und überträgt sie in die bestehende Immobilienakte (z.B. Grundbuchdaten, Flurstück, Eigentümer)",
+    zones: ["Z2"] as Zone[],
+    module: "MOD-04" as Module,
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["documents", "document_structured_data", "storage_nodes"],
+    data_scopes_write: ["properties", "units"],
+    side_effects: ["modifies_property_record"],
+    cost_model: "free",
+    cost_hint_cents: 0,
+    credits_estimate: 0,
+    status: "active",
+  },
 ];
 
 // =============================================================================
