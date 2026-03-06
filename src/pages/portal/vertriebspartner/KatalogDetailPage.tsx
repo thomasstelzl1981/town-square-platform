@@ -9,6 +9,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getCachedSignedUrl } from '@/lib/imageCache';
+import { downloadFromSignedUrl } from '@/lib/storage-url';
 import { 
   ArrowLeft, Download, FileText, MapPin, Calendar, 
   Building2, Maximize2, Handshake, MessageSquare, Zap,
@@ -218,11 +219,7 @@ const KatalogDetailPage = () => {
   const handleDownload = async (doc: DocumentItem) => {
     const url = await getCachedSignedUrl(doc.file_path);
     if (url) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.click();
+      await downloadFromSignedUrl(url, doc.name);
     }
   };
 
