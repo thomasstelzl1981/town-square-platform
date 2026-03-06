@@ -285,7 +285,7 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
                     {v.updated_at ? new Date(v.updated_at).toLocaleDateString('de-DE') : v.created_at ? new Date(v.created_at).toLocaleDateString('de-DE') : '–'}
                   </p>
                   <Badge variant={v.status === 'final' ? 'default' : 'outline'} className="text-[9px]">
-                    {v.status === 'final' ? 'Abgeschlossen' : v.status === 'running' ? 'Läuft...' : v.status}
+                    {v.status === 'final' ? 'Abgeschlossen' : v.status}
                   </Badge>
                 </div>
               </div>
