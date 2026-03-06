@@ -4,7 +4,7 @@ import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, Calculator, FolderOpen, Upload } from 'lucide-react';
+import { ChevronDown, FolderOpen, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
   PortalSearchTool,
