@@ -79,7 +79,7 @@ export function usePersistSearchResults() {
           year_built: r.year_built || null,
           yield_indicated: r.yield_percent || null,
           source_url: r.url || null,
-          source_type: 'portal' as const,
+          source_type: 'portal_scrape' as const,
           provider_name: r.broker_name || r.portal || null,
           status: 'new' as const,
           notes: `Portal: ${r.portal}`,
