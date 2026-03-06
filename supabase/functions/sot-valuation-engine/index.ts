@@ -1194,7 +1194,7 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
           const sachYearBuilt = Number(snapshot.year_built) || 1980;
           const sachAge = new Date().getFullYear() - sachYearBuilt;
           const baseCostSqm = getHerstellkostenSqm(sachYearBuilt);
-          const depreciationRate = Math.min(age * CALC.SACHWERT_ANNUAL_DEPRECIATION, CALC.SACHWERT_MAX_DEPRECIATION);
+          const depreciationRate = Math.min(sachAge * CALC.SACHWERT_ANNUAL_DEPRECIATION, CALC.SACHWERT_MAX_DEPRECIATION);
           const gebaeudeSachwert = Math.round(livingArea * baseCostSqm * (1 - depreciationRate));
           const marktanpassung = getMarktanpassungsfaktor(locationScore);
           const sachwert = Math.round((gebaeudeSachwert + bodenwert) * marktanpassung);
