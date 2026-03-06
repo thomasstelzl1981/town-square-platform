@@ -32,6 +32,7 @@ const ExposeDetail = () => {
   const { unitId } = useParams<{ unitId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isGenerating: isPdfGenerating, generate: generatePdf } = usePdfTemplateExport('SALES_EXPOSE_V1');
 
   const [formData, setFormData] = useState<ExposeFormData>({
     title: '', description: '', asking_price: '', commission_rate: [7]
