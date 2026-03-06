@@ -460,25 +460,60 @@ function buildServerSSOTSnapshot(ssotData: any): Record<string, any> {
     encumbrances_note: "Belastungen nicht automatisch ausgewertet — manuelle Prüfung empfohlen",
   };
 
-  // V9.1: MFH multi-unit detection
+  // V9.2: MFH multi-unit detection — now also uses unit_count_actual
   const isMfh = ['MFH', 'mfh', 'Mehrfamilienhaus'].includes(p.property_type || '');
-  const mfhMultiUnit = isMfh && units.length > 1;
-  const unitsDetail = units.length > 0 ? units.map((u: any) => {
-    // Find matching lease for this unit
-    const unitLease = activeLeases.find((l: any) => l.unit_id === u.id);
-    return {
-      id: u.id,
-      area_sqm: u.area_sqm || 0,
-      rooms: u.rooms || null,
-      floor: u.floor || null,
-      rent_cold: unitLease?.rent_cold_eur || u.current_monthly_rent || null,
-    };
-  }) : [];
+  const unitCountActual = p.unit_count_actual || null;
+  const mfhMultiUnit = isMfh && (units.length > 1 || (unitCountActual != null && unitCountActual > 1));
 
-  // V9.1: For MFH multi-unit, calculate average unit size for comp filtering
-  const avgUnitArea = mfhMultiUnit && unitsDetail.length > 0
-    ? Math.round(unitsDetail.reduce((s: number, u: any) => s + (u.area_sqm || 0), 0) / unitsDetail.length)
+  // Build units_detail — if unit_count_actual > 1 but only 1 unit record, generate synthetic units
+  let unitsDetail: any[] = [];
+  if (units.length > 1) {
+    unitsDetail = units.map((u: any) => {
+      const unitLease = activeLeases.find((l: any) => l.unit_id === u.id);
+      return {
+        id: u.id,
+        area_sqm: u.area_sqm || 0,
+        rooms: u.rooms || null,
+        floor: u.floor || null,
+        rent_cold: unitLease?.rent_cold_eur || u.current_monthly_rent || null,
+      };
+    });
+  } else if (mfhMultiUnit && unitCountActual && unitCountActual > 1 && totalArea) {
+    // Synthetic unit generation: split total area evenly
+    const perUnitArea = Math.round(totalArea / unitCountActual);
+    const perUnitRent = totalRent ? Math.round(totalRent / unitCountActual) : null;
+    for (let i = 0; i < unitCountActual; i++) {
+      unitsDetail.push({
+        id: `synthetic-${i + 1}`,
+        area_sqm: perUnitArea,
+        rooms: null,
+        floor: null,
+        rent_cold: perUnitRent,
+      });
+    }
+    stageLog(0, `MFH: Generated ${unitCountActual} synthetic units from unit_count_actual (${perUnitArea}m² each)`);
+  } else if (units.length > 0) {
+    unitsDetail = units.map((u: any) => {
+      const unitLease = activeLeases.find((l: any) => l.unit_id === u.id);
+      return {
+        id: u.id,
+        area_sqm: u.area_sqm || 0,
+        rooms: u.rooms || null,
+        floor: u.floor || null,
+        rent_cold: unitLease?.rent_cold_eur || u.current_monthly_rent || null,
+      };
+    });
+  }
+
+  // V9.2: For MFH multi-unit, calculate average unit size for comp filtering
+  const effectiveUnitCount = mfhMultiUnit ? (unitCountActual || units.length) : units.length;
+  const avgUnitArea = mfhMultiUnit && effectiveUnitCount > 0 && totalArea
+    ? Math.round(totalArea / effectiveUnitCount)
     : null;
+
+  // V9.2: Kernsanierung / Renovation data
+  const coreRenovated = p.core_renovated || false;
+  const renovationYear = p.renovation_year || null;
 
   return {
     source_mode: "SSOT_FINAL",
@@ -490,6 +525,7 @@ function buildServerSSOTSnapshot(ssotData: any): Record<string, any> {
     plot_area_sqm: p.plot_area_sqm || null,
     rooms: totalRooms,
     units_count: units.length || null,
+    unit_count_actual: unitCountActual,
     year_built: p.year_built || null,
     condition: p.condition_grade || null,
     energy_class: p.energy_certificate_value || null,
@@ -512,10 +548,13 @@ function buildServerSSOTSnapshot(ssotData: any): Record<string, any> {
       fixed_interest_end: primaryLoan.fixed_interest_end_date,
       bank_name: primaryLoan.bank_name,
     } : null,
-    // V9.1: MFH unit-aware fields
+    // V9.2: MFH unit-aware fields
     mfh_multi_unit: mfhMultiUnit,
     units_detail: unitsDetail,
     avg_unit_area: avgUnitArea,
+    // V9.2: Kernsanierung
+    core_renovated: coreRenovated,
+    renovation_year: renovationYear,
   };
 }
 
