@@ -693,10 +693,13 @@ Deno.serve(async (req) => {
         const yearBuilt = snapshot.year_built || null;
         const condition = snapshot.condition || null;
 
+        // V9.1: For MFH multi-unit, research as "Wohnung" (ETW) for accurate per-unit pricing
+        const researchObjectType = snapshot.mfh_multi_unit ? "Eigentumswohnung" : objectType;
+
         const [geminiLZ, geminiBRW, geminiVM] = await Promise.all([
           researchLiegenschaftszins(lovableApiKey!, objectType, city, postalCode, yearBuilt),
           researchBodenrichtwert(lovableApiKey!, snapshot.address || "", city, postalCode),
-          researchVergleichsmieten(lovableApiKey!, objectType, city, postalCode, yearBuilt, condition),
+          researchVergleichsmieten(lovableApiKey!, researchObjectType, city, postalCode, yearBuilt, condition),
         ]);
 
         const geminiResearch = {
