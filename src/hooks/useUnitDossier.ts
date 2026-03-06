@@ -284,6 +284,7 @@ export function useUnitDossier(unitId: string | undefined) {
         landRegisterVolume: property.land_register_volume,
         parcelNumber: property.parcel_number,
         teNumber: (property as any).te_number || property.unit_ownership_nr,
+        plotAreaSqm: (property as any).plot_area_sqm,
         purchaseDate: property.notary_date,
         purchasePrice: property.purchase_price,
         marketValue: property.market_value,

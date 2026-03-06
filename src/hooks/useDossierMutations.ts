@@ -53,6 +53,7 @@ export function useUpdateProperty() {
       if (data.landRegisterVolume !== undefined) updateData.land_register_volume = data.landRegisterVolume;
       if (data.parcelNumber !== undefined) updateData.parcel_number = data.parcelNumber;
       if (data.teNumber !== undefined) updateData.te_number = data.teNumber;
+      if (data.plotAreaSqm !== undefined) updateData.plot_area_sqm = data.plotAreaSqm;
       if (data.notaryDate !== undefined) updateData.notary_date = data.notaryDate;
       if (data.purchasePrice !== undefined) updateData.purchase_price = data.purchasePrice;
       if (data.marketValue !== undefined) updateData.market_value = data.marketValue;

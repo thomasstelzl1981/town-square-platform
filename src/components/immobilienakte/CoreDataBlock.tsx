@@ -1,11 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Ruler, DoorOpen, Thermometer, Zap } from 'lucide-react';
+import { Ruler, DoorOpen, Thermometer, Zap, LandPlot } from 'lucide-react';
 
 interface CoreDataBlockProps {
   areaLivingSqm: number;
   roomsCount?: number;
   bathroomsCount?: number;
+  plotAreaSqm?: number;
   heatingType?: string;
   energySource?: string;
   energyCertificateValue?: number;
@@ -17,6 +18,7 @@ export function CoreDataBlock({
   areaLivingSqm,
   roomsCount,
   bathroomsCount,
+  plotAreaSqm,
   heatingType,
   energySource,
   energyCertificateValue,
@@ -41,6 +43,12 @@ export function CoreDataBlock({
             <div className="flex items-center gap-2">
               <DoorOpen className="h-3.5 w-3.5 text-muted-foreground" />
               <span>{roomsCount} Zimmer</span>
+            </div>
+          )}
+          {plotAreaSqm && (
+            <div className="flex items-center gap-2">
+              <LandPlot className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>{plotAreaSqm} m² Grundstück</span>
             </div>
           )}
         </div>

@@ -85,6 +85,7 @@ export interface LegalData {
   landRegisterVolume?: string;
   parcelNumber?: string;
   teNumber?: string;
+  plotAreaSqm?: number;
   purchaseDate?: string;
   purchasePrice?: number;
   marketValue?: number;
@@ -264,6 +265,7 @@ export interface UnitDossierData {
   landRegisterVolume?: string;
   parcelNumber?: string;
   teNumber?: string;
+  plotAreaSqm?: number;
   purchaseDate?: string;
   purchasePrice?: number;
   marketValue?: number;
@@ -405,6 +407,7 @@ export interface PropertyFormData {
   landRegisterVolume?: string;
   parcelNumber?: string;
   teNumber?: string;
+  plotAreaSqm?: number;
   notaryDate?: string;
   purchasePrice?: number;
   marketValue?: number;

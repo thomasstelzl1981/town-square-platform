@@ -17037,6 +17037,7 @@ export type Database = {
           owner_context_id: string | null
           ownership_share_percent: number | null
           parcel_number: string | null
+          plot_area_sqm: number | null
           postal_code: string | null
           property_type: string
           public_id: string
@@ -17097,6 +17098,7 @@ export type Database = {
           owner_context_id?: string | null
           ownership_share_percent?: number | null
           parcel_number?: string | null
+          plot_area_sqm?: number | null
           postal_code?: string | null
           property_type?: string
           public_id: string
@@ -17157,6 +17159,7 @@ export type Database = {
           owner_context_id?: string | null
           ownership_share_percent?: number | null
           parcel_number?: string | null
+          plot_area_sqm?: number | null
           postal_code?: string | null
           property_type?: string
           public_id?: string
