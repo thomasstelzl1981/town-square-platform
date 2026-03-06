@@ -30,35 +30,92 @@ const CREDITS_REQUIRED = 20;
 const ACTION_CODE = "valuation_engine";
 const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-// ─── Valuation Calc Constants (mirrored from src/engines/valuation/spec.ts) ───
-// These MUST stay in sync with the client-side engine spec.
+// ─── Valuation Calc Constants V8.0 (ImmoWertV-konform) ───
+// Mirrored from src/engines/valuation/spec.ts — MUST stay in sync
 
-/** Herstellkosten-Cluster nach Baujahr (NHK 2010 Basis, Normalherstellung) */
+const BPI_FACTOR = 1.38;
+
 function getHerstellkostenSqm(yearBuilt: number): number {
-  // Baupreisindex-Korrektor 2010→2026 ≈ +38% (BPI Wohngebäude)
-  const BPI_FACTOR = 1.38;
   let base: number;
-  if (yearBuilt < 1950) base = 1100;
-  else if (yearBuilt < 1970) base = 1300;
-  else if (yearBuilt < 1990) base = 1500;
-  else if (yearBuilt < 2005) base = 1800;
-  else if (yearBuilt < 2015) base = 2100;
-  else base = 2400;
+  if (yearBuilt < 1950) base = 1200;
+  else if (yearBuilt < 1970) base = 1400;
+  else if (yearBuilt < 1990) base = 1600;
+  else if (yearBuilt < 2010) base = 2000;
+  else base = 2600;
   return Math.round(base * BPI_FACTOR);
 }
 
-/** Bodenrichtwert-Proxy nach Lageklasse */
-function getBodenrichtwertProxy(city: string, locationScore: number): number {
-  // Grobe Einordnung: Score > 70 = gute Lage, > 50 = mittlere, sonst einfach
-  if (locationScore >= 70) return 400;  // gute Lage Mittelstadt
-  if (locationScore >= 50) return 280;  // mittlere Lage
-  return 180;                           // einfache Lage / ländlich
+function getLiegenschaftszins(objectType: string): number {
+  const map: Record<string, number> = {
+    'MFH': 0.05, 'mfh': 0.05, 'Mehrfamilienhaus': 0.05,
+    'ETW': 0.035, 'etw': 0.035, 'Eigentumswohnung': 0.035,
+    'EFH': 0.03, 'efh': 0.03, 'Einfamilienhaus': 0.03,
+    'DHH': 0.03, 'dhh': 0.03, 'Doppelhaushälfte': 0.03,
+    'Gewerbe': 0.06, 'gew': 0.06,
+    'Mixed': 0.055, 'mixed': 0.055,
+  };
+  return map[objectType] || 0.045;
+}
+
+function getGesamtnutzungsdauer(objectType: string): number {
+  const map: Record<string, number> = {
+    'MFH': 80, 'mfh': 80, 'Mehrfamilienhaus': 80,
+    'ETW': 80, 'etw': 80, 'EFH': 80, 'efh': 80,
+    'DHH': 80, 'dhh': 80, 'Gewerbe': 60, 'gew': 60,
+    'Mixed': 70, 'mixed': 70,
+  };
+  return map[objectType] || 70;
+}
+
+function getPlotAreaHeuristic(objectType: string): number {
+  const map: Record<string, number> = {
+    'MFH': 1.5, 'mfh': 1.5, 'Mehrfamilienhaus': 1.5,
+    'EFH': 3.0, 'efh': 3.0, 'Einfamilienhaus': 3.0,
+    'DHH': 2.0, 'dhh': 2.0,
+    'ETW': 0.3, 'etw': 0.3, 'Eigentumswohnung': 0.3,
+    'Gewerbe': 1.2, 'gew': 1.2, 'Mixed': 1.3, 'mixed': 1.3,
+  };
+  return map[objectType] || 1.0;
+}
+
+function getBodenrichtwertProxy(_city: string, locationScore: number): number {
+  const FLOOR = 200;
+  const stufen = [
+    { maxScore: 30, value: 120 },
+    { maxScore: 45, value: 200 },
+    { maxScore: 60, value: 300 },
+    { maxScore: 75, value: 400 },
+    { maxScore: 100, value: 550 },
+  ];
+  let value = stufen[0].value;
+  for (const s of stufen) {
+    if (locationScore <= s.maxScore) { value = s.value; break; }
+    value = s.value;
+  }
+  return Math.max(_city ? FLOOR : value, value);
+}
+
+function getMarktanpassungsfaktor(locationScore: number): number {
+  if (locationScore >= 75) return 1.20;
+  if (locationScore >= 60) return 1.10;
+  if (locationScore >= 45) return 1.05;
+  return 1.00;
+}
+
+/** Barwertfaktor (Vervielfältiger) nach ImmoWertV */
+function barwertfaktor(liegenschaftszins: number, restnutzungsdauer: number): number {
+  if (restnutzungsdauer <= 0 || liegenschaftszins <= 0) return 0;
+  return (1 - Math.pow(1 + liegenschaftszins, -restnutzungsdauer)) / liegenschaftszins;
 }
 
 const CALC = {
-  BEWIRTSCHAFTUNG_RATE: 0.25,
-  CAP_RATE: 0.045,
-  SACHWERT_MAX_DEPRECIATION: 0.5,
+  BEWIRTSCHAFTUNG: {
+    verwaltungPercent: 0.05,
+    instandhaltungPerSqmYear: 12.0,
+    mietausfallPercent: 0.02,
+    nichtUmlagefaehigPercent: 0.03,
+  },
+  SACHWERT_MAX_DEPRECIATION: 0.70,
   SACHWERT_ANNUAL_DEPRECIATION: 0.01,
   VALUE_BAND_SPREAD: 0.10,
   METHOD_WEIGHTS_3: { ertragswert: 0.50, comp_proxy: 0.35, sachwert_proxy: 0.15 } as Record<string, number>,
