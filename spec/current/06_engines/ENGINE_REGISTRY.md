@@ -56,7 +56,7 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 | ENG-FLC | Financing Lifecycle Controller | MOD-07, MOD-11, Z1 Finance | ⚡ Teilweise | `src/engines/flc/spec.ts`, `engine.ts`, `conventions.ts` |
 | ENG-FDC | Finance Data Controller | MOD-18, MOD-20, MOD-04 | ✅ Live | `src/engines/fdc/spec.ts`, `engine.ts`, `conventions.ts` |
 | ENG-PLC | Pet Service Lifecycle Controller | MOD-22, MOD-05, Z3, Z1 | ⚡ Teilweise | `src/engines/plc/spec.ts`, `engine.ts` |
-| ENG-VALUATION | SoT Valuation Engine | MOD-04, MOD-12, MOD-13 | 🔲 Geplant | `src/engines/valuation/spec.ts`, `engine.ts` |
+| ENG-VALUATION | SoT Valuation Engine | MOD-04, MOD-12, MOD-13 | ⚡ Teilweise | `src/engines/valuation/spec.ts`, `engine.ts` + Edge Function `sot-valuation-engine` |
 
 ### Orchestrierung (4 Engines)
 
