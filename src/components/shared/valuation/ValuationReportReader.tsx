@@ -208,13 +208,16 @@ export function ValuationReportReader({
             )}
 
             {/* Maps */}
-            {(location.microMapUrl || location.macroMapUrl) && (
-              <div className="grid grid-cols-2 gap-2">
+            {(location.microMapUrl || location.macroMapUrl || (location as any).streetViewUrl) && (
+              <div className="grid grid-cols-3 gap-2">
                 {location.microMapUrl && (
                   <img src={location.microMapUrl} alt="Micro Map" className="rounded-lg border w-full h-auto" />
                 )}
                 {location.macroMapUrl && (
                   <img src={location.macroMapUrl} alt="Macro Map" className="rounded-lg border w-full h-auto" />
+                )}
+                {(location as any).streetViewUrl && (
+                  <img src={(location as any).streetViewUrl} alt="Street View" className="rounded-lg border w-full h-auto" />
                 )}
               </div>
             )}
