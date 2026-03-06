@@ -467,7 +467,9 @@ export function ValuationReportReader({
 
             <div className="space-y-1 p-4 rounded-xl border bg-emerald-500/5">
               <DataRow label="Liegenschaftszins (BelWertV §12)" value="5,0 %" />
-              <DataRow label="BWK (konservativ)" value={fmtEur2(beleihungswert.bwkBelwertv || 0)} />
+              <DataRow label="BWK (konservativ)" value={fmtEur2((beleihungswert as any).bwkBelwertv ?? (beleihungswert as any).bwk_belwertv ?? 0)} />
+              <DataRow label="Reinertrag (BelWertV)" value={fmtEur2((beleihungswert as any).reinertagBelwertv ?? (beleihungswert as any).reinertrag_belwertv ?? 0)} />
+              <DataRow label="Barwertfaktor (BelWertV)" value={fmtNum((beleihungswert as any).barwertfaktorBelwertv ?? (beleihungswert as any).barwertfaktor_belwertv ?? 0)} />
               <DataRow label="Sicherheitsabschlag" value={fmtPct(beleihungswert.sicherheitsabschlag)} />
               <SectionDivider />
               <DataRow label="ERTRAGSWERT (BWT)" value={fmtEur(beleihungswert.ertragswertBelwertv)} bold />
