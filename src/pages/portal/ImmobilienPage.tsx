@@ -14,6 +14,8 @@ const SanierungTab = lazy(() => import('./immobilien/SanierungTab').then(m => ({
 const VerwaltungTab = lazy(() => import('./immobilien/VerwaltungTab'));
 const PropertyDetailPage = lazy(() => import('./immobilien/PropertyDetailPage'));
 
+const BewertungTab = lazy(() => import('./immobilien/BewertungTab').then(m => ({ default: m.BewertungTab })));
+
 const MietyPortalPage = lazy(() => import('./MietyPortalPage'));
 const MietyHomeDossier = lazy(() => import('./miety/MietyHomeDossier'));
 

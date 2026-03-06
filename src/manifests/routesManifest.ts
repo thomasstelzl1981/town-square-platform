@@ -282,7 +282,7 @@ export const zone2Portal: ZoneDefinition = {
         // Tax: Vermietung + Verwaltung — Anlage V Steuererklärung
         { path: "verwaltung", component: "VerwaltungTab", title: "Steuer" },
         { path: "sanierung", component: "SanierungTab", title: "Sanierung" },
-        // Bewertung entfernt — jetzt als Tab in der Immobilienakte (PropertyDetailPage)
+        { path: "bewertung", component: "BewertungTab", title: "Bewertung" },
       ],
       dynamic_routes: [
         // Create flow: Modal in PortfolioTab, redirect to dossier after creation

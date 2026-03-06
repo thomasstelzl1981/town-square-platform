@@ -191,10 +191,9 @@ async function googleStaticMap(lat: number, lng: number, apiKey: string, zoom = 
 async function fetchSSOTPropertyData(sbAdmin: any, propertyId: string, tenantId: string) {
   stageLog(0, `Fetching SSOT data for property ${propertyId}`);
 
-  const [propRes, unitsRes, leasesRes, loansRes] = await Promise.all([
+  const [propRes, unitsRes, loansRes] = await Promise.all([
     sbAdmin.from("properties").select("*").eq("id", propertyId).eq("tenant_id", tenantId).single(),
     sbAdmin.from("units").select("*").eq("property_id", propertyId).eq("tenant_id", tenantId),
-    sbAdmin.from("leases").select("*").eq("property_id", propertyId).eq("tenant_id", tenantId),
     sbAdmin.from("loans").select("*").eq("property_id", propertyId).eq("tenant_id", tenantId),
   ]);
 
@@ -203,10 +202,18 @@ async function fetchSSOTPropertyData(sbAdmin: any, propertyId: string, tenantId:
     return null;
   }
 
+  // Leases are linked via unit_id, not property_id — fetch them via unit IDs
+  const unitIds = (unitsRes.data || []).map((u: any) => u.id);
+  let leasesData: any[] = [];
+  if (unitIds.length > 0) {
+    const { data: leases } = await sbAdmin.from("leases").select("*").in("unit_id", unitIds).eq("tenant_id", tenantId);
+    leasesData = leases || [];
+  }
+
   return {
     property: propRes.data,
     units: unitsRes.data || [],
-    leases: leasesRes.data || [],
+    leases: leasesData,
     loans: loansRes.data || [],
   };
 }
