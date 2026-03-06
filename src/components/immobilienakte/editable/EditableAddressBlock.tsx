@@ -123,8 +123,7 @@ export function EditableAddressBlock({
             value={description || ''} 
             onChange={(e) => onFieldChange('description', e.target.value)}
             placeholder="Strukturierte Beschreibung zu Lage, Mikrolage und Objekteigenschaften..."
-            rows={4}
-            className="text-xs"
+            className="text-xs flex-1 min-h-[200px]"
           />
         </div>
       </CardContent>
