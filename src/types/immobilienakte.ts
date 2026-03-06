@@ -265,6 +265,7 @@ export interface UnitDossierData {
   landRegisterVolume?: string;
   parcelNumber?: string;
   teNumber?: string;
+  plotAreaSqm?: number;
   purchaseDate?: string;
   purchasePrice?: number;
   marketValue?: number;
