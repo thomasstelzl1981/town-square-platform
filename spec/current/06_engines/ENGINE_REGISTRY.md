@@ -71,6 +71,20 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 
 > **ENG-TLC** ist der uebergeordnete Orchestrator fuer alle Mietverhaeltnisse. Er prueft woechentlich: Zahlungsstatus, Mahnstufen, Mieterhoehungs-Berechtigung (§558 BGB), Kautionsstatus, Fristen und generiert KI-gestuetzte Next-Best-Actions via `google/gemini-2.5-pro`.
 
+### Bewertung (1 Engine)
+
+| Code | Name | Status | Billing | Ausfuehrung |
+|------|------|--------|---------|-------------|
+| ENG-VALUATION | SoT Valuation Engine | ⚡ Teilweise | 20 Credits/Case | Edge Function (`sot-valuation-engine`, 6-Stage Pipeline) + Client Engine (`src/engines/valuation/`) |
+
+> **ENG-VALUATION** ersetzt Sprengnetter + GeoMap. 6-Stage Pipeline:
+> Stage 0 Preflight (Credit-Check), Stage 1 Intake (Datenextraktion),
+> Stage 2 Norm+Location (Google Maps APIs fuer POIs/Routen/Karten), Stage 3 Comps (Portal-Scraping via Firecrawl/Apify),
+> Stage 4 Calc (Ertragswert/Comp-Proxy/Sachwert — deterministischer Kern), Stage 5 Report (Web Reader + 12-Seiten PDF).
+> Scope: MOD-04 (Portfolio-Bewertung, SSOT_FINAL Mode), MOD-12/MOD-13 (Akquise-Exposé-Bewertung).
+> Deep Mapper in `useValuationCase` normalisiert snake_case DB-Output zu camelCase UI-DTO.
+> DB: `valuation_cases`, `valuation_inputs`, `valuation_results`, `valuation_reports`.
+
 ### Daten (4 Engines)
 
 | Code | Name | Status | Billing | Ausfuehrung |
