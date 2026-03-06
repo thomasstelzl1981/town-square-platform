@@ -18,6 +18,9 @@
     "ENG-SLC": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/engines/slc/*", "reason": "Full freeze — PLC Audit wave" },
     "ENG-FDC": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "path": "src/engines/fdc/*", "reason": "Full freeze — PLC Audit wave" },
     "ENG-PLC": { "frozen": true, "frozen_at": "2026-03-03T18:00:00.000Z", "path": "src/engines/plc/*", "reason": "Full freeze — all engines locked" },
-    "ENG-VALUATION": { "frozen": false, "path": "src/engines/valuation/*", "reason": "New engine — SoT Valuation Engine V5.0 — active development" }
+    "ENG-VALUATION": { "frozen": false, "path": "src/engines/valuation/*", "reason": "New engine — SoT Valuation Engine V5.0 — active development" },
+    "ENG-FLC": { "frozen": true, "frozen_at": "2026-03-06T16:00:00.000Z", "path": "src/engines/flc/*", "reason": "Full freeze — Controller Homogeneity Pattern v1.0 locked" },
+    "ENG-TRIP": { "frozen": false, "path": "src/engines/tripEngine/*", "reason": "Active development — MOD-17 Fahrtenbuch" },
+    "ENG-TLC": { "frozen": false, "path": "src/engines/tenancyLifecycle/*", "reason": "Active development — ongoing TLC enhancements" }
   }
 }

@@ -1,6 +1,6 @@
 # ENGINE REGISTRY — Single Source of Truth (SSOT)
 
-> Version 1.0 | Stand: 2026-02-18 | Maintainer: Zone 1 Governance
+> Version 1.9 | Stand: 2026-03-06 | Maintainer: Zone 1 Governance
 
 ---
 
