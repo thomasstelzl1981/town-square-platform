@@ -76,9 +76,8 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
         <div className="space-y-4">
           <ValuationPreflight
             preflight={state.preflight}
-            sourceMode="SSOT_FINAL"
-            onConfirm={handleRunValuation}
-            onCancel={handleReset}
+            onCheckPreflight={handleStartValuation}
+            onStartValuation={handleRunValuation}
             isLoading={isLoading}
           />
         </div>
@@ -91,6 +90,7 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
         <ValuationPipeline
           stages={state.stages}
           currentStage={state.currentStage}
+          status={state.status}
           error={state.error}
         />
       );
