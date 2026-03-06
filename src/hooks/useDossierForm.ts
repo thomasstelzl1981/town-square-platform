@@ -56,7 +56,8 @@ export function useDossierForm(initialData: UnitDossierData | null) {
       'city', 'locationLabel', 'locationNotes', 'description', 'latitude', 'longitude', 'buildYear',
       'usageType', 'heatingType', 'energySource', 'landRegisterCourt', 'landRegisterSheet',
       'landRegisterVolume', 'parcelNumber', 'teNumber', 'purchaseDate', 'purchasePrice',
-      'marketValue', 'acquisitionCosts', 'wegFlag', 'meaTotal', 'allocationKeyDefault'
+      'marketValue', 'acquisitionCosts', 'wegFlag', 'meaTotal', 'allocationKeyDefault',
+      'plotAreaSqm', 'totalAreaSqm'
     ];
     
     const changes: Partial<PropertyFormData> = {};
@@ -104,6 +105,8 @@ export function useDossierForm(initialData: UnitDossierData | null) {
       if (changes.wegFlag !== undefined) mapped.wegFlag = changes.wegFlag;
       if (changes.meaTotal !== undefined) mapped.meaTotal = changes.meaTotal;
       if ((changes as any).allocationKeyDefault !== undefined) mapped.allocationKey = (changes as any).allocationKeyDefault;
+      if (changes.plotAreaSqm !== undefined) mapped.plotAreaSqm = changes.plotAreaSqm;
+      if (changes.totalAreaSqm !== undefined) mapped.totalAreaSqm = changes.totalAreaSqm;
       return mapped;
     }
     
