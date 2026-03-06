@@ -1,100 +1,81 @@
 
 
-## Analyse: Grundbuchauszug → Immobilienakte
+## Analyse: Armstrong schlägt fälschlicherweise Neuanlage statt Anreicherung vor
 
-### Was existiert bereits
+### Ursache (3 Stellen)
 
-1. **`sot-storage-extractor`** — Extrahiert bereits strukturierte Felder aus Grundbuchauszügen:
-   - `amtsgericht`, `grundbuchbezirk`, `blatt_nr`, `eigentuemer`, `abteilung_ii_lasten`, `abteilung_iii_hypotheken`
-   - Ergebnis wird in `document_structured_data` gespeichert
+1. **System-Prompt (Zeile 482-484):** Eine pauschale "MAGIC INTAKE REGEL" sagt Armstrong, bei jedem angehängten Dokument eine Neuanlage vorzuschlagen — ohne zu prüfen, ob bereits eine aktive Entität existiert.
 
-2. **`ARM.MOD04.MAGIC_INTAKE_PROPERTY`** — Erstellt eine *neue* Immobilie aus einem Dokument (Kaufvertrag, Exposé). Funktioniert nur für Neuanlage, NICHT für Updates.
+2. **Intent-Classifier (Zeile 1385-1392):** Keywords wie "grundstück", "immobilie + dokument" boosten `MAGIC_INTAKE_PROPERTY` mit +5, egal ob `entity.id` gesetzt ist. Es gibt keinen Gegencheck.
 
-3. **`ARM.MOD04.DATA_QUALITY_CHECK`** — Prüft Vollständigkeit, schreibt aber keine Daten.
+3. **Fehlende Aktion:** `ARM.MOD04.ENRICH_FROM_STORAGE` existiert weder im Manifest, noch im MVP_ACTIONS-Array, noch im Execution-Handler.
 
-### Was fehlt
+### Lösung (4 Schritte)
 
-Es gibt **keine Armstrong-Aktion**, die:
-- ein Dokument aus dem Storage einer *bestehenden* Immobilie liest
-- die extrahierten Felder auf die vorhandene Akte anwendet (UPDATE statt INSERT)
+**Alle Änderungen in `supabase/functions/sot-armstrong-advisor/index.ts`** — erfordert UNFREEZE INFRA-edge_functions.
 
-Das ist die fehlende Brücke: **"Lies den Grundbuchauszug aus meinem Datenraum und fülle die Grundbuchdaten in die Akte"**.
+#### 1. System-Prompt: Entity-aware Magic Intake Regel
 
----
-
-### Plan: Neue Aktion `ARM.MOD04.ENRICH_FROM_STORAGE`
-
-**Zweck:** Armstrong liest ein Dokument aus dem Datenraum einer bestehenden Immobilie, extrahiert strukturierte Felder (via `sot-storage-extractor` oder `document_structured_data`), und schreibt sie in die Properties/Units-Tabellen.
-
-#### 1. Armstrong Manifest — neue Aktion registrieren
-
-**Datei:** `src/manifests/armstrongManifest.ts`
+Zeile 482-485 ersetzen durch kontextbewusste Logik:
 
 ```
-action_code: 'ARM.MOD04.ENRICH_FROM_STORAGE'
-title_de: 'Daten aus Dokument in Akte übernehmen'
-description_de: 'Liest ein Dokument aus dem Datenraum und überträgt extrahierte Daten in die Immobilienakte'
-risk_level: 'medium'
-execution_mode: 'execute_with_confirmation'
-data_scopes_read: ['documents', 'document_structured_data', 'storage_nodes']
-data_scopes_write: ['properties', 'units']
+MAGIC INTAKE REGEL:
+- Wenn ein Dokument angehängt ist UND KEINE aktive Entität existiert:
+  → Prüfe ob eine Magic Intake Action passt und schlage Neuanlage vor.
+- Wenn ein Dokument angehängt ist UND eine aktive Entität existiert (z.B. Immobilie):
+  → KEINE Neuanlage vorschlagen!
+  → Stattdessen: Daten aus dem Dokument in die bestehende Akte übernehmen (ENRICH).
+  → Beispiel: "Ich sehe einen Grundbuchauszug — soll ich die Grundbuchdaten in die Akte übernehmen?"
 ```
 
-Wird auch in `TOP_30_MVP_ACTION_CODES` aufgenommen.
+#### 2. Intent-Classifier: ENRICH vor INTAKE priorisieren
 
-#### 2. Backend — Handler in `sot-armstrong-advisor`
+In `suggestActionsForMessage()` (Zeile 1385-1392):
+- **Neue Regel:** Wenn `entity.id` gesetzt ist UND `entity.type === "property"`, dann `MAGIC_INTAKE_PROPERTY` NICHT boosten, sondern stattdessen `ENRICH_FROM_STORAGE` boosten.
+- Dazu muss `suggestActionsForMessage` den `entity`-Parameter erhalten (aktuell bekommt die Funktion nur `message` und `availableActions`).
 
-**Datei:** `supabase/functions/sot-armstrong-advisor/index.ts`
+#### 3. ENRICH_FROM_STORAGE als MVP-Action registrieren
 
-Neuer `case "ARM.MOD04.ENRICH_FROM_STORAGE"`:
-
-1. **Parameter:** `property_id` (Pflicht), optional `document_id` (wenn User ein bestimmtes Dokument meint)
-2. **Schritt 1 — Dokument finden:**
-   - Wenn `document_id` angegeben: direkt verwenden
-   - Sonst: Alle `document_structured_data` Einträge mit `property_id` laden, nach `doc_category` filtern (z.B. `grundbuchauszug`)
-   - Falls kein extrahiertes Dokument vorhanden: `sot-storage-extractor` on-demand triggern für die property storage_nodes
-3. **Schritt 2 — Felder mappen:**
-   - Grundbuch-Felder → `properties`-Tabelle (land_register_court, land_register_sheet, parcel_number, etc.)
-   - Nur Felder überschreiben die NULL sind ODER wo das Dokument neuer ist
-4. **Schritt 3 — Preview + Confirm:**
-   - Armstrong zeigt dem User eine Vorschau: "Ich habe folgende Daten gefunden: Amtsgericht: X, Grundbuchblatt: Y, ..."
-   - User bestätigt → UPDATE auf properties
-
-#### 3. Properties-Tabelle — Prüfen ob Grundbuch-Spalten existieren
-
-Prüfen ob `properties` bereits Spalten hat für:
-- `land_register_court` (Amtsgericht)
-- `land_register_sheet` (Grundbuchblatt)  
-- `land_register_district` (Grundbuchbezirk)
-- `parcel_number` (Flurstück)
-
-Falls fehlend: DB-Migration erstellen.
-
-#### 4. Frontend — Context-aware Trigger
-
-Im Property-Dossier (oder im Datenraum) einen "Frag Armstrong"-Button ergänzen, der den Prompt vorbefüllt:
-
-```
-"Lies den Grundbuchauszug aus dem Datenraum von [Property Name] und übertrage die Daten in die Immobilienakte"
+In `MVP_ACTIONS[]` und `MVP_EXECUTABLE_ACTIONS[]`:
+```typescript
+{
+  action_code: "ARM.MOD04.ENRICH_FROM_STORAGE",
+  title_de: "Daten aus Dokument in Akte übernehmen",
+  description_de: "Liest extrahierte Daten aus einem Dokument im Datenraum und überträgt sie in die bestehende Immobilienakte",
+  zones: ["Z2"],
+  module: "MOD-04",
+  risk_level: "medium",
+  execution_mode: "execute_with_confirmation",
+  ...
+}
 ```
 
-Nutzt den bestehenden `ArmstrongAskButton` mit vorbefülltem Prompt.
+#### 4. Execution-Handler: `case "ARM.MOD04.ENRICH_FROM_STORAGE"`
 
----
+Neuer Case in `executeAction()`:
+1. Prüfe `entity.id` + `entity.type === "property"` — Pflicht
+2. Lade `document_structured_data` für diese Property (gefiltert nach `doc_category` z.B. `grundbuchauszug`)
+3. Falls kein extrahierter Datensatz: Suche in `storage_nodes` nach zugeordneten Dokumenten, triggere ggf. `sot-storage-extractor`
+4. Mappe extrahierte Felder → `properties`-Spalten (land_register_court, land_register_sheet, parcel_number etc.)
+5. Nur NULL-Felder überschreiben (oder alle mit Preview)
+6. Rückgabe: Markdown-Preview der gefundenen Daten + Bestätigungs-Gate
 
 ### Betroffene Dateien
 
-| Datei | Aktion |
+| Datei | Änderung |
 |---|---|
-| `src/manifests/armstrongManifest.ts` | Neue Aktion `ARM.MOD04.ENRICH_FROM_STORAGE` |
-| `supabase/functions/sot-armstrong-advisor/index.ts` | Handler-Case implementieren |
-| DB-Migration (falls nötig) | Grundbuch-Spalten in `properties` |
-| Property-Dossier UI (MOD-04, frozen) | ArmstrongAskButton — braucht UNFREEZE MOD-04 |
+| `supabase/functions/sot-armstrong-advisor/index.ts` | System-Prompt, Intent-Classifier, MVP_ACTIONS, Execution-Handler |
 
 ### Voraussetzung
 
-- **MOD-04 muss unfrozen werden** für den ArmstrongAskButton im Dossier
-- Alternativ: User nutzt den Armstrong-Chat direkt und sagt "Lies den Grundbuchauszug für Parkweg 17 aus und fülle die Akte"
+**UNFREEZE INFRA-edge_functions** ist erforderlich, da `supabase/functions/*` frozen ist.
 
-Soll ich mit der Implementierung starten?
+### Testmatrix
+
+| Szenario | Erwartet |
+|---|---|
+| Innerhalb einer Immobilie: "Lies den Grundbuchauszug aus" | Armstrong schlägt ENRICH vor, NICHT Neuanlage |
+| Ohne aktive Entität: "Leg die Immobilie aus dem Kaufvertrag an" | Armstrong schlägt MAGIC_INTAKE vor |
+| ENRICH bestätigt | Grundbuchdaten werden in properties geschrieben |
+| ENRICH ohne extrahierte Daten | Armstrong meldet "Keine extrahierten Daten gefunden" |
 
