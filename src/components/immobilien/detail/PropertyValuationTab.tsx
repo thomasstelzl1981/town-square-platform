@@ -1,7 +1,7 @@
 /**
  * PropertyValuationTab — Bewertung tab extracted from PropertyDetailPage
  * R-15 sub-component
- * V6.2: Delete function + fallback state + try/catch resilience
+ * V7.0: Delete fix (tenant_id + error check), Open-Case handler, re-open completed valuations
  */
 import { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, FileText, TrendingUp, Play, Database, Trash2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Loader2, FileText, TrendingUp, Play, Database, Trash2, RotateCcw, AlertTriangle, Eye } from 'lucide-react';
 import { useValuationCase } from '@/hooks/useValuationCase';
 import { toast } from 'sonner';
 import {
@@ -28,8 +28,9 @@ interface Props {
 export function PropertyValuationTab({ propertyId, tenantId }: Props) {
   const [showPipeline, setShowPipeline] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const queryClient = useQueryClient();
-  const { state, isLoading, runPreflight, runValuation, reset } = useValuationCase();
+  const { state, isLoading, runPreflight, runValuation, fetchResult, reset } = useValuationCase();
 
   // Fetch existing valuations from valuation_cases (SSOT table)
   const { data: valuations, isLoading: loadingList } = useQuery({
@@ -92,19 +93,43 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
     queryClient.invalidateQueries({ queryKey: ['valuation-cases', propertyId, tenantId] });
   };
 
+  /** Open an existing completed case to view its report */
+  const handleOpenCase = async (caseId: string) => {
+    setOpeningId(caseId);
+    try {
+      const result = await fetchResult(caseId);
+      if (result) {
+        setShowPipeline(true);
+      }
+    } catch (e: any) {
+      console.error('Open case error:', e);
+      toast.error('Gutachten konnte nicht geladen werden');
+    } finally {
+      setOpeningId(null);
+    }
+  };
+
   const handleDeleteCase = async (caseId: string) => {
     setDeletingId(caseId);
     try {
-      // Child-first deletion order
-      await supabase.from('valuation_reports').delete().eq('case_id', caseId);
-      await supabase.from('valuation_results').delete().eq('case_id', caseId);
-      await supabase.from('valuation_inputs').delete().eq('case_id', caseId);
-      await supabase.from('valuation_cases').delete().eq('id', caseId);
+      // Child-first deletion order — include tenant_id for RLS compliance
+      const { error: e1 } = await supabase.from('valuation_reports').delete().eq('case_id', caseId).eq('tenant_id', tenantId);
+      if (e1) throw new Error(`Reports: ${e1.message}`);
+
+      const { error: e2 } = await supabase.from('valuation_results').delete().eq('case_id', caseId).eq('tenant_id', tenantId);
+      if (e2) throw new Error(`Results: ${e2.message}`);
+
+      const { error: e3 } = await supabase.from('valuation_inputs').delete().eq('case_id', caseId).eq('tenant_id', tenantId);
+      if (e3) throw new Error(`Inputs: ${e3.message}`);
+
+      const { error: e4 } = await supabase.from('valuation_cases').delete().eq('id', caseId).eq('tenant_id', tenantId);
+      if (e4) throw new Error(`Case: ${e4.message}`);
+
       toast.success('Bewertung gelöscht');
       queryClient.invalidateQueries({ queryKey: ['valuation-cases', propertyId, tenantId] });
-    } catch (e) {
+    } catch (e: any) {
       console.error('Delete error:', e);
-      toast.error('Löschen fehlgeschlagen');
+      toast.error(`Löschen fehlgeschlagen: ${e.message || 'Unbekannter Fehler'}`);
     } finally {
       setDeletingId(null);
     }
@@ -192,7 +217,7 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
             dataQuality={r.dataQuality || null}
             compStats={r.compStats || null}
             executiveSummary={r.executiveSummary}
-            sourceMode="SSOT_FINAL"
+            sourceMode={r.sourceMode || 'SSOT_FINAL'}
             legalTitle={r.legalTitle || null}
             location={r.location || null}
             comps={r.comps || []}
@@ -270,7 +295,11 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
         </Card>
       ) : (
         valuations.map((v) => (
-          <Card key={v.id}>
+          <Card
+            key={v.id}
+            className={v.status === 'final' ? 'cursor-pointer hover:border-primary/40 transition-colors' : ''}
+            onClick={() => v.status === 'final' && handleOpenCase(v.id)}
+          >
             <CardContent className="flex items-center gap-3 py-4">
               <div className="h-14 w-11 rounded-md bg-muted flex flex-col items-center justify-center shrink-0 border">
                 <FileText className="h-5 w-5 text-muted-foreground" />
@@ -290,11 +319,29 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
                 </div>
               </div>
               <p className="text-sm font-semibold shrink-0">{fmt(v.market_value)}</p>
+
+              {/* Open button for completed cases */}
+              {v.status === 'final' && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-muted-foreground hover:text-primary shrink-0"
+                  onClick={(e) => { e.stopPropagation(); handleOpenCase(v.id); }}
+                  disabled={openingId === v.id}
+                >
+                  {openingId === v.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Eye className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              )}
+
               <Button
                 size="icon"
                 variant="ghost"
                 className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
-                onClick={() => handleDeleteCase(v.id)}
+                onClick={(e) => { e.stopPropagation(); handleDeleteCase(v.id); }}
                 disabled={deletingId === v.id}
               >
                 {deletingId === v.id ? (

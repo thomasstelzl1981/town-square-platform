@@ -544,11 +544,15 @@ export function ValuationReportReader({
                 <span className="text-right w-16">€/m²</span>
                 <span className="text-right w-14">Entf.</span>
               </div>
-              {comps.slice(0, 10).map((c, idx) => (
+               {comps.slice(0, 10).map((c, idx) => (
                 <div key={c.id} className={cn('grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3 text-xs items-center transition-colors', idx % 2 === 1 && 'bg-muted/10', 'hover:bg-muted/20')}>
                   <div className="min-w-0 flex items-center gap-2">
                     <Badge variant="outline" className="text-[8px] shrink-0 px-1.5">{c.portal}</Badge>
-                    <span className="font-medium truncate">{c.title || '–'}</span>
+                    {c.url ? (
+                      <a href={c.url} target="_blank" rel="noopener noreferrer" className="font-medium truncate text-primary hover:underline">{c.title || '–'}</a>
+                    ) : (
+                      <span className="font-medium truncate">{c.title || '–'}</span>
+                    )}
                   </div>
                   <span className="text-right font-semibold w-20">{fmtEur(c.price)}</span>
                   <span className="text-right text-muted-foreground w-14">{c.area}m²</span>
