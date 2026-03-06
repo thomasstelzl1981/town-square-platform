@@ -596,10 +596,11 @@ export function ValuationReportReader({
               {geminiResearch.liegenschaftszins && (
                 <div className="p-4 rounded-xl border bg-muted/10 space-y-1">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Liegenschaftszins</p>
-                  <DataRow label="Empfohlen (MWT)" value={fmtPct(geminiResearch.liegenschaftszins.marktwertZins)} />
+                  <DataRow label="Empfohlen (MWT)" value={fmtPct((geminiResearch.liegenschaftszins as any).marktwertZins ?? (geminiResearch.liegenschaftszins as any).marktwert_zins)} />
                   <DataRow label="Spanne" value={`${fmtPct(geminiResearch.liegenschaftszins.min)} – ${fmtPct(geminiResearch.liegenschaftszins.max)}`} />
                   <DataRow label="BelWertV (fest)" value="5,0 %" muted />
                   <DataRow label="Quelle" value={geminiResearch.liegenschaftszins.quelle} muted />
+                  {geminiResearch.liegenschaftszins.begruendung && <DataRow label="Begründung" value={String(geminiResearch.liegenschaftszins.begruendung)} muted />}
                 </div>
               )}
 
@@ -607,9 +608,10 @@ export function ValuationReportReader({
               {geminiResearch.bodenrichtwert && (
                 <div className="p-4 rounded-xl border bg-muted/10 space-y-1">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Bodenrichtwert</p>
-                  <DataRow label="Richtwert" value={`${fmtNum(geminiResearch.bodenrichtwert.bodenrichtwertEurSqm)} €/m²`} />
-                  <DataRow label="Nutzungsart" value={geminiResearch.bodenrichtwert.artDerNutzung} />
+                  <DataRow label="Richtwert" value={`${fmtNum((geminiResearch.bodenrichtwert as any).bodenrichtwertEurSqm ?? (geminiResearch.bodenrichtwert as any).bodenrichtwert_eur_sqm)} €/m²`} />
+                  <DataRow label="Nutzungsart" value={String((geminiResearch.bodenrichtwert as any).artDerNutzung ?? (geminiResearch.bodenrichtwert as any).art_der_nutzung ?? '–')} />
                   <DataRow label="Quelle" value={geminiResearch.bodenrichtwert.quelle} muted />
+                  {geminiResearch.bodenrichtwert.begruendung && <DataRow label="Begründung" value={String(geminiResearch.bodenrichtwert.begruendung)} muted />}
                 </div>
               )}
 
@@ -617,10 +619,11 @@ export function ValuationReportReader({
               {geminiResearch.vergleichsmieten && (
                 <div className="p-4 rounded-xl border bg-muted/10 space-y-1">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Vergleichsmieten</p>
-                  <DataRow label="Min" value={`${fmtNum(geminiResearch.vergleichsmieten.mieteMin)} €/m²`} />
-                  <DataRow label="Median" value={`${fmtNum(geminiResearch.vergleichsmieten.mieteMedian)} €/m²`} />
-                  <DataRow label="Max" value={`${fmtNum(geminiResearch.vergleichsmieten.mieteMax)} €/m²`} />
+                  <DataRow label="Min" value={`${fmtNum((geminiResearch.vergleichsmieten as any).mieteMin ?? (geminiResearch.vergleichsmieten as any).miete_min)} €/m²`} />
+                  <DataRow label="Median" value={`${fmtNum((geminiResearch.vergleichsmieten as any).mieteMedian ?? (geminiResearch.vergleichsmieten as any).miete_median)} €/m²`} />
+                  <DataRow label="Max" value={`${fmtNum((geminiResearch.vergleichsmieten as any).mieteMax ?? (geminiResearch.vergleichsmieten as any).miete_max)} €/m²`} />
                   <DataRow label="Quelle" value={geminiResearch.vergleichsmieten.quelle} muted />
+                  {(geminiResearch.vergleichsmieten as any).begruendung && <DataRow label="Begründung" value={String((geminiResearch.vergleichsmieten as any).begruendung)} muted />}
                 </div>
               )}
             </div>
