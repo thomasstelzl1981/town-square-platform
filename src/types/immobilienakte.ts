@@ -261,6 +261,7 @@ export interface UnitDossierData {
   featuresTags?: string[];
   coreRenovated?: boolean;
   renovationYear?: number;
+  unitCountActual?: number | null;
 
   // Block D: Legal
   landRegisterCourt?: string;
