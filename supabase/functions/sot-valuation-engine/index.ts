@@ -460,6 +460,26 @@ function buildServerSSOTSnapshot(ssotData: any): Record<string, any> {
     encumbrances_note: "Belastungen nicht automatisch ausgewertet — manuelle Prüfung empfohlen",
   };
 
+  // V9.1: MFH multi-unit detection
+  const isMfh = ['MFH', 'mfh', 'Mehrfamilienhaus'].includes(p.property_type || '');
+  const mfhMultiUnit = isMfh && units.length > 1;
+  const unitsDetail = units.length > 0 ? units.map((u: any) => {
+    // Find matching lease for this unit
+    const unitLease = activeLeases.find((l: any) => l.unit_id === u.id);
+    return {
+      id: u.id,
+      area_sqm: u.area_sqm || 0,
+      rooms: u.rooms || null,
+      floor: u.floor || null,
+      rent_cold: unitLease?.rent_cold_eur || u.current_monthly_rent || null,
+    };
+  }) : [];
+
+  // V9.1: For MFH multi-unit, calculate average unit size for comp filtering
+  const avgUnitArea = mfhMultiUnit && unitsDetail.length > 0
+    ? Math.round(unitsDetail.reduce((s: number, u: any) => s + (u.area_sqm || 0), 0) / unitsDetail.length)
+    : null;
+
   return {
     source_mode: "SSOT_FINAL",
     address: p.address || "",
@@ -492,6 +512,10 @@ function buildServerSSOTSnapshot(ssotData: any): Record<string, any> {
       fixed_interest_end: primaryLoan.fixed_interest_end_date,
       bank_name: primaryLoan.bank_name,
     } : null,
+    // V9.1: MFH unit-aware fields
+    mfh_multi_unit: mfhMultiUnit,
+    units_detail: unitsDetail,
+    avg_unit_area: avgUnitArea,
   };
 }
 
