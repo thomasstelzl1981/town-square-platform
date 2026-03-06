@@ -1,9 +1,9 @@
 /**
  * PropertyValuationTab — Bewertung tab extracted from PropertyDetailPage
  * R-15 sub-component
- * V6.0: SSOT-Final Mode — fetches full property context for valuation engine
+ * V6.1: Queries valuation_cases (SSOT) + PDF export button
  */
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,11 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, FileText, TrendingUp, Play, Database } from 'lucide-react';
 import { useValuationCase } from '@/hooks/useValuationCase';
+import { toast } from 'sonner';
 import {
   ValuationPreflight,
   ValuationPipeline,
   ValuationReportReader,
   ValuationDiffReview,
+  generateValuationPdf,
 } from '@/components/shared/valuation';
 
 interface Props {
@@ -27,18 +29,38 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
   const [showPipeline, setShowPipeline] = useState(false);
   const { state, isLoading, runPreflight, runValuation, reset } = useValuationCase();
 
-  // Fetch existing valuations
+  // Fetch existing valuations from valuation_cases (SSOT table)
   const { data: valuations, isLoading: loadingList } = useQuery({
-    queryKey: ['property-valuations', propertyId, tenantId],
+    queryKey: ['valuation-cases', propertyId, tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('property_valuations')
-        .select('*')
+        .from('valuation_cases')
+        .select('id, status, source_mode, created_at, updated_at')
         .eq('property_id', propertyId)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data;
+
+      // Fetch market values from valuation_results for completed cases
+      if (data && data.length > 0) {
+        const completedIds = data.filter(c => c.status === 'final').map(c => c.id);
+        if (completedIds.length > 0) {
+          const { data: results } = await supabase
+            .from('valuation_results')
+            .select('case_id, value_band')
+            .in('case_id', completedIds);
+          
+          const resultMap = new Map(results?.map(r => [r.case_id, r.value_band]) || []);
+          return data.map(c => ({
+            ...c,
+            market_value: (() => {
+              const vb = resultMap.get(c.id) as any;
+              return vb?.p50 ?? null;
+            })(),
+          }));
+        }
+      }
+      return data?.map(c => ({ ...c, market_value: null as number | null })) || [];
     },
     enabled: !!propertyId && !!tenantId,
   });
@@ -68,9 +90,36 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
     setShowPipeline(false);
   };
 
+  const handleDownloadPdf = useCallback(async () => {
+    const r = state.resultData;
+    if (!r?.valueBand) return;
+    try {
+      await generateValuationPdf({
+        snapshot: r.snapshot || { address: '', city: '', postalCode: '', objectType: null, livingAreaSqm: null, plotAreaSqm: null, usableAreaSqm: null, commercialAreaSqm: null, rooms: null, units: null, floors: null, parkingSpots: null, yearBuilt: null, condition: null, energyClass: null, modernizations: [], askingPrice: null, netColdRentMonthly: null, netColdRentPerSqm: null, hausgeldMonthly: null, vacancyRate: null, rentalStatus: null, purchasePrice: null, acquisitionCosts: null, notaryDate: null, legalTitle: null, existingLoanData: null, groundBookEntry: null, partitionDeclaration: null, providerName: null, providerContact: null },
+        valueBand: r.valueBand,
+        methods: r.methods || [],
+        financing: r.financing || [],
+        stressTests: r.stressTests || [],
+        lienProxy: r.lienProxy || null,
+        dataQuality: r.dataQuality || null,
+        compStats: r.compStats || null,
+        comps: r.comps || [],
+        location: r.location || null,
+        executiveSummary: r.executiveSummary || '',
+        caseId: state.caseId || 'unknown',
+        generatedAt: new Date().toISOString(),
+        sourceMode: 'SSOT_FINAL',
+        legalTitle: r.legalTitle || null,
+      });
+      toast.success('PDF erstellt');
+    } catch (e) {
+      console.error('PDF error:', e);
+      toast.error('PDF-Erstellung fehlgeschlagen');
+    }
+  }, [state.resultData, state.caseId]);
+
   // Pipeline view
   if (showPipeline) {
-    // Show preflight
     if (state.status === 'idle' && state.preflight) {
       return (
         <div className="space-y-4">
@@ -84,7 +133,6 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
       );
     }
 
-    // Show running pipeline
     if (state.status === 'running') {
       return (
         <ValuationPipeline
@@ -96,7 +144,6 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
       );
     }
 
-    // Show results
     if (state.resultData) {
       const r = state.resultData;
       return (
@@ -111,7 +158,6 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
             </Button>
           </div>
 
-          {/* Diff Review if diffs exist */}
           {r.diffs && r.diffs.length > 0 && (
             <ValuationDiffReview diffs={r.diffs} />
           )}
@@ -128,6 +174,9 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
             executiveSummary={r.executiveSummary}
             sourceMode="SSOT_FINAL"
             legalTitle={r.legalTitle || null}
+            location={r.location || null}
+            comps={r.comps || []}
+            onDownloadPdf={handleDownloadPdf}
           />
         </div>
       );
@@ -145,7 +194,6 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* Start new valuation button */}
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="flex items-center justify-between py-4">
           <div>
@@ -169,7 +217,6 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
         </CardContent>
       </Card>
 
-      {/* Existing valuations list */}
       {(!valuations || valuations.length === 0) ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center py-12 text-center">
@@ -186,13 +233,20 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
             <CardContent className="flex items-center gap-3 py-4">
               <div className="h-14 w-11 rounded-md bg-muted flex flex-col items-center justify-center shrink-0 border">
                 <FileText className="h-5 w-5 text-muted-foreground" />
-                <Badge variant="secondary" className="text-[9px] px-1 py-0 mt-0.5">PDF</Badge>
+                <Badge variant="secondary" className="text-[9px] px-1 py-0 mt-0.5">
+                  {v.source_mode === 'SSOT_FINAL' ? 'SSOT' : 'Draft'}
+                </Badge>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium font-mono">{v.public_id}</p>
-                <p className="text-xs text-muted-foreground">
-                  {v.completed_at ? new Date(v.completed_at).toLocaleDateString('de-DE') : '–'}
-                </p>
+                <p className="text-sm font-medium font-mono">{v.id.slice(0, 8)}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    {v.updated_at ? new Date(v.updated_at).toLocaleDateString('de-DE') : v.created_at ? new Date(v.created_at).toLocaleDateString('de-DE') : '–'}
+                  </p>
+                  <Badge variant={v.status === 'final' ? 'default' : 'outline'} className="text-[9px]">
+                    {v.status === 'final' ? 'Abgeschlossen' : v.status === 'running' ? 'Läuft...' : v.status}
+                  </Badge>
+                </div>
               </div>
               <p className="text-sm font-semibold shrink-0">{fmt(v.market_value)}</p>
             </CardContent>

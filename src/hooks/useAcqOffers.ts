@@ -337,15 +337,25 @@ export function useRunAIResearch() {
 }
 
 /**
- * Run SoT Valuation (placeholder — will invoke sot-valuation-engine in Phase 5)
+ * Run SoT Valuation for an acquisition offer via the sot-valuation-engine Edge Function
  */
 export function useRunValuation() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ offerId, address }: { offerId: string; address: string }) => {
-      // TODO: Phase 5 — invoke sot-valuation-engine edge function
-      throw new Error('SoT Valuation Engine wird in Phase 5 implementiert');
+      const { data, error } = await supabase.functions.invoke('sot-valuation-engine', {
+        body: {
+          action: 'run',
+          offer_id: offerId,
+          source_context: 'ACQUIARY_TOOLS',
+          sourceMode: 'DRAFT_INTAKE',
+          address_hint: address,
+        },
+      });
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Bewertung fehlgeschlagen');
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['acq-analysis-runs'] });

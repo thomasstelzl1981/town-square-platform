@@ -1,8 +1,10 @@
 /**
  * generateValuationPdf — Creates a branded SoT Bewertungsgutachten PDF (max 12 pages)
  * Uses lazy-loaded jsPDF. Pure data-driven, no DOM dependency.
+ * V6.1: Uses pdfCiTokens for CI-A compliance
  */
 import { getJsPDF } from '@/lib/lazyJspdf';
+import { PAGE, COLOR, TYPO, SPACING, BRAND } from '@/lib/pdf/pdfCiTokens';
 import type {
   ValueBand,
   ValuationMethodResult,
@@ -45,31 +47,32 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
   const jsPDF = await getJsPDF();
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-  const W = 210;
-  const H = 297;
-  const ML = 20; // margin left
-  const MR = 20;
-  const CW = W - ML - MR; // content width
+  const W = PAGE.WIDTH;
+  const H = PAGE.HEIGHT;
+  const ML = PAGE.MARGIN_LEFT;
+  const MR = PAGE.MARGIN_RIGHT;
+  const CW = PAGE.CONTENT_WIDTH;
   let y = 0;
 
+  // CI-A color aliases
   const colors = {
-    primary: [30, 64, 175] as [number, number, number],   // blue-800
-    dark: [15, 23, 42] as [number, number, number],        // slate-900
-    muted: [100, 116, 139] as [number, number, number],    // slate-500
-    light: [241, 245, 249] as [number, number, number],    // slate-100
-    white: [255, 255, 255] as [number, number, number],
-    green: [22, 163, 74] as [number, number, number],
-    red: [220, 38, 38] as [number, number, number],
+    primary: COLOR.ACCENT as [number, number, number],
+    dark: COLOR.INK as [number, number, number],
+    muted: COLOR.MUTED as [number, number, number],
+    light: COLOR.SURFACE as [number, number, number],
+    white: COLOR.WHITE as [number, number, number],
+    green: COLOR.SUCCESS as [number, number, number],
+    red: COLOR.DANGER as [number, number, number],
   };
 
   function newPage() {
     doc.addPage();
-    y = 20;
+    y = PAGE.MARGIN_TOP;
   }
 
-  function heading(text: string, size = 14) {
+  function heading(text: string, size: number = TYPO.H2.size) {
     if (y > H - 40) newPage();
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(TYPO.FONT_FAMILY, 'bold');
     doc.setFontSize(size);
     doc.setTextColor(...colors.dark);
     doc.text(text, ML, y);
@@ -78,8 +81,8 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
 
   function subheading(text: string) {
     if (y > H - 30) newPage();
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFont(TYPO.FONT_FAMILY, 'bold');
+    doc.setFontSize(TYPO.BODY.size);
     doc.setTextColor(...colors.primary);
     doc.text(text, ML, y);
     y += 6;
@@ -87,8 +90,8 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
 
   function body(text: string, maxWidth = CW) {
     if (y > H - 25) newPage();
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFont(TYPO.FONT_FAMILY, 'normal');
+    doc.setFontSize(TYPO.CAPTION.size + 1);
     doc.setTextColor(...colors.dark);
     const lines = doc.splitTextToSize(text, maxWidth);
     doc.text(lines, ML, y);
@@ -96,15 +99,15 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
   }
 
   function label(text: string) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFont(TYPO.FONT_FAMILY, 'normal');
+    doc.setFontSize(TYPO.CAPTION.size);
     doc.setTextColor(...colors.muted);
     doc.text(text, ML, y);
   }
 
   function value(text: string, x: number) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFont(TYPO.FONT_FAMILY, 'bold');
+    doc.setFontSize(TYPO.CAPTION.size + 1);
     doc.setTextColor(...colors.dark);
     doc.text(text, x, y);
   }
@@ -117,7 +120,7 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
   }
 
   function separator() {
-    doc.setDrawColor(...colors.light);
+    doc.setDrawColor(...(COLOR.BORDER as [number, number, number]));
     doc.setLineWidth(0.3);
     doc.line(ML, y, W - MR, y);
     y += 4;
@@ -130,13 +133,13 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
   doc.setFillColor(...colors.primary);
   doc.rect(0, 0, W, 45, 'F');
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
+  doc.setFont(TYPO.FONT_FAMILY, 'bold');
+  doc.setFontSize(TYPO.H1.size);
   doc.setTextColor(...colors.white);
   doc.text('SoT Bewertungsgutachten', ML, 25);
 
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(TYPO.BODY.size);
+  doc.setFont(TYPO.FONT_FAMILY, 'normal');
   const sourceModeLabel = data.sourceMode === 'SSOT_FINAL' ? '  ·  Datenbasis: SSOT (Final)' : '  ·  Datenbasis: Exposé Draft';
   doc.text(`Case ${data.caseId.slice(0, 8)}  ·  ${new Date(data.generatedAt).toLocaleDateString('de-DE')}${sourceModeLabel}`, ML, 35);
 
@@ -159,16 +162,16 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
   doc.setFillColor(...colors.light);
   doc.roundedRect(ML, y, CW, 28, 3, 3, 'F');
   y += 8;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFont(TYPO.FONT_FAMILY, 'normal');
+  doc.setFontSize(TYPO.CAPTION.size);
   doc.setTextColor(...colors.muted);
   doc.text('WERTBAND (P25 – P50 – P75)', ML + 5, y);
   y += 7;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
+  doc.setFont(TYPO.FONT_FAMILY, 'bold');
+  doc.setFontSize(TYPO.KPI_MEDIUM.size);
   doc.setTextColor(...colors.primary);
   doc.text(EUR(data.valueBand.p50), ML + 5, y);
-  doc.setFontSize(9);
+  doc.setFontSize(TYPO.CAPTION.size + 1);
   doc.setTextColor(...colors.muted);
   doc.text(`${EUR(data.valueBand.p25)}  –  ${EUR(data.valueBand.p75)}`, ML + 70, y);
   y += 15;
@@ -229,14 +232,13 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
       y += 5;
     }
 
-    // Top 10 comps table
     const topComps = data.comps.slice(0, 10);
     if (topComps.length > 0) {
       subheading('Top Vergleichsobjekte');
       for (const c of topComps) {
         if (y > H - 20) newPage();
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
+        doc.setFont(TYPO.FONT_FAMILY, 'normal');
+        doc.setFontSize(TYPO.CAPTION.size);
         doc.setTextColor(...colors.dark);
         doc.text(`${c.title?.slice(0, 40) || '–'}  |  ${EUR(c.price)}  |  ${c.area}m²  |  ${EUR(c.priceSqm)}/m²`, ML, y);
         y += 4;
@@ -345,11 +347,11 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFont(TYPO.FONT_FAMILY, 'normal');
+    doc.setFontSize(TYPO.CAPTION.size - 1);
     doc.setTextColor(...colors.muted);
-    doc.text(`SoT Bewertungsgutachten  ·  ${data.caseId.slice(0, 8)}  ·  Seite ${i}/${totalPages}`, ML, H - 10);
-    doc.text('Dieses Gutachten ersetzt keine bankfähige Wertermittlung.', W - MR, H - 10, { align: 'right' });
+    doc.text(`${BRAND.COMPANY_NAME}  ·  SoT Bewertungsgutachten  ·  ${data.caseId.slice(0, 8)}  ·  Seite ${i}/${totalPages}`, ML, H - 10);
+    doc.text(`${BRAND.CONFIDENTIAL}  ·  ${BRAND.COPYRIGHT()}`, W - MR, H - 10, { align: 'right' });
   }
 
   // Save

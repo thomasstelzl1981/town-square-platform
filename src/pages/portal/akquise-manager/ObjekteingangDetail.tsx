@@ -1,6 +1,7 @@
 /**
  * ObjekteingangDetail — Orchestrator (MOD-12)
  * R-23 Refactoring: 539 → ~200 lines
+ * V6.1: Bewertungs-Step now wired to ValuationCase hook
  */
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -10,10 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Loader2, Building2, X, ThumbsUp, MessageSquare, FileText, Upload, Check, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Loader2, Building2, X, ThumbsUp, MessageSquare, FileText, Upload, Check, ChevronDown, TrendingUp, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAcqOffer, useUpdateOfferStatus, type AcqOfferStatus } from '@/hooks/useAcqOffers';
 import { useAcqMandate } from '@/hooks/useAcqMandate';
+import { useValuationCase } from '@/hooks/useValuationCase';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { BestandCalculation } from './components/BestandCalculation';
@@ -30,6 +32,7 @@ import { AUFTEILER_DEFAULTS } from '@/engines/akquiseCalc/spec';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { ObjektKPIRow, ObjektBasisdaten } from '@/components/akquise/objekteingang';
+import { ValuationPreflight, ValuationPipeline, ValuationReportReader } from '@/components/shared/valuation';
 
 // Keep QuickAnalysisBanner inline — it has complex editable price state with supabase save
 import { Input } from '@/components/ui/input';
@@ -90,6 +93,7 @@ export function ObjekteingangDetail() {
   const { data: offer, isLoading } = useAcqOffer(offerId);
   const { data: mandate } = useAcqMandate(offer?.mandate_id);
   const updateStatus = useUpdateOfferStatus();
+  const valuation = useValuationCase();
   const [absageOpen, setAbsageOpen] = React.useState(false);
   const [preisOpen, setPreisOpen] = React.useState(false);
   const [interesseOpen, setInteresseOpen] = React.useState(false);
@@ -137,6 +141,43 @@ export function ObjekteingangDetail() {
       <div className={DESIGN.FORM_GRID.FULL}>
         <div className="space-y-2"><h2 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>E-Mail / Quelle</h2><SourceEmailViewer sourceInboundId={offer.source_inbound_id} sourceType={offer.source_type} sourceUrl={offer.source_url} /></div>
         <div className="space-y-2"><h2 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>Dokumente</h2><Card className={DESIGN.CARD.BASE}><CardHeader className="flex flex-row items-center justify-between py-3 px-4"><CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Dateien</CardTitle><Button variant="outline" size="sm"><Upload className="h-4 w-4 mr-2" />Hochladen</Button></CardHeader><CardContent className="px-4 pb-4">{offer.documents?.length > 0 ? <div className={DESIGN.LIST.GAP}>{offer.documents.map((doc: any) => <div key={doc.id} className={DESIGN.LIST.ROW}><div className="flex items-center gap-3"><FileText className="h-5 w-5 text-muted-foreground" /><div><div className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{doc.file_name}</div><div className={DESIGN.TYPOGRAPHY.HINT}>{doc.document_type}</div></div></div><Button variant="outline" size="sm">Öffnen</Button></div>)}</div> : <div className="text-center py-8 text-muted-foreground"><FileText className="h-8 w-8 mx-auto mb-2" /><p className={DESIGN.TYPOGRAPHY.MUTED}>Keine Dokumente vorhanden</p></div>}</CardContent></Card></div>
+      </div>
+
+      {/* SoT Bewertung */}
+      <div className="space-y-4">
+        <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-1')}>SoT Bewertung</h2>
+        {valuation.state.status !== 'running' && !valuation.state.resultData && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="flex items-center justify-between py-4">
+              <div>
+                <p className="text-sm font-medium">KI-gestützte Objektbewertung</p>
+                <p className="text-xs text-muted-foreground">Exposé-basierte Bewertung mit Portal-Comps (20 Credits)</p>
+              </div>
+              <Button size="sm" onClick={() => valuation.runValuation({ offerId: offer.id, sourceContext: 'ACQUIARY_TOOLS' })} disabled={valuation.isLoading}>
+                {valuation.isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
+                Bewertung starten
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+        {valuation.state.status === 'running' && (
+          <ValuationPipeline stages={valuation.state.stages} currentStage={valuation.state.currentStage} status={valuation.state.status} error={valuation.state.error} />
+        )}
+        {valuation.state.resultData && (
+          <ValuationReportReader
+            valueBand={valuation.state.resultData.valueBand}
+            methods={valuation.state.resultData.methods || []}
+            financing={valuation.state.resultData.financing || []}
+            stressTests={valuation.state.resultData.stressTests || []}
+            lienProxy={valuation.state.resultData.lienProxy || null}
+            debtService={valuation.state.resultData.debtService || null}
+            dataQuality={valuation.state.resultData.dataQuality || null}
+            compStats={valuation.state.resultData.compStats || null}
+            executiveSummary={valuation.state.resultData.executiveSummary}
+            location={valuation.state.resultData.location || null}
+            comps={valuation.state.resultData.comps || []}
+          />
+        )}
       </div>
 
       <div className="space-y-4">
