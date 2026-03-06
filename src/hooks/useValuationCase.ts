@@ -182,7 +182,7 @@ export function useValuationCase() {
   const fetchResult = useCallback(async (caseId: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('sot-valuation-engine', {
-        body: { action: 'get', caseId },
+        body: { action: 'get', case_id: caseId },
       });
       if (error) throw new Error(error.message);
       setState(s => ({ ...s, resultData: data, caseId }));
