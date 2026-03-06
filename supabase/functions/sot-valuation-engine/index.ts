@@ -1044,13 +1044,23 @@ Deno.serve(async (req) => {
         }
 
         // ═══ 4.3 Comp Proxy ═══
+        // V9.1: For MFH multi-unit, compStats.p50 is based on ETW-comps (€/m² for apartments)
+        // but we apply it to TOTAL livingArea — giving the correct higher aggregate value
         let compProxyResult: any = null;
         if (compStats.available && livingArea > 0) {
           const compValue = Math.round(compStats.p50 * livingArea);
+          const mfhNote = snapshot.mfh_multi_unit
+            ? `MFH-Einheitenbewertung: ${snapshot.units_detail?.length || 0} Einheiten, Ø ${snapshot.avg_unit_area}m², ETW-Comps angewandt auf ${livingArea}m² Gesamtfläche`
+            : undefined;
           compProxyResult = {
             method: "comp_proxy", value: compValue,
             confidence: compStats.count_with_price_sqm >= 5 ? 0.6 : 0.4,
-            params: { median_price_sqm: compStats.p50, living_area: livingArea, comp_count: compStats.count_with_price_sqm },
+            params: {
+              median_price_sqm: compStats.p50, living_area: livingArea,
+              comp_count: compStats.count_with_price_sqm,
+              comp_search_type: snapshot.mfh_multi_unit ? 'ETW (MFH-Einheitenbewertung)' : objectType,
+              ...(mfhNote ? { mfh_unit_note: mfhNote } : {}),
+            },
           };
         }
 
