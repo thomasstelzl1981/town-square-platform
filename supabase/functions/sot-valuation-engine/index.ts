@@ -1077,30 +1077,66 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         await updateStage(4);
 
         const assumptions: any[] = [];
+        const objectType = snapshot.object_type || "other";
 
-        // V7.0: Bodenwert berechnen (für Ertragswert UND Sachwert)
-        const plotAreaSqm = Number(snapshot.plot_area_sqm) || Number(snapshot.grundstueck_flaeche) || 0;
+        // V8.0: Bodenwert berechnen (mit Heuristik-Fallback)
+        let plotAreaSqm = Number(snapshot.plot_area_sqm) || Number(snapshot.grundstueck_flaeche) || 0;
         const locationScore = locationAnalysis.global_score || 0;
         const bodenrichtwertProxy = getBodenrichtwertProxy(snapshot.city || "", locationScore);
+        
+        // Heuristik wenn plot_area fehlt
+        if (plotAreaSqm <= 0 && livingArea > 0) {
+          const heuristicFactor = getPlotAreaHeuristic(objectType);
+          plotAreaSqm = Math.round(livingArea * heuristicFactor);
+          assumptions.push({ text: `Grundstücksfläche geschätzt: ${livingArea} m² × ${heuristicFactor} = ${plotAreaSqm} m² (Heuristik für ${objectType})`, impact: "medium" });
+        }
+        
         const bodenwert = plotAreaSqm > 0 ? Math.round(plotAreaSqm * bodenrichtwertProxy) : 0;
         if (bodenwert > 0) {
           assumptions.push({ text: `Bodenwert-Proxy: ${bodenrichtwertProxy} €/m² × ${plotAreaSqm} m² = ${bodenwert.toLocaleString('de')} €`, impact: "high" });
         }
 
-        // 4.1 Ertragswert (ImmoWertV-konform: NOI/Liegenschaftszins + Bodenwert)
+        // 4.1 Ertragswert (ImmoWertV-konform: Barwertfaktor-Methode)
         let ertragswertResult: any = null;
         const netRent = Number(snapshot.net_cold_rent_monthly) || 0;
         const askingPrice = Number(snapshot.asking_price) || 0;
 
         if (netRent > 0) {
           const annualRent = netRent * 12;
-          const bewirtschaftungRate = CALC.BEWIRTSCHAFTUNG_RATE;
-          assumptions.push({ text: `Bewirtschaftungskosten ${bewirtschaftungRate * 100}% der Nettokaltmiete`, impact: "high" });
-          const netOperatingIncome = annualRent * (1 - bewirtschaftungRate);
-          const capRate = CALC.CAP_RATE;
-          assumptions.push({ text: `Liegenschaftszinssatz ${capRate * 100}%`, impact: "high" });
-          const gebaeude_ertragswert = Math.round(netOperatingIncome / capRate);
-          const ertragswert = gebaeude_ertragswert + bodenwert;
+          const bew = CALC.BEWIRTSCHAFTUNG;
+          
+          // Differenzierte Bewirtschaftungskosten
+          const verwaltung = annualRent * bew.verwaltungPercent;
+          const instandhaltung = livingArea * bew.instandhaltungPerSqmYear;
+          const mietausfall = annualRent * bew.mietausfallPercent;
+          const nichtUmlagefaehig = annualRent * bew.nichtUmlagefaehigPercent;
+          const bewirtschaftungAbzug = verwaltung + instandhaltung + mietausfall + nichtUmlagefaehig;
+          const bewirtschaftungRate = annualRent > 0 ? bewirtschaftungAbzug / annualRent : 0;
+          
+          const reinertrag = annualRent - bewirtschaftungAbzug;
+          
+          // Liegenschaftszins nach Objektart
+          const capRate = getLiegenschaftszins(objectType);
+          
+          // Restnutzungsdauer
+          const yearBuilt = Number(snapshot.year_built) || 1980;
+          const age = new Date().getFullYear() - yearBuilt;
+          const gnd = getGesamtnutzungsdauer(objectType);
+          const rnd = Math.max(10, gnd - age);
+          
+          // Barwertfaktor (Vervielfältiger)
+          const bwf = barwertfaktor(capRate, rnd);
+          
+          // Bodenertrag abziehen
+          const bodenertrag = bodenwert * capRate;
+          const reinertragsanteilGebaeude = reinertrag - bodenertrag;
+          
+          // Gebäude-Ertragswert + Bodenwert
+          const ertragswertGebaeude = Math.round(reinertragsanteilGebaeude * bwf);
+          const ertragswert = Math.max(0, ertragswertGebaeude + bodenwert);
+          
+          assumptions.push({ text: `Bewirtschaftung differenziert: Verwaltung ${(bew.verwaltungPercent*100).toFixed(0)}% + IH ${bew.instandhaltungPerSqmYear}€/m²/a + Mietausfall ${(bew.mietausfallPercent*100).toFixed(0)}% + Nicht-umlagef. ${(bew.nichtUmlagefaehigPercent*100).toFixed(0)}% = ${Math.round(bewirtschaftungRate*100)}% effektiv`, impact: "high" });
+          assumptions.push({ text: `Liegenschaftszins ${(capRate * 100).toFixed(1)}% (${objectType}), RND ${rnd} Jahre, Barwertfaktor ${bwf.toFixed(2)}`, impact: "high" });
 
           ertragswertResult = {
             method: "ertragswert",
@@ -1108,17 +1144,21 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
             confidence: netRent > 0 ? (sourceMode === "SSOT_FINAL" ? 0.85 : 0.7) : 0.3,
             params: {
               annual_rent: annualRent,
-              bewirtschaftung_rate: bewirtschaftungRate,
-              noi: netOperatingIncome,
+              bewirtschaftung_abzug: Math.round(bewirtschaftungAbzug),
+              bewirtschaftung_rate: Math.round(bewirtschaftungRate * 100) / 100,
+              reinertrag: Math.round(reinertrag),
               cap_rate: capRate,
-              gebaeude_ertragswert,
+              restnutzungsdauer: rnd,
+              barwertfaktor: Math.round(bwf * 100) / 100,
+              bodenertrag: Math.round(bodenertrag),
+              ertragswert_gebaeude: ertragswertGebaeude,
               bodenwert,
               gross_yield: askingPrice > 0 ? Math.round((annualRent / askingPrice) * 10000) / 100 : null,
             },
           };
         }
 
-        // 4.2 Comp Proxy
+        // 4.2 Comp Proxy (mit Post-Processing für price_per_sqm)
         let compProxyResult: any = null;
         if (compStats.available && livingArea > 0) {
           const compValue = Math.round(compStats.p50 * livingArea);
@@ -1134,7 +1174,7 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
           };
         }
 
-        // 4.3 Sachwert Proxy (V7.0: Herstellkosten-Cluster + Bodenwert)
+        // 4.3 Sachwert Proxy (V8.0: AfA 70%, BPI, Marktanpassung, Bodenwert-Heuristik)
         let sachwertResult: any = null;
         if (livingArea > 0) {
           const yearBuilt = Number(snapshot.year_built) || 1980;
@@ -1142,23 +1182,23 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
           const baseCostSqm = getHerstellkostenSqm(yearBuilt);
           const depreciationRate = Math.min(age * CALC.SACHWERT_ANNUAL_DEPRECIATION, CALC.SACHWERT_MAX_DEPRECIATION);
           const gebaeudeSachwert = Math.round(livingArea * baseCostSqm * (1 - depreciationRate));
-          const sachwert = gebaeudeSachwert + bodenwert;
-          assumptions.push({ text: `Herstellkosten ${baseCostSqm} €/m² (Bj. ${yearBuilt}, BPI-korrigiert), AWM ${Math.round(depreciationRate * 100)}%, Bodenwert ${bodenwert.toLocaleString('de')} €`, impact: "medium" });
+          const marktanpassung = getMarktanpassungsfaktor(locationScore);
+          const sachwert = Math.round((gebaeudeSachwert + bodenwert) * marktanpassung);
+          assumptions.push({ text: `Herstellkosten ${baseCostSqm} €/m² (BPI ${BPI_FACTOR}), AWM ${Math.round(depreciationRate * 100)}% (max 70%), Marktanpassung ×${marktanpassung.toFixed(2)}, Bodenwert ${bodenwert.toLocaleString('de')} €`, impact: "medium" });
 
           sachwertResult = {
             method: "sachwert_proxy",
             value: sachwert,
             confidence: bodenwert > 0 ? 0.45 : 0.3,
-            params: { base_cost_sqm: baseCostSqm, depreciation: depreciationRate, age, gebaeude_sachwert: gebaeudeSachwert, bodenwert },
+            params: { base_cost_sqm: baseCostSqm, depreciation: depreciationRate, age, gebaeude_sachwert: gebaeudeSachwert, bodenwert, marktanpassung },
           };
         }
 
-        // 4.4 Fuse value band (V7.0: dynamic weight redistribution)
+        // 4.4 Fuse value band (V8.0: Confidence als Gewichts-Modifikator, nicht Wert-Multiplikator)
         const methods = [ertragswertResult, compProxyResult, sachwertResult].filter(Boolean);
         let valueBand: any = { p25: 0, p50: 0, p75: 0, confidence: 0 };
 
         if (methods.length > 0) {
-          // Determine weight map based on available methods
           const hasErtrag = !!ertragswertResult;
           const hasComp = !!compProxyResult;
           const hasSach = !!sachwertResult;
@@ -1171,44 +1211,52 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
           } else if (hasComp && hasSach && !hasErtrag) {
             weightMap = CALC.METHOD_WEIGHTS_2_NO_ERTRAG;
           } else {
-            // Single method or other combos: equal weight
             weightMap = {};
             for (const m of methods) weightMap[m.method] = 1.0 / methods.length;
           }
 
-          let totalWeight = 0;
-          let weightedSum = 0;
+          // V8.0: Confidence modifies WEIGHT, not VALUE
+          // Normalized weights: w_i * conf_i / Σ(w_j * conf_j)
+          let totalNormalizedWeight = 0;
+          const normalizedEntries = methods.map((m: any) => {
+            const baseWeight = weightMap[m.method] || 0.1;
+            const normalizedWeight = baseWeight * m.confidence;
+            totalNormalizedWeight += normalizedWeight;
+            return { method: m.method, value: m.value, baseWeight, confidence: m.confidence, normalizedWeight };
+          });
 
-          for (const m of methods) {
-            const w = weightMap[m.method] || 0.1;
-            weightedSum += m.value * w * m.confidence;
-            totalWeight += w * m.confidence;
-          }
+          const p50 = totalNormalizedWeight > 0
+            ? Math.round(normalizedEntries.reduce((sum: number, e: any) => sum + e.value * (e.normalizedWeight / totalNormalizedWeight), 0))
+            : 0;
 
-          const p50 = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
-          const spread = CALC.VALUE_BAND_SPREAD;
+          // Spread from actual method divergence
+          const allValues = methods.map((m: any) => m.value).sort((a: number, b: number) => a - b);
+          const divergence = allValues.length > 1 && p50 > 0
+            ? (allValues[allValues.length - 1] - allValues[0]) / p50
+            : 0.15;
+          const halfSpread = Math.max(0.05, Math.min(0.20, divergence / 2));
+
           valueBand = {
-            p25: Math.round(p50 * (1 - spread)),
+            p25: Math.round(p50 * (1 - halfSpread)),
             p50,
-            p75: Math.round(p50 * (1 + spread)),
+            p75: Math.round(p50 * (1 + halfSpread)),
             confidence: Math.round((methods.reduce((s: any, m: any) => s + m.confidence, 0) / methods.length) * 100),
-            weighting: methods.map((m: any) => ({
-              method: m.method,
-              value: m.value,
-              weight: weightMap[m.method] || 0.1,
-              confidence: m.confidence,
+            weighting: normalizedEntries.map((e: any) => ({
+              method: e.method,
+              value: e.value,
+              weight: Math.round((e.normalizedWeight / totalNormalizedWeight) * 100) / 100,
+              base_weight: e.baseWeight,
+              confidence: e.confidence,
             })),
           };
         }
 
         // 4.5 Financing scenarios
-        // V6.0: Use existing loan data if available in SSOT mode
         const basePrice = askingPrice || valueBand.p50;
         const existingLoan = snapshot.existing_loan;
 
         const financingScenarios = [
           ...CALC.FINANCING_SCENARIOS,
-          // V6.0: Add actual financing scenario if loan data exists
           ...(existingLoan && existingLoan.outstanding_balance ? [{
             name: "aktuell (SSOT)",
             ltv: basePrice > 0 ? existingLoan.outstanding_balance / basePrice : 0.7,
