@@ -154,10 +154,10 @@ export function ValuationReportReader({
 }: Props) {
   if (!valueBand) return null;
 
-  const ertragParams = getMethodParams(methods, 'ertrag');
+  const ertragParams = getMethodParams(methods, 'ertragswert');
   const sachwertParams = getMethodParams(methods, 'sachwert_proxy');
   const compValue = getMethodValue(methods, 'comp_proxy');
-  const ertragValue = getMethodValue(methods, 'ertrag');
+  const ertragValue = getMethodValue(methods, 'ertragswert');
   const sachwertValue = getMethodValue(methods, 'sachwert_proxy');
 
   return (
