@@ -20,6 +20,8 @@ interface EditableBuildingBlockProps {
   energyCertValue?: number;
   energyCertValidUntil?: string;
   featuresTags?: string[];
+  coreRenovated?: boolean;
+  renovationYear?: number;
   onFieldChange: (field: string, value: any) => void;
 }
 
