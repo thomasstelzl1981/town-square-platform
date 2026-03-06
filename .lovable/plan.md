@@ -276,3 +276,38 @@ Phase 1 (done) ──→ Phase 2 (DB + Inbox) ──→ Phase 3 (KI-Intake)
 ```
 
 Phase 2 kann unabhängig von Phase 3 deployed werden. Phase 3 baut auf den Filter-Parametern aus Phase 1 auf.
+
+---
+
+## Gutachten-Archiv & Premium PDF — Phasenplan (2026-03-07)
+
+### Phase 1: Gutachten-Versionshistorie
+- Erweiterte Case-Liste mit Datum, Marktwert, Konfidenz, Wertband
+- Wertentwicklungs-Indikator (Delta vs. Vorgänger)
+- Quick-Compare (2 Cases nebeneinander)
+- **Status:** GEPLANT
+
+### Phase 2: Premium PDF Export (12 Seiten, CI-A)
+- Executive Summary auf Seite 2 (nach Cover)
+- Leerdaten-Handling ("Keine Daten" statt "0 €")
+- Deckblatt-Redesign mit StreetView Hero
+- Inhaltsverzeichnis auto-generiert
+- Finanzierung: Zinssätze korrekt durchreichen
+- Watermark "VERTRAULICH"
+- **Status:** GEPLANT
+
+### Phase 3: MFH-Einheitenverwaltung
+- Auto-Generierung N Einheiten bei unitCountActual
+- Einheiten-Editor (Fläche, Miete, Status)
+- Engine-Integration (einheitenbasierter Ertragswert)
+- PDF-Sektion Einheiten-Tabelle
+- **Status:** GEPLANT
+
+### Phase 4: Marktdaten-Integration
+- BORIS-Gateway Edge Function
+- Mietspiegel-Lookup via KI
+- Cache-Layer (PLZ, 30d TTL)
+- PDF-Quellenangaben mit Stichtag
+- **Status:** GEPLANT
+
+Diagramm: `spec/current/05_diagrams/valuation-roadmap.md`
