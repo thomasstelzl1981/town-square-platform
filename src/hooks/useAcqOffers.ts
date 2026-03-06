@@ -486,6 +486,37 @@ export function useExtractFromDocument() {
   });
 }
 
+// ============================================================================
+// MANDATE ASSIGNMENT
+// ============================================================================
+
+/**
+ * Assign or unassign an offer to a mandate
+ */
+export function useAssignOfferToMandate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ offerId, mandateId }: { offerId: string; mandateId: string | null }) => {
+      const { error } = await supabase
+        .from('acq_offers')
+        .update({ mandate_id: mandateId, updated_at: new Date().toISOString() })
+        .eq('id', offerId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['acq-offers'] });
+      queryClient.invalidateQueries({ queryKey: ['acq-offers-inbox'] });
+      queryClient.invalidateQueries({ queryKey: ['acq-offer'] });
+      toast.success('Mandat-Zuordnung aktualisiert');
+    },
+    onError: (error) => {
+      toast.error('Fehler: ' + (error as Error).message);
+    },
+  });
+}
+
 // Calculation logic consolidated in src/engines/akquiseCalc/engine.ts
 // Re-export for backward compatibility
 export { calcBestandQuick as calculateBestandKPIs, calcAufteilerQuick as calculateAufteilerKPIs } from '@/engines/akquiseCalc/engine';

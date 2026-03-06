@@ -1,6 +1,5 @@
 /**
- * ObjekteingangList — Table-based pipeline view with filter chips
- * CI-konform mit Mandate-Widgets und TABLE-Design-Tokens
+ * ObjekteingangList — Central Hub: Mandate list (75%) + Upload (25%) + Object table
  */
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -8,22 +7,24 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { 
-  Inbox, Loader2, Search, Plus, ArrowRight
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight
 } from 'lucide-react';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
-import { WidgetGrid } from '@/components/shared/WidgetGrid';
-import { WidgetCell } from '@/components/shared/WidgetCell';
-import { MandateUploadWidget } from '@/components/akquise/MandateUploadWidget';
 import { useAcqMandatesForManager } from '@/hooks/useAcqMandate';
-import { useQuery } from '@tanstack/react-query';
+import { useExposeUpload } from '@/hooks/useExposeUpload';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { TABLE } from '@/config/designManifest';
+import { DESIGN } from '@/config/designManifest';
+import { useAssignOfferToMandate } from '@/hooks/useAcqOffers';
 import type { AcqOffer, AcqOfferStatus } from '@/hooks/useAcqOffers';
+
+const { TABLE, CARD, TYPOGRAPHY, SPACING } = DESIGN;
 
 const STATUS_CONFIG: Record<AcqOfferStatus, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
   new: { label: 'Eingegangen', variant: 'default' },
@@ -38,30 +39,24 @@ const STATUS_CONFIG: Record<AcqOfferStatus, { label: string; variant: 'default' 
 const FILTER_CHIPS = [
   { value: 'all', label: 'Alle' },
   { value: 'new', label: 'Eingegangen' },
-  { value: 'analyzing', label: 'In Analyse' },
   { value: 'analyzed', label: 'Analysiert' },
-  { value: 'presented', label: 'Präsentiert' },
-];
-
-const SOURCE_CHIPS = [
-  { value: 'all', label: 'Alle Quellen' },
-  { value: 'portal_scrape', label: 'Portal-Treffer' },
-  { value: 'upload', label: 'Upload' },
-  { value: 'inbound_email', label: 'E-Mail' },
-  { value: 'manual', label: 'Manuell' },
+  { value: 'accepted', label: 'Akzeptiert' },
 ];
 
 export function ObjekteingangList() {
   const navigate = useNavigate();
   const { data: mandates = [], isLoading: loadingMandates } = useAcqMandatesForManager();
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
-  const [sourceFilter, setSourceFilter] = React.useState<string>('all');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedMandateId, setSelectedMandateId] = React.useState<string | null>(null);
+  const assignMutation = useAssignOfferToMandate();
 
-  const mandateIds = mandates.map(m => m.id);
-  
-  // Fetch ALL offers for this tenant (including unassigned portal results)
+  // Upload tile state
+  const { upload, phase, isUploading } = useExposeUpload();
+  const [isDragging, setIsDragging] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Fetch ALL offers for this tenant
   const { data: allOffers = [], isLoading: loadingOffers } = useQuery({
     queryKey: ['acq-offers-inbox'],
     queryFn: async () => {
@@ -76,27 +71,42 @@ export function ObjekteingangList() {
 
       const { data, error } = await supabase
         .from('acq_offers')
-        .select('*')
+        .select('*, documents:acq_offer_documents(id, document_type, storage_path, file_name)')
         .eq('tenant_id', profile.active_tenant_id)
         .order('created_at', { ascending: false })
         .limit(500);
       if (error) throw error;
-      return data as AcqOffer[];
+      return data as (AcqOffer & { documents: { id: string; document_type: string; storage_path: string; file_name: string }[] })[];
     },
   });
 
+  // Mandate offer counts
+  const mandateOfferCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const m of mandates) counts[m.id] = 0;
+    let unassigned = 0;
+    for (const o of allOffers) {
+      if (o.mandate_id && counts[o.mandate_id] !== undefined) {
+        counts[o.mandate_id]++;
+      } else {
+        unassigned++;
+      }
+    }
+    return { ...counts, __unassigned: unassigned };
+  }, [allOffers, mandates]);
+
   const filteredOffers = React.useMemo(() => {
     return allOffers.filter(offer => {
-      if (selectedMandateId && offer.mandate_id !== selectedMandateId) return false;
+      if (selectedMandateId === '__unassigned' && offer.mandate_id) return false;
+      if (selectedMandateId && selectedMandateId !== '__unassigned' && offer.mandate_id !== selectedMandateId) return false;
       if (statusFilter !== 'all' && offer.status !== statusFilter) return false;
-      if (sourceFilter !== 'all' && offer.source_type !== sourceFilter) return false;
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         if (!offer.title?.toLowerCase().includes(term) && !offer.address?.toLowerCase().includes(term) && !offer.city?.toLowerCase().includes(term)) return false;
       }
       return true;
     });
-  }, [allOffers, statusFilter, sourceFilter, searchTerm, selectedMandateId]);
+  }, [allOffers, statusFilter, searchTerm, selectedMandateId]);
 
   const isLoading = loadingMandates || loadingOffers;
 
@@ -105,75 +115,147 @@ export function ObjekteingangList() {
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(price);
   };
 
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      await upload(files[0], '');
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await upload(file, '');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleExposeClick = async (e: React.MouseEvent, doc: { storage_path: string; file_name: string }) => {
+    e.stopPropagation();
+    const { data } = await supabase.storage.from('acq-documents').createSignedUrl(doc.storage_path, 300);
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+  };
+
+  const handleMandateAssign = (e: React.MouseEvent, offerId: string, mandateId: string) => {
+    e.stopPropagation();
+    assignMutation.mutate({ offerId, mandateId: mandateId === '__none' ? null : mandateId });
+  };
+
   if (isLoading) {
     return <PageShell><div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></PageShell>;
   }
+
+  const activeMandates = mandates.filter(m => m.status === 'active' || m.status === 'draft' || m.status === 'submitted_to_zone1');
 
   return (
     <PageShell>
       <ModulePageHeader
         title="OBJEKTEINGANG"
-        description="Alle eingegangenen Angebote und Exposés"
-        actions={
-          <Button size="sm" onClick={() => navigate('/portal/akquise-manager/tools')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Exposé hochladen
-          </Button>
-        }
+        description="Alle eingehenden Objekte, Exposés und Angebote"
       />
 
-      {/* Mandate Widgets */}
-      <WidgetGrid>
-        {/* "Alle Eingänge" widget — always first */}
-        <WidgetCell>
-          <Card
-            className={cn(
-              'glass-card shadow-card cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02]',
-              'flex flex-row items-center gap-3 p-3 md:flex-col md:aspect-square md:p-0',
-              !selectedMandateId && 'ring-2 ring-primary shadow-glow'
-            )}
-            onClick={() => setSelectedMandateId(null)}
-          >
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 md:hidden">
-              <Inbox className="h-5 w-5 text-primary" />
+      {/* ─── TOP: Mandates (75%) + Upload (25%) ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-4">
+        {/* Mandate List Card */}
+        <Card className={CARD.BASE}>
+          <div className={CARD.SECTION_HEADER}>
+            <span className={TYPOGRAPHY.CARD_TITLE}>Aktive Ankaufsmandate</span>
+          </div>
+          <CardContent className="p-0">
+            {/* "Alle" row */}
+            <div
+              className={cn(
+                'flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors border-b border-border/30',
+                !selectedMandateId ? 'bg-primary/10' : 'hover:bg-muted/30'
+              )}
+              onClick={() => setSelectedMandateId(null)}
+            >
+              <Inbox className="h-4 w-4 text-primary flex-shrink-0" />
+              <span className="font-medium text-sm flex-1">Alle Eingänge</span>
+              <Badge variant="secondary" className="text-[10px]">{allOffers.length}</Badge>
             </div>
-            <div className="flex-1 min-w-0 md:hidden">
-              <p className="font-semibold text-sm">Alle Eingänge</p>
-              <p className="text-[11px] text-muted-foreground">{allOffers.length} Objekte</p>
-            </div>
-            <CardContent className="hidden md:flex p-4 flex-col h-full justify-between">
-              <div className="flex items-start justify-between">
-                <Badge variant="default" className="text-[10px] font-medium">Gesamt</Badge>
-              </div>
-              <div className="flex-1 flex flex-col items-center justify-center text-center gap-1 py-2">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-1">
-                  <Inbox className="h-5 w-5 text-primary" />
-                </div>
-                <p className="font-semibold text-sm">Alle Eingänge</p>
-                <p className="text-[11px] text-muted-foreground">{allOffers.length} Objekte</p>
-              </div>
-              <div />
-            </CardContent>
-          </Card>
-        </WidgetCell>
 
-        {/* Mandate widgets with upload drop zones */}
-        {mandates.map(m => {
-          const count = allOffers.filter(o => o.mandate_id === m.id).length;
-          return (
-            <WidgetCell key={m.id} className="group">
-              <MandateUploadWidget
-                mandate={m}
-                offerCount={count}
-                isSelected={selectedMandateId === m.id}
+            {/* Mandate rows */}
+            {activeMandates.map(m => (
+              <div
+                key={m.id}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors border-b border-border/30',
+                  selectedMandateId === m.id ? 'bg-primary/10' : 'hover:bg-muted/30'
+                )}
                 onClick={() => setSelectedMandateId(prev => prev === m.id ? null : m.id)}
-              />
-            </WidgetCell>
-          );
-        })}
-      </WidgetGrid>
+              >
+                <span className="font-mono text-xs text-primary font-semibold w-16 flex-shrink-0">{m.code}</span>
+                <span className="text-sm truncate flex-1">{m.client_display_name || '—'}</span>
+                <span className="text-xs text-muted-foreground truncate max-w-[120px]">{m.asset_focus?.join(', ') || '—'}</span>
+                <Badge variant="outline" className="text-[10px]">{mandateOfferCounts[m.id] || 0} Obj.</Badge>
+              </div>
+            ))}
 
-      {/* Filter Chips: Status */}
+            {/* Unassigned row */}
+            <div
+              className={cn(
+                'flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors',
+                selectedMandateId === '__unassigned' ? 'bg-primary/10' : 'hover:bg-muted/30'
+              )}
+              onClick={() => setSelectedMandateId(prev => prev === '__unassigned' ? null : '__unassigned')}
+            >
+              <span className="text-xs text-muted-foreground flex-shrink-0 w-16">—</span>
+              <span className="text-sm text-muted-foreground flex-1">Ohne Mandat</span>
+              <Badge variant="outline" className="text-[10px]">{mandateOfferCounts.__unassigned || 0} Obj.</Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Upload Card */}
+        <Card
+          className={cn(CARD.BASE, 'flex flex-col')}
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+          onDrop={handleDrop}
+        >
+          <div className={CARD.SECTION_HEADER}>
+            <span className={TYPOGRAPHY.CARD_TITLE}>Exposé-Upload</span>
+          </div>
+          <CardContent className="flex-1 flex items-center justify-center p-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,.jpg,.jpeg,.png"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
+            {isUploading ? (
+              <div className="flex flex-col items-center gap-2 text-primary">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="text-xs font-medium">
+                  {phase === 'uploading' ? 'Hochladen...' : 'KI-Analyse...'}
+                </span>
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  'flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-dashed w-full cursor-pointer transition-colors',
+                  isDragging
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border/50 hover:border-primary/40 hover:bg-muted/20'
+                )}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-8 w-8 text-muted-foreground" />
+                <div className="text-center">
+                  <p className="text-sm font-medium">PDF hier ablegen</p>
+                  <p className="text-xs text-muted-foreground mt-1">oder klicken zum Auswählen</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ─── FILTER CHIPS ─── */}
       <div className="flex items-center gap-3 flex-wrap">
         {FILTER_CHIPS.map(chip => (
           <button
@@ -195,29 +277,6 @@ export function ObjekteingangList() {
           </button>
         ))}
 
-        <span className="text-border">|</span>
-
-        {/* Filter Chips: Source */}
-        {SOURCE_CHIPS.map(chip => (
-          <button
-            key={`src-${chip.value}`}
-            onClick={() => setSourceFilter(chip.value)}
-            className={cn(
-              'px-3 py-1.5 rounded-full text-xs font-medium transition-colors border',
-              sourceFilter === chip.value
-                ? 'bg-accent text-accent-foreground border-accent'
-                : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
-            )}
-          >
-            {chip.label}
-            {chip.value !== 'all' && (
-              <span className="ml-1.5 opacity-70">
-                {allOffers.filter(o => o.source_type === chip.value).length}
-              </span>
-            )}
-          </button>
-        ))}
-
         <div className="flex-1" />
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -230,57 +289,123 @@ export function ObjekteingangList() {
         </div>
       </div>
 
-      {/* Table — always visible, CI-compliant */}
+      {/* ─── TABLE ─── */}
       {filteredOffers.length === 0 ? (
         <div className={TABLE.WRAPPER}>
           <div className="flex flex-col items-center justify-center py-16">
             <Inbox className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold">Keine Objekteingänge</h3>
-            <p className="text-muted-foreground mt-2">Eingegangene Exposés per E-Mail oder Upload erscheinen hier.</p>
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/portal/akquise-manager/tools')}>
-              <Plus className="h-4 w-4 mr-2" />Exposé manuell hochladen
-            </Button>
+            <p className="text-muted-foreground mt-2">Exposés per Upload, E-Mail oder Portal-Suche erscheinen hier.</p>
           </div>
         </div>
       ) : (
         <div className={TABLE.WRAPPER}>
-          {/* Table Header */}
+          {/* Header */}
           <div className={cn(
-            'grid grid-cols-[1fr_200px_100px_100px_120px_80px_40px] gap-2',
+            'grid grid-cols-[1fr_160px_100px_80px_80px_100px_120px_32px] gap-2',
             TABLE.HEADER_BG,
             TABLE.HEADER_CELL
           )}>
             <span>Titel</span>
             <span>Adresse</span>
             <span className="text-right">Preis</span>
+            <span>Exposé</span>
+            <span>Kalk.</span>
             <span>Status</span>
             <span>Mandat</span>
-            <span>Alter</span>
             <span />
           </div>
-          {/* Table Rows */}
+
+          {/* Rows */}
           {filteredOffers.map(offer => {
             const statusConfig = STATUS_CONFIG[offer.status];
+            const exposeDoc = (offer as any).documents?.find((d: any) => d.document_type === 'expose');
             const mandateCode = mandates.find(m => m.id === offer.mandate_id)?.code;
+
             return (
               <div
                 key={offer.id}
                 className={cn(
-                  'grid grid-cols-[1fr_200px_100px_100px_120px_80px_40px] gap-2 items-center cursor-pointer',
+                  'grid grid-cols-[1fr_160px_100px_80px_80px_100px_120px_32px] gap-2 items-center cursor-pointer',
                   TABLE.BODY_CELL,
                   TABLE.ROW_HOVER,
                   TABLE.ROW_BORDER
                 )}
                 onClick={() => navigate(`/portal/akquise-manager/objekteingang/${offer.id}`)}
               >
-                <span className="font-medium truncate">{offer.title || 'Ohne Titel'}</span>
-                <span className="text-muted-foreground truncate">{[offer.postal_code, offer.city].filter(Boolean).join(' ')}</span>
-                <span className="text-right font-medium">{formatPrice(offer.price_asking)}</span>
+                {/* Title + metadata */}
+                <div className="min-w-0">
+                  <span className="font-medium truncate block">{offer.title || 'Ohne Titel'}</span>
+                  <div className="flex gap-2 mt-0.5">
+                    {offer.units_count && <span className="text-[10px] text-muted-foreground">{offer.units_count} WE</span>}
+                    {offer.area_sqm && <span className="text-[10px] text-muted-foreground">{offer.area_sqm} m²</span>}
+                    {offer.year_built && <span className="text-[10px] text-muted-foreground">Bj. {offer.year_built}</span>}
+                    {offer.yield_indicated && <span className="text-[10px] text-muted-foreground">{offer.yield_indicated}%</span>}
+                  </div>
+                </div>
+
+                {/* Address */}
+                <span className="text-muted-foreground truncate text-sm">{[offer.postal_code, offer.city].filter(Boolean).join(' ') || '–'}</span>
+
+                {/* Price */}
+                <span className="text-right font-medium text-sm">{formatPrice(offer.price_asking)}</span>
+
+                {/* Exposé Link */}
+                <div>
+                  {exposeDoc ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={(e) => handleExposeClick(e, exposeDoc)}
+                    >
+                      <FileText className="h-3.5 w-3.5 mr-1 text-primary" />
+                      PDF
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">–</span>
+                  )}
+                </div>
+
+                {/* Kalkulation Link */}
+                <div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/portal/akquise-manager/objekteingang/${offer.id}`);
+                    }}
+                  >
+                    <Calculator className="h-3.5 w-3.5 mr-1 text-primary" />
+                    Kalk.
+                  </Button>
+                </div>
+
+                {/* Status */}
                 <Badge variant={statusConfig.variant} className="w-fit text-[10px]">{statusConfig.label}</Badge>
-                {mandateCode ? (
-                  <Badge variant="outline" className="w-fit font-mono text-[10px]">{mandateCode}</Badge>
-                ) : <span />}
-                <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(offer.created_at), { locale: de, addSuffix: false })}</span>
+
+                {/* Mandate Assignment Dropdown */}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <Select
+                    value={offer.mandate_id || '__none'}
+                    onValueChange={(val) => assignMutation.mutate({ offerId: offer.id, mandateId: val === '__none' ? null : val })}
+                  >
+                    <SelectTrigger className="h-7 text-[10px] w-full">
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">— Kein Mandat —</SelectItem>
+                      {activeMandates.map(m => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </div>
             );
