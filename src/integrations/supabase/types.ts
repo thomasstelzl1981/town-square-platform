@@ -24882,28 +24882,17 @@ export type Database = {
         }
         Returns: string
       }
-      rpc_credit_deduct:
-        | {
-            Args: {
-              p_action_code: string
-              p_credits: number
-              p_ref_id?: string
-              p_ref_type?: string
-              p_tenant_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_action_code: string
-              p_credits: number
-              p_ref_id?: string
-              p_ref_type?: string
-              p_tenant_id: string
-              p_user_id?: string
-            }
-            Returns: Json
-          }
+      rpc_credit_deduct: {
+        Args: {
+          p_action_code: string
+          p_credits: number
+          p_ref_id?: string
+          p_ref_type?: string
+          p_tenant_id: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
       rpc_credit_preflight: {
         Args: {
           p_action_code?: string
