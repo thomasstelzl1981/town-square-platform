@@ -9,8 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight
+  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, FolderOpen, ChevronDown
 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { AcqDataRoom } from './components';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
 import { useAcqMandatesForManager } from '@/hooks/useAcqMandate';
@@ -412,6 +414,30 @@ export function ObjekteingangList() {
           })}
         </div>
       )}
+
+      {/* ─── DATENRAUM ─── */}
+      <Collapsible>
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="ghost"
+            className={cn(
+              'w-full justify-between py-3 px-4 h-auto',
+              CARD.BASE,
+              'hover:bg-muted/30'
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <FolderOpen className="h-4 w-4 text-primary" />
+              <span className={TYPOGRAPHY.CARD_TITLE}>Datenraum</span>
+              <span className={TYPOGRAPHY.HINT}>— Akquise-Dokumente und Exposés</span>
+            </div>
+            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform data-[state=open]:rotate-180" />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <AcqDataRoom />
+        </CollapsibleContent>
+      </Collapsible>
     </PageShell>
   );
 }
