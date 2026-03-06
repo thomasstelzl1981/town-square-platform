@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { getJsPDF } from '@/lib/lazyJspdf';
+import { generateInvoicePdf } from '@/lib/pdf/generateInvoicePdf';
 
 // ─── Booking Status ─────────────────────────────────────────
 const BOOKING_STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: typeof CheckCircle2 }> = {
