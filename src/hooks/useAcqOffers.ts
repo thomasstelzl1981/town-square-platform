@@ -187,7 +187,7 @@ export function useUpdateOffer() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ offerId, data }: { offerId: string; data: Partial<Omit<AcqOffer, 'extracted_data' | 'analysis_summary' | 'geomap_data' | 'calc_bestand' | 'calc_aufteiler'>> }) => {
+    mutationFn: async ({ offerId, data }: { offerId: string; data: Partial<Omit<AcqOffer, 'extracted_data' | 'analysis_summary' | 'valuation_data' | 'calc_bestand' | 'calc_aufteiler'>> }) => {
       const { error } = await supabase
         .from('acq_offers')
         .update({ ...data, updated_at: new Date().toISOString() })
