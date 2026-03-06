@@ -66,11 +66,12 @@ export default function ProjectDetailPage() {
       />
 
       <Tabs defaultValue="units" className="space-y-4">
-        <TabsList className="grid grid-cols-5 lg:grid-cols-10 h-auto">
+        <TabsList className="grid grid-cols-5 lg:grid-cols-11 h-auto">
           <TabsTrigger value="identity" className="flex items-center gap-1 text-xs"><Building2 className="h-3 w-3" /><span className="hidden lg:inline">Identität</span></TabsTrigger>
           <TabsTrigger value="location" className="flex items-center gap-1 text-xs"><MapPin className="h-3 w-3" /><span className="hidden lg:inline">Standort</span></TabsTrigger>
           <TabsTrigger value="units" className="flex items-center gap-1 text-xs"><LayoutGrid className="h-3 w-3" /><span className="hidden lg:inline">Einheiten</span></TabsTrigger>
           <TabsTrigger value="calculation" className="flex items-center gap-1 text-xs"><Calculator className="h-3 w-3" /><span className="hidden lg:inline">Kalkulation</span></TabsTrigger>
+          <TabsTrigger value="valuation" className="flex items-center gap-1 text-xs"><TrendingUp className="h-3 w-3" /><span className="hidden lg:inline">Bewertung</span></TabsTrigger>
           <TabsTrigger value="pricing" className="flex items-center gap-1 text-xs"><Euro className="h-3 w-3" /><span className="hidden lg:inline">Preise</span></TabsTrigger>
           <TabsTrigger value="documents" className="flex items-center gap-1 text-xs"><FileText className="h-3 w-3" /><span className="hidden lg:inline">Dokumente</span></TabsTrigger>
           <TabsTrigger value="reservations" className="flex items-center gap-1 text-xs"><BookOpen className="h-3 w-3" /><span className="hidden lg:inline">Reserv.</span></TabsTrigger>
