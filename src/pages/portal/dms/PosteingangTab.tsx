@@ -151,12 +151,7 @@ export function PosteingangTab() {
         body: { document_id: attachment.document_id },
       });
       if (error) throw error;
-      const url = resolveStorageSignedUrl(data.download_url);
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.click();
+      await downloadFromSignedUrl(data.download_url, attachment.filename);
     } catch {
       toast.error('Download fehlgeschlagen');
     }

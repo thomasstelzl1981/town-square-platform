@@ -228,11 +228,7 @@ export function StorageTab() {
         body: { document_id: documentId },
       });
       if (response.error) throw response.error;
-      const a = document.createElement('a');
-      a.href = response.data.download_url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.click();
+      await downloadFromSignedUrl(response.data.download_url, response.data.filename);
       return response.data;
     },
     onError: () => toast.error('Download fehlgeschlagen'),

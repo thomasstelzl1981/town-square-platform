@@ -289,13 +289,8 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
         }
       );
       if (!response.ok) throw new Error('Download URL konnte nicht erstellt werden');
-      const { download_url } = await response.json();
-      // Use <a download> to bypass adblocker/popup-blocker that block supabase.co URLs
-      const a = document.createElement('a');
-      a.href = download_url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.click();
+      const { download_url, filename } = await response.json();
+      await downloadFromSignedUrl(download_url, filename);
     } catch (err) {
       console.error('Download failed:', err);
       toast.error('Download fehlgeschlagen');
