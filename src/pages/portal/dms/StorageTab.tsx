@@ -190,7 +190,15 @@ export function StorageTab() {
     enabled: !!activeTenantId,
   });
 
-  // ── Mutations ────────────────────────────────────────────────
+  // ── Helper: invalidate all DMS queries ─────────────────────
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['documents'] });
+    queryClient.invalidateQueries({ queryKey: ['all-documents'] });
+    queryClient.invalidateQueries({ queryKey: ['document-links'] });
+    queryClient.invalidateQueries({ queryKey: ['storage-nodes'] });
+  };
+
+  // ── Mutations (unified with EntityStorageTree — same RPCs) ──
   const { upload: universalUpload, uploadedFiles, clearUploadedFiles, progress: uploadProgress } = useUniversalUpload();
 
   const uploadMutation = useMutation({
@@ -200,16 +208,15 @@ export function StorageTab() {
       const result = await universalUpload(file, {
         moduleCode,
         parentNodeId: selectedNodeId || undefined,
-        source: 'dms',
+        objectType: selectedNode?.node_type === 'folder' ? 'storage_folder' : undefined,
+        objectId: selectedNodeId || undefined,
+        source: 'upload',
       });
       if (result.error) throw new Error(result.error);
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents'] });
-      queryClient.invalidateQueries({ queryKey: ['all-documents'] });
-      queryClient.invalidateQueries({ queryKey: ['document-links'] });
-      queryClient.invalidateQueries({ queryKey: ['storage-nodes'] });
+      invalidateAll();
       toast.success('Dokument hochgeladen');
     },
     onError: () => toast.error('Upload fehlgeschlagen'),
@@ -227,32 +234,47 @@ export function StorageTab() {
     onError: () => toast.error('Download fehlgeschlagen'),
   });
 
+  // Unified file delete: server-side RPC (atomic cleanup)
   const deleteMutation = useMutation({
     mutationFn: async (documentId: string) => {
-      const { error } = await supabase.from('documents').delete().eq('id', documentId);
-      if (error) throw error;
+      if (!activeTenantId) throw new Error('Kein Mandant');
+      const { data: result, error: rpcError } = await supabase.rpc('delete_storage_file', {
+        p_document_id: documentId,
+        p_tenant_id: activeTenantId,
+      });
+      if (rpcError) throw new Error(rpcError.message);
+      const response = result as { success: boolean; message: string; file_path?: string };
+      if (!response.success) throw new Error(response.message);
+      // Blob cleanup (client-side, needs storage auth)
+      if (response.file_path) {
+        await supabase.storage.from('tenant-documents').remove([response.file_path]);
+      }
+      return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      invalidateAll();
       toast.success('Dokument gelöscht');
     },
-    onError: () => toast.error('Löschen fehlgeschlagen'),
+    onError: (error: Error) => toast.error(error.message || 'Löschen fehlgeschlagen'),
   });
 
+  // Unified folder delete: server-side RPC with 5 guards
   const deleteFolderMutation = useMutation({
     mutationFn: async (nodeId: string) => {
-      const { data: links } = await supabase
-        .from('document_links')
-        .select('id')
-        .eq('node_id', nodeId)
-        .limit(1);
-      if (links && links.length > 0) throw new Error('Ordner enthält noch Dokumente');
-      const { error } = await supabase.from('storage_nodes').delete().eq('id', nodeId);
-      if (error) throw error;
+      if (!activeTenantId) throw new Error('Kein Mandant');
+      const { data: result, error: rpcError } = await supabase.rpc('delete_storage_folder', {
+        p_folder_id: nodeId,
+        p_tenant_id: activeTenantId,
+      });
+      if (rpcError) throw new Error(rpcError.message);
+      const response = result as { success: boolean; message: string };
+      if (!response.success) throw new Error(response.message);
+      return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['storage-nodes'] });
+      invalidateAll();
       toast.success('Ordner gelöscht');
+      if (selectedNodeId) setSelectedNodeId(null);
     },
     onError: (error: Error) => toast.error(error.message || 'Löschen fehlgeschlagen'),
   });
@@ -271,7 +293,7 @@ export function StorageTab() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['storage-nodes'] });
+      invalidateAll();
       toast.success('Ordner erstellt');
     },
     onError: () => toast.error('Ordner erstellen fehlgeschlagen'),
@@ -285,10 +307,20 @@ export function StorageTab() {
   };
 
   const handleBulkDelete = async (ids: Set<string>) => {
+    if (!activeTenantId) return;
     for (const id of ids) {
-      await supabase.from('documents').delete().eq('id', id);
+      const { data: result, error } = await supabase.rpc('delete_storage_file', {
+        p_document_id: id,
+        p_tenant_id: activeTenantId,
+      });
+      if (!error && result) {
+        const response = result as { file_path?: string };
+        if (response.file_path) {
+          await supabase.storage.from('tenant-documents').remove([response.file_path]);
+        }
+      }
     }
-    queryClient.invalidateQueries({ queryKey: ['documents'] });
+    invalidateAll();
     toast.success(`${ids.size} Dokument(e) gelöscht`);
   };
 
