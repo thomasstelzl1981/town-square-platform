@@ -222,7 +222,7 @@ function OfferCard({ offer, onClick }: { offer: AcqOffer; onClick: () => void })
         </div>
         <div className="mt-4 flex items-center gap-2">
           {hasAI && <Badge variant="outline" className="text-xs"><Brain className="h-3 w-3 mr-1" />KI</Badge>}
-          {hasGeomap && <Badge variant="outline" className="text-xs"><MapPin className="h-3 w-3 mr-1" />Geo</Badge>}
+          {hasValuation && <Badge variant="outline" className="text-xs"><MapPin className="h-3 w-3 mr-1" />Bewertung</Badge>}
           {hasCalc && <Badge variant="outline" className="text-xs"><Calculator className="h-3 w-3 mr-1" />Calc</Badge>}
           <div className="flex-1" />
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
