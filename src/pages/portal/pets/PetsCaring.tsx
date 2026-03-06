@@ -115,6 +115,13 @@ export default function PetsCaring() {
             <div className="flex items-center justify-center p-8">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
             </div>
+          ) : isError ? (
+            <div className="text-center py-12">
+              <MapPin className="mx-auto h-10 w-10 text-destructive/30" />
+              <p className="text-sm text-destructive mt-3">
+                Suche fehlgeschlagen. Bitte versuche es erneut.
+              </p>
+            </div>
           ) : providers.length === 0 ? (
             <div className="text-center py-12">
               <MapPin className="mx-auto h-10 w-10 text-muted-foreground/30" />
