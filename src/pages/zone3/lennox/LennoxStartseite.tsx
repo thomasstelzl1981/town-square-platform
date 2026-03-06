@@ -23,7 +23,7 @@ export default function LennoxStartseite() {
   const [searchLocation, setSearchLocation] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
 
-  const { data: providers = [], isLoading } = useSearchProviders(
+  const { data: providers = [], isLoading, isError } = useSearchProviders(
     hasSearched ? searchLocation : undefined
   );
 
