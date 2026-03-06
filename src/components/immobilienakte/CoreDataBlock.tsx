@@ -26,6 +26,8 @@ export function CoreDataBlock({
   energyCertificateValue,
   energyCertificateValidUntil,
   featuresTags = [],
+  coreRenovated,
+  renovationYear,
 }: CoreDataBlockProps) {
   return (
     <Card>
