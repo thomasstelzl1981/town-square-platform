@@ -42,6 +42,7 @@ interface Props {
   comps?: CompPosting[];
   beleihungswert?: BeleihungswertResult | null;
   geminiResearch?: GeminiResearchResult | null;
+  snapshot?: Partial<CanonicalPropertySnapshot> | null;
   onDownloadPdf?: () => void;
   className?: string;
 }
