@@ -368,6 +368,44 @@ export function useValuationCase() {
         legalTitle: runSummary?.legal_title ?? inputs.snapshot?.legal_title ?? null,
         diffs: inputs.diffs ?? [],
         sourceMode: caseData.source_mode ?? 'DRAFT_INTAKE',
+        // Location analysis mapping (snake_case → camelCase)
+        location: (() => {
+          const loc = results.location_analysis;
+          if (!loc || !loc.available) return null;
+          return {
+            overallScore: loc.global_score ?? 0,
+            dimensions: (loc.scores ?? []).map((s: any) => ({
+              key: s.dimension?.toLowerCase().replace(/[^a-z]/g, '_') ?? s.type ?? '',
+              label: s.dimension ?? s.category ?? '',
+              score: Math.min(10, Math.round((s.score ?? 0) / 10)),
+              topPois: (s.topPois ?? s.pois ?? []).slice(0, 3).map((p: any) => ({
+                name: p.name ?? '',
+                type: p.type ?? '',
+                distanceMeters: p.distance_m ?? p.distanceMeters ?? 0,
+                rating: p.rating ?? undefined,
+              })),
+            })),
+            reachability: loc.reachability ?? [],
+            microMapUrl: loc.maps?.micro ?? null,
+            macroMapUrl: loc.maps?.macro ?? null,
+            streetViewUrl: loc.maps?.street_view ?? null,
+            narrative: loc.narrative ?? '',
+            narrativeConfidence: 'medium' as const,
+          };
+        })(),
+        // Comp postings mapping
+        comps: (results.comp_postings ?? []).map((c: any) => ({
+          id: c.id ?? c.url ?? String(Math.random()),
+          title: c.title ?? '',
+          price: c.price ?? 0,
+          priceSqm: c.price_sqm ?? c.priceSqm ?? 0,
+          area: c.area ?? c.living_area_sqm ?? 0,
+          rooms: c.rooms ?? null,
+          yearBuilt: c.year_built ?? c.yearBuilt ?? null,
+          portal: c.portal ?? c.source ?? 'unknown',
+          url: c.url ?? '',
+          distanceKm: c.distance_km ?? c.distanceKm ?? null,
+        })),
       };
 
       setState(s => ({ ...s, resultData: mappedResult, caseId }));

@@ -186,6 +186,48 @@ async function googleStaticMap(lat: number, lng: number, apiKey: string, zoom = 
   return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${size}&markers=color:red|${lat},${lng}&key=${apiKey}&language=de`;
 }
 
+function googleStreetViewUrl(lat: number, lng: number, apiKey: string, size = "600x400") {
+  return `https://maps.googleapis.com/maps/api/streetview?size=${size}&location=${lat},${lng}&fov=90&heading=235&pitch=10&key=${apiKey}`;
+}
+
+async function googleRoutesMatrix(
+  originLat: number,
+  originLng: number,
+  destinations: { name: string; lat: number; lng: number }[],
+  apiKey: string
+): Promise<{ destinationName: string; drivingMinutes: number | null; transitMinutes: number | null }[]> {
+  const results: { destinationName: string; drivingMinutes: number | null; transitMinutes: number | null }[] = [];
+
+  for (const dest of destinations) {
+    let drivingMin: number | null = null;
+    let transitMin: number | null = null;
+
+    try {
+      // Driving
+      const dUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${originLat},${originLng}&destinations=${dest.lat},${dest.lng}&mode=driving&language=de&key=${apiKey}`;
+      const dResp = await fetch(dUrl);
+      const dData = await dResp.json();
+      if (dData.rows?.[0]?.elements?.[0]?.status === "OK") {
+        drivingMin = Math.round(dData.rows[0].elements[0].duration.value / 60);
+      }
+    } catch (_) { /* ignore */ }
+
+    try {
+      // Transit
+      const tUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${originLat},${originLng}&destinations=${dest.lat},${dest.lng}&mode=transit&language=de&key=${apiKey}`;
+      const tResp = await fetch(tUrl);
+      const tData = await tResp.json();
+      if (tData.rows?.[0]?.elements?.[0]?.status === "OK") {
+        transitMin = Math.round(tData.rows[0].elements[0].duration.value / 60);
+      }
+    } catch (_) { /* ignore */ }
+
+    results.push({ destinationName: dest.name, drivingMinutes: drivingMin, transitMinutes: transitMin });
+  }
+
+  return results;
+}
+
 // ─── V6.0: SSOT Property Data Fetch ───
 
 async function fetchSSOTPropertyData(sbAdmin: any, propertyId: string, tenantId: string) {
