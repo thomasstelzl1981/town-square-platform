@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.rpc_credit_deduct(UUID, INTEGER, TEXT, TEXT, UUID);
