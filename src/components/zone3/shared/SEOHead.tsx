@@ -265,6 +265,10 @@ export function SEOHead({ brand, page, faq, services, article, breadcrumbs }: SE
     const fullTitle = `${page.title} | ${config.name}`;
     document.title = fullTitle;
 
+    // ── Brand Favicon ──
+    const cleanupFavicon = applyBrandFavicon(brand);
+    document.title = fullTitle; // restore SEO title after favicon sets its own
+
     const canonicalUrl = page.canonical || `${config.domain}${page.path || '/'}`;
     const ogImage = page.ogImage || (config.ogImage ? `${config.domain}${config.ogImage}` : `${config.domain}${config.logo}`);
 
