@@ -203,6 +203,7 @@ export function BewertungTab() {
               dataQuality={resultObj?.dataQuality || null}
               compStats={resultObj?.compStats || null}
               executiveSummary={resultObj?.executiveSummary}
+              onDownloadPdf={handleDownloadPdf}
             />
           ) : (
             <Card>
