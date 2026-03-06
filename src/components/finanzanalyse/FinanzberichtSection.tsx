@@ -1,20 +1,25 @@
 /**
  * FinanzberichtSection — Strukturierte Vermögensauskunft
  * Sektionen: Personen, Einnahmen/Ausgaben, Vermögen/Verbindlichkeiten, KPIs, Abonnements, Energieverträge, Chart, Verträge, PDF
+ * PDF-Export: CI-A Template via financeReportV1 + Consent Gate
  */
-import { useRef } from 'react';
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { PdfExportFooter } from '@/components/pdf';
+import { Button } from '@/components/ui/button';
 import { useFinanzberichtData, type ContractSummary, type SubscriptionsByCategory, type EnergyContract, type PropertyListItem, type LoanListItem } from '@/hooks/useFinanzberichtData';
 import type { DemoKVContract } from '@/engines/demoData/spec';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PdfConsentGateDialog } from '@/components/pdf/PdfConsentGateDialog';
+import { usePdfTemplateExport } from '@/hooks/usePdfTemplateExport';
+import { generateFinanceReport, type FinanceReportData } from '@/lib/pdf/templates/financeReportV1';
 import {
   Users, TrendingUp, TrendingDown, Wallet, Building2, Shield,
   FileText, ScrollText, CheckCircle2, XCircle, PiggyBank, Landmark,
-  CreditCard, HeartPulse, Zap, Repeat, Sun, Car, LineChart, Briefcase
+  CreditCard, HeartPulse, Zap, Repeat, Sun, Car, LineChart, Briefcase,
+  Download
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
