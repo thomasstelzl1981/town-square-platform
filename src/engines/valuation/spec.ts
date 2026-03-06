@@ -250,6 +250,7 @@ export interface GeminiBodenrichtwertResult {
   stichtag: string;
   quelle: string;
   artDerNutzung: string;
+  begruendung?: string | null;
   confidence: ConfidenceLevel;
 }
 
