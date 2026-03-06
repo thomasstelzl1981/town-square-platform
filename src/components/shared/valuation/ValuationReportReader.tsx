@@ -382,17 +382,20 @@ export function ValuationReportReader({
             {/* Bodenwert */}
             <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Bodenwert</p>
-              {ertragParams.plotAreaSqm && <DataRow label="Grundstücksfläche" value={`${fmtNum(Number(ertragParams.plotAreaSqm), 0)} m²`} />}
+              {ertragParams.plot_area_sqm && <DataRow label="Grundstücksfläche" value={`${fmtNum(Number(ertragParams.plot_area_sqm), 0)} m²`} />}
               {geminiResearch?.bodenrichtwert ? (
                 <>
-                  <DataRow label="Bodenrichtwert" value={`${fmtNum(geminiResearch.bodenrichtwert.bodenrichtwertEurSqm)} €/m²`} />
+                  <DataRow label="Bodenrichtwert" value={`${fmtNum(geminiResearch.bodenrichtwert.bodenrichtwertEurSqm ?? geminiResearch.bodenrichtwert.bodenrichtwert_eur_sqm)} €/m²`} />
                   <DataRow label="Quelle" value={geminiResearch.bodenrichtwert.quelle} muted />
+                  {geminiResearch.bodenrichtwert.artDerNutzung || geminiResearch.bodenrichtwert.art_der_nutzung ? (
+                    <DataRow label="Nutzungsart" value={String(geminiResearch.bodenrichtwert.artDerNutzung ?? geminiResearch.bodenrichtwert.art_der_nutzung)} muted />
+                  ) : null}
                 </>
               ) : (
-                <DataRow label="Bodenrichtwert" value={ertragParams.bodenwertProxy ? `${fmtEur(Number(ertragParams.bodenwertProxy))} (Proxy)` : '–'} />
+                <DataRow label="Bodenrichtwert" value={ertragParams.bodenrichtwert_eur_sqm ? `${fmtNum(Number(ertragParams.bodenrichtwert_eur_sqm))} €/m²` : '–'} />
               )}
               <SectionDivider />
-              <DataRow label="BODENWERT" value={fmtEur(Number(ertragParams.bodenwertProxy) || 0)} bold />
+              <DataRow label="BODENWERT" value={fmtEur(Number(ertragParams.bodenwert) || 0)} bold />
             </div>
 
             {/* RND */}
@@ -400,9 +403,9 @@ export function ValuationReportReader({
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Restnutzungsdauer</p>
               {ertragParams.gesamtnutzungsdauer && <DataRow label="Gesamtnutzungsdauer" value={`${ertragParams.gesamtnutzungsdauer} Jahre`} />}
               {ertragParams.alter && <DataRow label="Alter" value={`${ertragParams.alter} Jahre`} />}
-              {ertragParams.modernisierungsbonus && <DataRow label="Modernisierungsbonus" value={`+${ertragParams.modernisierungsbonus} Jahre`} />}
+              {Number(ertragParams.modernisierungsbonus) > 0 && <DataRow label="Modernisierungsbonus" value={`+${ertragParams.modernisierungsbonus} Jahre`} />}
               <SectionDivider />
-              <DataRow label="RESTNUTZUNGSDAUER" value={`${ertragParams.restnutzungsdauer || ertragParams.rnd || '–'} Jahre`} bold />
+              <DataRow label="RESTNUTZUNGSDAUER" value={`${ertragParams.restnutzungsdauer || '–'} Jahre`} bold />
             </div>
           </div>
         </CardContent>
