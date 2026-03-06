@@ -368,7 +368,30 @@ export function useValuationCase() {
         legalTitle: runSummary?.legal_title ?? inputs.snapshot?.legal_title ?? null,
         diffs: inputs.diffs ?? [],
         sourceMode: caseData.source_mode ?? 'DRAFT_INTAKE',
-        // Location analysis mapping (snake_case → camelCase)
+        // V9.0: Beleihungswert
+        beleihungswert: (() => {
+          const bw = results.beleihungswert ?? runSummary?.beleihungswert;
+          if (!bw) return null;
+          return {
+            ertragswertBelwertv: bw.ertragswert_belwertv ?? bw.ertragswertBelwertv ?? 0,
+            sachwertBelwertv: bw.sachwert_belwertv ?? bw.sachwertBelwertv ?? 0,
+            beleihungswert: bw.beleihungswert ?? 0,
+            beleihungswertQuote: bw.beleihungswert_quote ?? bw.beleihungswertQuote ?? 0,
+            sicherheitsabschlag: bw.sicherheitsabschlag ?? 0.10,
+          };
+        })(),
+        // V9.0: Gemini Research
+        geminiResearch: (() => {
+          const gr = results.gemini_research ?? runSummary?.gemini_research;
+          if (!gr) return null;
+          return {
+            liegenschaftszins: gr.liegenschaftszins ?? null,
+            bodenrichtwert: gr.bodenrichtwert ?? null,
+            vergleichsmieten: gr.vergleichsmieten ?? null,
+            researchedAt: gr.researched_at ?? gr.researchedAt ?? null,
+          };
+        })(),
+        // Location analysis mapping
         location: (() => {
           const loc = results.location_analysis;
           if (!loc || !loc.available) return null;
@@ -398,7 +421,7 @@ export function useValuationCase() {
           id: c.id ?? c.url ?? String(Math.random()),
           title: c.title ?? '',
           price: c.price ?? 0,
-          priceSqm: c.price_sqm ?? c.priceSqm ?? 0,
+          priceSqm: c.price_per_sqm ?? c.price_sqm ?? c.priceSqm ?? 0,
           area: c.area ?? c.living_area_sqm ?? 0,
           rooms: c.rooms ?? null,
           yearBuilt: c.year_built ?? c.yearBuilt ?? null,
