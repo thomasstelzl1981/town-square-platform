@@ -1181,7 +1181,25 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
         const sachYearBuilt = Number(snapshot.year_built) || 1980;
         const sachAge = new Date().getFullYear() - sachYearBuilt;
         const gnd = getGesamtnutzungsdauer(calcObjectType);
-        const rnd = Math.max(10, gnd - sachAge);
+        let rnd = Math.max(10, gnd - sachAge);
+
+        // V9.2: Modernisierungsbonus bei Kernsanierung (ImmoWertV-konform)
+        let modernisierungsbonus = 0;
+        const coreRenovated = !!snapshot.core_renovated;
+        const renovationYear = Number(snapshot.renovation_year) || 0;
+        if (coreRenovated && renovationYear > 0) {
+          const currentYear = new Date().getFullYear();
+          const yearsSinceRenovation = currentYear - renovationYear;
+          // ImmoWertV: Kernsanierung verlängert RND um ~70% der GND minus Jahre seit Sanierung
+          modernisierungsbonus = Math.max(0, Math.round(gnd * 0.7) - yearsSinceRenovation);
+          const rndBeforeBonus = rnd;
+          rnd = Math.max(rnd, Math.min(gnd, rnd + modernisierungsbonus));
+          stageLog(4, `Modernisierungsbonus: Kernsanierung ${renovationYear}, Bonus +${modernisierungsbonus} Jahre, RND ${rndBeforeBonus} → ${rnd}`);
+          assumptions.push({
+            text: `Kernsanierung ${renovationYear}: Modernisierungsbonus +${modernisierungsbonus} Jahre auf RND (${rndBeforeBonus} → ${rnd} Jahre, ImmoWertV-konform)`,
+            impact: "high",
+          });
+        }
 
         // ═══ 4.1 Ertragswert (Marktwert) ═══
         let ertragswertResult: any = null;
