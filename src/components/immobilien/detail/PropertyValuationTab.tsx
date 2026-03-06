@@ -35,7 +35,7 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('valuation_cases')
-        .select('id, status, source_mode, created_at, completed_at')
+        .select('id, status, source_mode, created_at, updated_at')
         .eq('property_id', propertyId)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
