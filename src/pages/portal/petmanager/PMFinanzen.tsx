@@ -33,8 +33,8 @@ import { toast } from '@/hooks/use-toast';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getJsPDF } from '@/lib/lazyJspdf';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { generateInvoicePdf, type InvoiceData } from '@/lib/pdf/generateInvoicePdf';
 import { isDemoId } from '@/engines/demoData';
 
 type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
