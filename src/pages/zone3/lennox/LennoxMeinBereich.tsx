@@ -182,7 +182,7 @@ export default function LennoxMeinBereich() {
     if (!selectedProviderId) { toast.error('Bitte Anbieter wählen'); return; }
     if (!z3User || !z3SessionToken) return;
 
-    const selectedSvc = services.find((s: any) => s.title === bookingService);
+    // bookingService now holds the service ID directly (not title)
 
     createCase.mutate({
       session_token: z3SessionToken,
