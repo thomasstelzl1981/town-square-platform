@@ -72,8 +72,11 @@ export function EditableBuildingBlock({
   featuresTags,
   coreRenovated,
   renovationYear,
+  unitCountActual,
+  propertyType,
   onFieldChange,
 }: EditableBuildingBlockProps) {
+  const isMfh = propertyType?.toLowerCase().includes('mfh') || propertyType?.toLowerCase().includes('mehrfamilienhaus');
   return (
     <Card>
       <CardHeader className="pb-2 pt-3 px-4">
