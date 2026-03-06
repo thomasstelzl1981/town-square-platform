@@ -89,13 +89,14 @@ export function ObjekteingangList() {
     return allOffers.filter(offer => {
       if (selectedMandateId && offer.mandate_id !== selectedMandateId) return false;
       if (statusFilter !== 'all' && offer.status !== statusFilter) return false;
+      if (sourceFilter !== 'all' && offer.source_type !== sourceFilter) return false;
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         if (!offer.title?.toLowerCase().includes(term) && !offer.address?.toLowerCase().includes(term) && !offer.city?.toLowerCase().includes(term)) return false;
       }
       return true;
     });
-  }, [allOffers, statusFilter, searchTerm, selectedMandateId]);
+  }, [allOffers, statusFilter, sourceFilter, searchTerm, selectedMandateId]);
 
   const isLoading = loadingMandates || loadingOffers;
 
