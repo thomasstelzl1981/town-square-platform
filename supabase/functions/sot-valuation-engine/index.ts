@@ -969,18 +969,17 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
         let valueBand: any = { p25: 0, p50: 0, p75: 0, confidence: 0 };
 
         if (methods.length > 0) {
-          const weights: Record<string, number> = { ertragswert: 0.5, comp_proxy: 0.35, sachwert_proxy: 0.15 };
           let totalWeight = 0;
           let weightedSum = 0;
 
           for (const m of methods) {
-            const w = weights[m.method] || 0.1;
+            const w = CALC.METHOD_WEIGHTS[m.method] || 0.1;
             weightedSum += m.value * w * m.confidence;
             totalWeight += w * m.confidence;
           }
 
           const p50 = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
-          const spread = 0.1;
+          const spread = CALC.VALUE_BAND_SPREAD;
           valueBand = {
             p25: Math.round(p50 * (1 - spread)),
             p50,
@@ -989,7 +988,7 @@ Wenn ein Feld nicht gefunden wird, setze value=null und confidence=0.`,
             weighting: methods.map((m: any) => ({
               method: m.method,
               value: m.value,
-              weight: weights[m.method] || 0.1,
+              weight: CALC.METHOD_WEIGHTS[m.method] || 0.1,
               confidence: m.confidence,
             })),
           };
