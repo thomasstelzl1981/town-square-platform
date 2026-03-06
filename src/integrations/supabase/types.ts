@@ -17010,6 +17010,7 @@ export type Database = {
           category: string | null
           city: string
           code: string | null
+          core_renovated: boolean | null
           country: string
           created_at: string
           description: string | null
@@ -17071,6 +17072,7 @@ export type Database = {
           category?: string | null
           city: string
           code?: string | null
+          core_renovated?: boolean | null
           country?: string
           created_at?: string
           description?: string | null
@@ -17132,6 +17134,7 @@ export type Database = {
           category?: string | null
           city?: string
           code?: string | null
+          core_renovated?: boolean | null
           country?: string
           created_at?: string
           description?: string | null

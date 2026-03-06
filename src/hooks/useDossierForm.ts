@@ -57,7 +57,7 @@ export function useDossierForm(initialData: UnitDossierData | null) {
       'usageType', 'heatingType', 'energySource', 'landRegisterCourt', 'landRegisterSheet',
       'landRegisterVolume', 'parcelNumber', 'teNumber', 'purchaseDate', 'purchasePrice',
       'marketValue', 'acquisitionCosts', 'wegFlag', 'meaTotal', 'allocationKeyDefault',
-      'plotAreaSqm', 'totalAreaSqm'
+      'plotAreaSqm', 'totalAreaSqm', 'coreRenovated', 'renovationYear'
     ];
     
     const changes: Partial<PropertyFormData> = {};
@@ -107,6 +107,8 @@ export function useDossierForm(initialData: UnitDossierData | null) {
       if ((changes as any).allocationKeyDefault !== undefined) mapped.allocationKey = (changes as any).allocationKeyDefault;
       if (changes.plotAreaSqm !== undefined) mapped.plotAreaSqm = changes.plotAreaSqm;
       if (changes.totalAreaSqm !== undefined) mapped.totalAreaSqm = changes.totalAreaSqm;
+      if ((changes as any).coreRenovated !== undefined) (mapped as any).coreRenovated = (changes as any).coreRenovated;
+      if ((changes as any).renovationYear !== undefined) (mapped as any).renovationYear = (changes as any).renovationYear;
       return mapped;
     }
     

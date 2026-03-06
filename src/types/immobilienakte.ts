@@ -73,6 +73,8 @@ export interface BuildingData {
   energyCertValue?: number;
   energyCertValidUntil?: string;
   featuresTags?: string[];
+  coreRenovated?: boolean;
+  renovationYear?: number;
 }
 
 // ============================================================
@@ -257,6 +259,8 @@ export interface UnitDossierData {
   energyCertValue?: number;
   energyCertValidUntil?: string;
   featuresTags?: string[];
+  coreRenovated?: boolean;
+  renovationYear?: number;
 
   // Block D: Legal
   landRegisterCourt?: string;
@@ -400,6 +404,8 @@ export interface PropertyFormData {
   totalAreaSqm?: number;
   heatingType?: string;
   energySource?: string;
+  coreRenovated?: boolean;
+  renovationYear?: number;
 
   // Legal
   landRegisterCourt?: string;

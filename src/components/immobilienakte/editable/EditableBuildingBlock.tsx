@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Home, Thermometer, Zap } from 'lucide-react';
 import type { UsageType, HeatingType, EnergySource } from '@/types/immobilienakte';
@@ -19,6 +20,8 @@ interface EditableBuildingBlockProps {
   energyCertValue?: number;
   energyCertValidUntil?: string;
   featuresTags?: string[];
+  coreRenovated?: boolean;
+  renovationYear?: number;
   onFieldChange: (field: string, value: any) => void;
 }
 
@@ -65,6 +68,8 @@ export function EditableBuildingBlock({
   energyCertValue,
   energyCertValidUntil,
   featuresTags,
+  coreRenovated,
+  renovationYear,
   onFieldChange,
 }: EditableBuildingBlockProps) {
   return (
@@ -118,6 +123,32 @@ export function EditableBuildingBlock({
           <div className="space-y-1">
             <Label className="text-[11px] text-muted-foreground">Whg.-Nr.</Label>
             <Input value={unitNumber || ''} onChange={(e) => onFieldChange('unitNumber', e.target.value)} placeholder="z.B. 4.OG" className="h-7 text-xs" />
+          </div>
+        </div>
+
+        {/* Kernsanierung — 2-col */}
+        <div className="grid grid-cols-2 gap-3 pt-1 border-t">
+          <div className="flex items-center gap-2 pt-1">
+            <Checkbox
+              id="coreRenovated"
+              checked={coreRenovated || false}
+              onCheckedChange={(checked) => onFieldChange('coreRenovated', !!checked)}
+            />
+            <Label htmlFor="coreRenovated" className="text-[11px] text-muted-foreground cursor-pointer">
+              Kernsanierung
+            </Label>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Sanierungsjahr</Label>
+            <Input
+              type="number"
+              min="1900"
+              max="2099"
+              value={renovationYear || ''}
+              onChange={(e) => onFieldChange('renovationYear', e.target.value ? parseInt(e.target.value) : undefined)}
+              className="h-7 text-xs"
+              placeholder="z.B. 2015"
+            />
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Ruler, DoorOpen, Thermometer, Zap, LandPlot } from 'lucide-react';
+import { Ruler, DoorOpen, Thermometer, Zap, LandPlot, Wrench } from 'lucide-react';
 
 interface CoreDataBlockProps {
   areaLivingSqm: number;
@@ -12,6 +12,8 @@ interface CoreDataBlockProps {
   energyCertificateValue?: number;
   energyCertificateValidUntil?: string;
   featuresTags?: string[];
+  coreRenovated?: boolean;
+  renovationYear?: number;
 }
 
 export function CoreDataBlock({
@@ -24,6 +26,8 @@ export function CoreDataBlock({
   energyCertificateValue,
   energyCertificateValidUntil,
   featuresTags = [],
+  coreRenovated,
+  renovationYear,
 }: CoreDataBlockProps) {
   return (
     <Card>
@@ -65,6 +69,24 @@ export function CoreDataBlock({
               <div className="flex items-center gap-2">
                 <Zap className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>{energySource}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {(coreRenovated || renovationYear) && (
+          <div className="pt-2 border-t space-y-1">
+            {coreRenovated && (
+              <div className="flex items-center gap-2">
+                <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                <Badge variant="secondary" className="text-xs">Kernsaniert</Badge>
+                {renovationYear && <span className="text-muted-foreground">({renovationYear})</span>}
+              </div>
+            )}
+            {!coreRenovated && renovationYear && (
+              <div className="flex items-center gap-2">
+                <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>Sanierung {renovationYear}</span>
               </div>
             )}
           </div>

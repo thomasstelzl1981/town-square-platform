@@ -156,6 +156,8 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
           energyCertValue={formData.energyCertValue}
           energyCertValidUntil={formData.energyCertValidUntil}
           featuresTags={formData.featuresTags}
+          coreRenovated={formData.coreRenovated}
+          renovationYear={formData.renovationYear}
           onFieldChange={handleFieldChange}
         />
       </div>

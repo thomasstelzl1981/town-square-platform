@@ -62,6 +62,8 @@ export function useUpdateProperty() {
       if (data.meaTotal !== undefined) updateData.mea_total = data.meaTotal;
       if (data.allocationKey !== undefined) updateData.allocation_key = data.allocationKey;
       if (data.managerContact !== undefined) updateData.manager_contact = data.managerContact;
+      if ((data as any).coreRenovated !== undefined) updateData.core_renovated = (data as any).coreRenovated;
+      if ((data as any).renovationYear !== undefined) updateData.renovation_year = (data as any).renovationYear;
 
       const { error } = await supabase
         .from('properties')
