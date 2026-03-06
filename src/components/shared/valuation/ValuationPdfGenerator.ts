@@ -209,9 +209,9 @@ export async function generateValuationPdf(data: ValuationPdfData): Promise<void
   if (data.dataQuality) {
     y = drawKpiRow(doc, y, [
       { label: 'Vollständigkeit', value: `${data.dataQuality.completenessPercent}%`, tone: data.dataQuality.completenessPercent >= 80 ? 'success' : 'warning' },
-      { label: 'Verifiziert', value: `${data.dataQuality.verifiedCount}`, tone: 'success' },
-      { label: 'Abgeleitet', value: `${data.dataQuality.derivedCount}`, tone: data.dataQuality.derivedCount > 3 ? 'warning' : 'default' },
-      { label: 'Fehlend', value: `${data.dataQuality.missingCount}`, tone: data.dataQuality.missingCount > 0 ? 'danger' : 'success' },
+      { label: 'Verifiziert', value: `${data.dataQuality.fieldsVerified}`, tone: 'success' },
+      { label: 'Abgeleitet', value: `${data.dataQuality.fieldsDerived}`, tone: data.dataQuality.fieldsDerived > 3 ? 'warning' : 'default' },
+      { label: 'Fehlend', value: `${data.dataQuality.fieldsMissing}`, tone: data.dataQuality.fieldsMissing > 0 ? 'danger' : 'success' },
     ]);
   }
 
