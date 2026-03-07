@@ -74,17 +74,18 @@ export default function PetsMeineTiere() {
     setShowNew(false);
   };
 
-  /** Upload photo directly from RecordCard drag-and-drop (like Fahrzeuge) */
+  /** Upload photo directly from RecordCard drag-and-drop — SSOT via tenant-documents */
   const handlePhotoDrop = useCallback(async (petId: string, tenantId: string, file: File) => {
-    const path = `${tenantId}/${petId}/profile.jpg`;
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `${tenantId}/MOD_22/${petId}/profile.${ext}`;
     try {
       const { error: upErr } = await supabase.storage
-        .from('pet-photos')
+        .from('tenant-documents')
         .upload(path, file, { upsert: true, contentType: file.type });
       if (upErr) throw upErr;
 
-      const { data } = supabase.storage.from('pet-photos').getPublicUrl(path);
-      const photoUrl = `${data.publicUrl}?t=${Date.now()}`;
+      const { data } = await supabase.storage.from('tenant-documents').createSignedUrl(path, 3600);
+      const photoUrl = data?.signedUrl || '';
 
       const { error: dbErr } = await supabase
         .from('pets')

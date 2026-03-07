@@ -2,10 +2,15 @@
  * usePetDossier — Central data hook for the universal pet dossier
  * Handles loading, saving, and photo uploads for all zones
  * Z3 context uses edge function proxies (no direct Supabase auth)
+ * 
+ * SSOT: Uses UPLOAD_BUCKET ('tenant-documents') with MOD_22 paths
+ * Photos stored at: {tenant_id}/MOD_22/{pet_id}/profile.jpg
+ * Gallery at: {tenant_id}/MOD_22/{pet_id}/gallery/{filename}
  */
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { UPLOAD_BUCKET } from '@/config/storageManifest';
 import type { PetData, PetOwnerData, PetDossierContext } from './types';
 
 const FUNC_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
@@ -58,9 +63,8 @@ export function usePetDossier(petId: string, context: PetDossierContext, options
               .maybeSingle();
             if (prof) setOwner(prof as PetOwnerData);
           }
-          // z3: owner comes from externalOwner prop
 
-          // Load gallery photos
+          // Load gallery photos via signed URLs
           await loadGallery(data.tenant_id, petId);
         }
       } catch (err) {
@@ -76,15 +80,19 @@ export function usePetDossier(petId: string, context: PetDossierContext, options
 
   const loadGallery = async (tenantId: string, id: string) => {
     try {
+      const galleryPath = `${tenantId}/MOD_22/${id}/gallery`;
       const { data: files } = await supabase.storage
-        .from('pet-photos')
-        .list(`${tenantId}/${id}/gallery`, { limit: 10, sortBy: { column: 'created_at', order: 'asc' } });
+        .from(UPLOAD_BUCKET)
+        .list(galleryPath, { limit: 10, sortBy: { column: 'created_at', order: 'asc' } });
 
       if (files?.length) {
-        const urls = files.map(f => {
-          const { data } = supabase.storage.from('pet-photos').getPublicUrl(`${tenantId}/${id}/gallery/${f.name}`);
-          return data.publicUrl;
-        });
+        const urls: string[] = [];
+        for (const f of files) {
+          const { data } = await supabase.storage
+            .from(UPLOAD_BUCKET)
+            .createSignedUrl(`${galleryPath}/${f.name}`, 3600);
+          if (data?.signedUrl) urls.push(data.signedUrl);
+        }
         setGalleryUrls(urls);
       }
     } catch {
@@ -152,7 +160,6 @@ export function usePetDossier(petId: string, context: PetDossierContext, options
           .eq('id', owner.id);
         if (error) throw error;
       }
-      // z3: owner updates not supported from dossier (profile managed separately)
       setOwner(prev => prev ? { ...prev, ...updates } : prev);
       toast.success('Besitzer aktualisiert');
     } catch (err) {
@@ -191,16 +198,17 @@ export function usePetDossier(petId: string, context: PetDossierContext, options
       return;
     }
 
-    // Z2/Z1: direct storage
-    const path = `${pet.tenant_id}/${pet.id}/profile.jpg`;
+    // Z2/Z1: SSOT storage path
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `${pet.tenant_id}/MOD_22/${pet.id}/profile.${ext}`;
     try {
       const { error: upErr } = await supabase.storage
-        .from('pet-photos')
+        .from(UPLOAD_BUCKET)
         .upload(path, file, { upsert: true, contentType: file.type });
       if (upErr) throw upErr;
 
-      const { data } = supabase.storage.from('pet-photos').getPublicUrl(path);
-      const photoUrl = `${data.publicUrl}?t=${Date.now()}`;
+      const { data } = await supabase.storage.from(UPLOAD_BUCKET).createSignedUrl(path, 3600);
+      const photoUrl = data?.signedUrl || '';
       await updatePet({ photo_url: photoUrl });
     } catch (err) {
       console.error('uploadProfilePhoto error:', err);
@@ -236,17 +244,17 @@ export function usePetDossier(petId: string, context: PetDossierContext, options
       return;
     }
 
-    // Z2/Z1: direct storage
+    // Z2/Z1: SSOT storage path
     const name = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-    const path = `${pet.tenant_id}/${pet.id}/gallery/${name}`;
+    const path = `${pet.tenant_id}/MOD_22/${pet.id}/gallery/${name}`;
     try {
       const { error: upErr } = await supabase.storage
-        .from('pet-photos')
+        .from(UPLOAD_BUCKET)
         .upload(path, file, { contentType: file.type });
       if (upErr) throw upErr;
 
-      const { data } = supabase.storage.from('pet-photos').getPublicUrl(path);
-      setGalleryUrls(prev => [...prev, data.publicUrl]);
+      const { data } = await supabase.storage.from(UPLOAD_BUCKET).createSignedUrl(path, 3600);
+      if (data?.signedUrl) setGalleryUrls(prev => [...prev, data.signedUrl]);
       toast.success('Foto hinzugefügt');
     } catch (err) {
       console.error('uploadGalleryPhoto error:', err);
