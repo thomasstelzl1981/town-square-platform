@@ -41,7 +41,7 @@ export function useRecordCardDMS() {
         .eq('node_type', 'folder')
         .maybeSingle();
 
-      // 2. Create DMS folder (storage_node)
+      // 2. Create DMS folder (storage_node) with template_id for fast lookup
       const { data: folder, error: folderError } = await supabase
         .from('storage_nodes')
         .insert({
@@ -53,6 +53,7 @@ export function useRecordCardDMS() {
           entity_id: entityId,
           parent_id: rootFolder?.id || null,
           auto_created: true,
+          template_id: `${config.moduleCode}_ENTITY_ROOT`,
         } as any)
         .select('id')
         .single();
@@ -98,6 +99,7 @@ export function useRecordCardDMS() {
         await supabase
           .from('inbox_sort_rules')
           .insert({
+            tenant_id: tenantId,
             container_id: container.id,
             field: 'subject',
             operator: 'contains',
