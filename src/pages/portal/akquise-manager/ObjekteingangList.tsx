@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, FolderOpen, Calendar
+  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, Calendar
 } from 'lucide-react';
 import { AcqDataRoom } from '@/pages/portal/akquise-manager/components/AcqDataRoom';
 import { useAuth } from '@/contexts/AuthContext';
