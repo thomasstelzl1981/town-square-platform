@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Download, Eye, Trash2, FolderPlus, FolderInput, X } from 'lucide-react';
+import { Download, Eye, Trash2, FolderPlus, FolderInput, Pencil, X } from 'lucide-react';
 import { getFileIcon } from '@/components/dms/storageHelpers';
 import type { FileManagerItem } from '@/components/dms/views/ListView';
 
@@ -10,10 +10,13 @@ interface SelectionActionBarProps {
   onDelete?: () => void;
   onNewSubfolder?: () => void;
   onMove?: () => void;
+  onRename?: () => void;
   onClear: () => void;
   isDownloading?: boolean;
   isDeleting?: boolean;
   isMoving?: boolean;
+  /** Whether the selected folder is mutable (rename/delete allowed). Ignored for files. */
+  isMutable?: boolean;
 }
 
 export function SelectionActionBar({
@@ -23,12 +26,15 @@ export function SelectionActionBar({
   onDelete,
   onNewSubfolder,
   onMove,
+  onRename,
   onClear,
   isDownloading,
   isDeleting,
   isMoving,
+  isMutable = true,
 }: SelectionActionBarProps) {
   const Icon = item.type === 'folder' ? undefined : getFileIcon(item.mimeType);
+  const folderMutable = item.type === 'folder' ? isMutable : true;
 
   return (
     <div className="flex items-center gap-2 px-4 py-1.5 bg-primary/10 border-b border-primary/20 text-sm shrink-0">
@@ -60,6 +66,14 @@ export function SelectionActionBar({
         </Button>
       )}
 
+      {/* Rename — folders only, if mutable */}
+      {item.type === 'folder' && onRename && folderMutable && (
+        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={onRename}>
+          <Pencil className="h-3.5 w-3.5" />
+          Umbenennen
+        </Button>
+      )}
+
       {/* Move — both types */}
       {onMove && (
         <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={onMove} disabled={isMoving}>
@@ -76,8 +90,8 @@ export function SelectionActionBar({
         </Button>
       )}
 
-      {/* Delete — both types */}
-      {onDelete && (
+      {/* Delete — both types, but folders only if mutable */}
+      {onDelete && folderMutable && (
         <Button
           variant="ghost"
           size="sm"

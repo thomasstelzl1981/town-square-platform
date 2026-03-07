@@ -1,4 +1,4 @@
-import { MoreVertical, Download, Eye, FolderOpen, Trash2, FolderPlus } from 'lucide-react';
+import { MoreVertical, Download, Eye, FolderOpen, Trash2, FolderPlus, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ interface FileRowMenuProps {
   onOpen?: () => void;
   onDelete?: () => void;
   onNewSubfolder?: () => void;
+  onRename?: () => void;
   isDownloading?: boolean;
   isDeleting?: boolean;
 }
@@ -26,6 +27,7 @@ export function FileRowMenu({
   onOpen,
   onDelete,
   onNewSubfolder,
+  onRename,
   isDownloading,
   isDeleting,
 }: FileRowMenuProps) {
@@ -52,6 +54,12 @@ export function FileRowMenu({
           <DropdownMenuItem onClick={onNewSubfolder}>
             <FolderPlus className="h-4 w-4 mr-2" />
             Neuer Unterordner
+          </DropdownMenuItem>
+        )}
+        {type === 'folder' && onRename && (
+          <DropdownMenuItem onClick={onRename}>
+            <Pencil className="h-4 w-4 mr-2" />
+            Umbenennen
           </DropdownMenuItem>
         )}
         {type === 'file' && onPreview && (
