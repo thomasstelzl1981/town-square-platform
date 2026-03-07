@@ -48,6 +48,13 @@ interface Props {
   beleihungswert?: BeleihungswertResult | null;
   geminiResearch?: GeminiResearchResult | null;
   snapshot?: Partial<CanonicalPropertySnapshot> | null;
+  /** Photo & document management */
+  propertyId?: string;
+  tenantId?: string;
+  photos?: string[];
+  onPhotosChange?: (photos: string[]) => void;
+  documents?: DocumentSlot[];
+  onDocumentsChange?: (docs: DocumentSlot[]) => void;
   onDownloadPdf?: () => void;
   className?: string;
 }
