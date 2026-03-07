@@ -421,11 +421,19 @@ export interface LocationAnalysis {
   microMapUrl: string | null;
   macroMapUrl: string | null;
   streetViewUrl: string | null;
+  /** V9.3: Additional map types */
+  satelliteMapUrl?: string | null;
+  hybridMapUrl?: string | null;
+  terrainMapUrl?: string | null;
   /** Pre-fetched Base64 images for CORS-free PDF embedding */
   microMapBase64?: string | null;
   macroMapBase64?: string | null;
   streetViewBase64?: string | null;
+  satelliteMapBase64?: string | null;
+  hybridMapBase64?: string | null;
   narrative: string;
+  /** V9.3: Rich multi-paragraph property assessment */
+  propertyAssessment?: string | null;
   /** V9.1: MFH Unit-aware valuation */
   unitsDetail?: ValuationUnitDetail[] | null;
   mfhMultiUnit?: boolean;

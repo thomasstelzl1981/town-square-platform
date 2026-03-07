@@ -451,33 +451,29 @@ export function ValuationReportReader({
       {/* ═══════════════════════════════════════════════════════════════
           SEKTION 1e — LUFTBILD & SATELLIT
           ═══════════════════════════════════════════════════════════════ */}
-      {(satelliteUrl || hybridUrl || terrainUrl) && (
+      {(location?.satelliteMapUrl || location?.hybridMapUrl || location?.terrainMapUrl || satelliteUrl) && (
         <Card>
           <CardContent className="p-6 space-y-5">
             <SectionHeader icon={Satellite} title="Luftbild & Geländeansicht" subtitle="Satellitenaufnahme und Geländerelief des Standorts" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {satelliteUrl && (
-                <div className="space-y-1.5">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Satellitenansicht (Nahaufnahme)</p>
-                  <div className="rounded-xl overflow-hidden border shadow-sm aspect-[16/10]">
-                    <img src={satelliteUrl} alt="Satellitenansicht" className="w-full h-full object-cover" loading="lazy" />
-                  </div>
+              <div className="space-y-1.5">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Satellitenansicht (Nahaufnahme)</p>
+                <div className="rounded-xl overflow-hidden border shadow-sm aspect-[16/10]">
+                  <img src={location?.satelliteMapUrl || satelliteUrl || ''} alt="Satellitenansicht" className="w-full h-full object-cover" loading="lazy" />
                 </div>
-              )}
-              {hybridUrl && (
-                <div className="space-y-1.5">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Hybridansicht (Karte + Satellitenbild)</p>
-                  <div className="rounded-xl overflow-hidden border shadow-sm aspect-[16/10]">
-                    <img src={hybridUrl} alt="Hybridansicht" className="w-full h-full object-cover" loading="lazy" />
-                  </div>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Hybridansicht (Karte + Satellitenbild)</p>
+                <div className="rounded-xl overflow-hidden border shadow-sm aspect-[16/10]">
+                  <img src={location?.hybridMapUrl || hybridUrl || ''} alt="Hybridansicht" className="w-full h-full object-cover" loading="lazy" />
                 </div>
-              )}
+              </div>
             </div>
-            {terrainUrl && (
+            {(location?.terrainMapUrl || terrainUrl) && (
               <div className="space-y-1.5">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Geländeansicht (Topografie)</p>
                 <div className="rounded-xl overflow-hidden border shadow-sm aspect-[21/9] max-h-[250px]">
-                  <img src={terrainUrl} alt="Geländeansicht" className="w-full h-full object-cover" loading="lazy" />
+                  <img src={location?.terrainMapUrl || terrainUrl || ''} alt="Geländeansicht" className="w-full h-full object-cover" loading="lazy" />
                 </div>
               </div>
             )}
@@ -618,9 +614,39 @@ export function ValuationReportReader({
               </div>
             )}
 
+            {/* V9.3: Rich narrative — multi-paragraph */}
             {location.narrative && (
-              <div className="pt-2 border-t"><p className="text-xs leading-relaxed text-muted-foreground">{location.narrative}</p></div>
+              <div className="space-y-3 pt-3 border-t">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Standortbewertung</p>
+                <div className="text-xs leading-relaxed text-muted-foreground space-y-2">
+                  {location.narrative.split('\n').filter(Boolean).map((para, i) => (
+                    <p key={i}>{para}</p>
+                  ))}
+                </div>
+              </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 3b — OBJEKTBESCHREIBUNG (KI-generiert)
+          ═══════════════════════════════════════════════════════════════ */}
+      {location?.propertyAssessment && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <SectionHeader icon={Building2} title="Objektbeschreibung & Einschätzung" subtitle="KI-gestützte Analyse des Bewertungsobjekts"
+              badge={<Badge variant="outline" className="text-[10px]">AI</Badge>}
+            />
+            <div className="text-xs leading-relaxed text-muted-foreground space-y-2">
+              {location.propertyAssessment.split('\n').filter(Boolean).map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </div>
+            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/30 text-[10px] text-muted-foreground">
+              <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>Diese Objektbeschreibung wurde KI-gestützt auf Basis der erfassten Stammdaten erstellt und dient als Orientierung. Eine Vor-Ort-Besichtigung durch einen Sachverständigen wird empfohlen.</span>
+            </div>
           </CardContent>
         </Card>
       )}

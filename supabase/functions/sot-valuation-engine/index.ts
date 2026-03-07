@@ -908,7 +908,7 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
 
         stageLog(2, `Gemini research complete: LZ=${geminiLZ?.marktwert_zins}, BRW=${geminiBRW?.bodenrichtwert_eur_sqm}, VM=${geminiVM?.miete_median}`);
 
-        // Location Analysis (Google Maps)
+        // Location Analysis (Google Maps) — V9.3 Enhanced
         let locationAnalysis: any = { available: false };
         const address = [snapshot.address, snapshot.postal_code, snapshot.city].filter(Boolean).join(', ');
 
@@ -925,41 +925,88 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
             snapshot.lng = geo.lng;
             snapshot.formatted_address = geo.formatted_address;
 
+            // V9.3: Extended POI categories for comprehensive infrastructure analysis
             const categories = [
-              { type: "transit_station", label: "ÖPNV" },
-              { type: "supermarket", label: "Alltag" },
-              { type: "school", label: "Familie" },
-              { type: "doctor", label: "Gesundheit" },
-              { type: "park", label: "Freizeit" },
+              { type: "transit_station", label: "ÖPNV", radius: 2000 },
+              { type: "supermarket", label: "Alltag", radius: 1500 },
+              { type: "school", label: "Schulen", radius: 2500 },
+              { type: "doctor", label: "Ärzte", radius: 2000 },
+              { type: "park", label: "Freizeit", radius: 1500 },
+              { type: "hospital", label: "Krankenhaus", radius: 5000 },
+              { type: "pharmacy", label: "Apotheke", radius: 1500 },
+              { type: "restaurant", label: "Gastronomie", radius: 1000 },
+              { type: "gym", label: "Sport", radius: 2000 },
+              { type: "bank", label: "Banken", radius: 1500 },
             ];
 
             const poiResults: any[] = [];
-            for (const cat of categories) {
+            // Run POI searches in parallel for speed
+            const poiPromises = categories.map(async (cat) => {
               try {
-                const pois = await googlePlacesNearby(geo.lat, geo.lng, cat.type, googleMapsKey);
-                poiResults.push({ category: cat.label, type: cat.type, pois });
-              } catch (e) { stageLog(2, `Places error: ${e}`); }
-            }
+                const pois = await googlePlacesNearby(geo.lat, geo.lng, cat.type, googleMapsKey!, cat.radius);
+                return { category: cat.label, type: cat.type, pois };
+              } catch (e) {
+                stageLog(2, `Places error for ${cat.type}: ${e}`);
+                return { category: cat.label, type: cat.type, pois: [] };
+              }
+            });
+            const poiSettled = await Promise.all(poiPromises);
+            poiResults.push(...poiSettled);
 
+            // V9.3: Multiple map types
             const microMap = await googleStaticMap(geo.lat, geo.lng, googleMapsKey, 16, "600x400");
             const macroMap = await googleStaticMap(geo.lat, geo.lng, googleMapsKey, 12, "600x400");
             const streetView = googleStreetViewUrl(geo.lat, geo.lng, googleMapsKey);
+            const satelliteUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${geo.lat},${geo.lng}&zoom=18&size=640x400&maptype=satellite&markers=color:red|${geo.lat},${geo.lng}&key=${googleMapsKey}`;
+            const hybridUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${geo.lat},${geo.lng}&zoom=16&size=640x400&maptype=hybrid&markers=color:red|${geo.lat},${geo.lng}&key=${googleMapsKey}`;
+            const terrainUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${geo.lat},${geo.lng}&zoom=13&size=640x400&maptype=terrain&markers=color:red|${geo.lat},${geo.lng}&key=${googleMapsKey}`;
 
+            // V9.3: Extended reachability — find major infrastructure
             let reachability: any[] = [];
             try {
               const routeDestinations: { name: string; lat: number; lng: number }[] = [];
+
+              // City center
               if (city) {
-                const cityGeo = await googleGeocode(city + " Zentrum", googleMapsKey);
-                if (cityGeo) routeDestinations.push({ name: `${city} Zentrum`, lat: cityGeo.lat, lng: cityGeo.lng });
+                const cityGeo = await googleGeocode(city + " Hauptbahnhof", googleMapsKey);
+                if (cityGeo) routeDestinations.push({ name: `${city} Hbf`, lat: cityGeo.lat, lng: cityGeo.lng });
               }
+
+              // Nearest transit from POIs
               const transitPois = poiResults.find((p) => p.type === "transit_station")?.pois || [];
               if (transitPois.length > 0 && transitPois[0].address) {
                 const stationGeo = await googleGeocode(transitPois[0].address + " " + city, googleMapsKey);
-                if (stationGeo) routeDestinations.push({ name: transitPois[0].name || "Nächster Bahnhof", lat: stationGeo.lat, lng: stationGeo.lng });
+                if (stationGeo) routeDestinations.push({ name: transitPois[0].name || "Nächste Haltestelle", lat: stationGeo.lat, lng: stationGeo.lng });
               }
-              if (routeDestinations.length > 0) reachability = await googleRoutesMatrix(geo.lat, geo.lng, routeDestinations, googleMapsKey);
+
+              // Nearest airport
+              const airportGeo = await googleGeocode(`Flughafen ${city}`, googleMapsKey);
+              if (airportGeo) routeDestinations.push({ name: "Flughafen", lat: airportGeo.lat, lng: airportGeo.lng });
+
+              // Nearest Autobahn — search for highway on-ramp
+              const autobahnPois = await googlePlacesNearby(geo.lat, geo.lng, "gas_station", googleMapsKey!, 5000);
+              if (autobahnPois.length > 0) {
+                // Use nearest gas station as proxy for Autobahn access
+                const nearestGas = autobahnPois[0];
+                if (nearestGas.address) {
+                  const gasGeo = await googleGeocode(nearestGas.address + " " + city, googleMapsKey);
+                  if (gasGeo) routeDestinations.push({ name: "Autobahnauffahrt (Nähe)", lat: gasGeo.lat, lng: gasGeo.lng });
+                }
+              }
+
+              // Hospital
+              const hospitalPois = poiResults.find((p) => p.type === "hospital")?.pois || [];
+              if (hospitalPois.length > 0 && hospitalPois[0].address) {
+                const hospGeo = await googleGeocode(hospitalPois[0].address + " " + city, googleMapsKey);
+                if (hospGeo) routeDestinations.push({ name: hospitalPois[0].name || "Krankenhaus", lat: hospGeo.lat, lng: hospGeo.lng });
+              }
+
+              if (routeDestinations.length > 0) {
+                reachability = await googleRoutesMatrix(geo.lat, geo.lng, routeDestinations, googleMapsKey);
+              }
             } catch (e) { stageLog(2, `Routes error: ${e}`); }
 
+            // Score calculation
             const scoreByCategory = poiResults.map((cat) => {
               const avgDist = cat.pois.length > 0
                 ? cat.pois.reduce((s: number, p: any) => s + p.distance_m, 0) / cat.pois.length
@@ -984,28 +1031,84 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
               } catch { return null; }
             };
 
-            const [microB64, macroB64, streetB64] = await Promise.all([
+            const [microB64, macroB64, streetB64, satB64, hybridB64] = await Promise.all([
               fetchImageBase64(microMap),
               fetchImageBase64(macroMap),
               fetchImageBase64(streetView),
+              fetchImageBase64(satelliteUrl),
+              fetchImageBase64(hybridUrl),
             ]);
-            stageLog(2, `Map Base64 prefetch: micro=${!!microB64}, macro=${!!macroB64}, street=${!!streetB64}`);
+            stageLog(2, `Map Base64 prefetch: micro=${!!microB64}, macro=${!!macroB64}, street=${!!streetB64}, sat=${!!satB64}, hybrid=${!!hybridB64}`);
 
             locationAnalysis = {
               available: true, geocode: geo, scores: scoreByCategory,
               global_score: globalScore, pois: poiResults, reachability,
-              maps: { micro: microMap, macro: macroMap, street_view: streetView },
-              maps_base64: { micro: microB64, macro: macroB64, street_view: streetB64 },
+              maps: { micro: microMap, macro: macroMap, street_view: streetView, satellite: satelliteUrl, hybrid: hybridUrl, terrain: terrainUrl },
+              maps_base64: { micro: microB64, macro: macroB64, street_view: streetB64, satellite: satB64, hybrid: hybridB64 },
             };
 
-            // Narrative
+            // V9.3: Rich multi-paragraph narrative from AI
             try {
+              const poiSummary = scoreByCategory.map(c => `${c.dimension}: ${c.score}/100 (Ø ${c.avgDistance}m, ${c.topPois.length} Treffer${c.topPois.length > 0 ? ': ' + c.topPois.slice(0, 2).map((p: any) => `${p.name} (${p.distance_m}m)`).join(', ') : ''})`).join('\n');
+              const reachSummary = reachability.map((r: any) => `${r.destinationName}: ${r.drivingMinutes || '?'} Min. Pkw, ${r.transitMinutes || '?'} Min. ÖPNV`).join('\n');
+
               locationAnalysis.narrative = await callAI(
-                lovableApiKey!, "google/gemini-2.5-flash-lite",
-                "Du erstellst professionelle Standortanalysen für Immobilienbewertungen. Schreibe kurz, sachlich (max 150 Wörter).",
-                `Standortanalyse für: ${snapshot.formatted_address || address}\nScore: ${globalScore}/100\nPOIs: ${JSON.stringify(scoreByCategory)}`,
+                lovableApiKey!, "google/gemini-2.5-flash",
+                `Du bist ein erfahrener Immobiliengutachter und erstellst detaillierte Standortanalysen für Kurzgutachten.
+
+WICHTIG: Schreibe einen professionellen, mehrteiligen Standortbericht mit folgender Struktur:
+1. **Makrolage** (1 Absatz): Stadt/Region, wirtschaftliche Bedeutung, Bevölkerungsentwicklung
+2. **Mikrolage** (1 Absatz): Unmittelbare Umgebung, Straßenbild, Bebauungsstruktur, Lärmbelastung
+3. **Infrastruktur** (1 Absatz): ÖPNV-Anbindung, Schulen, Ärzte, Einkaufsmöglichkeiten, Gastronomie mit konkreten Entfernungen
+4. **Erreichbarkeit** (1 Absatz): Fahrzeiten zu Hauptbahnhof, Flughafen, Autobahn
+5. **Bewertung** (1 Absatz): Gesamteinschätzung der Lagequalität für Wohnimmobilien, Zielgruppe
+
+Nutze sachlichen Gutachterstil. Nenne konkrete Namen und Entfernungen aus den POI-Daten.
+Mindestens 250 Wörter, maximal 400 Wörter.`,
+                `Standortanalyse für: ${snapshot.formatted_address || address}
+Objektart: ${snapshot.object_type || 'Wohnimmobilie'}
+Baujahr: ${snapshot.year_built || 'unbekannt'}
+Gesamt-Score: ${globalScore}/100
+
+=== Infrastruktur-POIs ===
+${poiSummary}
+
+=== Erreichbarkeit ===
+${reachSummary || 'Keine Daten verfügbar'}
+
+=== Koordinaten ===
+Lat: ${geo.lat}, Lng: ${geo.lng}`,
               );
             } catch (_) { locationAnalysis.narrative = null; }
+
+            // V9.3: AI property assessment text
+            try {
+              locationAnalysis.property_assessment = await callAI(
+                lovableApiKey!, "google/gemini-2.5-flash",
+                `Du bist Immobiliensachverständiger und beschreibst Bestandsimmobilien für Kurzgutachten.
+
+Erstelle eine professionelle Objektbeschreibung mit:
+1. **Gebäudecharakteristik**: Typ, Baujahr, Bauweise, Geschossigkeit
+2. **Ausstattung & Zustand**: Bewertung des baulichen Zustands, Modernisierungsgrad
+3. **Nutzungspotenzial**: Aktuelle Nutzung, Vermietungssituation, Optimierungspotenzial
+4. **Stärken & Schwächen**: 3 Stärken, 3 Risiken/Schwächen des Objekts
+
+Sachlicher Gutachterstil. 200-300 Wörter.`,
+                `Objekt: ${snapshot.formatted_address || address}
+Typ: ${calcObjectType}
+Baujahr: ${sachYearBuilt}
+Fläche: ${livingArea}m²
+Einheiten: ${snapshot.units_detail?.length || snapshot.units_count || 1}
+Zustand: ${snapshot.condition || 'nicht angegeben'}
+Energieklasse: ${snapshot.energy_class || 'nicht angegeben'}
+Kernsanierung: ${coreRenovated ? `Ja (${renovationYear})` : 'Nein'}
+Kaltmiete: ${netRent}€/Monat
+Hausgeld: ${snapshot.hausgeld_monthly || 'n/a'}€/Monat
+Stellplätze: ${snapshot.parking_spots || 'n/a'}
+Vermietungsstatus: ${snapshot.rental_status || 'unbekannt'}
+Kaufpreis/Marktwert: ${askingPrice}€`,
+              );
+            } catch (_) { locationAnalysis.property_assessment = null; }
           }
         }
 
