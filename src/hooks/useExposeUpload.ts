@@ -36,17 +36,18 @@ export function useExposeUpload() {
       return;
     }
 
+    let storagePath = '';
     try {
       setPhase('uploading');
       setProgress(10);
 
       // 1. Upload to storage (using central buildStoragePath + sanitizeFileName)
-      const filePath = buildStoragePath(activeTenantId!, 'MOD_12', mandateId || undefined, file.name);
+      storagePath = buildStoragePath(activeTenantId!, 'MOD_12', mandateId || undefined, file.name);
       setProgress(20);
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('acq-documents')
-        .upload(filePath, file);
+        .upload(storagePath, file);
 
       if (uploadError) throw uploadError;
       setProgress(40);
@@ -102,7 +103,7 @@ export function useExposeUpload() {
 
       // Refresh offers list
       queryClient.invalidateQueries({ queryKey: ['acq-offers-inbox'] });
-      toast.success('Exposé hochgeladen und dem Mandat zugeordnet');
+      toast.success(mandateId ? 'Exposé hochgeladen und dem Mandat zugeordnet' : 'Exposé hochgeladen — Mandatszuordnung über Dropdown möglich');
 
       // Reset after short delay
       setTimeout(() => {
@@ -113,6 +114,17 @@ export function useExposeUpload() {
     } catch (error: any) {
       console.error('Upload error:', error);
       setPhase('error');
+
+      // Rollback: delete orphaned storage file if DB insert failed
+      if (storagePath) {
+        try {
+          await supabase.storage.from('acq-documents').remove([storagePath]);
+          console.log('Rollback: orphaned file removed from storage');
+        } catch (rollbackErr) {
+          console.warn('Rollback failed:', rollbackErr);
+        }
+      }
+
       toast.error('Upload fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'));
       setTimeout(() => {
         setPhase('idle');
