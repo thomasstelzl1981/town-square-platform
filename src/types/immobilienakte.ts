@@ -436,6 +436,7 @@ export interface UnitFormData {
   bathroomsCount?: number;
   floor?: number;
   heatingSupply?: string;
+  energyCertificateType?: string;
   energyCertificateValue?: number;
   energyCertificateValidUntil?: string;
   featuresTags?: string[];
