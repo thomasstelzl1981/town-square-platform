@@ -23,12 +23,14 @@ function CostRow({ label, rate, amount, highlight }: { label: string; rate: stri
 interface ObjektAnkaufskostenProps {
   purchasePrice: number;
   postalCode?: string | null;
+  /** Broker rate from Exposé extraction (overrides default 3.57%) */
+  brokerRate?: number | null;
 }
 
-export function ObjektAnkaufskosten({ purchasePrice, postalCode }: ObjektAnkaufskostenProps) {
+export function ObjektAnkaufskosten({ purchasePrice, postalCode, brokerRate }: ObjektAnkaufskostenProps) {
   const breakdown = React.useMemo(
-    () => calcAncillaryCosts(purchasePrice, postalCode),
-    [purchasePrice, postalCode]
+    () => calcAncillaryCosts(purchasePrice, postalCode, brokerRate ?? undefined),
+    [purchasePrice, postalCode, brokerRate]
   );
 
   const fmtCur = (v: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
