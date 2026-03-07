@@ -136,7 +136,7 @@ const BeratungTab = () => {
       const { data: publications, error: pubError } = await supabase
         .from('listing_publications')
         .select('listing_id')
-        .eq('channel', 'kaufy')
+        .eq('channel', 'partner_network')
         .eq('status', 'active');
 
       if (pubError) throw pubError;
