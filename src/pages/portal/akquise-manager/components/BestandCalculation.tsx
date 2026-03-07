@@ -1,26 +1,28 @@
 /**
- * BestandCalculation — 30-Year Hold Projection with Charts
- * CI-konform: DESIGN Tokens für Farben, Typografie, Cards
+ * BestandCalculation — 30-Year Hold Projection (Unified Card Layout)
+ * Uses CalcShared primitives for consistent UI with AufteilerCalculation.
  */
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Calculator, TrendingUp, Loader2, RefreshCcw } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Loader2, RefreshCcw, Save } from 'lucide-react';
 import { useRunCalcBestand } from '@/hooks/useAcqOffers';
 import { calcBestandFull } from '@/engines/akquiseCalc/engine';
 import type { BestandFullParams } from '@/engines/akquiseCalc/spec';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
-  Tooltip, Legend, ResponsiveContainer, ComposedChart, Line
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer, ComposedChart, Line, Bar,
 } from 'recharts';
 import { MobileChartWrapper } from '@/components/shared/MobileChartWrapper';
-import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  NumberedSectionCard, EditField, ComputedField, SubtotalRow,
+  TotalBanner, ResultBanner, PercentField, fmtCur, fmtSqm,
+} from './CalcShared';
 
 interface BestandCalculationProps {
   offerId?: string;
@@ -32,15 +34,11 @@ interface BestandCalculationProps {
   };
   temporary?: boolean;
   hideQuickAnalysis?: boolean;
-  /** Override ancillary cost % from Ankaufskosten PLZ resolution */
   ancillaryCostPercent?: number;
 }
 
-// Types now come from engine spec
-
-export function BestandCalculation({ offerId, initialData, temporary = false, hideQuickAnalysis = false, ancillaryCostPercent }: BestandCalculationProps) {
+export function BestandCalculation({ offerId, initialData, temporary = false, ancillaryCostPercent }: BestandCalculationProps) {
   const runCalc = useRunCalcBestand();
-  const isMobile = useIsMobile();
   const [params, setParams] = React.useState<BestandFullParams>({
     purchasePrice: initialData.purchasePrice,
     monthlyRent: initialData.monthlyRent,
@@ -52,13 +50,13 @@ export function BestandCalculation({ offerId, initialData, temporary = false, hi
     managementCostPercent: 25,
     maintenancePercent: 1.0,
     ancillaryCostPercent: ancillaryCostPercent ?? 10,
+    renovationCosts: 0,
+    constructionAncillaryPercent: 15,
+    areaSqm: initialData.areaSqm || 0,
   });
 
-  // Calculate everything via engine
-  const calculation = React.useMemo(() => calcBestandFull(params), [params]);
-
-  const formatCurrency = (val: number) => 
-    new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
+  const set = (key: keyof BestandFullParams, v: number) => setParams(p => ({ ...p, [key]: v }));
+  const calc = React.useMemo(() => calcBestandFull(params), [params]);
 
   const handleSave = () => {
     if (!offerId || temporary) return;
@@ -66,360 +64,197 @@ export function BestandCalculation({ offerId, initialData, temporary = false, hi
   };
 
   return (
-    <div className="space-y-6">
-      {/* Quick Analysis — only if not hidden by parent */}
-      {!hideQuickAnalysis && (
-        <Card className={cn(DESIGN.CARD.BASE, DESIGN.INFO_BANNER.PREMIUM)}>
-          <CardHeader className="pb-2">
-            <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Schnellanalyse</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={cn('grid gap-4', isMobile ? 'grid-cols-2' : 'grid-cols-4')}>
-              <div>
-                <div className={DESIGN.TYPOGRAPHY.HINT}>Gesamtinvestition</div>
-                <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-xl'}>{formatCurrency(calculation.totalInvestment)}</div>
-              </div>
-              <div>
-                <div className={DESIGN.TYPOGRAPHY.HINT}>Max. Finanzierbarkeit</div>
-                <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-xl'}>{formatCurrency(calculation.maxFinancing)}</div>
-              </div>
-              <div>
-                <div className={DESIGN.TYPOGRAPHY.HINT}>EK-Bedarf</div>
-                <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-xl'}>{formatCurrency(calculation.equity)}</div>
-              </div>
-              <div>
-                <div className={DESIGN.TYPOGRAPHY.HINT}>Bruttorendite</div>
-                <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-xl'}>{calculation.grossYield.toFixed(2)}%</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+    <div className="space-y-3">
+      {/* ═══ 1. GRUNDERWERBSKOSTEN ═══ */}
+      <NumberedSectionCard number={1} title="Grunderwerbskosten">
+        <EditField label="Kaufpreis" value={params.purchasePrice} onChange={v => set('purchasePrice', v)} suffix="€" />
+        <ComputedField label={`Erwerbsnebenkosten (${params.ancillaryCostPercent.toFixed(1)}%)`} value={fmtCur(calc.ancillaryCosts)} hint="aus PLZ-Mapping" />
+        <SubtotalRow label="Summe Grunderwerb" value={params.purchasePrice + calc.ancillaryCosts} />
+      </NumberedSectionCard>
 
-      {/* Sliders */}
-      <Card className={DESIGN.CARD.BASE}>
-        <CardHeader>
-          <CardTitle className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'flex items-center gap-2')}>
-            <Calculator className="h-5 w-5" />
-            Finanzierungsparameter
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className={cn('grid gap-6', isMobile ? 'grid-cols-1' : 'md:grid-cols-2')}>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <Label>Eigenkapital</Label>
-                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.equityPercent}% ({formatCurrency(calculation.equity)})</span>
-              </div>
-              <Slider value={[params.equityPercent]} min={5} max={50} step={1} onValueChange={([v]) => setParams(p => ({ ...p, equityPercent: v }))} />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <Label>Zinssatz p.a.</Label>
-                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.interestRate.toFixed(1)}%</span>
-              </div>
-              <Slider value={[params.interestRate * 10]} min={10} max={80} step={1} onValueChange={([v]) => setParams(p => ({ ...p, interestRate: v / 10 }))} />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <Label>Tilgung p.a.</Label>
-                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.repaymentRate.toFixed(1)}%</span>
-              </div>
-              <Slider value={[params.repaymentRate * 10]} min={5} max={50} step={1} onValueChange={([v]) => setParams(p => ({ ...p, repaymentRate: v / 10 }))} />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <Label>Mietsteigerung p.a.</Label>
-                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.rentIncreaseRate.toFixed(1)}%</span>
-              </div>
-              <Slider value={[params.rentIncreaseRate * 10]} min={0} max={50} step={1} onValueChange={([v]) => setParams(p => ({ ...p, rentIncreaseRate: v / 10 }))} />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <Label>Wertsteigerung p.a.</Label>
-                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.valueIncreaseRate.toFixed(1)}%</span>
-              </div>
-              <Slider value={[params.valueIncreaseRate * 10]} min={0} max={50} step={1} onValueChange={([v]) => setParams(p => ({ ...p, valueIncreaseRate: v / 10 }))} />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <Label>Verwaltungskosten</Label>
-                <span className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{params.managementCostPercent}%</span>
-              </div>
-              <Slider value={[params.managementCostPercent]} min={10} max={40} step={1} onValueChange={([v]) => setParams(p => ({ ...p, managementCostPercent: v }))} />
-            </div>
+      {/* ═══ 2. SANIERUNG / MODERNISIERUNG ═══ */}
+      <NumberedSectionCard number={2} title="Sanierung / Modernisierung">
+        <EditField label="Sanierung / Renovierung" value={params.renovationCosts ?? 0} onChange={v => set('renovationCosts', v)} suffix="€" />
+        <PercentField
+          label="Baunebenkosten"
+          percent={params.constructionAncillaryPercent ?? 15}
+          onPercentChange={v => set('constructionAncillaryPercent', v)}
+          computedAmount={calc.constructionAncillaryCosts}
+        />
+        <SubtotalRow
+          label="Summe Bau/NK"
+          value={calc.totalConstructionCosts}
+          sqmValue={params.areaSqm ? fmtSqm(calc.totalConstructionCosts / (params.areaSqm || 1)) : undefined}
+        />
+      </NumberedSectionCard>
+
+      {/* ═══ 3. FINANZIERUNG ═══ */}
+      <NumberedSectionCard number={3} title="Finanzierung">
+        {/* Eigenkapitalquote slider */}
+        <div className="flex items-center justify-between py-1.5">
+          <div className="flex-1">
+            <span className="text-sm">Eigenkapitalquote</span>
+            <span className="text-xs text-muted-foreground ml-2">{params.equityPercent}%</span>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Financing Overview */}
-      <Card className={DESIGN.CARD.BASE}>
-        <CardHeader>
-          <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Finanzierungsübersicht</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className={cn('grid gap-4 text-center', isMobile ? 'grid-cols-2' : 'grid-cols-5')}>
-            <div>
-              <div className={DESIGN.TYPOGRAPHY.HINT}>Gesamtinvest.</div>
-              <div className="font-bold">{formatCurrency(calculation.totalInvestment)}</div>
-            </div>
-            <div>
-              <div className={DESIGN.TYPOGRAPHY.HINT}>Eigenkapital</div>
-              <div className="font-bold text-emerald-500">{formatCurrency(calculation.equity)}</div>
-            </div>
-            <div>
-              <div className={DESIGN.TYPOGRAPHY.HINT}>Darlehen</div>
-              <div className="font-bold text-primary">{formatCurrency(calculation.loanAmount)}</div>
-            </div>
-            <div>
-              <div className={DESIGN.TYPOGRAPHY.HINT}>Annuität p.a.</div>
-              <div className="font-bold">{formatCurrency(calculation.yearlyAnnuity)}</div>
-            </div>
-            <div>
-              <div className={DESIGN.TYPOGRAPHY.HINT}>Rate mtl.</div>
-              <div className="font-bold">{formatCurrency(calculation.monthlyRate)}</div>
-            </div>
+          <div className="w-48">
+            <Slider value={[params.equityPercent]} min={5} max={50} step={1} onValueChange={([v]) => set('equityPercent', v)} />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Monatliche Wirtschaftlichkeit — Einnahmen vs. Ausgaben */}
-      <Card className={cn(DESIGN.CARD.BASE, 'border-primary/20')}>
-        <CardHeader>
-          <CardTitle className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'flex items-center gap-2')}>
-            <TrendingUp className="h-5 w-5" />
-            Monatliche Wirtschaftlichkeit
-          </CardTitle>
-          <CardDescription className={DESIGN.TYPOGRAPHY.HINT}>Gegenüberstellung Einnahmen und Ausgaben (Jahr 1)</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {(() => {
-            const monthlyRentVal = params.monthlyRent;
-            const monthlyInterest = calculation.yearlyData[0]?.interest ? calculation.yearlyData[0].interest / 12 : 0;
-            const monthlyRepayment = calculation.yearlyData[0]?.repayment ? calculation.yearlyData[0].repayment / 12 : 0;
-            const yearOneNoi = calculation.yearlyData[0]?.noi ?? (monthlyRentVal * 12);
-            const yearOneRent = calculation.yearlyData[0]?.rent ?? (monthlyRentVal * 12);
-            const totalCosts = yearOneRent - yearOneNoi;
-            const monthlyManagement = totalCosts > 0 ? (monthlyRentVal * params.managementCostPercent / 100) : 0;
-            const monthlyMaintenance = totalCosts > 0 ? ((totalCosts / 12) - monthlyManagement) : 0;
-            const totalIncome = monthlyRentVal;
-            const totalExpenses = monthlyInterest + monthlyRepayment + monthlyManagement + monthlyMaintenance;
-            const monthlyCashflow = totalIncome - totalExpenses;
-            const yearlyCashflow = monthlyCashflow * 12;
-            const cashOnCash = calculation.equity > 0 ? (yearlyCashflow / calculation.equity) * 100 : 0;
-
-            return (
-              <div className="space-y-4">
-                <div className={cn('grid gap-6', isMobile ? 'grid-cols-1' : 'grid-cols-2')}>
-                  {/* Einnahmen */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-primary uppercase tracking-wider">Einnahmen</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Kaltmiete</span>
-                        <span className="font-medium">{formatCurrency(monthlyRentVal)}</span>
-                      </div>
-                    </div>
-                    <div className="border-t border-border/50 pt-2 flex justify-between text-sm font-bold">
-                      <span>Summe</span>
-                      <span className="text-primary">{formatCurrency(totalIncome)}</span>
-                    </div>
-                  </div>
-                  {/* Ausgaben */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-destructive uppercase tracking-wider">Ausgaben</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Zinsen</span>
-                        <span className="font-medium">{formatCurrency(monthlyInterest)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Tilgung</span>
-                        <span className="font-medium">{formatCurrency(monthlyRepayment)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Verwaltung ({params.managementCostPercent}%)</span>
-                        <span className="font-medium">{formatCurrency(monthlyManagement)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Instandhaltung ({params.maintenancePercent}%)</span>
-                        <span className="font-medium">{formatCurrency(monthlyMaintenance)}</span>
-                      </div>
-                    </div>
-                    <div className="border-t border-border/50 pt-2 flex justify-between text-sm font-bold">
-                      <span>Summe</span>
-                      <span className="text-destructive">{formatCurrency(totalExpenses)}</span>
-                    </div>
-                  </div>
-                </div>
-                {/* Cashflow Result */}
-                <div className={cn(
-                  'rounded-xl p-4 text-center',
-                  monthlyCashflow >= 0 ? 'bg-chart-2/10 border border-chart-2/30' : 'bg-destructive/10 border border-destructive/30'
-                )}>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Monatlicher Cashflow</div>
-                  <div className={cn('text-2xl font-bold', monthlyCashflow >= 0 ? 'text-chart-2' : 'text-destructive')}>
-                    {formatCurrency(monthlyCashflow)} / Monat
-                  </div>
-                  <div className="flex justify-center gap-6 mt-2 text-sm text-muted-foreground">
-                    <span>Jährlich: <strong className={monthlyCashflow >= 0 ? 'text-chart-2' : 'text-destructive'}>{formatCurrency(yearlyCashflow)}</strong></span>
-                    <span>Cash-on-Cash: <strong className={cashOnCash >= 0 ? 'text-chart-2' : 'text-destructive'}>{cashOnCash.toFixed(1)}%</strong></span>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-        </CardContent>
-      </Card>
-
-      {/* Amortization Chart */}
-      <Card className={DESIGN.CARD.BASE}>
-        <CardHeader>
-          <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Tilgungsplan (30 Jahre)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <MobileChartWrapper
-            title="Tilgungsplan"
-            mobileKPIs={[
-              { label: 'Volltilgung', value: `${calculation.fullRepaymentYear} J.`, color: 'text-primary' },
-              { label: 'Zinsen ges.', value: formatCurrency(calculation.totalInterest), color: 'text-destructive' },
-              { label: 'Tilgung ges.', value: formatCurrency(calculation.totalRepayment), color: 'text-primary' },
-            ]}
-          >
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={calculation.yearlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
-                  <YAxis yAxisId="left" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
-                  <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(label) => `Jahr ${label}`} />
-                  <Legend />
-                  <Bar yAxisId="left" dataKey="interest" stackId="a" fill="hsl(var(--destructive))" name="Zinsen" />
-                  <Bar yAxisId="left" dataKey="repayment" stackId="a" fill="hsl(var(--primary))" name="Tilgung" />
-                  <Line yAxisId="right" type="monotone" dataKey="remainingDebt" stroke="hsl(var(--muted-foreground))" strokeWidth={2} name="Restschuld" dot={false} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </MobileChartWrapper>
-        </CardContent>
-      </Card>
-
-      {/* Wealth Chart */}
-      <Card className={DESIGN.CARD.BASE}>
-        <CardHeader>
-          <CardTitle className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'flex items-center gap-2')}>
-            <TrendingUp className="h-5 w-5" />
-            Vermögensentwicklung (30 Jahre)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <MobileChartWrapper
-            title="Vermögensentwicklung"
-            mobileKPIs={[
-              { label: 'Vermögen 10J', value: formatCurrency(calculation.wealth10), color: 'text-emerald-500' },
-              { label: 'Vermögen 20J', value: formatCurrency(calculation.wealth20), color: 'text-emerald-500' },
-              { label: 'Wert 40J', value: formatCurrency(calculation.value40), color: 'text-primary' },
-            ]}
-          >
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={calculation.yearlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
-                  <YAxis tickFormatter={(v) => `${(v/1000000).toFixed(1)}M`} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(label) => `Jahr ${label}`} />
-                  <Legend />
-                  <Area type="monotone" dataKey="propertyValue" fill="hsl(var(--primary))" fillOpacity={0.3} stroke="hsl(var(--primary))" name="Objektwert" />
-                  <Area type="monotone" dataKey="remainingDebt" fill="hsl(var(--destructive))" fillOpacity={0.3} stroke="hsl(var(--destructive))" name="Restschuld" />
-                  <Area type="monotone" dataKey="equity" fill="hsl(var(--chart-2))" fillOpacity={0.5} stroke="hsl(var(--chart-2))" name="Netto-Vermögen" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </MobileChartWrapper>
-        </CardContent>
-      </Card>
-
-      {/* Summary */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <Card className={DESIGN.CARD.BASE}>
-          <CardHeader>
-            <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Finanzierung</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Darlehenssumme</span>
-              <span className="font-medium">{formatCurrency(calculation.loanAmount)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Volltilgung in</span>
-              <span className="font-medium">{calculation.fullRepaymentYear} Jahren</span>
-            </div>
-            <div className="flex justify-between text-destructive">
-              <span>Zinsen gesamt</span>
-              <span className="font-medium">{formatCurrency(calculation.totalInterest)}</span>
-            </div>
-            <div className="flex justify-between text-primary">
-              <span>Tilgung gesamt</span>
-              <span className="font-medium">{formatCurrency(calculation.totalRepayment)}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className={DESIGN.CARD.BASE}>
-          <CardHeader>
-            <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Vermögensentwicklung</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Restschuld nach 10J</span>
-              <span className="font-medium">{formatCurrency(calculation.debt10)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Restschuld nach 20J</span>
-              <span className="font-medium">{formatCurrency(calculation.debt20)}</span>
-            </div>
-            <div className="flex justify-between text-emerald-500">
-              <span>Vermögen nach 10J</span>
-              <span className="font-medium">{formatCurrency(calculation.wealth10)}</span>
-            </div>
-            <div className="flex justify-between text-emerald-500">
-              <span>Vermögen nach 20J</span>
-              <span className="font-medium">{formatCurrency(calculation.wealth20)}</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Highlight KPIs */}
-      <Card className={cn(DESIGN.CARD.BASE, DESIGN.INFO_BANNER.PREMIUM)}>
-        <CardContent className="py-6">
-          <div className="grid grid-cols-3 gap-8 text-center">
-            <div>
-              <div className={DESIGN.TYPOGRAPHY.MUTED + ' mb-1'}>Objektwert nach 40J</div>
-              <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-primary')}>{formatCurrency(calculation.value40)}</div>
-            </div>
-            <div>
-              <div className={DESIGN.TYPOGRAPHY.MUTED + ' mb-1'}>Vermögenszuwachs gesamt</div>
-              <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-emerald-500')}>{formatCurrency(calculation.wealthGrowth)}</div>
-            </div>
-            <div>
-              <div className={DESIGN.TYPOGRAPHY.MUTED + ' mb-1'}>ROI auf EK</div>
-              <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-amber-500')}>{calculation.roi.toFixed(1)}%</div>
-            </div>
+        </div>
+        <ComputedField label="Eigenkapital" value={fmtCur(calc.equity)} />
+        <ComputedField label="Fremdkapital" value={fmtCur(calc.loanAmount)} />
+        <Separator className="my-1" />
+        {/* Zinssatz */}
+        <div className="flex items-center justify-between py-1.5">
+          <div className="flex-1"><span className="text-sm">Zinssatz p.a.</span></div>
+          <div className="flex items-center gap-1.5">
+            <Input type="number" value={params.interestRate} onChange={e => set('interestRate', parseFloat(e.target.value) || 0)} className="w-20 h-7 text-right text-sm font-medium" step={0.1} />
+            <span className="text-xs text-muted-foreground w-4">%</span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+        {/* Tilgung */}
+        <div className="flex items-center justify-between py-1.5">
+          <div className="flex-1"><span className="text-sm">Tilgung p.a.</span></div>
+          <div className="flex items-center gap-1.5">
+            <Input type="number" value={params.repaymentRate} onChange={e => set('repaymentRate', parseFloat(e.target.value) || 0)} className="w-20 h-7 text-right text-sm font-medium" step={0.1} />
+            <span className="text-xs text-muted-foreground w-4">%</span>
+          </div>
+        </div>
+        <Separator className="my-1" />
+        <ComputedField label="Annuität p.a." value={fmtCur(calc.yearlyAnnuity)} />
+        <ComputedField label="Rate mtl." value={fmtCur(calc.monthlyRate)} />
+        <SubtotalRow label="Summe Finanzierung" value={calc.yearlyAnnuity} />
+      </NumberedSectionCard>
 
-      {/* Save Button */}
+      {/* ═══ GESAMTINVESTITION ═══ */}
+      <TotalBanner
+        value={calc.totalInvestment}
+        sqmValue={params.areaSqm ? fmtSqm(calc.costPerSqm) : undefined}
+      />
+
+      {/* ═══ 4. KALKULATION (BEWIRTSCHAFTUNG) ═══ */}
+      <NumberedSectionCard number={4} title="Bewirtschaftung">
+        {/* Verwaltungskosten */}
+        <div className="flex items-center justify-between py-1.5">
+          <div className="flex-1">
+            <span className="text-sm">Verwaltungskosten</span>
+            <span className="text-xs text-muted-foreground ml-2">{params.managementCostPercent}%</span>
+          </div>
+          <div className="w-48">
+            <Slider value={[params.managementCostPercent]} min={10} max={40} step={1} onValueChange={([v]) => set('managementCostPercent', v)} />
+          </div>
+        </div>
+        {/* Instandhaltung */}
+        <div className="flex items-center justify-between py-1.5">
+          <div className="flex-1">
+            <span className="text-sm">Instandhaltung</span>
+            <span className="text-xs text-muted-foreground ml-2">{params.maintenancePercent.toFixed(1)}%</span>
+          </div>
+          <div className="w-48">
+            <Slider value={[params.maintenancePercent * 10]} min={5} max={30} step={1} onValueChange={([v]) => set('maintenancePercent', v / 10)} />
+          </div>
+        </div>
+        {/* Mietsteigerung */}
+        <div className="flex items-center justify-between py-1.5">
+          <div className="flex-1">
+            <span className="text-sm">Mietsteigerung p.a.</span>
+            <span className="text-xs text-muted-foreground ml-2">{params.rentIncreaseRate.toFixed(1)}%</span>
+          </div>
+          <div className="w-48">
+            <Slider value={[params.rentIncreaseRate * 10]} min={0} max={50} step={1} onValueChange={([v]) => set('rentIncreaseRate', v / 10)} />
+          </div>
+        </div>
+        {/* Wertsteigerung */}
+        <div className="flex items-center justify-between py-1.5">
+          <div className="flex-1">
+            <span className="text-sm">Wertsteigerung p.a.</span>
+            <span className="text-xs text-muted-foreground ml-2">{params.valueIncreaseRate.toFixed(1)}%</span>
+          </div>
+          <div className="w-48">
+            <Slider value={[params.valueIncreaseRate * 10]} min={0} max={50} step={1} onValueChange={([v]) => set('valueIncreaseRate', v / 10)} />
+          </div>
+        </div>
+        <Separator className="my-1" />
+        <ComputedField label="NOI mtl." value={fmtCur(calc.noiMonthly)} className="text-emerald-500" />
+        <ComputedField label="Ausgaben mtl." value={fmtCur(calc.monthlyExpenses)} className="text-destructive" />
+        <SubtotalRow label="Cashflow mtl." value={calc.monthlyCashflow} />
+      </NumberedSectionCard>
+
+      {/* ═══ ERGEBNIS ═══ */}
+      <ResultBanner
+        positive={calc.monthlyCashflow >= 0}
+        items={[
+          { label: 'Bruttorendite', value: `${calc.grossYield.toFixed(2)}%` },
+          { label: 'Cashflow mtl.', value: fmtCur(calc.monthlyCashflow) },
+          { label: 'Cash-on-Cash', value: `${calc.cashOnCash.toFixed(1)}%`, color: calc.cashOnCash >= 0 ? 'text-amber-500' : 'text-destructive' },
+          { label: 'ROI auf EK', value: `${calc.roi.toFixed(1)}%`, color: 'text-amber-500' },
+        ]}
+      />
+
+      {/* ═══ 5. PROJEKTION (Charts) ═══ */}
+      <NumberedSectionCard number={5} title="Projektion (30 Jahre)">
+        {/* Tilgungsplan */}
+        <MobileChartWrapper
+          title="Tilgungsplan"
+          mobileKPIs={[
+            { label: 'Volltilgung', value: `${calc.fullRepaymentYear} J.`, color: 'text-primary' },
+            { label: 'Zinsen ges.', value: fmtCur(calc.totalInterest), color: 'text-destructive' },
+            { label: 'Tilgung ges.', value: fmtCur(calc.totalRepayment), color: 'text-primary' },
+          ]}
+        >
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={calc.yearlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="year" />
+                <YAxis yAxisId="left" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(value: number) => fmtCur(value)} labelFormatter={(label) => `Jahr ${label}`} />
+                <Legend />
+                <Bar yAxisId="left" dataKey="interest" stackId="a" fill="hsl(var(--destructive))" name="Zinsen" />
+                <Bar yAxisId="left" dataKey="repayment" stackId="a" fill="hsl(var(--primary))" name="Tilgung" />
+                <Line yAxisId="right" type="monotone" dataKey="remainingDebt" stroke="hsl(var(--muted-foreground))" strokeWidth={2} name="Restschuld" dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </MobileChartWrapper>
+
+        <Separator className="my-4" />
+
+        {/* Vermögensentwicklung */}
+        <MobileChartWrapper
+          title="Vermögensentwicklung"
+          mobileKPIs={[
+            { label: 'Vermögen 10J', value: fmtCur(calc.wealth10), color: 'text-emerald-500' },
+            { label: 'Vermögen 20J', value: fmtCur(calc.wealth20), color: 'text-emerald-500' },
+            { label: 'Wert 40J', value: fmtCur(calc.value40), color: 'text-primary' },
+          ]}
+        >
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={calc.yearlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="year" />
+                <YAxis tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} />
+                <Tooltip formatter={(value: number) => fmtCur(value)} labelFormatter={(label) => `Jahr ${label}`} />
+                <Legend />
+                <Area type="monotone" dataKey="propertyValue" fill="hsl(var(--primary))" fillOpacity={0.3} stroke="hsl(var(--primary))" name="Objektwert" />
+                <Area type="monotone" dataKey="remainingDebt" fill="hsl(var(--destructive))" fillOpacity={0.3} stroke="hsl(var(--destructive))" name="Restschuld" />
+                <Area type="monotone" dataKey="equity" fill="hsl(var(--chart-2))" fillOpacity={0.5} stroke="hsl(var(--chart-2))" name="Netto-Vermögen" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </MobileChartWrapper>
+      </NumberedSectionCard>
+
+      {/* Save / Reset Buttons */}
       {!temporary && offerId && (
         <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => setParams(p => ({ ...p }))}>
+          <Button variant="outline" size="sm" onClick={() => setParams(p => ({ ...p }))}>
             <RefreshCcw className="h-4 w-4 mr-2" />
             Zurücksetzen
           </Button>
-          <Button onClick={handleSave} disabled={runCalc.isPending}>
-            {runCalc.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          <Button size="sm" onClick={handleSave} disabled={runCalc.isPending}>
+            {runCalc.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
             Kalkulation speichern
           </Button>
         </div>
@@ -428,9 +263,8 @@ export function BestandCalculation({ offerId, initialData, temporary = false, hi
       {temporary && (
         <Card className={cn(DESIGN.CARD.BASE, DESIGN.INFO_BANNER.WARNING)}>
           <CardContent className="py-3">
-            <p className={DESIGN.TYPOGRAPHY.MUTED}>
-              <strong>Hinweis:</strong> Diese Kalkulation wird nicht gespeichert. 
-              Um sie zu speichern, erstellen Sie einen Objekteingang.
+            <p className="text-xs text-muted-foreground">
+              <strong>Hinweis:</strong> Diese Kalkulation wird nicht gespeichert.
             </p>
           </CardContent>
         </Card>
