@@ -481,24 +481,7 @@ export function ObjekteingangList() {
       </Card>
 
       {/* ─── DATENRAUM ─── */}
-      <Card className={CARD.BASE}>
-        <div className={CARD.SECTION_HEADER}>
-          <div className="flex items-center gap-2">
-            <FolderOpen className="h-4 w-4 text-primary" />
-            <span className={TYPOGRAPHY.CARD_TITLE}>Akquise-Datenraum</span>
-          </div>
-        </div>
-        <CardContent className="p-0">
-          {activeTenantId && (
-            <EntityStorageTree
-              tenantId={activeTenantId}
-              entityType="acq_module"
-              entityId={activeTenantId}
-              moduleCode="MOD_12"
-            />
-          )}
-        </CardContent>
-      </Card>
+      <AcqDataRoom />
     </PageShell>
   );
 }

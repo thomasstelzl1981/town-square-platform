@@ -33,7 +33,7 @@ export function ArmstrongDataRoomSection() {
         <EntityStorageTree
           tenantId={activeTenantId}
           entityType="armstrong_project"
-          entityId={`armstrong_root_${activeTenantId}`}
+          entityId={activeTenantId}
           moduleCode="MOD_00"
         />
       </div>
