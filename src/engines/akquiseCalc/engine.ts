@@ -412,3 +412,53 @@ function calcSensitivity(
     return { yield: y, label: `${y.toFixed(1)}%`, salesPrice: price, profit: prof };
   });
 }
+
+/**
+ * 3×3 Alternatives Matrix: Construction costs ±10% × Sale price ±10%
+ */
+function calcAlternativenMatrix(
+  totalConstructionCosts: number,
+  baseSalePrice: number,
+  totalAcquisitionCosts: number,
+  totalDeveloperCosts: number,
+  interestRate: number,
+  equityPercent: number,
+  holdingYears: number,
+  disagio: number,
+  yearlyRent: number,
+  salesCommission: number,
+  garageSaleProceeds: number,
+): AlternativenMatrixCell[] {
+  const deltas = [-10, 0, 10];
+  const matrix: AlternativenMatrixCell[] = [];
+
+  for (const cDelta of deltas) {
+    for (const sDelta of deltas) {
+      const adjConstruction = totalConstructionCosts * (1 + cDelta / 100);
+      const adjSalePrice = baseSalePrice * (1 + sDelta / 100);
+
+      const totalCostBase = totalAcquisitionCosts + adjConstruction + totalDeveloperCosts;
+      const loan = totalCostBase * (1 - equityPercent / 100);
+      const interest = loan * (interestRate / 100) * holdingYears;
+      const rental = yearlyRent * holdingYears;
+      const totalInv = totalCostBase + interest + disagio - rental;
+
+      const commAmount = adjSalePrice * (salesCommission / 100);
+      const netSale = adjSalePrice - commAmount;
+      const totalRev = netSale + garageSaleProceeds + rental;
+      const profit = totalRev - totalInv;
+      const margin = totalRev > 0 ? (profit / totalRev) * 100 : 0;
+
+      matrix.push({
+        constructionDelta: cDelta,
+        salePriceDelta: sDelta,
+        constructionLabel: cDelta === 0 ? 'Plan' : `${cDelta > 0 ? '+' : ''}${cDelta}%`,
+        salePriceLabel: sDelta === 0 ? 'Plan' : `${sDelta > 0 ? '+' : ''}${sDelta}%`,
+        profit,
+        margin,
+      });
+    }
+  }
+
+  return matrix;
+}
