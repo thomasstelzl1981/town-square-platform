@@ -21,7 +21,7 @@ import type {
   AufteilerProjectParams, AufteilerProjectResult,
   AncillaryCostBreakdown,
 } from './spec';
-import { GREST_BY_STATE, PLZ_TO_STATE, ANCILLARY_DEFAULTS } from './spec';
+import { GREST_BY_STATE, PLZ_TO_STATE, ANCILLARY_DEFAULTS, PROPERTY_TYPE_MAP } from './spec';
 
 // ============================================================================
 // BESTAND (HOLD)
