@@ -355,8 +355,20 @@ export function useValuationCase() {
       const inputs = data?.inputs || {};
       const rawDq = inputs.snapshot?.data_quality ?? runSummary?.data_quality ?? null;
 
+      // Map snapshot with new extended fields
+      const rawSnapshot = inputs.snapshot ?? null;
+      const mappedSnapshot = rawSnapshot ? {
+        ...rawSnapshot,
+        heatingType: rawSnapshot.heating_type ?? rawSnapshot.heatingType ?? null,
+        energySource: rawSnapshot.energy_source ?? rawSnapshot.energySource ?? null,
+        coreRenovated: rawSnapshot.core_renovated ?? rawSnapshot.coreRenovated ?? null,
+        renovationYear: rawSnapshot.renovation_year ?? rawSnapshot.renovationYear ?? null,
+        ownershipSharePercent: rawSnapshot.ownership_share_percent ?? rawSnapshot.ownershipSharePercent ?? null,
+        energyCertificateValue: rawSnapshot.energy_certificate_value ?? rawSnapshot.energyCertificateValue ?? null,
+      } : null;
+
       const mappedResult = {
-        snapshot: inputs.snapshot ?? null,
+        snapshot: mappedSnapshot,
         valueBand: mapValueBand(results.value_band),
         methods: mapMethods(results.valuation_methods ?? []),
         financing: mapFinancing(results.financing ?? []),
