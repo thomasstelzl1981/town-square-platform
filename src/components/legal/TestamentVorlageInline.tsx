@@ -43,9 +43,46 @@ export function TestamentVorlageInline({ vorlage, tenantId, onCompleted }: Props
     setUploading(true);
     try {
       const file = files[0];
-      const filePath = `${tenantId}/legal/testament/${sanitizeFileName(file.name)}`;
-      await supabase.storage.from(UPLOAD_BUCKET).upload(filePath, file).catch(() => {});
+      const filePath = `${tenantId}/MOD_16/testament/${sanitizeFileName(file.name)}`;
+      const { error: uploadErr } = await supabase.storage.from(UPLOAD_BUCKET).upload(filePath, file);
+      if (uploadErr) throw uploadErr;
 
+      // DMS registration: documents table
+      const publicId = crypto.randomUUID().substring(0, 8).toUpperCase();
+      await (supabase as any).from('documents').insert({
+        tenant_id: tenantId,
+        name: file.name,
+        file_path: filePath,
+        mime_type: file.type,
+        size_bytes: file.size,
+        uploaded_by: user.id,
+        public_id: publicId,
+        source: 'testament_scan',
+        extraction_status: 'skipped',
+        doc_type: 'testament',
+      });
+
+      // DMS registration: storage_nodes
+      const { data: rootNode } = await supabase
+        .from('storage_nodes')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('template_id', 'MOD_16_ROOT')
+        .maybeSingle();
+
+      if (rootNode?.id) {
+        await supabase.from('storage_nodes').insert({
+          tenant_id: tenantId,
+          parent_id: rootNode.id,
+          name: file.name,
+          node_type: 'file',
+          module_code: 'MOD_16',
+          storage_path: filePath,
+          mime_type: file.type,
+        });
+      }
+
+      // Legal documents record
       const record = {
         tenant_id: tenantId,
         user_id: user.id,

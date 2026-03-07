@@ -76,7 +76,7 @@ export function OfferComparisonPanel({ serviceCase }: OfferComparisonPanelProps)
     
     for (const file of files) {
       try {
-        const storagePath = `${serviceCase.tenant_id}/sanierung/${serviceCase.id}/offers/${Date.now()}_${file.name}`;
+        const storagePath = `${serviceCase.tenant_id}/MOD_04/${serviceCase.id}/offers/${Date.now()}_${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from('tenant-documents')
           .upload(storagePath, file);
@@ -87,6 +87,40 @@ export function OfferComparisonPanel({ serviceCase }: OfferComparisonPanelProps)
             continue;
           }
           throw uploadError;
+        }
+
+        // DMS registration: documents table
+        const publicId = crypto.randomUUID().substring(0, 8).toUpperCase();
+        await (supabase as any).from('documents').insert({
+          tenant_id: serviceCase.tenant_id,
+          name: file.name,
+          file_path: storagePath,
+          mime_type: file.type,
+          size_bytes: file.size,
+          public_id: publicId,
+          source: 'sanierung_offer',
+          extraction_status: 'pending',
+          doc_type: 'angebot',
+        });
+
+        // DMS registration: storage_nodes
+        const { data: rootNode } = await supabase
+          .from('storage_nodes')
+          .select('id')
+          .eq('tenant_id', serviceCase.tenant_id)
+          .eq('template_id', 'MOD_04_ROOT')
+          .maybeSingle();
+
+        if (rootNode?.id) {
+          await supabase.from('storage_nodes').insert({
+            tenant_id: serviceCase.tenant_id,
+            parent_id: rootNode.id,
+            name: file.name,
+            node_type: 'file',
+            module_code: 'MOD_04',
+            storage_path: storagePath,
+            mime_type: file.type,
+          });
         }
 
         const { data: offer, error: insertError } = await supabase

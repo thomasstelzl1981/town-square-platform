@@ -121,8 +121,8 @@ export default function BrandPostCreator({ onCreated }: BrandPostCreatorProps) {
           .from('tenant-documents')
           .upload(path, file, { contentType: file.type, upsert: true });
         if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from('tenant-documents').getPublicUrl(path);
-        imageUrls.push(urlData.publicUrl);
+        const { data: signedData } = await supabase.storage.from('tenant-documents').createSignedUrl(path, 86400);
+        imageUrls.push(signedData?.signedUrl || '');
       }
 
       // 3. Insert template
