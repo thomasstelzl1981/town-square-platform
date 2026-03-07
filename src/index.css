@@ -397,6 +397,12 @@
       min-height: unset;
       min-width: unset;
     }
+
+    /* Reduce oversized tap targets inside glass cards */
+    .glass-card button, .glass-card a, .glass-card [role="button"] {
+      min-height: 40px;
+      min-width: 40px;
+    }
   }
 
   /* Smooth theme transitions */

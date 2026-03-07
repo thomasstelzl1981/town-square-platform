@@ -55,7 +55,7 @@ export function MobileHomeModuleList() {
             <button
               key={`${entry.code}-${entry.tile || i}`}
               onClick={() => handleEntryClick(entry)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors hover:bg-accent/50 active:scale-[0.98] active:bg-accent"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all bg-card/40 backdrop-blur-sm border border-border/20 hover:bg-card/60 active:scale-[0.98]"
             >
               <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 shrink-0">
                 {Icon && <Icon className="h-4 w-4 text-primary" />}
