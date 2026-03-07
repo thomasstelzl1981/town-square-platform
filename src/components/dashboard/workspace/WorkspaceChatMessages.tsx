@@ -80,8 +80,13 @@ export function WorkspaceChatMessages({
           ))}
 
           {(isLoading || isExecuting) && (
-            <div className="flex items-center gap-3 py-2">
-              <ArmstrongOrb state={orbState} size={24} stepLabel={orbStepLabel} />
+            <div className="flex items-center gap-1.5 py-3 px-1">
+              <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:0ms]" />
+              <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]" />
+              <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]" />
+              {orbStepLabel && (
+                <span className="ml-2 text-xs text-muted-foreground animate-pulse">{orbStepLabel}</span>
+              )}
             </div>
           )}
 
