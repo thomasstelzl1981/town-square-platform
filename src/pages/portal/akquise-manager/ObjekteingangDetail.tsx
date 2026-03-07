@@ -177,7 +177,7 @@ export function ObjekteingangDetail() {
       {/* KPIs + Basisdaten */}
       <ObjektKPIRow effectivePrice={formatPrice(effectivePrice)} unitsCount={offer.units_count?.toString() || '–'} areaSqm={offer.area_sqm ? `${offer.area_sqm.toLocaleString('de-DE')} m²` : '–'} yieldFactor={offer.yield_indicated ? `${offer.yield_indicated.toFixed(1)}% · ${(100 / offer.yield_indicated).toFixed(1)}x` : '–'} />
       <ObjektBasisdaten offer={offer} yearlyRent={yearlyRent} formatPrice={formatPrice} />
-      <ObjektAnkaufskosten purchasePrice={effectivePrice} postalCode={offer.postal_code} />
+      <ObjektAnkaufskosten purchasePrice={effectivePrice} postalCode={offer.postal_code} brokerRate={exposeBrokerRate} />
 
       {/* Completeness Check */}
       <CompletenessCheck issues={completenessIssues} />
