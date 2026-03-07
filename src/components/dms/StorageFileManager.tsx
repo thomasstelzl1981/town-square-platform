@@ -125,12 +125,18 @@ export function StorageFileManager({
   // Force list view on mobile
   const effectiveViewMode = isMobile ? 'list' : viewMode;
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts — ARCH-DMS-02: MIME-dependent open
   useStorageKeyboard({
     selectedItem,
     onDelete: (item) => handleDelete(item),
     onOpen: (item) => {
-      if (item.type === 'file' && item.documentId) onDownload(item.documentId);
+      if (item.type === 'file' && item.documentId) {
+        if (isPreviewableMime(item.mimeType)) {
+          setPreviewItem(item);
+        } else {
+          onDownload(item.documentId);
+        }
+      }
     },
     onClearSelection: () => setSelectedItem(null),
     containerRef,
