@@ -32,6 +32,7 @@ export function calcBestandFull(params: BestandFullParams): BestandFullResult {
   const {
     purchasePrice, monthlyRent, equityPercent, interestRate, repaymentRate,
     rentIncreaseRate, valueIncreaseRate, ancillaryCostPercent,
+    maintenancePercent, managementCostPercent,
   } = params;
 
   const yearlyRent = monthlyRent * 12;
@@ -45,7 +46,12 @@ export function calcBestandFull(params: BestandFullParams): BestandFullResult {
   const monthlyRate = yearlyAnnuity / 12;
 
   const grossYield = purchasePrice > 0 ? (yearlyRent / purchasePrice) * 100 : 0;
+  // Heuristic: 80% of yearly rent as sustainable annuity at ~5% total rate (interest + repayment)
   const maxFinancing = (yearlyRent * 0.8 / 5) * 100;
+
+  // Maintenance & management costs (annual)
+  const yearlyMaintenance = purchasePrice * ((maintenancePercent || 0) / 100);
+  const yearlyManagement = yearlyRent * ((managementCostPercent || 0) / 100);
 
   // 30-year projection
   const yearlyData: BestandYearlyData[] = [];
