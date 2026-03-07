@@ -277,7 +277,7 @@ const EmailDraftBox: React.FC<{ draft: DraftContent; onSend?: (draft: DraftConte
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(draft.email_body_html) }}
           />
         ) : (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
+          <div className="prose prose-base dark:prose-invert max-w-none">
             <ReactMarkdown>{draft.content}</ReactMarkdown>
           </div>
         )}
