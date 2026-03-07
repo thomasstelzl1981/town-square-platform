@@ -12,7 +12,8 @@ import {
   Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, FolderOpen, ChevronDown
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { AcqDataRoom } from './components';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
+import { useAuth } from '@/contexts/AuthContext';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
 import { useAcqMandatesForManager } from '@/hooks/useAcqMandate';
