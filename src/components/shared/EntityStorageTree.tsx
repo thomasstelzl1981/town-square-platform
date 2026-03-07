@@ -52,6 +52,7 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [columnPath, setColumnPath] = useState<string[]>([]);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
