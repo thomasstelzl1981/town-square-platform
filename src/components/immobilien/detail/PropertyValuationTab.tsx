@@ -19,7 +19,7 @@ import {
   ValuationPipeline,
   ValuationReportReader,
   ValuationDiffReview,
-  generateValuationPdf,
+  ValuationPdfPipeline,
 } from '@/components/shared/valuation';
 import { ValuationCompare } from '@/components/shared/valuation/ValuationCompare';
 
