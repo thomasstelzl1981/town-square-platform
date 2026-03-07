@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     }
 
     // Delete storage blobs
-    const buckets = ["tenant-documents", "project-documents", "social-assets"];
+    const buckets = ["tenant-documents", "project-documents", "social-assets", "pet-photos"];
     const results: Record<string, number> = {};
 
     for (const bucket of buckets) {

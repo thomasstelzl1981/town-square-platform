@@ -160,7 +160,7 @@ export function ObjekteingangList() {
 
   const handleExposeClick = async (e: React.MouseEvent, doc: { storage_path: string; file_name: string }) => {
     e.stopPropagation();
-    const { data } = await supabase.storage.from('acq-documents').createSignedUrl(doc.storage_path, 300);
+    const { data } = await supabase.storage.from('tenant-documents').createSignedUrl(doc.storage_path, 300);
     if (data?.signedUrl) window.open(data.signedUrl, '_blank');
   };
 

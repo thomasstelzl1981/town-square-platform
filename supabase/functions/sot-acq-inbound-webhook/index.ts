@@ -279,10 +279,10 @@ serve(async (req) => {
           // Upload attachments with unified path: {tenant_id}/{mandate_id}/{offer_id}/expose/{filename}
           for (const att of rawAttachments) {
             try {
-              const storagePath = `${tenantId}/${mandateId}/${offerId}/expose/${att.filename}`;
+              const storagePath = `${tenantId}/MOD_12/${offerId}/${att.filename}`;
 
               await supabase.storage
-                .from('acq-documents')
+                .from('tenant-documents')
                 .upload(storagePath, att.bytes, { contentType: att.content_type });
 
               attachmentsMeta.push({
