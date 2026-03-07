@@ -4,14 +4,12 @@
  */
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ArmstrongOrb, type OrbState } from '@/components/chat/ArmstrongOrb';
 import { Button } from '@/components/ui/button';
 import { PanelLeftOpen, PanelRightOpen, VolumeX, Trash2 } from 'lucide-react';
 import type { ArmstrongProject } from '@/hooks/useArmstrongProjects';
 
 interface Props {
   activeProject: ArmstrongProject | null;
-  orbState: OrbState;
   hasMessages: boolean;
   showLeftPanel: boolean;
   showRightPanel: boolean;

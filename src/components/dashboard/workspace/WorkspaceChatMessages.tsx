@@ -5,8 +5,8 @@
 import { useRef, useEffect } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageRenderer } from '@/components/chat/MessageRenderer';
-import { ArmstrongOrb, type OrbState } from '@/components/chat/ArmstrongOrb';
 import { ArmstrongChipBar } from '@/components/chat/ArmstrongChipBar';
+import { MessageSquare } from 'lucide-react';
 import { WorkspaceOnboarding } from './WorkspaceOnboarding';
 
 import type { ChatMessage } from '@/hooks/useArmstrongAdvisor';

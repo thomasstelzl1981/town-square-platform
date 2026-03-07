@@ -28,7 +28,7 @@ import { toast } from '@/hooks/use-toast';
 import type { ChatMessage, SuggestedAction, DraftContent, ActionResult, BlockedInfo } from '@/hooks/useArmstrongAdvisor';
 import { SuggestedActions } from './SuggestedActions';
 import { ActionCard, type ProposedAction } from './ActionCard';
-import { ArmstrongOrb } from './ArmstrongOrb';
+
 
 interface MessageRendererProps {
   message: ChatMessage;
