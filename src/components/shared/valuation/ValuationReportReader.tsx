@@ -348,69 +348,73 @@ export function ValuationReportReader({
       </Card>
 
       {/* ═══════════════════════════════════════════════════════════════
-          SEKTION 1b — OBJEKTSTECKBRIEF
+          SEKTION 1b — OBJEKTSTECKBRIEF (alle Felder immer sichtbar)
           ═══════════════════════════════════════════════════════════════ */}
-      {snapshot && Object.keys(snapshot).length > 0 && (
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <SectionHeader icon={Building2} title="Objektdaten & Gebäudeangaben" subtitle="Stammdaten der Immobilie" />
+      <Card>
+        <CardContent className="p-6 space-y-4">
+          <SectionHeader icon={Building2} title="Objektdaten & Gebäudeangaben" subtitle="Stammdaten der Immobilie — fehlende Angaben mit „–" markiert" />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Lage & Identifikation */}
-              <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Lage & Identifikation</p>
-                {snapshot.address && <DataRow label="Adresse" value={snapshot.address} />}
-                {(snapshot.postalCode || snapshot.city) && <DataRow label="PLZ / Ort" value={[snapshot.postalCode, snapshot.city].filter(Boolean).join(' ')} />}
-                {snapshot.objectType && <DataRow label="Objektart" value={objectTypeLabel(snapshot.objectType)} />}
-                {snapshot.yearBuilt != null && <DataRow label="Baujahr" value={String(snapshot.yearBuilt)} />}
-                {snapshot.rentalStatus && <DataRow label="Vermietungsstatus" value={rentalStatusLabel(snapshot.rentalStatus)} />}
-              </div>
-
-              {/* Flächen & Aufteilung */}
-              <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Flächen & Aufteilung</p>
-                {snapshot.livingAreaSqm != null && <DataRow label="Wohnfläche" value={`${fmtNum(snapshot.livingAreaSqm, 1)} m²`} />}
-                {snapshot.usableAreaSqm != null && <DataRow label="Nutzfläche" value={`${fmtNum(snapshot.usableAreaSqm, 1)} m²`} />}
-                {snapshot.commercialAreaSqm != null && <DataRow label="Gewerbefläche" value={`${fmtNum(snapshot.commercialAreaSqm, 1)} m²`} />}
-                {snapshot.plotAreaSqm != null && <DataRow label="Grundstücksfläche" value={`${fmtNum(snapshot.plotAreaSqm, 0)} m²`} />}
-                {snapshot.rooms != null && <DataRow label="Zimmer" value={String(snapshot.rooms)} />}
-                {snapshot.floors != null && <DataRow label="Etagen" value={String(snapshot.floors)} />}
-                {snapshot.units != null && <DataRow label="Einheiten" value={String(snapshot.units)} />}
-                {snapshot.parkingSpots != null && <DataRow label="Stellplätze" value={String(snapshot.parkingSpots)} />}
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Lage & Identifikation */}
+            <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Lage & Identifikation</p>
+              <DataRow label="Adresse" value={snapshot?.address || '–'} />
+              <DataRow label="PLZ / Ort" value={[snapshot?.postalCode, snapshot?.city].filter(Boolean).join(' ') || '–'} />
+              <DataRow label="Objektart" value={snapshot?.objectType ? objectTypeLabel(snapshot.objectType) : '–'} />
+              <DataRow label="Baujahr" value={snapshot?.yearBuilt != null ? String(snapshot.yearBuilt) : '–'} />
+              <DataRow label="Vermietungsstatus" value={snapshot?.rentalStatus ? rentalStatusLabel(snapshot.rentalStatus) : '–'} />
             </div>
 
-            {/* Zustand & Wirtschaftlichkeit */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Zustand & Energie</p>
-                {snapshot.condition && <DataRow label="Zustand" value={conditionLabel(snapshot.condition)} />}
-                {snapshot.energyClass && <DataRow label="Energieklasse" value={snapshot.energyClass} />}
-                {snapshot.modernizations && snapshot.modernizations.length > 0 && (
-                  <div className="pt-1">
-                    <p className="text-xs text-muted-foreground mb-1">Modernisierungen:</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {snapshot.modernizations.map((m, i) => (
-                        <Badge key={i} variant="outline" className="text-[10px]">{m}</Badge>
-                      ))}
-                    </div>
+            {/* Flächen & Aufteilung */}
+            <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Flächen & Aufteilung</p>
+              <DataRow label="Wohnfläche" value={snapshot?.livingAreaSqm != null ? `${fmtNum(snapshot.livingAreaSqm, 1)} m²` : '–'} />
+              <DataRow label="Nutzfläche" value={snapshot?.usableAreaSqm != null ? `${fmtNum(snapshot.usableAreaSqm, 1)} m²` : '–'} />
+              <DataRow label="Gewerbefläche" value={snapshot?.commercialAreaSqm != null ? `${fmtNum(snapshot.commercialAreaSqm, 1)} m²` : '–'} />
+              <DataRow label="Grundstücksfläche" value={snapshot?.plotAreaSqm != null ? `${fmtNum(snapshot.plotAreaSqm, 0)} m²` : '–'} />
+              <DataRow label="Zimmer" value={snapshot?.rooms != null ? String(snapshot.rooms) : '–'} />
+              <DataRow label="Etagen" value={snapshot?.floors != null ? String(snapshot.floors) : '–'} />
+              <DataRow label="Einheiten" value={snapshot?.units != null ? String(snapshot.units) : '–'} />
+              <DataRow label="Stellplätze" value={snapshot?.parkingSpots != null ? String(snapshot.parkingSpots) : '–'} />
+            </div>
+          </div>
+
+          {/* Zustand & Wirtschaftlichkeit */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Zustand & Energie</p>
+              <DataRow label="Zustand" value={snapshot?.condition ? conditionLabel(snapshot.condition) : '–'} />
+              <DataRow label="Heizungsart" value={snapshot?.heatingType || '–'} />
+              <DataRow label="Energieträger" value={snapshot?.energySource || '–'} />
+              <DataRow label="Energieklasse" value={snapshot?.energyClass || '–'} />
+              <DataRow label="Energiekennwert" value={snapshot?.energyCertificateValue != null ? `${fmtNum(snapshot.energyCertificateValue, 1)} kWh/(m²·a)` : '–'} />
+              <DataRow label="Kernsaniert" value={snapshot?.coreRenovated === true ? (snapshot?.renovationYear ? `Ja (${snapshot.renovationYear})` : 'Ja') : snapshot?.coreRenovated === false ? 'Nein' : '–'} />
+              {snapshot?.modernizations && snapshot.modernizations.length > 0 && (
+                <div className="pt-1">
+                  <p className="text-xs text-muted-foreground mb-1">Modernisierungen:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {snapshot.modernizations.map((m, i) => (
+                      <Badge key={i} variant="outline" className="text-[10px]">{m}</Badge>
+                    ))}
                   </div>
-                )}
-              </div>
-
-              <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Wirtschaftlichkeit</p>
-                {snapshot.netColdRentMonthly != null && <DataRow label="Kaltmiete (mtl.)" value={fmtEur(snapshot.netColdRentMonthly)} />}
-                {snapshot.netColdRentPerSqm != null && <DataRow label="Miete / m²" value={fmtEur2(snapshot.netColdRentPerSqm)} />}
-                {snapshot.hausgeldMonthly != null && <DataRow label="Hausgeld (mtl.)" value={fmtEur(snapshot.hausgeldMonthly)} />}
-                {snapshot.askingPrice != null && <DataRow label="Angebotspreis" value={fmtEur(snapshot.askingPrice)} />}
-                {snapshot.purchasePrice != null && <DataRow label="Kaufpreis" value={fmtEur(snapshot.purchasePrice)} />}
-                {snapshot.vacancyRate != null && <DataRow label="Leerstandsquote" value={fmtPct(snapshot.vacancyRate)} />}
-              </div>
+                </div>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      )}
+
+            <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Wirtschaftlichkeit</p>
+              <DataRow label="Kaltmiete (mtl.)" value={snapshot?.netColdRentMonthly != null ? fmtEur(snapshot.netColdRentMonthly) : '–'} />
+              <DataRow label="Miete / m²" value={snapshot?.netColdRentPerSqm != null ? fmtEur2(snapshot.netColdRentPerSqm) : '–'} />
+              <DataRow label="Hausgeld (mtl.)" value={snapshot?.hausgeldMonthly != null ? fmtEur(snapshot.hausgeldMonthly) : '–'} />
+              <DataRow label="Kaufpreis" value={snapshot?.purchasePrice != null ? fmtEur(snapshot.purchasePrice) : '–'} />
+              <DataRow label="Angebotspreis" value={snapshot?.askingPrice != null ? fmtEur(snapshot.askingPrice) : '–'} />
+              <DataRow label="Nebenkosten" value={snapshot?.acquisitionCosts != null ? fmtEur(snapshot.acquisitionCosts) : '–'} />
+              <DataRow label="Eigentumsanteil" value={snapshot?.ownershipSharePercent != null ? `${snapshot.ownershipSharePercent}%` : '–'} />
+              <DataRow label="Leerstandsquote" value={snapshot?.vacancyRate != null ? fmtPct(snapshot.vacancyRate) : '–'} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ═══════════════════════════════════════════════════════════════
           SEKTION 1c — OBJEKTFOTOS (Upload Grid)
