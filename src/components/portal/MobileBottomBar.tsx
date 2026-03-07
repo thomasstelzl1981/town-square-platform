@@ -117,7 +117,7 @@ export function MobileBottomBar({ onChatActivated }: MobileBottomBarProps) {
 
       {/* Input Bar — Lovable-style clean input */}
       <div className="px-3 pb-2 pt-0.5">
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border/20">
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/30 border border-border/30">
           <VoiceButton
             isRecording={voice.isRecording}
             isConnecting={voice.isConnecting}

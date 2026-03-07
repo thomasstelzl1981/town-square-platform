@@ -80,7 +80,7 @@ export function MobileHomeChatView({ onBackToModules }: MobileHomeChatViewProps)
                 <div className="flex items-center justify-center h-7 w-7 rounded-full shrink-0 bg-gradient-to-br from-[hsl(var(--primary)/0.2)] to-[hsl(var(--primary)/0.1)]">
                   <Globe className="h-3.5 w-3.5 text-primary" />
                 </div>
-                <div className="rounded-2xl px-3.5 py-2.5 text-sm armstrong-message-assistant">
+                <div className="rounded-2xl px-3.5 py-2.5 text-base armstrong-message-assistant">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Armstrong denkt nach...</span>

@@ -18,7 +18,7 @@ export function PageShell({ children, className, fullWidth, chromeWell = true }:
     <div className={cn(
       'page-shell mx-auto px-2 py-3 md:p-8 md:pb-10 space-y-4 md:space-y-6',
       fullWidth ? 'max-w-full' : 'max-w-7xl',
-      chromeWell && 'bg-white dark:bg-transparent rounded-2xl border border-[hsl(var(--chrome-border)/0.5)] dark:border-0 shadow-md dark:shadow-none md:mt-2',
+      chromeWell && 'bg-white dark:bg-transparent rounded-2xl border-0 md:border md:border-[hsl(var(--chrome-border)/0.5)] dark:border-0 shadow-none md:shadow-md dark:shadow-none md:mt-2',
       className
     )}>
       {children}

@@ -45,7 +45,7 @@ export function MobileModuleMenu({ module, moduleBase, moduleCode }: MobileModul
               onClick={() => navigate(route)}
               className={cn(
                 'flex items-center justify-between w-full px-5 py-4 rounded-xl',
-                'bg-card/60 backdrop-blur-sm border border-border/30',
+                'bg-card/60 backdrop-blur-sm border border-border/30 shadow-sm',
                 'text-left text-foreground font-medium text-base',
                 'active:scale-[0.98] transition-all',
                 'hover:bg-card/80',
