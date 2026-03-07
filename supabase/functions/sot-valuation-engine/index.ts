@@ -1175,7 +1175,7 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
                 for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
                 const contentType = resp.headers.get('content-type') || 'image/png';
                 return `data:${contentType};base64,${btoa(binary)}`;
-              } catch { return null; }
+              } catch (_e) { return null; }
             };
 
             const [microB64, macroB64, streetB64, satB64, hybridB64] = await Promise.all([
