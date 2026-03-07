@@ -171,6 +171,29 @@ export const RECORD_CARD_TYPES: Record<string, RecordCardTypeConfig> = {
     keywordFields: ['name'],
     dmsFolders: [],
   },
+  acq_module: {
+    label: 'Akquise-Datenraum',
+    moduleCode: 'MOD_12',
+    icon: Home,
+    keywordFields: [],
+    dmsFolders: [
+      '01_Exposes',
+      '02_Recherche',
+      '03_Korrespondenz',
+      '04_Sonstiges',
+    ],
+  },
+  acq_offer: {
+    label: 'Akquise-Objekt',
+    moduleCode: 'MOD_12',
+    icon: Home,
+    keywordFields: ['title', 'address'],
+    dmsFolders: [
+      '01_Expose',
+      '02_Unterlagen',
+      '03_Bewertung',
+    ],
+  },
 } as const;
 
 export type RecordCardEntityType = keyof typeof RECORD_CARD_TYPES;

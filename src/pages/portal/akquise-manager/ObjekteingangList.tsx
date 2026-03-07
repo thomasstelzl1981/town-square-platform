@@ -437,7 +437,14 @@ export function ObjekteingangList() {
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
-          <AcqDataRoom />
+          {activeTenantId && (
+            <EntityStorageTree
+              tenantId={activeTenantId}
+              entityType="acq_module"
+              entityId={activeTenantId}
+              moduleCode="MOD_12"
+            />
+          )}
         </CollapsibleContent>
       </Collapsible>
     </PageShell>
