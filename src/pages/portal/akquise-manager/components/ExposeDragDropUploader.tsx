@@ -3,6 +3,8 @@
  * 
  * Upload exposés that get saved to Objekteingang (acq_offers)
  * Triggers AI extraction via sot-acq-offer-extract
+ * 
+ * Storage path: {tenant_id}/{mandate_id|unassigned}/{offer_id}/expose/{fileName}
  */
 
 import * as React from 'react';
@@ -35,6 +37,10 @@ interface ExtractionResult {
 }
 
 type UploadState = 'idle' | 'uploading' | 'extracting' | 'success' | 'error';
+
+function sanitizeFileName(name: string): string {
+  return `${Date.now()}_${name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+}
 
 export function ExposeDragDropUploader() {
   const navigate = useNavigate();
@@ -77,7 +83,6 @@ export function ExposeDragDropUploader() {
   };
 
   const processFile = async (file: File) => {
-    // Validate file type
     const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'];
     if (!allowedTypes.includes(file.type)) {
       toast.error('Bitte laden Sie ein PDF, DOCX, JPG oder PNG hoch');
@@ -96,20 +101,7 @@ export function ExposeDragDropUploader() {
       setExtractedData(null);
       setCreatedOfferId(null);
 
-      // 1. Upload file to storage
-      const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      const filePath = `${activeTenantId}/manual/${fileName}`;
-      
-      setProgress(20);
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('acq-documents')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-      setProgress(40);
-
-      // 2. Create acq_offer record (mandate_id is now nullable for global pool)
+      // 1. Create acq_offer FIRST to get offer_id for the storage path
       const { data: offer, error: offerError } = await supabase
         .from('acq_offers')
         .insert({
@@ -123,6 +115,17 @@ export function ExposeDragDropUploader() {
         .single();
 
       if (offerError) throw offerError;
+      setProgress(30);
+
+      // 2. Build unified storage path: {tenant_id}/unassigned/{offer_id}/expose/{fileName}
+      const safeName = sanitizeFileName(file.name);
+      const filePath = `${activeTenantId}/unassigned/${offer.id}/expose/${safeName}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('acq-documents')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
       setProgress(50);
 
       // 3. Link document to offer
@@ -157,7 +160,6 @@ export function ExposeDragDropUploader() {
 
       if (extractError) {
         console.warn('Extraction warning:', extractError);
-        // Continue even if extraction fails - offer is created
       }
 
       // 5. Fetch updated offer data

@@ -1,15 +1,20 @@
 /**
  * useExposeUpload — Reusable hook for uploading exposés to a specific mandate
- * Extracts upload logic from ExposeDragDropUploader for use in widget context
+ * 
+ * Storage path convention: {tenant_id}/{mandate_id}/{offer_id}/expose/{fileName}
+ * If no mandate: {tenant_id}/unassigned/{offer_id}/expose/{fileName}
  */
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { buildStoragePath, UPLOAD_BUCKET } from '@/config/storageManifest';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
 type UploadPhase = 'idle' | 'uploading' | 'extracting' | 'success' | 'error';
+
+function sanitizeFileName(name: string): string {
+  return `${Date.now()}_${name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+}
 
 export function useExposeUpload() {
   const { activeTenantId } = useAuth();
@@ -41,18 +46,7 @@ export function useExposeUpload() {
       setPhase('uploading');
       setProgress(10);
 
-      // 1. Upload to storage (using central buildStoragePath + sanitizeFileName)
-      storagePath = buildStoragePath(activeTenantId!, 'MOD_12', mandateId || undefined, file.name);
-      setProgress(20);
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('acq-documents')
-        .upload(storagePath, file);
-
-      if (uploadError) throw uploadError;
-      setProgress(40);
-
-      // 2. Create acq_offer with optional mandate_id
+      // 1. Create acq_offer FIRST to get offer_id for the storage path
       const insertData: Record<string, unknown> = {
         source_type: 'manual_upload',
         status: 'new',
@@ -69,7 +63,21 @@ export function useExposeUpload() {
         .single();
 
       if (offerError) throw offerError;
-      setProgress(50);
+      setProgress(30);
+
+      // 2. Build unified storage path: {tenant_id}/{mandate_id}/{offer_id}/expose/{fileName}
+      const mandateFolder = mandateId || 'unassigned';
+      const safeName = sanitizeFileName(file.name);
+      storagePath = `${activeTenantId}/${mandateFolder}/${offer.id}/expose/${safeName}`;
+
+      setProgress(40);
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('acq-documents')
+        .upload(storagePath, file);
+
+      if (uploadError) throw uploadError;
+      setProgress(55);
 
       // 3. Link document
       const { data: doc, error: docError } = await supabase.from('acq_offer_documents').insert({
@@ -83,11 +91,11 @@ export function useExposeUpload() {
       }).select('id').single();
 
       if (docError) throw docError;
-      setProgress(60);
+      setProgress(65);
 
       // 4. Trigger AI extraction
       setPhase('extracting');
-      setProgress(70);
+      setProgress(75);
 
       const { error: extractError } = await supabase.functions.invoke(
         'sot-acq-offer-extract',

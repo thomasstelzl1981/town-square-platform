@@ -172,17 +172,13 @@ serve(async (req) => {
     // ========================================
     const attachmentsMeta: Array<{ filename: string; storage_path: string; mime_type: string }> = [];
 
-    if (payload.attachments?.length) {
-      for (const att of payload.attachments) {
-        try {
-          const bytes = Uint8Array.from(atob(att.content), c => c.charCodeAt(0));
-          const storagePath = `inbound/${payload.id}/${att.filename}`;
-
-          await supabase.storage
-            .from('acq-documents')
-            .upload(storagePath, bytes, {
-              contentType: att.content_type,
-            });
+    // We'll store attachments after offer creation so we have tenant_id + mandate_id + offer_id
+    // Collect raw attachment data first
+    const rawAttachments = (payload.attachments || []).map(att => ({
+      filename: att.filename,
+      bytes: Uint8Array.from(atob(att.content), c => c.charCodeAt(0)),
+      content_type: att.content_type,
+    }));
 
           attachmentsMeta.push({
             filename: att.filename,
