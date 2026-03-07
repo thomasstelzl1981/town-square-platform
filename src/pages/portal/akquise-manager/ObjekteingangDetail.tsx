@@ -90,6 +90,7 @@ function QuickAnalysisBanner({ offer, yearlyRent, priceOverride, originalPrice, 
 }
 
 export function ObjekteingangDetail() {
+  const { activeTenantId } = useAuth();
   const { offerId } = useParams();
   const navigate = useNavigate();
   const { data: offer, isLoading } = useAcqOffer(offerId);
