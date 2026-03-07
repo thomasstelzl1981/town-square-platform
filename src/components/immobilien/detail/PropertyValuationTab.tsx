@@ -1,9 +1,10 @@
 /**
  * PropertyValuationTab — Bewertung tab extracted from PropertyDetailPage
  * R-15 sub-component
- * V8.0: Phase 1 — Valuation Archive: Version numbers, confidence bands, delta trend, Quick-Compare
+ * V9.2: Phase 1 — Photo/Document uploads + enhanced Maps
  */
 import { useState, useCallback, useMemo } from 'react';
+import type { DocumentSlot } from '@/components/shared/valuation/ValuationDocumentGrid';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
