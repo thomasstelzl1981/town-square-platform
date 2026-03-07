@@ -26,6 +26,8 @@ import { SelectionActionBar } from '@/components/dms/SelectionActionBar';
 import { FileDropZone } from '@/components/dms/FileDropZone';
 import { NewFolderDialog } from '@/components/dms/NewFolderDialog';
 import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
+import { MoveToFolderDialog } from '@/components/dms/MoveToFolderDialog';
+import { useStorageMove } from '@/hooks/useStorageMove';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 import { useStorageKeyboard } from '@/hooks/useStorageKeyboard';
 import { DESIGN } from '@/config/designManifest';
