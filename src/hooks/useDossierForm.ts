@@ -54,7 +54,7 @@ export function useDossierForm(initialData: UnitDossierData | null) {
       'propertyType', 'category', 'propertyStatus', 'saleEnabled', 'rentalManaged',
       'vermieterKontextId', 'reportingRegime', 'street', 'houseNumber', 'postalCode',
       'city', 'locationLabel', 'locationNotes', 'description', 'latitude', 'longitude', 'buildYear',
-      'usageType', 'heatingType', 'energySource', 'landRegisterCourt', 'landRegisterSheet',
+      'usageType', 'heatingType', 'energySource', 'energyClass', 'landRegisterCourt', 'landRegisterSheet',
       'landRegisterVolume', 'parcelNumber', 'teNumber', 'purchaseDate', 'purchasePrice',
       'marketValue', 'acquisitionCosts', 'wegFlag', 'meaTotal', 'allocationKeyDefault',
       'plotAreaSqm', 'totalAreaSqm', 'coreRenovated', 'renovationYear', 'unitCountActual'
