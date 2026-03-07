@@ -36,6 +36,7 @@ const MeetingRecorderWidget = React.lazy(() => import('@/components/dashboard/Me
 const TLCWidget = React.lazy(() => import('@/components/dashboard/widgets/TLCWidget').then(m => ({ default: m.TLCWidget })));
 const NotesWidget = React.lazy(() => import('@/components/dashboard/widgets/NotesWidget').then(m => ({ default: m.NotesWidget })));
 const ArmstrongWorkspace = React.lazy(() => import('@/components/dashboard/ArmstrongWorkspace').then(m => ({ default: m.ArmstrongWorkspace })));
+const ArmstrongDataRoomSection = React.lazy(() => import('@/components/dashboard/ArmstrongDataRoomSection').then(m => ({ default: m.ArmstrongDataRoomSection })));
 import { Link } from 'react-router-dom';
 
 const ARMSTRONG_WIDGET_ID = 'system_armstrong';
@@ -289,6 +290,15 @@ export default function PortalDashboard() {
         <div className="max-w-7xl mx-auto w-full px-2 py-3 md:p-6 lg:p-8 flex-1 flex flex-col">
           <Suspense fallback={<div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">Armstrong lädt…</div>}>
             <ArmstrongWorkspace />
+          </Suspense>
+        </div>
+      </section>
+
+      {/* ===== Section 3: Armstrong Datenraum ===== */}
+      <section className="min-h-[calc(100dvh-4rem)] snap-start flex flex-col">
+        <div className="max-w-7xl mx-auto w-full px-2 py-3 md:p-6 lg:p-8 flex-1 flex flex-col">
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">Datenraum lädt…</div>}>
+            <ArmstrongDataRoomSection />
           </Suspense>
         </div>
       </section>
