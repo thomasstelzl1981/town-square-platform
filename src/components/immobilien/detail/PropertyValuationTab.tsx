@@ -179,35 +179,9 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
     }
   };
 
-  const handleDownloadPdf = useCallback(async () => {
-    const r = state.resultData;
-    if (!r?.valueBand) return;
-    try {
-      await generateValuationPdf({
-        snapshot: r.snapshot || {},
-        valueBand: r.valueBand,
-        methods: r.methods || [],
-        financing: r.financing || [],
-        stressTests: r.stressTests || [],
-        lienProxy: r.lienProxy || null,
-        dataQuality: r.dataQuality || null,
-        compStats: r.compStats || null,
-        comps: r.comps || [],
-        location: r.location || null,
-        executiveSummary: r.executiveSummary || '',
-        caseId: state.caseId || 'unknown',
-        generatedAt: new Date().toISOString(),
-        sourceMode: 'SSOT_FINAL',
-        legalTitle: r.legalTitle || null,
-        beleihungswert: r.beleihungswert || null,
-        geminiResearch: r.geminiResearch || null,
-      });
-      toast.success('PDF erstellt');
-    } catch (e) {
-      console.error('PDF error:', e);
-      toast.error('PDF-Erstellung fehlgeschlagen');
-    }
-  }, [state.resultData, state.caseId]);
+  const handleOpenPdfPipeline = useCallback(() => {
+    setShowPdfPipeline(true);
+  }, []);
 
   const handleCompare = () => {
     if (completedCases.length >= 2) {
