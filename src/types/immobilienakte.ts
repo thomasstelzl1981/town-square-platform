@@ -255,6 +255,7 @@ export interface UnitDossierData {
   unitNumber?: string;
   heatingType?: string;
   energySource?: string;
+  energyClass?: string;
   energyCertType?: string;
   energyCertValue?: number;
   energyCertValidUntil?: string;
@@ -405,6 +406,7 @@ export interface PropertyFormData {
   totalAreaSqm?: number;
   heatingType?: string;
   energySource?: string;
+  energyClass?: string;
   coreRenovated?: boolean;
   renovationYear?: number;
 
@@ -436,6 +438,7 @@ export interface UnitFormData {
   bathroomsCount?: number;
   floor?: number;
   heatingSupply?: string;
+  energyCertificateType?: string;
   energyCertificateValue?: number;
   energyCertificateValidUntil?: string;
   featuresTags?: string[];

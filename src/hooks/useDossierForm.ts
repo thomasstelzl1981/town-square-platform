@@ -54,7 +54,7 @@ export function useDossierForm(initialData: UnitDossierData | null) {
       'propertyType', 'category', 'propertyStatus', 'saleEnabled', 'rentalManaged',
       'vermieterKontextId', 'reportingRegime', 'street', 'houseNumber', 'postalCode',
       'city', 'locationLabel', 'locationNotes', 'description', 'latitude', 'longitude', 'buildYear',
-      'usageType', 'heatingType', 'energySource', 'landRegisterCourt', 'landRegisterSheet',
+      'usageType', 'heatingType', 'energySource', 'energyClass', 'landRegisterCourt', 'landRegisterSheet',
       'landRegisterVolume', 'parcelNumber', 'teNumber', 'purchaseDate', 'purchasePrice',
       'marketValue', 'acquisitionCosts', 'wegFlag', 'meaTotal', 'allocationKeyDefault',
       'plotAreaSqm', 'totalAreaSqm', 'coreRenovated', 'renovationYear', 'unitCountActual'
@@ -93,6 +93,7 @@ export function useDossierForm(initialData: UnitDossierData | null) {
       if (changes.usageType !== undefined) mapped.usageType = changes.usageType;
       if (changes.heatingType !== undefined) mapped.heatingType = changes.heatingType;
       if (changes.energySource !== undefined) mapped.energySource = changes.energySource;
+      if ((changes as any).energyClass !== undefined) (mapped as any).energyClass = (changes as any).energyClass;
       if (changes.landRegisterCourt !== undefined) mapped.landRegisterCourt = changes.landRegisterCourt;
       if (changes.landRegisterSheet !== undefined) mapped.landRegisterSheet = changes.landRegisterSheet;
       if (changes.landRegisterVolume !== undefined) mapped.landRegisterVolume = changes.landRegisterVolume;
@@ -123,7 +124,7 @@ export function useDossierForm(initialData: UnitDossierData | null) {
     const unitFields = [
       'unitNumber', 'areaLivingSqm', 'areaUsableSqm', 'roomsCount', 'bathroomsCount',
       'floor', 'featuresTags', 'meaShare', 'hausgeldMonthlyEur', 'vacancyDays',
-      'energyCertValue', 'energyCertValidUntil'
+      'energyCertType', 'energyCertValue', 'energyCertValidUntil'
     ];
     
     const changes: Partial<UnitFormData> = {};
@@ -135,6 +136,7 @@ export function useDossierForm(initialData: UnitDossierData | null) {
         if (field === 'areaLivingSqm') changes.areaSqm = (mergedData as any).areaLivingSqm;
         else if (field === 'roomsCount') changes.rooms = (mergedData as any).roomsCount;
         else if (field === 'hausgeldMonthlyEur') changes.hausgeldMonthly = (mergedData as any).hausgeldMonthlyEur;
+        else if (field === 'energyCertType') changes.energyCertificateType = (mergedData as any).energyCertType;
         else if (field === 'energyCertValue') changes.energyCertificateValue = (mergedData as any).energyCertValue;
         else if (field === 'energyCertValidUntil') changes.energyCertificateValidUntil = (mergedData as any).energyCertValidUntil;
         else (changes as any)[field] = (mergedData as any)[field];

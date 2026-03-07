@@ -48,6 +48,7 @@ export function useUpdateProperty() {
       if (data.totalAreaSqm !== undefined) updateData.total_area_sqm = data.totalAreaSqm;
       if (data.heatingType !== undefined) updateData.heating_type = data.heatingType;
       if (data.energySource !== undefined) updateData.energy_source = data.energySource;
+      if ((data as any).energyClass !== undefined) updateData.energy_class = (data as any).energyClass;
       if (data.landRegisterCourt !== undefined) updateData.land_register_court = data.landRegisterCourt;
       if (data.landRegisterSheet !== undefined) updateData.land_register_sheet = data.landRegisterSheet;
       if (data.landRegisterVolume !== undefined) updateData.land_register_volume = data.landRegisterVolume;
@@ -108,6 +109,7 @@ export function useUpdateUnit() {
       if (data.bathroomsCount !== undefined) updateData.bathrooms_count = data.bathroomsCount;
       if (data.floor !== undefined) updateData.floor = data.floor;
       if (data.heatingSupply !== undefined) updateData.heating_supply = data.heatingSupply;
+      if ((data as any).energyCertificateType !== undefined) updateData.energy_certificate_type = (data as any).energyCertificateType;
       if (data.energyCertificateValue !== undefined) updateData.energy_certificate_value = data.energyCertificateValue;
       if (data.energyCertificateValidUntil !== undefined) updateData.energy_certificate_valid_until = data.energyCertificateValidUntil;
       if (data.featuresTags !== undefined) updateData.features_tags = data.featuresTags;

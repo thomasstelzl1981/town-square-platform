@@ -254,6 +254,7 @@ export function useUnitDossier(unitId: string | undefined) {
         unitNumber: unitData.unit_number,
         heatingType: property.heating_type || unitData.heating_supply,
         energySource: property.energy_source,
+        energyClass: (property as any).energy_class || null,
         energyCertType: unitData.energy_certificate_type,
         energyCertValue: unitData.energy_certificate_value,
         energyCertValidUntil: unitData.energy_certificate_valid_until,
