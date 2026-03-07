@@ -489,9 +489,11 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
           onDownload={selectedItem.type === 'file' && selectedItem.documentId ? () => handleDownload(selectedItem.documentId!) : undefined}
           onDelete={() => handleDelete(selectedItem)}
           onNewSubfolder={selectedItem.type === 'folder' && selectedItem.nodeId ? () => handleNewSubfolder(selectedItem.nodeId!) : undefined}
+          onMove={() => setShowMoveDialog(true)}
           onClear={() => setSelectedItem(null)}
           isDownloading={isDownloading}
           isDeleting={isDeleting}
+          isMoving={isMoving}
         />
       )}
 
@@ -521,6 +523,35 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
         onOpenChange={setShowNewFolderDialog}
         onCreateFolder={handleCreateFolder}
         isCreating={false}
+      />
+
+      <MoveToFolderDialog
+        open={showMoveDialog}
+        onOpenChange={setShowMoveDialog}
+        folders={allNodes.map(n => ({
+          id: n.id,
+          parent_id: n.parent_id,
+          name: n.name,
+          template_id: n.template_id,
+          module_code: n.module_code,
+        }))}
+        excludeIds={selectedItem?.type === 'folder' && selectedItem.nodeId ? new Set([selectedItem.nodeId]) : undefined}
+        currentFolderId={currentFolderId}
+        itemName={selectedItem?.name}
+        isMoving={isMoving}
+        onConfirm={async (targetFolderId) => {
+          if (!selectedItem) return;
+          let success = false;
+          if (selectedItem.type === 'file' && selectedItem.documentId) {
+            success = await moveFile(selectedItem.documentId, targetFolderId);
+          } else if (selectedItem.type === 'folder' && selectedItem.nodeId) {
+            success = await moveFolder(selectedItem.nodeId, targetFolderId);
+          }
+          if (success) {
+            setShowMoveDialog(false);
+            setSelectedItem(null);
+          }
+        }}
       />
     </div>
   );
