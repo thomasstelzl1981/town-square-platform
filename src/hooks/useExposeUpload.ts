@@ -103,7 +103,7 @@ export function useExposeUpload() {
 
       // Refresh offers list
       queryClient.invalidateQueries({ queryKey: ['acq-offers-inbox'] });
-      toast.success('Exposé hochgeladen und dem Mandat zugeordnet');
+      toast.success(mandateId ? 'Exposé hochgeladen und dem Mandat zugeordnet' : 'Exposé hochgeladen — Mandatszuordnung über Dropdown möglich');
 
       // Reset after short delay
       setTimeout(() => {
@@ -116,9 +116,9 @@ export function useExposeUpload() {
       setPhase('error');
 
       // Rollback: delete orphaned storage file if DB insert failed
-      if (filePath) {
+      if (storagePath) {
         try {
-          await supabase.storage.from('acq-documents').remove([filePath]);
+          await supabase.storage.from('acq-documents').remove([storagePath]);
           console.log('Rollback: orphaned file removed from storage');
         } catch (rollbackErr) {
           console.warn('Rollback failed:', rollbackErr);
