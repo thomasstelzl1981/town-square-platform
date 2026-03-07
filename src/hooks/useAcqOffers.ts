@@ -33,6 +33,7 @@ export interface AcqOffer {
   postal_code: string | null;
   city: string | null;
   price_asking: number | null;
+  price_counter: number | null;
   yield_indicated: number | null;
   noi_indicated: number | null;
   units_count: number | null;
