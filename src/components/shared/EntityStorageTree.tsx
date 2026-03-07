@@ -181,6 +181,8 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
     queryClient.invalidateQueries({ queryKey: ['entity-storage-docs'] });
   }, [queryClient, tenantId, entityType, entityId]);
 
+  const { moveFile, moveFolder, isMoving } = useStorageMove(tenantId, invalidateAll);
+
   const resolveTargetFolderId = useCallback((): string | null => {
     if (currentFolderId) {
       const exists = allNodes.some(n => n.id === currentFolderId);
