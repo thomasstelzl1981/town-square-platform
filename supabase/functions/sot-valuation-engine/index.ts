@@ -697,7 +697,7 @@ Deno.serve(async (req) => {
     // ACTION: preflight
     // ════════════════════════════════════════════
     if (action === "preflight") {
-      const { property_id } = body;
+      const { property_id, offer_id } = body;
       const sourceMode = property_id ? "SSOT_FINAL" : "DRAFT_INTAKE";
 
       const { data: creditData } = await sbAdmin.rpc("rpc_credit_preflight", {
@@ -705,6 +705,7 @@ Deno.serve(async (req) => {
       });
 
       let ssotSummary: any = null;
+      let offerSummary: any = null;
       let warnings: any[] = [];
       let blockers: any[] = [];
 
