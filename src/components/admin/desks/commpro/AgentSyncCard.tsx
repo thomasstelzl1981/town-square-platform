@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { RefreshCw, Loader2, ChevronDown, CheckCircle, AlertCircle, Zap } from 'lucide-react';
+import { RefreshCw, Loader2, ChevronDown, CheckCircle, AlertCircle, Zap, Phone, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { PhoneAssistantConfig } from '@/hooks/usePhoneAssistant';
@@ -25,7 +25,19 @@ interface SyncResult {
 export function AgentSyncCard({ brandKey, config, onRefresh }: Props) {
   const [syncing, setSyncing] = useState(false);
   const [lastResult, setLastResult] = useState<SyncResult | null>(null);
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [promptOpen, setPromptOpen] = useState(false);
+
+  const elevenlabsAgentId = (config as any).elevenlabs_agent_id;
+  const elevenlabsPhoneId = (config as any).elevenlabs_phone_number_id;
+  const hasAgent = !!elevenlabsAgentId;
+  const hasPhone = !!elevenlabsPhoneId;
+
+  const routingStatus = hasAgent && hasPhone
+    ? 'assigned'
+    : hasAgent
+      ? 'fallback'
+      : 'not_configured';
 
   const handleSync = async () => {
     setSyncing(true);
@@ -43,6 +55,7 @@ export function AgentSyncCard({ brandKey, config, onRefresh }: Props) {
         phone_action: data.phone_action ?? 'n/a',
         prompt_length: data.prompt_length,
       });
+      setLastSyncAt(new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }));
       toast({ title: 'Agent synchronisiert', description: `${data.agent_action ?? 'OK'}` });
       onRefresh();
     } catch (err: any) {
@@ -56,15 +69,73 @@ export function AgentSyncCard({ brandKey, config, onRefresh }: Props) {
   const promptText = (config as any).behavior_prompt ?? '';
   const promptLen = promptText.length;
 
+  const statusBorderClass = routingStatus === 'assigned'
+    ? 'border-green-500/30 bg-green-500/5'
+    : routingStatus === 'fallback'
+      ? 'border-amber-500/40 bg-amber-500/5'
+      : 'border-destructive/30 bg-destructive/5';
+
   return (
     <Card className="glass-card">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Zap className="h-4 w-4 text-primary" />
-          Agent Sync &amp; Prompt-Vorschau
+          Agent Sync &amp; Routing-Status
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Routing Status Indicator */}
+        <div className={`rounded-md border p-3 space-y-2 ${statusBorderClass}`}>
+          <div className="flex items-center gap-2">
+            {routingStatus === 'assigned' ? (
+              <>
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span className="text-sm font-medium text-green-500">ElevenLabs Assigned ✓</span>
+              </>
+            ) : routingStatus === 'fallback' ? (
+              <>
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                <span className="text-sm font-medium text-amber-500">⚠ Nummer nicht assigned — Twilio-Fallback aktiv</span>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-4 w-4 text-destructive" />
+                <span className="text-sm font-medium text-destructive">Nicht konfiguriert</span>
+              </>
+            )}
+          </div>
+
+          {routingStatus === 'fallback' && (
+            <p className="text-xs text-muted-foreground pl-6">
+              Calls landen im Twilio-Fallback (Greeting-only Risiko). Bitte „Agent synchronisieren" klicken.
+            </p>
+          )}
+
+          {routingStatus === 'not_configured' && (
+            <p className="text-xs text-muted-foreground pl-6">
+              Kein ElevenLabs-Agent konfiguriert. Bitte zuerst eine Nummer kaufen und dann synchronisieren.
+            </p>
+          )}
+
+          {/* ID details */}
+          <div className="space-y-1 pl-6">
+            {elevenlabsAgentId && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Zap className="h-3 w-3" />
+                <span>Agent:</span>
+                <code className="bg-muted/40 px-1.5 py-0.5 rounded font-mono text-[10px]">{elevenlabsAgentId}</code>
+              </div>
+            )}
+            {elevenlabsPhoneId && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Phone className="h-3 w-3" />
+                <span>Phone:</span>
+                <code className="bg-muted/40 px-1.5 py-0.5 rounded font-mono text-[10px]">{elevenlabsPhoneId}</code>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Sync button + last result */}
         <div className="flex items-center gap-3 flex-wrap">
           <Button onClick={handleSync} disabled={syncing}>
@@ -93,17 +164,11 @@ export function AgentSyncCard({ brandKey, config, onRefresh }: Props) {
               )}
             </div>
           )}
-        </div>
 
-        {/* ElevenLabs Agent ID */}
-        {(config as any).elevenlabs_agent_id && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>ElevenLabs Agent:</span>
-            <code className="bg-muted/40 px-2 py-0.5 rounded font-mono text-[11px]">
-              {(config as any).elevenlabs_agent_id}
-            </code>
-          </div>
-        )}
+          {lastSyncAt && (
+            <span className="text-[10px] text-muted-foreground ml-auto">Zuletzt: {lastSyncAt}</span>
+          )}
+        </div>
 
         {/* Prompt preview */}
         {promptText && (
