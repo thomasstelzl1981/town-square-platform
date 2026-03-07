@@ -95,6 +95,7 @@ export function useDossierForm(initialData: UnitDossierData | null) {
       if (changes.energySource !== undefined) mapped.energySource = changes.energySource;
       if ((changes as any).energyClass !== undefined) (mapped as any).energyClass = (changes as any).energyClass;
       if (changes.landRegisterCourt !== undefined) mapped.landRegisterCourt = changes.landRegisterCourt;
+      if ((changes as any).landRegisterOf !== undefined) (mapped as any).landRegisterOf = (changes as any).landRegisterOf;
       if (changes.landRegisterSheet !== undefined) mapped.landRegisterSheet = changes.landRegisterSheet;
       if (changes.landRegisterVolume !== undefined) mapped.landRegisterVolume = changes.landRegisterVolume;
       if (changes.parcelNumber !== undefined) mapped.parcelNumber = changes.parcelNumber;
