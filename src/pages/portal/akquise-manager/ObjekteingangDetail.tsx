@@ -208,7 +208,7 @@ export function ObjekteingangDetail() {
   const effectivePrice = priceOverride ?? offer.price_asking ?? 0;
   const yearlyRent = deriveYearlyRent(offer, effectivePrice);
   const completenessIssues = getCompletenessIssues(offer);
-  const hasCalcData = offer.calc_bestand || offer.calc_aufteiler || (offer.status !== 'new');
+  const hasCalcData = !!(offer.calc_bestand || offer.calc_aufteiler);
 
   return (
     <PageShell>
