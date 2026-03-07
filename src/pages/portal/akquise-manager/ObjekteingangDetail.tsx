@@ -129,23 +129,25 @@ export function ObjekteingangDetail() {
   const [priceOverride, setPriceOverride] = React.useState<number | null>(null);
   React.useEffect(() => { if (offer) setPriceOverride(offer.price_counter ?? offer.price_asking ?? null); }, [offer?.id]);
 
+  // These useMemo hooks MUST be before early returns to preserve hook order
+  const exposeBrokerRate = React.useMemo(() => {
+    const ed = offer?.extracted_data as Record<string, any> | null;
+    if (!ed) return undefined;
+    const val = ed.broker_commission_percent ?? ed.maklercourtage ?? ed.broker_rate ?? ed.courtage;
+    return typeof val === 'number' && val > 0 ? val : undefined;
+  }, [offer?.extracted_data]);
+
+  const effectivePrice = priceOverride ?? offer?.price_asking ?? 0;
+  const resolvedAncillary = React.useMemo(() => calcAncillaryCosts(effectivePrice, offer?.postal_code, exposeBrokerRate), [effectivePrice, offer?.postal_code, exposeBrokerRate]);
+
   if (isLoading) return <div className="p-6 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   if (!offer) return <PageShell><Card><CardContent className="p-12 text-center"><Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" /><h3 className="text-lg font-semibold">Objekt nicht gefunden</h3><Button className="mt-4" onClick={() => navigate('/portal/akquise-manager/objekteingang')}>Zurück zur Übersicht</Button></CardContent></Card></PageShell>;
 
   const formatPrice = (p: number | null) => p ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(p) : '–';
   const currentStepIdx = STATUS_TO_STEP[offer.status] ?? 0;
-  const effectivePrice = priceOverride ?? offer.price_asking ?? 0;
   const yearlyRent = deriveYearlyRent(offer, effectivePrice);
   const completenessIssues = getCompletenessIssues(offer);
   const hasCalcData = !!(offer.calc_bestand || offer.calc_aufteiler);
-  // Extract broker rate from Exposé data if available (e.g. extracted_data.broker_commission_percent)
-  const exposeBrokerRate = React.useMemo(() => {
-    const ed = offer.extracted_data as Record<string, any> | null;
-    if (!ed) return undefined;
-    const val = ed.broker_commission_percent ?? ed.maklercourtage ?? ed.broker_rate ?? ed.courtage;
-    return typeof val === 'number' && val > 0 ? val : undefined;
-  }, [offer.extracted_data]);
-  const resolvedAncillary = React.useMemo(() => calcAncillaryCosts(effectivePrice, offer.postal_code, exposeBrokerRate), [effectivePrice, offer.postal_code, exposeBrokerRate]);
 
   return (
     <PageShell>
