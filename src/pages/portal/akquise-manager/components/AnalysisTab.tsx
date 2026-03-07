@@ -249,13 +249,6 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
     return <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
-  interface LocationResult {
-    avgRentPerSqm?: string | number;
-    avgPricePerSqm?: string | number;
-    vacancyRate?: string | number;
-    populationTrend?: string;
-    summary?: string;
-  }
   interface AiSummaryResult {
     summary?: string;
     risks?: string[];
