@@ -148,6 +148,11 @@ export function ObjekteingangDetail() {
   const yearlyRent = deriveYearlyRent(offer, effectivePrice);
   const completenessIssues = getCompletenessIssues(offer);
   const hasCalcData = !!(offer.calc_bestand || offer.calc_aufteiler);
+  // Minimal data for valuation: address + (price or rent)
+  const hasMinimalValuationData = !!(
+    (offer.address || offer.city) && 
+    (effectivePrice > 0 || yearlyRent > 0)
+  );
 
   return (
     <PageShell>
