@@ -1,8 +1,7 @@
 /**
  * ObjekteingangDetail — Orchestrator (MOD-12)
- * R-23 Refactoring: 539 → ~200 lines
- * V7.0: Inline PDF-Viewer, Completeness Check, Valuation conditioned on calc status
- *       Sprengnetter/GeoMap fully replaced by SoT Valuation Engine
+ * V8.0: 3-Section Layout (Kopf → Kalkulation → Bewertung/Aktivitäten)
+ *       ExposePdfViewer entfernt (Dokumente im Datenraum), Layout gestrafft
  */
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -14,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Loader2, Building2, X, ThumbsUp, MessageSquare, FileText, Upload, Check, ChevronDown, TrendingUp, Play, AlertTriangle, Eye } from 'lucide-react';
+import { ArrowLeft, Loader2, Building2, X, ThumbsUp, MessageSquare, FileText, Check, ChevronDown, Play, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAcqOffer, useUpdateOfferStatus, type AcqOfferStatus, type AcqOffer } from '@/hooks/useAcqOffers';
 import { useAcqMandate } from '@/hooks/useAcqMandate';
@@ -35,10 +34,8 @@ import { AUFTEILER_DEFAULTS } from '@/engines/akquiseCalc/spec';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { ObjektKPIRow, ObjektBasisdaten } from '@/components/akquise/objekteingang';
-import { ValuationPreflight, ValuationPipeline, ValuationReportReader } from '@/components/shared/valuation';
+import { ValuationPipeline, ValuationReportReader } from '@/components/shared/valuation';
 
-// Keep QuickAnalysisBanner inline — it has complex editable price state with supabase save
-import { Input } from '@/components/ui/input';
 import { Save, RotateCcw } from 'lucide-react';
 
 const STATUS_OPTIONS: { value: AcqOfferStatus; label: string }[] = [
@@ -58,7 +55,6 @@ function deriveYearlyRent(offer: { noi_indicated?: number | null; price_asking?:
   return 0;
 }
 
-/** Check which mandatory fields are missing for calculation */
 function getCompletenessIssues(offer: { price_asking?: number | null; noi_indicated?: number | null; yield_indicated?: number | null; area_sqm?: number | null }) {
   const issues: string[] = [];
   if (!offer.price_asking) issues.push('Kaufpreis');
@@ -99,74 +95,6 @@ function QuickAnalysisBanner({ offer, yearlyRent, priceOverride, originalPrice, 
   );
 }
 
-/** Inline PDF-Viewer for the first expose document */
-function ExposePdfViewer({ documents }: { documents?: Array<{ id: string; storage_path: string; file_name: string; document_type: string; mime_type: string | null }> }) {
-  const [signedUrl, setSignedUrl] = React.useState<string | null>(null);
-  const [isOpen, setIsOpen] = React.useState(true);
-  const [isLoading, setIsLoading] = React.useState(false);
-
-  // Find the first PDF expose document
-  const exposeDoc = React.useMemo(() => {
-    if (!documents?.length) return null;
-    return documents.find(d => 
-      d.mime_type === 'application/pdf' || 
-      d.file_name.toLowerCase().endsWith('.pdf')
-    ) || null;
-  }, [documents]);
-
-  React.useEffect(() => {
-    if (!exposeDoc) return;
-    setIsLoading(true);
-    supabase.storage
-      .from('tenant-documents')
-      .createSignedUrl(exposeDoc.storage_path, 3600)
-      .then(({ data, error }) => {
-        if (data?.signedUrl) setSignedUrl(data.signedUrl);
-        setIsLoading(false);
-      });
-  }, [exposeDoc?.id]);
-
-  if (!exposeDoc) return null;
-
-  return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card className={cn(DESIGN.CARD.BASE, 'border-primary/20')}>
-        <CollapsibleTrigger asChild>
-          <CardHeader className={cn(DESIGN.CARD.SECTION_HEADER, 'cursor-pointer flex flex-row items-center justify-between')}>
-            <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-primary" />
-              <CardTitle className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>Exposé-Ansicht</CardTitle>
-              <Badge variant="outline" className="text-[10px]">{exposeDoc.file_name}</Badge>
-            </div>
-            <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', isOpen && 'rotate-180')} />
-          </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-96">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : signedUrl ? (
-              <iframe
-                src={signedUrl}
-                className="w-full h-[700px] rounded-b-lg border-0"
-                title={`Exposé: ${exposeDoc.file_name}`}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-48 text-muted-foreground">
-                <FileText className="h-8 w-8 mr-2" />
-                <span className="text-sm">PDF konnte nicht geladen werden</span>
-              </div>
-            )}
-          </CardContent>
-        </CollapsibleContent>
-      </Card>
-    </Collapsible>
-  );
-}
-
-/** Completeness check banner */
 function CompletenessCheck({ issues }: { issues: string[] }) {
   if (issues.length === 0) return null;
   return (
@@ -212,7 +140,8 @@ export function ObjekteingangDetail() {
 
   return (
     <PageShell>
-      {/* Header */}
+      {/* ═══════════════════ SEKTION 1: KOPF ═══════════════════ */}
+      {/* Header Row */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/portal/akquise-manager/objekteingang')}><ArrowLeft className="h-4 w-4" /></Button>
         <div className="flex-1 min-w-0">
@@ -236,15 +165,14 @@ export function ObjekteingangDetail() {
       {/* Stepper */}
       <div className="w-full"><div className="flex items-center justify-between">{OFFER_STEPS.map((step, idx) => { const isDone = idx < currentStepIdx; const isCurrent = idx === currentStepIdx; return (<div key={step.key} className="flex items-center flex-1 last:flex-initial"><div className="flex flex-col items-center gap-1"><div className={cn('h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors', isDone && 'bg-primary border-primary text-primary-foreground', isCurrent && 'border-primary bg-primary/10 text-primary', !isDone && !isCurrent && 'border-border bg-muted text-muted-foreground')}>{isDone ? <Check className="h-4 w-4" /> : idx + 1}</div><span className={cn('text-[10px] font-medium text-center max-w-[72px] leading-tight', isCurrent ? 'text-primary' : 'text-muted-foreground')}>{step.label}</span></div>{idx < OFFER_STEPS.length - 1 && <div className={cn('h-0.5 flex-1 mx-1 mt-[-16px]', idx < currentStepIdx ? 'bg-primary' : 'bg-border')} />}</div>); })}</div></div>
 
+      {/* KPIs + Basisdaten */}
       <ObjektKPIRow effectivePrice={formatPrice(effectivePrice)} unitsCount={offer.units_count?.toString() || '–'} areaSqm={offer.area_sqm ? `${offer.area_sqm.toLocaleString('de-DE')} m²` : '–'} yieldFactor={offer.yield_indicated ? `${offer.yield_indicated.toFixed(1)}% · ${(100 / offer.yield_indicated).toFixed(1)}x` : '–'} />
       <ObjektBasisdaten offer={offer} yearlyRent={yearlyRent} formatPrice={formatPrice} />
-
-      {/* Inline PDF-Viewer */}
-      <ExposePdfViewer documents={offer.documents} />
 
       {/* Completeness Check */}
       <CompletenessCheck issues={completenessIssues} />
 
+      {/* Quelle + Datenraum */}
       <div className={DESIGN.FORM_GRID.FULL}>
         <div className="space-y-2"><h2 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>E-Mail / Quelle</h2><SourceEmailViewer sourceInboundId={offer.source_inbound_id} sourceType={offer.source_type} sourceUrl={offer.source_url} /></div>
         <div className="space-y-2">
@@ -260,7 +188,18 @@ export function ObjekteingangDetail() {
         </div>
       </div>
 
-      {/* SoT Bewertung — only enabled after calculation has been performed */}
+      {/* ═══════════════════ SEKTION 2: KALKULATION ═══════════════════ */}
+      <div className="space-y-4">
+        <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-1')}>Kalkulation</h2>
+        <QuickAnalysisBanner offer={offer} yearlyRent={yearlyRent} priceOverride={effectivePrice} originalPrice={offer.price_asking || 0} onPriceChange={setPriceOverride} />
+        <Tabs defaultValue="bestand" className="w-full">
+          <TabsList><TabsTrigger value="bestand">🏠 Bestand (Hold)</TabsTrigger><TabsTrigger value="aufteiler">📊 Aufteiler (Flip)</TabsTrigger></TabsList>
+          <TabsContent value="bestand"><BestandCalculation offerId={offer.id} hideQuickAnalysis initialData={{ purchasePrice: effectivePrice, monthlyRent: yearlyRent / 12, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} /></TabsContent>
+          <TabsContent value="aufteiler"><AufteilerCalculation offerId={offer.id} initialData={{ purchasePrice: effectivePrice, yearlyRent, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} /></TabsContent>
+        </Tabs>
+      </div>
+
+      {/* ═══════════════════ SEKTION 3: BEWERTUNG + AKTIVITÄTEN ═══════════════════ */}
       <div className="space-y-4">
         <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-1')}>SoT Bewertung</h2>
         {valuation.state.status !== 'running' && !valuation.state.resultData && (
@@ -303,16 +242,6 @@ export function ObjekteingangDetail() {
             comps={valuation.state.resultData.comps || []}
           />
         )}
-      </div>
-
-      <div className="space-y-4">
-        <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-1')}>Kalkulation</h2>
-        <QuickAnalysisBanner offer={offer} yearlyRent={yearlyRent} priceOverride={effectivePrice} originalPrice={offer.price_asking || 0} onPriceChange={setPriceOverride} />
-        <Tabs defaultValue="bestand" className="w-full">
-          <TabsList><TabsTrigger value="bestand">🏠 Bestand (Hold)</TabsTrigger><TabsTrigger value="aufteiler">📊 Aufteiler (Flip)</TabsTrigger></TabsList>
-          <TabsContent value="bestand"><BestandCalculation offerId={offer.id} hideQuickAnalysis initialData={{ purchasePrice: effectivePrice, monthlyRent: yearlyRent / 12, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} /></TabsContent>
-          <TabsContent value="aufteiler"><AufteilerCalculation offerId={offer.id} initialData={{ purchasePrice: effectivePrice, yearlyRent, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} /></TabsContent>
-        </Tabs>
       </div>
 
       <div><h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-3')}>Aktivitäten</h2><ActivityLogPanel offerId={offer.id} /></div>

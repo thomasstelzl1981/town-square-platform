@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { MoreVertical, Download, Eye, FolderOpen, Trash2, FolderPlus, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +21,22 @@ interface FileRowMenuProps {
   isDeleting?: boolean;
 }
 
+const TriggerButton = React.forwardRef<HTMLButtonElement, React.ComponentPropsWithoutRef<typeof Button>>(
+  (props, ref) => (
+    <Button
+      ref={ref}
+      variant="ghost"
+      size="icon"
+      className="h-7 w-7 transition-opacity"
+      onClick={(e) => e.stopPropagation()}
+      {...props}
+    >
+      <MoreVertical className="h-4 w-4" />
+    </Button>
+  )
+);
+TriggerButton.displayName = 'FileRowMenuTrigger';
+
 export function FileRowMenu({
   type,
   onDownload,
@@ -34,14 +51,7 @@ export function FileRowMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 transition-opacity"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <MoreVertical className="h-4 w-4" />
-        </Button>
+        <TriggerButton />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         {type === 'folder' && onOpen && (
