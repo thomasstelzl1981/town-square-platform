@@ -113,6 +113,17 @@ export function useExposeUpload() {
     } catch (error: any) {
       console.error('Upload error:', error);
       setPhase('error');
+
+      // Rollback: delete orphaned storage file if DB insert failed
+      if (filePath) {
+        try {
+          await supabase.storage.from('acq-documents').remove([filePath]);
+          console.log('Rollback: orphaned file removed from storage');
+        } catch (rollbackErr) {
+          console.warn('Rollback failed:', rollbackErr);
+        }
+      }
+
       toast.error('Upload fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'));
       setTimeout(() => {
         setPhase('idle');
