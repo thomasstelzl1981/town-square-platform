@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import { getModuleDisplayName } from '@/config/storageManifest';
-import { getFileIcon } from '@/components/dms/storageHelpers';
+import { getFileIcon, isPreviewableMime } from '@/components/dms/storageHelpers';
 import { FileRowMenu } from '@/components/dms/FileRowMenu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { FileManagerItem } from './ListView';

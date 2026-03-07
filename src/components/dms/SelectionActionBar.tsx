@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Download, Eye, Trash2, FolderPlus, X } from 'lucide-react';
+import { Download, Eye, Trash2, FolderPlus, FolderInput, X } from 'lucide-react';
 import { getFileIcon } from '@/components/dms/storageHelpers';
 import type { FileManagerItem } from '@/components/dms/views/ListView';
 
@@ -9,9 +9,11 @@ interface SelectionActionBarProps {
   onDownload?: () => void;
   onDelete?: () => void;
   onNewSubfolder?: () => void;
+  onMove?: () => void;
   onClear: () => void;
   isDownloading?: boolean;
   isDeleting?: boolean;
+  isMoving?: boolean;
 }
 
 export function SelectionActionBar({
@@ -20,9 +22,11 @@ export function SelectionActionBar({
   onDownload,
   onDelete,
   onNewSubfolder,
+  onMove,
   onClear,
   isDownloading,
   isDeleting,
+  isMoving,
 }: SelectionActionBarProps) {
   const Icon = item.type === 'folder' ? undefined : getFileIcon(item.mimeType);
 
@@ -53,6 +57,14 @@ export function SelectionActionBar({
         <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={onDownload} disabled={isDownloading}>
           <Download className="h-3.5 w-3.5" />
           Download
+        </Button>
+      )}
+
+      {/* Move — both types */}
+      {onMove && (
+        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={onMove} disabled={isMoving}>
+          <FolderInput className="h-3.5 w-3.5" />
+          Verschieben
         </Button>
       )}
 

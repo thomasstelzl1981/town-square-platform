@@ -47,3 +47,15 @@ export function formatType(mime?: string): string {
   if (mime.includes('word') || mime.includes('document')) return 'Word';
   return mime.split('/')[1]?.toUpperCase() || '—';
 }
+
+/**
+ * ARCH-DMS-02: Open-SSOT — MIME-dependent primary action
+ * Returns true for MIME types that support inline preview (image/*, PDF).
+ * All other types should trigger a download on double-click.
+ */
+export function isPreviewableMime(mime?: string): boolean {
+  if (!mime) return false;
+  if (mime.startsWith('image/')) return true;
+  if (mime === 'application/pdf') return true;
+  return false;
+}
