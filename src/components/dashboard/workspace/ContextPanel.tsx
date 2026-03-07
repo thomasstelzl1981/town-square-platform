@@ -1,13 +1,14 @@
 /**
- * ContextPanel — Right column: Active entity, sources, memory (editable), tasks, entity linker
- * v2: Task list UI, EntityLinker, dashboard fallback content
+ * ContextPanel — Right column: Active entity, sources, memory (editable), tasks, entity linker, Datenraum
+ * v3: Added Armstrong Workspace Datenraum via EntityStorageTree
  */
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useArmstrongContext } from '@/hooks/useArmstrongContext';
 import { useArmstrongProjects, type ArmstrongProject, type MemorySnippet, type ProjectTask } from '@/hooks/useArmstrongProjects';
+import { useAuth } from '@/contexts/AuthContext';
 import { EntityLinker } from '@/components/dashboard/workspace/EntityLinker';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
