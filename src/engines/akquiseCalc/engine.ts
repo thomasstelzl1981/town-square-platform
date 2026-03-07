@@ -18,7 +18,9 @@ import type {
   AufteilerFullParams, AufteilerFullResult, AufteilerSensitivityRow,
   AufteilerQuickParams, AufteilerQuickResult,
   AufteilerProjectParams, AufteilerProjectResult,
+  AncillaryCostBreakdown,
 } from './spec';
+import { GREST_BY_STATE, PLZ_TO_STATE, ANCILLARY_DEFAULTS } from './spec';
 
 // ============================================================================
 // BESTAND (HOLD)
