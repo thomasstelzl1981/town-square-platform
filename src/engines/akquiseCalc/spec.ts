@@ -56,6 +56,7 @@ export interface BestandYearlyData {
 /** Full 30-year hold result */
 export interface BestandFullResult {
   totalInvestment: number;
+  ancillaryCosts: number;
   equity: number;
   loanAmount: number;
   yearlyAnnuity: number;
@@ -75,6 +76,20 @@ export interface BestandFullResult {
   value40: number;
   wealthGrowth: number;
   roi: number;
+  /** Renovation + construction ancillary costs */
+  totalConstructionCosts: number;
+  /** Construction ancillary amount */
+  constructionAncillaryCosts: number;
+  /** Total investment per sqm */
+  costPerSqm: number;
+  /** Year 1 NOI / 12 */
+  noiMonthly: number;
+  /** Year 1 monthly expenses (interest + repayment + management + maintenance) */
+  monthlyExpenses: number;
+  /** Year 1 monthly cashflow (rent - expenses) */
+  monthlyCashflow: number;
+  /** Cash-on-Cash return % */
+  cashOnCash: number;
 }
 
 /** Quick KPI result */
