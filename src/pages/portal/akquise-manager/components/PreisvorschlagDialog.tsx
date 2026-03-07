@@ -20,6 +20,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserMailAccount } from '@/hooks/useUserMailAccount';
+import { useAcqOfferDataRoom } from '@/hooks/useAcqOfferDataRoom';
 import { toast } from 'sonner';
 
 interface PreisvorschlagDialogProps {
