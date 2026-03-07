@@ -205,13 +205,61 @@ export function ObjekteingangDetail() {
         <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-1')}>Kalkulation</h2>
         <QuickAnalysisBanner offer={offer} yearlyRent={yearlyRent} priceOverride={effectivePrice} originalPrice={offer.price_asking || 0} onPriceChange={setPriceOverride} />
         <Tabs defaultValue="bestand" className="w-full">
-          <TabsList><TabsTrigger value="bestand">🏠 Bestand (Hold)</TabsTrigger><TabsTrigger value="aufteiler">📊 Aufteiler (Flip)</TabsTrigger></TabsList>
+          <TabsList>
+            <TabsTrigger value="bestand">🏠 Bestand (Hold)</TabsTrigger>
+            <TabsTrigger value="aufteiler">📊 Aufteiler (Flip)</TabsTrigger>
+            <TabsTrigger value="bewertung">🏛️ Bewertung</TabsTrigger>
+          </TabsList>
           <TabsContent value="bestand"><BestandCalculation offerId={offer.id} hideQuickAnalysis ancillaryCostPercent={resolvedAncillary.totalRate} initialData={{ purchasePrice: effectivePrice, monthlyRent: yearlyRent / 12, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} /></TabsContent>
           <TabsContent value="aufteiler"><AufteilerCalculation offerId={offer.id} ancillaryCostPercent={resolvedAncillary.totalRate} initialData={{ purchasePrice: effectivePrice, yearlyRent, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} /></TabsContent>
+          <TabsContent value="bewertung">
+            <div className="space-y-4 mt-4">
+              {valuation.state.status !== 'running' && !valuation.state.resultData && (
+                <Card className={cn("border-primary/20", hasCalcData ? "bg-primary/5" : "bg-muted/50")}>
+                  <CardContent className="flex items-center justify-between py-4">
+                    <div>
+                      <p className="text-sm font-medium">KI-gestützte Objektbewertung</p>
+                      <p className="text-xs text-muted-foreground">
+                        {hasCalcData 
+                          ? 'Exposé-basierte Bewertung mit Portal-Comps (20 Credits)' 
+                          : 'Erst Kalkulation durchführen, dann Bewertung starten'}
+                      </p>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      onClick={() => valuation.runValuation({ offerId: offer.id, sourceContext: 'ACQUIARY_TOOLS' })} 
+                      disabled={valuation.isLoading || !hasCalcData}
+                    >
+                      {valuation.isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
+                      Bewertung starten
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+              {valuation.state.status === 'running' && (
+                <ValuationPipeline stages={valuation.state.stages} currentStage={valuation.state.currentStage} status={valuation.state.status} error={valuation.state.error} />
+              )}
+              {valuation.state.resultData && (
+                <ValuationReportReader
+                  valueBand={valuation.state.resultData.valueBand}
+                  methods={valuation.state.resultData.methods || []}
+                  financing={valuation.state.resultData.financing || []}
+                  stressTests={valuation.state.resultData.stressTests || []}
+                  lienProxy={valuation.state.resultData.lienProxy || null}
+                  debtService={valuation.state.resultData.debtService || null}
+                  dataQuality={valuation.state.resultData.dataQuality || null}
+                  compStats={valuation.state.resultData.compStats || null}
+                  executiveSummary={valuation.state.resultData.executiveSummary}
+                  location={valuation.state.resultData.location || null}
+                  comps={valuation.state.resultData.comps || []}
+                />
+              )}
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
 
-      {/* ═══════════════════ SEKTION 3: BEWERTUNG + AKTIVITÄTEN ═══════════════════ */}
+      {/* ═══════════════════ SEKTION 3: AKTIVITÄTEN ═══════════════════ */}
       <div className="space-y-4">
         <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-1')}>SoT Bewertung</h2>
         {valuation.state.status !== 'running' && !valuation.state.resultData && (
