@@ -227,7 +227,8 @@ export function calcAufteilerFull(params: AufteilerFullParams): AufteilerFullRes
   const interestConstruction = loanAmountConstruction * (interestRate / 100) * holdingYears * 0.5;
   const effectiveDisagio = disagio;
   const rentalIncomeOffset = yearlyRent * holdingYears;
-  const totalFinancingCosts = interestAcquisition + interestConstruction + effectiveDisagio - rentalIncomeOffset;
+  // FIX: Financing costs = pure costs (interest + disagio). Rental income is REVENUE, not cost reduction.
+  const totalFinancingCosts = interestAcquisition + interestConstruction + effectiveDisagio;
 
   const financingBreakdown: AufteilerFinancingBreakdown = {
     loanAmountAcquisition, loanAmountConstruction,
@@ -238,7 +239,8 @@ export function calcAufteilerFull(params: AufteilerFullParams): AufteilerFullRes
 
   const interestCosts = interestAcquisition + interestConstruction + effectiveDisagio;
   const rentIncome = rentalIncomeOffset;
-  const netCosts = totalCostBase + interestCosts - rentIncome;
+  // FIX: netCosts = totalCostBase + financing (no rental deduction — rental is on revenue side)
+  const netCosts = totalCostBase + interestCosts;
   const totalInvestmentGross = totalCostBase + totalFinancingCosts;
 
   // ── 5. Exit / Revenue ──
