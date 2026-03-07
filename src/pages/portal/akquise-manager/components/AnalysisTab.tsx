@@ -326,35 +326,7 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
         />
       </div>
 
-      {/* ── Standortdaten (legacy, wird durch SoT Valuation ersetzt) ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <MapPin className="h-4 w-4" />
-            Standortdaten
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {geo ? (
-            <div className="space-y-4">
-              <div className={DESIGN.KPI_GRID.FULL}>
-                <KPIBox label="Mietniveau" value={`${geo.avgRentPerSqm || 'N/A'} €/m²`} icon={Home} color="blue" />
-                <KPIBox label="Kaufpreisniveau" value={`${geo.avgPricePerSqm || 'N/A'} €/m²`} icon={Euro} color="green" />
-                <KPIBox label="Leerstandsquote" value={`${geo.vacancyRate || 'N/A'}%`} icon={AlertCircle} color="orange" />
-                <KPIBox label="Bevölkerungstrend" value={geo.populationTrend || 'N/A'} icon={TrendingUp} color="purple" />
-              </div>
-              {geo.summary && (
-                <div className="p-4 bg-muted/50 rounded-lg"><p className="text-sm">{geo.summary}</p></div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <MapPin className="h-10 w-10 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">Keine Standortdaten — SoT Bewertung starten.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Standortdaten via SoT Valuation Engine — legacy geomap_data entfernt */}
 
       {/* ── KI-Analyse Results (full-width) ── */}
       <Card>
