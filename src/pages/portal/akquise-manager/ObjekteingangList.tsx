@@ -9,9 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, FolderOpen, ChevronDown
+  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, FolderOpen
 } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { useAuth } from '@/contexts/AuthContext';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -418,25 +417,14 @@ export function ObjekteingangList() {
       )}
 
       {/* ─── DATENRAUM ─── */}
-      <Collapsible>
-        <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            className={cn(
-              'w-full justify-between py-3 px-4 h-auto',
-              CARD.BASE,
-              'hover:bg-muted/30'
-            )}
-          >
-            <div className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4 text-primary" />
-              <span className={TYPOGRAPHY.CARD_TITLE}>Datenraum</span>
-              <span className={TYPOGRAPHY.HINT}>— Akquise-Dokumente und Exposés</span>
-            </div>
-            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform data-[state=open]:rotate-180" />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
+      <Card className={CARD.BASE}>
+        <div className={CARD.SECTION_HEADER}>
+          <div className="flex items-center gap-2">
+            <FolderOpen className="h-4 w-4 text-primary" />
+            <span className={TYPOGRAPHY.CARD_TITLE}>Akquise-Datenraum</span>
+          </div>
+        </div>
+        <CardContent className="p-0">
           {activeTenantId && (
             <EntityStorageTree
               tenantId={activeTenantId}
@@ -445,8 +433,8 @@ export function ObjekteingangList() {
               moduleCode="MOD_12"
             />
           )}
-        </CollapsibleContent>
-      </Collapsible>
+        </CardContent>
+      </Card>
     </PageShell>
   );
 }

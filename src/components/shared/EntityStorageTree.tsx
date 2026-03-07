@@ -18,7 +18,7 @@
  * - Never falls back silently to root — explicit resolution via resolveTargetFolderId()
  */
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ColumnView } from '@/components/dms/views/ColumnView';
@@ -114,6 +114,24 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
     },
     enabled: !!tenantId && !!entityId,
   });
+
+  // ── Auto-Init: Create root node if none exists ─────────────────────
+  const [autoInitDone, setAutoInitDone] = useState(false);
+  useEffect(() => {
+    if (rootFolder?.id || autoInitDone || createDMS.isPending) return;
+    // rootFolder query has resolved (not loading) but found nothing → create root
+    setAutoInitDone(true);
+    createDMS.mutateAsync({
+      entityType,
+      entityId,
+      entityName: `${entityType}-${entityId.slice(0, 8)}`,
+      tenantId,
+    }).then(() => {
+      queryClient.invalidateQueries({ queryKey: ['entity-storage-root', tenantId, entityType, entityId] });
+    }).catch((err) => {
+      console.error('Auto-init root failed:', err);
+    });
+  }, [rootFolder, autoInitDone, createDMS, entityType, entityId, tenantId, queryClient]);
 
   // All folder nodes
   const { data: allNodes = [] } = useQuery({
