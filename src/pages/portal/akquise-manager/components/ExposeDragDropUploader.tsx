@@ -163,9 +163,37 @@ export function ExposeDragDropUploader() {
         .maybeSingle();
 
       if (rootNode?.id) {
+        // Find or create the 01_Expose subfolder
+        let exposesFolderId = rootNode.id;
+        const { data: exposesFolder } = await supabase
+          .from('storage_nodes')
+          .select('id')
+          .eq('tenant_id', activeTenantId)
+          .eq('parent_id', rootNode.id)
+          .eq('name', '01_Expose')
+          .eq('node_type', 'folder')
+          .maybeSingle();
+
+        if (exposesFolder?.id) {
+          exposesFolderId = exposesFolder.id;
+        } else {
+          const { data: newFolder } = await supabase
+            .from('storage_nodes')
+            .insert({
+              tenant_id: activeTenantId,
+              parent_id: rootNode.id,
+              name: '01_Expose',
+              node_type: 'folder',
+              module_code: 'MOD_12',
+            })
+            .select('id')
+            .single();
+          if (newFolder?.id) exposesFolderId = newFolder.id;
+        }
+
         await supabase.from('storage_nodes').insert({
           tenant_id: activeTenantId,
-          parent_id: rootNode.id,
+          parent_id: exposesFolderId,
           name: file.name,
           node_type: 'file',
           module_code: 'MOD_12',

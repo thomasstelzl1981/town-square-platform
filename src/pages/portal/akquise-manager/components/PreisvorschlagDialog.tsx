@@ -20,6 +20,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserMailAccount } from '@/hooks/useUserMailAccount';
+import { useAcqOfferDataRoom } from '@/hooks/useAcqOfferDataRoom';
 import { toast } from 'sonner';
 
 interface PreisvorschlagDialogProps {
@@ -59,6 +60,7 @@ export function PreisvorschlagDialog({
   const queryClient = useQueryClient();
   const { activeTenantId } = useAuth();
   const mailAccount = useUserMailAccount();
+  const { ensureOfferDataRoom } = useAcqOfferDataRoom();
   const [proposedPrice, setProposedPrice] = React.useState<string>(
     priceCounter ? priceCounter.toFixed(0) : currentPrice ? (currentPrice * 0.9).toFixed(0) : ''
   );
@@ -132,6 +134,9 @@ export function PreisvorschlagDialog({
         .eq('id', offerId);
 
       if (updateError) throw updateError;
+
+      // 2. Lazy-create data room folder tree for this offer
+      await ensureOfferDataRoom(offerId, offerTitle);
 
       // 2. Log activity
       const { error: activityError } = await supabase
