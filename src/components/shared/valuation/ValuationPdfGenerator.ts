@@ -150,6 +150,17 @@ function drawNarrativeSection(doc: any, y: number, title: string, text: string):
 // ═══════════════════════════════════════════════════════════════════════
 
 export async function generateValuationPdfBlob(data: ValuationPdfData): Promise<{ blob: Blob; pageCount: number }> {
+  // ─── Defensive: ensure valueBand is never null ───
+  const safeValueBand: ValuationPdfData['valueBand'] = data.valueBand ?? {
+    p50: 0, p25: 0, p75: 0,
+    confidence: 'low' as any,
+    confidenceScore: 0,
+    weightingTable: [],
+    reasoning: '',
+  };
+  // Patch data with safe valueBand
+  data = { ...data, valueBand: safeValueBand };
+
   const [jsPDF, mapImages, photoImages] = await Promise.all([
     getJsPDF(),
     prefetchMapImages(data.location),
@@ -159,19 +170,19 @@ export async function generateValuationPdfBlob(data: ValuationPdfData): Promise<
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   let y = 0;
 
-  const caseShort = data.caseId.slice(0, 8);
-  const dateStr = new Date(data.generatedAt).toLocaleDateString('de-DE');
-  const addressLine = [data.snapshot.address, data.snapshot.postalCode, data.snapshot.city].filter(Boolean).join(', ');
+  const caseShort = (data.caseId || 'unknown').slice(0, 8);
+  const dateStr = new Date(data.generatedAt || new Date().toISOString()).toLocaleDateString('de-DE');
+  const addressLine = [data.snapshot?.address, data.snapshot?.postalCode, data.snapshot?.city].filter(Boolean).join(', ');
   const objectSummary = [
-    data.snapshot.objectType?.toUpperCase(),
-    data.snapshot.yearBuilt ? `Baujahr ${data.snapshot.yearBuilt}` : null,
-    data.snapshot.livingAreaSqm ? `${NUM(data.snapshot.livingAreaSqm)} m²` : null,
-    data.snapshot.units ? `${data.snapshot.units} WE` : null,
+    data.snapshot?.objectType?.toUpperCase(),
+    data.snapshot?.yearBuilt ? `Baujahr ${data.snapshot.yearBuilt}` : null,
+    data.snapshot?.livingAreaSqm ? `${NUM(data.snapshot.livingAreaSqm)} m²` : null,
+    data.snapshot?.units ? `${data.snapshot.units} WE` : null,
   ].filter(Boolean).join(' · ');
 
-  const ertragMethod = data.methods.find(m => m.method === 'ertrag');
-  const sachwertMethod = data.methods.find(m => m.method === 'sachwert_proxy');
-  const compMethod = data.methods.find(m => m.method === 'comp_proxy');
+  const ertragMethod = data.methods?.find(m => m.method === 'ertrag');
+  const sachwertMethod = data.methods?.find(m => m.method === 'sachwert_proxy');
+  const compMethod = data.methods?.find(m => m.method === 'comp_proxy');
   const ertragParams = ertragMethod?.params ?? {};
   const sachwertParams = sachwertMethod?.params ?? {};
   const ertragValue = ertragMethod?.value ?? 0;
@@ -197,23 +208,28 @@ export async function generateValuationPdfBlob(data: ValuationPdfData): Promise<
   // PAGE 1: COVER
   // ═══════════════════════════════════════
 
-  y = drawPremiumCover(doc, {
-    documentType: 'KURZGUTACHTEN · VERKEHRSWERTERMITTLUNG',
-    title: 'Immobilienbewertung',
-    addressLine: addressLine || 'Immobilienbewertung',
-    objectSummary,
-    primaryKpi: { label: 'MARKTWERT (§194 BauGB)', value: EUR(data.valueBand.p50) },
-    secondaryKpi: data.beleihungswert ? {
-      label: 'BELEIHUNGSWERT (BelWertV)',
-      value: EUR(data.beleihungswert.beleihungswert),
-    } : undefined,
-    metaLines: [
-      `Stichtag: ${dateStr}  ·  Case ${caseShort}`,
-      data.sourceMode === 'SSOT_FINAL' ? 'Datenbasis: SSOT (Final) · Daten verifiziert' : 'Datenbasis: Exposé Draft',
-      `${BRAND.COMPANY_NAME} · ${BRAND.CONFIDENTIAL}`,
-    ],
-    heroImageBase64: mapImages.streetView,
-  });
+  try {
+    y = drawPremiumCover(doc, {
+      documentType: 'KURZGUTACHTEN · VERKEHRSWERTERMITTLUNG',
+      title: 'Immobilienbewertung',
+      addressLine: addressLine || 'Immobilienbewertung',
+      objectSummary,
+      primaryKpi: { label: 'MARKTWERT (§194 BauGB)', value: data.valueBand.p50 > 0 ? EUR(data.valueBand.p50) : '– €' },
+      secondaryKpi: data.beleihungswert ? {
+        label: 'BELEIHUNGSWERT (BelWertV)',
+        value: EUR(data.beleihungswert.beleihungswert),
+      } : undefined,
+      metaLines: [
+        `Stichtag: ${dateStr}  ·  Case ${caseShort}`,
+        data.sourceMode === 'SSOT_FINAL' ? 'Datenbasis: SSOT (Final) · Daten verifiziert' : 'Datenbasis: Exposé Draft',
+        `${BRAND.COMPANY_NAME} · ${BRAND.CONFIDENTIAL}`,
+      ],
+      heroImageBase64: mapImages.streetView,
+    });
+  } catch (coverErr) {
+    console.error('[PDF] Cover section error:', coverErr);
+    y = PAGE.MARGIN_TOP + 40;
+  }
 
   // Compact property facts on cover page
   const coverFacts: PropertyRow[] = [
