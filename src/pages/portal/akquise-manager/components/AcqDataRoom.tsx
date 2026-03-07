@@ -204,7 +204,7 @@ export function AcqDataRoom() {
 
   const handleDownload = async (storagePath: string, fileName: string) => {
     const { data, error } = await supabase.storage
-      .from('acq-documents')
+      .from('tenant-documents')
       .download(storagePath);
     
     if (error || !data) {

@@ -374,10 +374,10 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
     root_name: 'Pet Manager',
     root_template_id: 'MOD_22_ROOT',
     display_order: 22,
-    entity_sub_folders: [],
+    entity_sub_folders: ['profile', 'gallery'],
     required_docs: [],
-    entity_fk_column: null,
-    entity_table: null,
+    entity_fk_column: 'pet_id',
+    entity_table: 'pets',
   },
 };
 

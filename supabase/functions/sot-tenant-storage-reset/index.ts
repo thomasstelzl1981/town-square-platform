@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     }
 
     // Delete storage blobs
-    const buckets = ["tenant-documents", "project-documents", "social-assets"];
+    const buckets = ["tenant-documents", "project-documents", "social-assets", "pet-photos"];
     const results: Record<string, number> = {};
 
     for (const bucket of buckets) {
@@ -70,7 +70,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // acq-documents: lookup mandate IDs
+    // acq-documents: legacy bucket — files now in tenant-documents under MOD_12 path
+    // Keep cleanup for any legacy files that may still exist
     try {
       const { data: mandates } = await adminClient.from("acq_mandates").select("id").eq("tenant_id", tenant_id);
       if (mandates && mandates.length > 0) {
@@ -83,10 +84,10 @@ Deno.serve(async (req) => {
             acqCount += paths.length;
           }
         }
-        results["acq-documents"] = acqCount;
+        results["acq-documents-legacy"] = acqCount;
       }
     } catch {
-      results["acq-documents_error"] = -1;
+      results["acq-documents-legacy_error"] = -1;
     }
 
     // DSGVO Ledger: storage reset completed

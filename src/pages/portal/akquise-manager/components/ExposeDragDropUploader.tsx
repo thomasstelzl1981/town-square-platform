@@ -1,10 +1,10 @@
 /**
- * Exposé Drag-and-Drop Uploader (7.1)
+ * Exposé Drag-and-Drop Uploader (SSOT v2)
  * 
  * Upload exposés that get saved to Objekteingang (acq_offers)
  * Triggers AI extraction via sot-acq-offer-extract
  * 
- * Storage path: {tenant_id}/{mandate_id|unassigned}/{offer_id}/expose/{fileName}
+ * Storage: UPLOAD_BUCKET ('tenant-documents') with buildStoragePath MOD_12
  */
 
 import * as React from 'react';
@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { sanitizeFileName, UPLOAD_BUCKET } from '@/config/storageManifest';
 
 interface ExtractionResult {
   title?: string;
@@ -37,10 +38,6 @@ interface ExtractionResult {
 }
 
 type UploadState = 'idle' | 'uploading' | 'extracting' | 'success' | 'error';
-
-function sanitizeFileName(name: string): string {
-  return `${Date.now()}_${name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-}
 
 export function ExposeDragDropUploader() {
   const navigate = useNavigate();
@@ -101,7 +98,7 @@ export function ExposeDragDropUploader() {
       setExtractedData(null);
       setCreatedOfferId(null);
 
-      // 1. Create acq_offer FIRST to get offer_id for the storage path
+      // 1. Create acq_offer FIRST to get offer_id
       const { data: offer, error: offerError } = await supabase
         .from('acq_offers')
         .insert({
@@ -117,12 +114,12 @@ export function ExposeDragDropUploader() {
       if (offerError) throw offerError;
       setProgress(30);
 
-      // 2. Build unified storage path: {tenant_id}/unassigned/{offer_id}/expose/{fileName}
+      // 2. SSOT storage path: {tenant_id}/MOD_12/{offer_id}/{fileName}
       const safeName = sanitizeFileName(file.name);
-      const filePath = `${activeTenantId}/unassigned/${offer.id}/expose/${safeName}`;
+      const filePath = `${activeTenantId}/MOD_12/${offer.id}/${safeName}`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('acq-documents')
+        .from(UPLOAD_BUCKET)
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
@@ -142,9 +139,44 @@ export function ExposeDragDropUploader() {
         });
 
       if (docError) throw docError;
+      setProgress(55);
+
+      // 4. Register in DMS (documents + storage_nodes)
+      const publicId = crypto.randomUUID().substring(0, 8).toUpperCase();
+      await (supabase as any).from('documents').insert({
+        tenant_id: activeTenantId,
+        name: file.name,
+        file_path: uploadData.path,
+        mime_type: file.type,
+        size_bytes: file.size,
+        public_id: publicId,
+        source: 'acq_upload',
+        extraction_status: 'pending',
+        doc_type: 'expose',
+      });
+
+      const { data: rootNode } = await supabase
+        .from('storage_nodes')
+        .select('id')
+        .eq('tenant_id', activeTenantId)
+        .eq('template_id', 'MOD_12_ROOT')
+        .maybeSingle();
+
+      if (rootNode?.id) {
+        await supabase.from('storage_nodes').insert({
+          tenant_id: activeTenantId,
+          parent_id: rootNode.id,
+          name: file.name,
+          node_type: 'file',
+          module_code: 'MOD_12',
+          storage_path: uploadData.path,
+          mime_type: file.type,
+        });
+      }
+
       setProgress(60);
 
-      // 4. Trigger AI extraction
+      // 5. Trigger AI extraction
       setState('extracting');
       setProgress(70);
 
@@ -162,7 +194,7 @@ export function ExposeDragDropUploader() {
         console.warn('Extraction warning:', extractError);
       }
 
-      // 5. Fetch updated offer data
+      // 6. Fetch updated offer data
       const { data: updatedOffer } = await supabase
         .from('acq_offers')
         .select('*')
