@@ -11,9 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, FolderOpen, Calendar
+  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, Calendar
 } from 'lucide-react';
-import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
+import { AcqDataRoom } from '@/pages/portal/akquise-manager/components/AcqDataRoom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
@@ -481,24 +481,7 @@ export function ObjekteingangList() {
       </Card>
 
       {/* ─── DATENRAUM ─── */}
-      <Card className={CARD.BASE}>
-        <div className={CARD.SECTION_HEADER}>
-          <div className="flex items-center gap-2">
-            <FolderOpen className="h-4 w-4 text-primary" />
-            <span className={TYPOGRAPHY.CARD_TITLE}>Akquise-Datenraum</span>
-          </div>
-        </div>
-        <CardContent className="p-0">
-          {activeTenantId && (
-            <EntityStorageTree
-              tenantId={activeTenantId}
-              entityType="acq_module"
-              entityId={activeTenantId}
-              moduleCode="MOD_12"
-            />
-          )}
-        </CardContent>
-      </Card>
+      <AcqDataRoom />
     </PageShell>
   );
 }
