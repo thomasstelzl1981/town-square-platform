@@ -460,7 +460,8 @@ function calcAlternativenMatrix(
       const loan = totalCostBase * (1 - equityPercent / 100);
       const interest = loan * (interestRate / 100) * holdingYears;
       const rental = yearlyRent * holdingYears;
-      const totalInv = totalCostBase + interest + disagio - rental;
+      // FIX: totalInv = pure costs (no rental deduction). Rental is on revenue side only.
+      const totalInv = totalCostBase + interest + disagio;
 
       const commAmount = adjSalePrice * (salesCommission / 100);
       const netSale = adjSalePrice - commAmount;
