@@ -274,7 +274,7 @@ function DeliveryOfferCard({ offer, onPresent }: { offer: AcqOffer; onPresent: (
   const hasAI = offer.analysis_summary;
   
   // Calculate a "readiness" score
-  const readinessScore = [hasCalc, hasGeo, hasAI].filter(Boolean).length;
+  const readinessScore = [hasCalc, hasValuation, hasAI].filter(Boolean).length;
   
   return (
     <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50">
