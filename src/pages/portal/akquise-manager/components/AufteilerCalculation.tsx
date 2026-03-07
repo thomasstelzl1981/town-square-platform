@@ -134,7 +134,7 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false, 
         <ComputedField label="Zinsen Grunderwerb" value={`+${fmtCur(fb.interestAcquisition)}`} className="text-destructive" hint={`${params.holdingPeriodMonths} Mo.`} />
         <ComputedField label="Zinsen Baukosten" value={`+${fmtCur(fb.interestConstruction)}`} className="text-destructive" hint="Ø 50% Abruf" />
         <EditField label="Disagio / Bankgebühren" value={params.disagio ?? 0} onChange={v => set('disagio', v)} suffix="€" />
-        <ComputedField label="− Mieteinnahmen" value={`−${fmtCur(fb.rentalIncomeOffset)}`} className="text-emerald-500" hint={`${params.holdingPeriodMonths} Mo.`} />
+        
         <SubtotalRow label="Summe Finanzierung" value={fb.totalFinancingCosts} />
       </NumberedSectionCard>
 
