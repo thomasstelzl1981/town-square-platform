@@ -79,6 +79,7 @@ export function EditableBuildingBlock({
   unitNumber,
   heatingType,
   energySource,
+  energyClass,
   energyCertType,
   energyCertValue,
   energyCertValidUntil,
