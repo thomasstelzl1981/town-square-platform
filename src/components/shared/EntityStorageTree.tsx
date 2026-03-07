@@ -26,6 +26,8 @@ import { SelectionActionBar } from '@/components/dms/SelectionActionBar';
 import { FileDropZone } from '@/components/dms/FileDropZone';
 import { NewFolderDialog } from '@/components/dms/NewFolderDialog';
 import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
+import { MoveToFolderDialog } from '@/components/dms/MoveToFolderDialog';
+import { useStorageMove } from '@/hooks/useStorageMove';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 import { useStorageKeyboard } from '@/hooks/useStorageKeyboard';
 import { DESIGN } from '@/config/designManifest';
@@ -35,6 +37,7 @@ import { toast } from 'sonner';
 import type { RecordCardEntityType } from '@/config/recordCardManifest';
 import type { FileManagerItem } from '@/components/dms/views/ListView';
 import { downloadFromSignedUrl } from '@/lib/storage-url';
+import { isPreviewableMime } from '@/components/dms/storageHelpers';
 
 interface EntityStorageTreeProps {
   tenantId: string;
@@ -49,6 +52,7 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [columnPath, setColumnPath] = useState<string[]>([]);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -176,6 +180,8 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
     queryClient.invalidateQueries({ queryKey: ['entity-storage-doc-links'] });
     queryClient.invalidateQueries({ queryKey: ['entity-storage-docs'] });
   }, [queryClient, tenantId, entityType, entityId]);
+
+  const { moveFile, moveFolder, isMoving } = useStorageMove(tenantId, invalidateAll);
 
   const resolveTargetFolderId = useCallback((): string | null => {
     if (currentFolderId) {
@@ -418,11 +424,20 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   }, [newFolderParentId, resolveTargetFolderId, allNodes, rootFolder?.id, tenantId, entityType, entityId, moduleCode, invalidateAll]);
 
   // ── Keyboard shortcuts ───────────────────────────────────────────────
+  // ARCH-DMS-02: MIME-dependent open on keyboard
   useStorageKeyboard({
     selectedItem,
     onDelete: handleDelete,
     onOpen: (item) => {
-      if (item.type === 'file' && item.documentId) handleDownload(item.documentId);
+      if (item.type === 'file' && item.documentId) {
+        if (isPreviewableMime(item.mimeType)) {
+          // Preview — for EntityStorageTree, double-click preview is handled via ColumnView
+          // Keyboard Enter triggers download as fallback
+          handleDownload(item.documentId);
+        } else {
+          handleDownload(item.documentId);
+        }
+      }
     },
     onClearSelection: () => setSelectedItem(null),
     containerRef,
@@ -474,9 +489,11 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
           onDownload={selectedItem.type === 'file' && selectedItem.documentId ? () => handleDownload(selectedItem.documentId!) : undefined}
           onDelete={() => handleDelete(selectedItem)}
           onNewSubfolder={selectedItem.type === 'folder' && selectedItem.nodeId ? () => handleNewSubfolder(selectedItem.nodeId!) : undefined}
+          onMove={() => setShowMoveDialog(true)}
           onClear={() => setSelectedItem(null)}
           isDownloading={isDownloading}
           isDeleting={isDeleting}
+          isMoving={isMoving}
         />
       )}
 
@@ -506,6 +523,35 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
         onOpenChange={setShowNewFolderDialog}
         onCreateFolder={handleCreateFolder}
         isCreating={false}
+      />
+
+      <MoveToFolderDialog
+        open={showMoveDialog}
+        onOpenChange={setShowMoveDialog}
+        folders={allNodes.map(n => ({
+          id: n.id,
+          parent_id: n.parent_id,
+          name: n.name,
+          template_id: n.template_id,
+          module_code: n.module_code,
+        }))}
+        excludeIds={selectedItem?.type === 'folder' && selectedItem.nodeId ? new Set([selectedItem.nodeId]) : undefined}
+        currentFolderId={currentFolderId}
+        itemName={selectedItem?.name}
+        isMoving={isMoving}
+        onConfirm={async (targetFolderId) => {
+          if (!selectedItem) return;
+          let success = false;
+          if (selectedItem.type === 'file' && selectedItem.documentId) {
+            success = await moveFile(selectedItem.documentId, targetFolderId);
+          } else if (selectedItem.type === 'folder' && selectedItem.nodeId) {
+            success = await moveFolder(selectedItem.nodeId, targetFolderId);
+          }
+          if (success) {
+            setShowMoveDialog(false);
+            setSelectedItem(null);
+          }
+        }}
       />
     </div>
   );

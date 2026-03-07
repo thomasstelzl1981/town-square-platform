@@ -14,6 +14,7 @@ import { PathNavigatorView } from './views/PathNavigatorView';
 import { BulkActionBar } from './BulkActionBar';
 import { SelectionActionBar } from './SelectionActionBar';
 import { NewFolderDialog } from './NewFolderDialog';
+import { MoveToFolderDialog } from './MoveToFolderDialog';
 import { FileDropZone } from './FileDropZone';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getModuleDisplayName } from '@/config/storageManifest';
+import { isPreviewableMime } from '@/components/dms/storageHelpers';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useStorageKeyboard } from '@/hooks/useStorageKeyboard';
 
@@ -71,10 +73,13 @@ interface StorageFileManagerProps {
   onCreateFolder: (name: string, parentId: string | null) => void;
   onBulkDownload: (ids: Set<string>) => void;
   onBulkDelete: (ids: Set<string>) => void;
+  onMoveFile?: (documentId: string, targetFolderId: string) => Promise<boolean>;
+  onMoveFolder?: (folderId: string, targetFolderId: string) => Promise<boolean>;
   isUploading?: boolean;
   isDownloading?: boolean;
   isDeleting?: boolean;
   isCreatingFolder?: boolean;
+  isMoving?: boolean;
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string | null) => void;
 }
@@ -93,10 +98,13 @@ export function StorageFileManager({
   onCreateFolder,
   onBulkDownload,
   onBulkDelete,
+  onMoveFile,
+  onMoveFolder,
   isUploading,
   isDownloading,
   isDeleting,
   isCreatingFolder,
+  isMoving,
   selectedNodeId,
   onSelectNode,
 }: StorageFileManagerProps) {
@@ -108,6 +116,7 @@ export function StorageFileManager({
   const [previewItem, setPreviewItem] = useState<FileManagerItem | null>(null);
   const [selectedItem, setSelectedItem] = useState<FileManagerItem | null>(null);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
   const [columnPath, setColumnPath] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -116,12 +125,18 @@ export function StorageFileManager({
   // Force list view on mobile
   const effectiveViewMode = isMobile ? 'list' : viewMode;
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts — ARCH-DMS-02: MIME-dependent open
   useStorageKeyboard({
     selectedItem,
     onDelete: (item) => handleDelete(item),
     onOpen: (item) => {
-      if (item.type === 'file' && item.documentId) onDownload(item.documentId);
+      if (item.type === 'file' && item.documentId) {
+        if (isPreviewableMime(item.mimeType)) {
+          setPreviewItem(item);
+        } else {
+          onDownload(item.documentId);
+        }
+      }
     },
     onClearSelection: () => setSelectedItem(null),
     containerRef,
@@ -336,14 +351,22 @@ export function StorageFileManager({
           <SelectionActionBar
             item={selectedItem}
             onOpen={selectedItem.type === 'file' ? () => {
-              if (selectedItem.documentId) onDownload(selectedItem.documentId);
+              if (selectedItem.documentId) {
+                if (isPreviewableMime(selectedItem.mimeType)) {
+                  setPreviewItem(selectedItem);
+                } else {
+                  onDownload(selectedItem.documentId);
+                }
+              }
             } : undefined}
             onDownload={selectedItem.type === 'file' && selectedItem.documentId ? () => onDownload(selectedItem.documentId!) : undefined}
             onDelete={() => handleDelete(selectedItem)}
             onNewSubfolder={selectedItem.type === 'folder' && selectedItem.nodeId ? () => handleNewSubfolder(selectedItem.nodeId!) : undefined}
+            onMove={(onMoveFile || onMoveFolder) ? () => setShowMoveDialog(true) : undefined}
             onClear={() => setSelectedItem(null)}
             isDownloading={isDownloading}
             isDeleting={isDeleting}
+            isMoving={isMoving}
           />
         )}
 
@@ -473,6 +496,36 @@ export function StorageFileManager({
             setShowNewFolderDialog(false);
           }}
           isCreating={isCreatingFolder}
+        />
+
+        {/* Move to folder dialog */}
+        <MoveToFolderDialog
+          open={showMoveDialog}
+          onOpenChange={setShowMoveDialog}
+          folders={nodes.filter(n => n.node_type === 'folder').map(n => ({
+            id: n.id,
+            parent_id: n.parent_id,
+            name: n.module_code && n.template_id?.endsWith('_ROOT') ? getModuleDisplayName(n.module_code) : n.name,
+            template_id: n.template_id,
+            module_code: n.module_code,
+          }))}
+          excludeIds={selectedItem?.type === 'folder' && selectedItem.nodeId ? new Set([selectedItem.nodeId]) : undefined}
+          currentFolderId={selectedNodeId}
+          itemName={selectedItem?.name}
+          isMoving={isMoving}
+          onConfirm={async (targetFolderId) => {
+            if (!selectedItem) return;
+            let success = false;
+            if (selectedItem.type === 'file' && selectedItem.documentId && onMoveFile) {
+              success = await onMoveFile(selectedItem.documentId, targetFolderId);
+            } else if (selectedItem.type === 'folder' && selectedItem.nodeId && onMoveFolder) {
+              success = await onMoveFolder(selectedItem.nodeId, targetFolderId);
+            }
+            if (success) {
+              setShowMoveDialog(false);
+              setSelectedItem(null);
+            }
+          }}
         />
       </div>
   );

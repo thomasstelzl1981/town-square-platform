@@ -24886,6 +24886,22 @@ export type Database = {
         }
         Returns: string
       }
+      move_storage_file: {
+        Args: {
+          p_document_id: string
+          p_new_folder_id: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
+      move_storage_folder: {
+        Args: {
+          p_folder_id: string
+          p_new_parent_id: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       my_scope_org_ids: { Args: { active_org_id: string }; Returns: string[] }
       purge_expired_ledger_entries: {
         Args: { p_retention_days?: number }

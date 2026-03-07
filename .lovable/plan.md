@@ -279,6 +279,36 @@ Phase 2 kann unabhängig von Phase 3 deployed werden. Phase 3 baut auf den Filte
 
 ---
 
+## DMS Architekturentscheidungen (2026-03-07)
+
+### ARCH-DMS-01: Datei-Move-SSOT — BEIDES SYNCHRON
+
+**Regel:** Bei Verschiebung einer Datei in einen anderen Ordner werden BEIDE Felder in einer Transaktion aktualisiert:
+1. `storage_nodes.parent_id` → neuer Ordner (für File-Nodes mit `node_type='file'`)
+2. `document_links.node_id` → neuer Ordner (zeigt auf den FOLDER-Node)
+
+**Begründung:** Maximale Konsistenz. Beide Tabellen bilden die Ordnerzugehörigkeit ab — `storage_nodes` für die Baumstruktur, `document_links` für die Dokument-Verkettung. Asynchrone Updates würden zu Inkonsistenzen führen.
+
+**RPC-Vertrag:**
+- `move_storage_file(p_document_id, p_new_folder_id, p_tenant_id)` → atomare Transaktion
+- `move_storage_folder(p_folder_id, p_new_parent_id, p_tenant_id)` → mit Zirkularitätsprüfung
+
+### ARCH-DMS-02: Open-SSOT — MIME-ABHÄNGIG
+
+**Regel:** Doppelklick auf eine Datei löst systemweit MIME-abhängig aus:
+- **Preview:** `image/*`, `application/pdf` → Inline-Vorschau (Modal/Lightbox)
+- **Download:** Alle anderen MIME-Types → Direkter Download
+
+**Hilfsfunktion:** `isPreviewableMime(mimeType: string): boolean` in `src/components/dms/storageHelpers.ts`
+
+**Betroffene Komponenten:**
+- `ColumnView.tsx` → `handleDoubleClickFile` prüft MIME
+- `ListView.tsx` → `handleRowDoubleClick` prüft MIME
+- `StorageFileManager.tsx` → `onOpen` in SelectionActionBar folgt gleicher Logik
+- `EntityStorageTree.tsx` → Keyboard handler (`Enter`) folgt gleicher Logik
+
+---
+
 ## Gutachten-Archiv & Premium PDF — Phasenplan (2026-03-07)
 
 ### Phase 1: Gutachten-Versionshistorie

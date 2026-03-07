@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import { getModuleDisplayName } from '@/config/storageManifest';
-import { getFileIcon } from '@/components/dms/storageHelpers';
+import { getFileIcon, isPreviewableMime } from '@/components/dms/storageHelpers';
 import { FileRowMenu } from '@/components/dms/FileRowMenu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { FileManagerItem } from './ListView';
@@ -207,11 +207,21 @@ export function ColumnView({ allNodes, documents, documentLinks, columnPath, onN
     };
   }, [documents]);
 
+  /**
+   * ARCH-DMS-02: MIME-dependent primary action on double-click
+   * Preview for image/* and application/pdf, download for everything else.
+   */
   const handleDoubleClickFile = useCallback((item: ColumnItem) => {
-    if (item.documentId && onDownload) {
+    if (!item.documentId) return;
+    const mime = item.mimeType ?? documents.find(d => d.id === item.id)?.mime_type;
+    if (isPreviewableMime(mime)) {
+      // Trigger preview via onSelectFile (which sets previewItem in parent)
+      const fmi = buildFileManagerItem(item);
+      onSelectFile(fmi);
+    } else if (onDownload) {
       onDownload(item.documentId);
     }
-  }, [onDownload]);
+  }, [onDownload, onSelectFile, documents, buildFileManagerItem]);
 
   const handleSelect = useCallback((item: ColumnItem, depth: number) => {
     if (item.type === 'folder' && item.nodeId) {

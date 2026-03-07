@@ -4,7 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FileRowMenu } from '@/components/dms/FileRowMenu';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { getFileIcon, formatFileSize, formatDate, formatType } from '@/components/dms/storageHelpers';
+import { getFileIcon, formatFileSize, formatDate, formatType, isPreviewableMime } from '@/components/dms/storageHelpers';
 import type { SortField, SortDir } from '@/components/dms/StorageToolbar';
 
 export interface FileManagerItem {
@@ -98,11 +98,18 @@ export function ListView({
     }
   }, [onNavigateFolder, onSelectedItemChange]);
 
+  /**
+   * ARCH-DMS-02: MIME-dependent primary action on double-click
+   * Preview for image/* and application/pdf, download for everything else.
+   */
   const handleRowDoubleClick = useCallback((item: FileManagerItem) => {
-    if (item.type === 'file') {
+    if (item.type !== 'file') return;
+    if (isPreviewableMime(item.mimeType)) {
       onPreview(item);
+    } else if (item.documentId) {
+      onDownload(item.documentId);
     }
-  }, [onPreview]);
+  }, [onPreview, onDownload]);
 
   if (isMobile) {
     return (
