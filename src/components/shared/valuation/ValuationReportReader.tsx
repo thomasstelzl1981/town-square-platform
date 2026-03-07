@@ -416,41 +416,8 @@ export function ValuationReportReader({
         </CardContent>
       </Card>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          SEKTION 1c — OBJEKTFOTOS (Upload Grid)
-          ═══════════════════════════════════════════════════════════════ */}
-      {propertyId && tenantId && (
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <SectionHeader icon={Camera} title="Objektfotos" subtitle="Fotos vom Objekt für das Gutachten (max. 8 Bilder)" />
-            <ValuationPhotoGrid
-              propertyId={propertyId}
-              tenantId={tenantId}
-              photos={photos || []}
-              onPhotosChange={onPhotosChange || (() => {})}
-              maxPhotos={8}
-            />
-          </CardContent>
-        </Card>
-      )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          SEKTION 1d — GRUNDRISSE, LAGEPLÄNE & UNTERLAGEN
-          ═══════════════════════════════════════════════════════════════ */}
-      {propertyId && tenantId && (
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <SectionHeader icon={FileImage} title="Grundrisse, Lagepläne & Unterlagen" subtitle="Pläne und Dokumente für das Gutachten (Bilder & PDFs)" />
-            <ValuationDocumentGrid
-              propertyId={propertyId}
-              tenantId={tenantId}
-              documents={documents || []}
-              onDocumentsChange={onDocumentsChange || (() => {})}
-              maxDocuments={8}
-            />
-          </CardContent>
-        </Card>
-      )}
+
 
       {/* ═══════════════════════════════════════════════════════════════
           SEKTION 1e — LUFTBILD & SATELLIT
@@ -1044,6 +1011,42 @@ export function ValuationReportReader({
           </div>
         </CardContent>
       </Card>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          OBJEKTFOTOS (Upload Grid)
+          ═══════════════════════════════════════════════════════════════ */}
+      {propertyId && tenantId && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <SectionHeader icon={Camera} title="Objektfotos" subtitle="Fotos vom Objekt für das Gutachten (max. 8 Bilder)" />
+            <ValuationPhotoGrid
+              propertyId={propertyId}
+              tenantId={tenantId}
+              photos={photos || []}
+              onPhotosChange={onPhotosChange || (() => {})}
+              maxPhotos={8}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          GRUNDRISSE, LAGEPLÄNE & UNTERLAGEN (Upload Grid)
+          ═══════════════════════════════════════════════════════════════ */}
+      {propertyId && tenantId && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <SectionHeader icon={FileImage} title="Grundrisse, Lagepläne & Unterlagen" subtitle="Pläne und Dokumente für das Gutachten (Bilder & PDFs)" />
+            <ValuationDocumentGrid
+              propertyId={propertyId}
+              tenantId={tenantId}
+              documents={documents || []}
+              onDocumentsChange={onDocumentsChange || (() => {})}
+              maxDocuments={8}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* ═══════════════════════════════════════════════════════════════
           SEKTION 12 — RECHTLICHE HINWEISE
