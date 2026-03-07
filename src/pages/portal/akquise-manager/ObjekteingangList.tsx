@@ -12,7 +12,8 @@ import {
   Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, FolderOpen, ChevronDown
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { AcqDataRoom } from './components';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
+import { useAuth } from '@/contexts/AuthContext';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
 import { useAcqMandatesForManager } from '@/hooks/useAcqMandate';
@@ -46,6 +47,7 @@ const FILTER_CHIPS = [
 ];
 
 export function ObjekteingangList() {
+  const { activeTenantId } = useAuth();
   const navigate = useNavigate();
   const { data: mandates = [], isLoading: loadingMandates } = useAcqMandatesForManager();
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
@@ -435,7 +437,14 @@ export function ObjekteingangList() {
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
-          <AcqDataRoom />
+          {activeTenantId && (
+            <EntityStorageTree
+              tenantId={activeTenantId}
+              entityType="acq_module"
+              entityId={activeTenantId}
+              moduleCode="MOD_12"
+            />
+          )}
         </CollapsibleContent>
       </Collapsible>
     </PageShell>

@@ -6,6 +6,8 @@
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -88,6 +90,7 @@ function QuickAnalysisBanner({ offer, yearlyRent, priceOverride, originalPrice, 
 }
 
 export function ObjekteingangDetail() {
+  const { activeTenantId } = useAuth();
   const { offerId } = useParams();
   const navigate = useNavigate();
   const { data: offer, isLoading } = useAcqOffer(offerId);
@@ -140,7 +143,17 @@ export function ObjekteingangDetail() {
 
       <div className={DESIGN.FORM_GRID.FULL}>
         <div className="space-y-2"><h2 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>E-Mail / Quelle</h2><SourceEmailViewer sourceInboundId={offer.source_inbound_id} sourceType={offer.source_type} sourceUrl={offer.source_url} /></div>
-        <div className="space-y-2"><h2 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>Dokumente</h2><Card className={DESIGN.CARD.BASE}><CardHeader className="flex flex-row items-center justify-between py-3 px-4"><CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Dateien</CardTitle><Button variant="outline" size="sm"><Upload className="h-4 w-4 mr-2" />Hochladen</Button></CardHeader><CardContent className="px-4 pb-4">{offer.documents?.length > 0 ? <div className={DESIGN.LIST.GAP}>{offer.documents.map((doc: any) => <div key={doc.id} className={DESIGN.LIST.ROW}><div className="flex items-center gap-3"><FileText className="h-5 w-5 text-muted-foreground" /><div><div className={DESIGN.TYPOGRAPHY.BODY + ' font-medium'}>{doc.file_name}</div><div className={DESIGN.TYPOGRAPHY.HINT}>{doc.document_type}</div></div></div><Button variant="outline" size="sm">Öffnen</Button></div>)}</div> : <div className="text-center py-8 text-muted-foreground"><FileText className="h-8 w-8 mx-auto mb-2" /><p className={DESIGN.TYPOGRAPHY.MUTED}>Keine Dokumente vorhanden</p></div>}</CardContent></Card></div>
+        <div className="space-y-2">
+          <h2 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>Datenraum</h2>
+          {activeTenantId && (
+            <EntityStorageTree
+              tenantId={activeTenantId}
+              entityType="acq_offer"
+              entityId={offer.id}
+              moduleCode="MOD_12"
+            />
+          )}
+        </div>
       </div>
 
       {/* SoT Bewertung */}

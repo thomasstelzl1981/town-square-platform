@@ -10,7 +10,7 @@ export { DeliveryTab } from './DeliveryTab';
 // Tools Components
 export { PortalSearchTool } from './PortalSearchTool';
 export { AISearchProfileIntake } from './AISearchProfileIntake';
-export { AcqDataRoom } from './AcqDataRoom';
+// AcqDataRoom removed — replaced by EntityStorageTree (DMS SSOT)
 export { QuickCalcTool } from './QuickCalcTool';
 export { ExposeDragDropUploader } from './ExposeDragDropUploader';
 
