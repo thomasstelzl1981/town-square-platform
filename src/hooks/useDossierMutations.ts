@@ -48,6 +48,7 @@ export function useUpdateProperty() {
       if (data.totalAreaSqm !== undefined) updateData.total_area_sqm = data.totalAreaSqm;
       if (data.heatingType !== undefined) updateData.heating_type = data.heatingType;
       if (data.energySource !== undefined) updateData.energy_source = data.energySource;
+      if ((data as any).energyClass !== undefined) updateData.energy_class = (data as any).energyClass;
       if (data.landRegisterCourt !== undefined) updateData.land_register_court = data.landRegisterCourt;
       if (data.landRegisterSheet !== undefined) updateData.land_register_sheet = data.landRegisterSheet;
       if (data.landRegisterVolume !== undefined) updateData.land_register_volume = data.landRegisterVolume;
