@@ -11,9 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, Calendar
+  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, Calendar, FolderOpen
 } from 'lucide-react';
-import { AcqDataRoom } from '@/pages/portal/akquise-manager/components/AcqDataRoom';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { useAuth } from '@/contexts/AuthContext';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
@@ -480,8 +480,25 @@ export function ObjekteingangList() {
         </CardContent>
       </Card>
 
-      {/* ─── DATENRAUM ─── */}
-      <AcqDataRoom />
+      {/* ─── DATENRAUM (Basis-Tree SSOT) ─── */}
+      {activeTenantId && (
+        <Card className="bg-card/80 backdrop-blur-sm border-border/40 overflow-hidden">
+          <div className="px-4 py-3 border-b border-border/30 flex items-center gap-2">
+            <FolderOpen className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold tracking-wide uppercase text-foreground/90">
+              Akquise-Datenraum
+            </h2>
+          </div>
+          <div className="min-h-[400px]">
+            <EntityStorageTree
+              tenantId={activeTenantId}
+              entityType="acq_module"
+              entityId={activeTenantId}
+              moduleCode="MOD_12"
+            />
+          </div>
+        </Card>
+      )}
     </PageShell>
   );
 }
