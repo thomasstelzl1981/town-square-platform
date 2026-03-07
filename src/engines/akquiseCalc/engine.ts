@@ -36,11 +36,17 @@ export function calcBestandFull(params: BestandFullParams): BestandFullResult {
     purchasePrice, monthlyRent, equityPercent, interestRate, repaymentRate,
     rentIncreaseRate, valueIncreaseRate, ancillaryCostPercent,
     maintenancePercent, managementCostPercent,
+    renovationCosts = 0, constructionAncillaryPercent = 15, areaSqm = 0,
   } = params;
 
   const yearlyRent = monthlyRent * 12;
   const ancillaryCosts = purchasePrice * (ancillaryCostPercent / 100);
-  const totalInvestment = purchasePrice + ancillaryCosts;
+
+  // Construction / renovation costs
+  const constructionAncillaryCosts = renovationCosts * (constructionAncillaryPercent / 100);
+  const totalConstructionCosts = renovationCosts + constructionAncillaryCosts;
+
+  const totalInvestment = purchasePrice + ancillaryCosts + totalConstructionCosts;
   const equity = totalInvestment * (equityPercent / 100);
   const loanAmount = totalInvestment - equity;
 
@@ -49,7 +55,6 @@ export function calcBestandFull(params: BestandFullParams): BestandFullResult {
   const monthlyRate = yearlyAnnuity / 12;
 
   const grossYield = purchasePrice > 0 ? (yearlyRent / purchasePrice) * 100 : 0;
-  // Heuristic: 80% of yearly rent as sustainable annuity at ~5% total rate (interest + repayment)
   const maxFinancing = (yearlyRent * 0.8 / 5) * 100;
 
   // Maintenance & management costs (annual)
@@ -67,7 +72,6 @@ export function calcBestandFull(params: BestandFullParams): BestandFullResult {
   for (let year = 1; year <= 30; year++) {
     const interest = currentDebt * (interestRate / 100);
     const repayment = Math.min(yearlyAnnuity - interest, currentDebt);
-    // Operating costs scale with current rent (management) and value (maintenance)
     const mgmt = currentRent * ((managementCostPercent || 0) / 100);
     const maint = currentValue * ((maintenancePercent || 0) / 100);
     const noi = currentRent - mgmt - maint;
@@ -100,8 +104,19 @@ export function calcBestandFull(params: BestandFullParams): BestandFullResult {
   const wealthGrowth = value40 - equity;
   const roi = equity > 0 ? (wealthGrowth / equity) * 100 : 0;
 
+  // Year 1 monthly cashflow KPIs
+  const y1Noi = yearlyData[0]?.noi ?? 0;
+  const y1Interest = yearlyData[0]?.interest ?? 0;
+  const y1Repayment = yearlyData[0]?.repayment ?? 0;
+  const noiMonthly = y1Noi / 12;
+  const monthlyExpenses = (y1Interest + y1Repayment + yearlyManagement + yearlyMaintenance) / 12;
+  const monthlyCashflow = monthlyRent - monthlyExpenses;
+  const yearlyCashflow = monthlyCashflow * 12;
+  const cashOnCash = equity > 0 ? (yearlyCashflow / equity) * 100 : 0;
+  const costPerSqm = areaSqm > 0 ? totalInvestment / areaSqm : 0;
+
   return {
-    totalInvestment, equity, loanAmount, yearlyAnnuity, monthlyRate,
+    totalInvestment, ancillaryCosts, equity, loanAmount, yearlyAnnuity, monthlyRate,
     grossYield, maxFinancing, yearlyData, fullRepaymentYear,
     totalInterest, totalRepayment,
     value10: yearlyData[9]?.propertyValue || 0,
@@ -111,6 +126,8 @@ export function calcBestandFull(params: BestandFullParams): BestandFullResult {
     wealth10: yearlyData[9]?.equity || 0,
     wealth20: yearlyData[19]?.equity || 0,
     value40, wealthGrowth, roi,
+    totalConstructionCosts, constructionAncillaryCosts, costPerSqm,
+    noiMonthly, monthlyExpenses, monthlyCashflow, cashOnCash,
   };
 }
 
