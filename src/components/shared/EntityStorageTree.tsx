@@ -18,7 +18,7 @@
  * - Never falls back silently to root — explicit resolution via resolveTargetFolderId()
  */
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ColumnView } from '@/components/dms/views/ColumnView';
