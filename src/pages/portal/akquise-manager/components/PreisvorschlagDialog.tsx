@@ -135,6 +135,9 @@ export function PreisvorschlagDialog({
 
       if (updateError) throw updateError;
 
+      // 2. Lazy-create data room folder tree for this offer
+      await ensureOfferDataRoom(offerId, offerTitle);
+
       // 2. Log activity
       const { error: activityError } = await supabase
         .from('acq_offer_activities')
