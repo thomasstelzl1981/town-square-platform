@@ -116,6 +116,7 @@ export function StorageFileManager({
   const [previewItem, setPreviewItem] = useState<FileManagerItem | null>(null);
   const [selectedItem, setSelectedItem] = useState<FileManagerItem | null>(null);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
   const [columnPath, setColumnPath] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
