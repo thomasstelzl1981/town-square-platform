@@ -447,14 +447,14 @@ async function fetchAcqOfferData(sbAdmin: any, offerId: string, tenantId: string
   return data;
 }
 
-/** Property type mapping for expose data */
+/** Property type mapping — mirror of PROPERTY_TYPE_MAP in src/engines/akquiseCalc/spec.ts */
 const OFFER_TYPE_MAP: Record<string, string> = {
   'Mehrfamilienhaus': 'MFH', 'MFH': 'MFH', 'mfh': 'MFH',
-  'Wohnhaus': 'MFH', 'Wohn- und Geschaeftshaus': 'Mixed',
+  'Wohnhaus': 'MFH', 'Wohn- und Geschäftshaus': 'Mixed', 'Wohn- und Geschaeftshaus': 'Mixed',
   'Eigentumswohnung': 'ETW', 'ETW': 'ETW', 'etw': 'ETW', 'Wohnung': 'ETW',
   'Einfamilienhaus': 'EFH', 'EFH': 'EFH', 'efh': 'EFH',
-  'Doppelhaushaelfte': 'DHH', 'DHH': 'DHH', 'dhh': 'DHH', 'Reihenhaus': 'DHH',
-  'Gewerbe': 'Gewerbe', 'Buero': 'Gewerbe', 'Laden': 'Gewerbe',
+  'Doppelhaushälfte': 'DHH', 'Doppelhaushaelfte': 'DHH', 'DHH': 'DHH', 'dhh': 'DHH', 'Reihenhaus': 'DHH',
+  'Gewerbe': 'Gewerbe', 'Büro': 'Gewerbe', 'Buero': 'Gewerbe', 'Laden': 'Gewerbe',
   'Mixed': 'Mixed', 'mixed': 'Mixed', 'Gemischt': 'Mixed',
 };
 
