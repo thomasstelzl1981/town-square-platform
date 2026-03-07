@@ -18,7 +18,9 @@ import type {
   AufteilerFullParams, AufteilerFullResult, AufteilerSensitivityRow,
   AufteilerQuickParams, AufteilerQuickResult,
   AufteilerProjectParams, AufteilerProjectResult,
+  AncillaryCostBreakdown,
 } from './spec';
+import { GREST_BY_STATE, PLZ_TO_STATE, ANCILLARY_DEFAULTS } from './spec';
 
 // ============================================================================
 // BESTAND (HOLD)
@@ -296,6 +298,52 @@ export function calcAufteilerProject(params: AufteilerProjectParams): AufteilerP
 }
 
 // ============================================================================
+// ANKAUFSNEBENKOSTEN (Acquisition Ancillary Costs)
+// ============================================================================
+
+/**
+ * Resolve GrESt rate from PLZ prefix.
+ * Returns state code + rate, or fallback to Berlin (6.0%) if unknown.
+ */
+export function resolveGrestFromPlz(postalCode?: string | null): { stateCode: string; stateName: string; rate: number } {
+  if (!postalCode || postalCode.length < 2) {
+    return { stateCode: 'BE', stateName: 'Berlin (Standard)', rate: 6.0 };
+  }
+  const prefix = postalCode.substring(0, 2);
+  const stateCode = PLZ_TO_STATE[prefix];
+  if (!stateCode || !GREST_BY_STATE[stateCode]) {
+    return { stateCode: 'BE', stateName: 'Berlin (Standard)', rate: 6.0 };
+  }
+  return { stateCode, stateName: GREST_BY_STATE[stateCode].label, rate: GREST_BY_STATE[stateCode].rate };
+}
+
+/**
+ * Calculate full ancillary cost breakdown for a property purchase.
+ * Used by ObjektAnkaufskosten.tsx
+ */
+export function calcAncillaryCosts(
+  purchasePrice: number,
+  postalCode?: string | null,
+  brokerRateOverride?: number,
+  notaryRateOverride?: number,
+): AncillaryCostBreakdown {
+  const { stateCode, stateName, rate: grestRate } = resolveGrestFromPlz(postalCode);
+  const notaryRate = notaryRateOverride ?? ANCILLARY_DEFAULTS.notaryRate;
+  const brokerRate = brokerRateOverride ?? ANCILLARY_DEFAULTS.brokerRate;
+
+  const grestAmount = purchasePrice * (grestRate / 100);
+  const notaryAmount = purchasePrice * (notaryRate / 100);
+  const brokerAmount = purchasePrice * (brokerRate / 100);
+  const totalRate = grestRate + notaryRate + brokerRate;
+  const totalAmount = grestAmount + notaryAmount + brokerAmount;
+
+  return {
+    purchasePrice, grestRate, grestAmount, notaryRate, notaryAmount,
+    brokerRate, brokerAmount, totalRate, totalAmount, stateName, stateCode,
+  };
+}
+
+// ============================================================================
 // HELPERS (internal)
 // ============================================================================
 
@@ -307,7 +355,6 @@ function calcSensitivity(
 ): AufteilerSensitivityRow[] {
   return [-0.5, 0, 0.5].map(delta => {
     const y = targetYield + delta;
-    // Guard: if yield is 0 or negative, price would be Infinity/NaN
     if (y <= 0 || yearlyRent <= 0) {
       return { yield: y, label: `${y.toFixed(1)}%`, salesPrice: 0, profit: -netCosts };
     }
