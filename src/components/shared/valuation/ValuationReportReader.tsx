@@ -614,9 +614,39 @@ export function ValuationReportReader({
               </div>
             )}
 
+            {/* V9.3: Rich narrative — multi-paragraph */}
             {location.narrative && (
-              <div className="pt-2 border-t"><p className="text-xs leading-relaxed text-muted-foreground">{location.narrative}</p></div>
+              <div className="space-y-3 pt-3 border-t">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Standortbewertung</p>
+                <div className="text-xs leading-relaxed text-muted-foreground space-y-2">
+                  {location.narrative.split('\n').filter(Boolean).map((para, i) => (
+                    <p key={i}>{para}</p>
+                  ))}
+                </div>
+              </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 3b — OBJEKTBESCHREIBUNG (KI-generiert)
+          ═══════════════════════════════════════════════════════════════ */}
+      {location?.propertyAssessment && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <SectionHeader icon={Building2} title="Objektbeschreibung & Einschätzung" subtitle="KI-gestützte Analyse des Bewertungsobjekts"
+              badge={<Badge variant="outline" className="text-[10px]">AI</Badge>}
+            />
+            <div className="text-xs leading-relaxed text-muted-foreground space-y-2">
+              {location.propertyAssessment.split('\n').filter(Boolean).map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </div>
+            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/30 text-[10px] text-muted-foreground">
+              <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>Diese Objektbeschreibung wurde KI-gestützt auf Basis der erfassten Stammdaten erstellt und dient als Orientierung. Eine Vor-Ort-Besichtigung durch einen Sachverständigen wird empfohlen.</span>
+            </div>
           </CardContent>
         </Card>
       )}
