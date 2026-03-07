@@ -11,9 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, Calendar
+  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, Calendar, FolderOpen
 } from 'lucide-react';
-import { AcqDataRoom } from '@/pages/portal/akquise-manager/components/AcqDataRoom';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { useAuth } from '@/contexts/AuthContext';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
