@@ -19,7 +19,7 @@ import {
   ValuationPipeline,
   ValuationReportReader,
   ValuationDiffReview,
-  generateValuationPdf,
+  ValuationPdfPipeline,
 } from '@/components/shared/valuation';
 import { ValuationCompare } from '@/components/shared/valuation/ValuationCompare';
 
@@ -45,6 +45,7 @@ interface EnrichedCase {
 
 export function PropertyValuationTab({ propertyId, tenantId }: Props) {
   const [showPipeline, setShowPipeline] = useState(false);
+  const [showPdfPipeline, setShowPdfPipeline] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
@@ -178,35 +179,9 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
     }
   };
 
-  const handleDownloadPdf = useCallback(async () => {
-    const r = state.resultData;
-    if (!r?.valueBand) return;
-    try {
-      await generateValuationPdf({
-        snapshot: r.snapshot || {},
-        valueBand: r.valueBand,
-        methods: r.methods || [],
-        financing: r.financing || [],
-        stressTests: r.stressTests || [],
-        lienProxy: r.lienProxy || null,
-        dataQuality: r.dataQuality || null,
-        compStats: r.compStats || null,
-        comps: r.comps || [],
-        location: r.location || null,
-        executiveSummary: r.executiveSummary || '',
-        caseId: state.caseId || 'unknown',
-        generatedAt: new Date().toISOString(),
-        sourceMode: 'SSOT_FINAL',
-        legalTitle: r.legalTitle || null,
-        beleihungswert: r.beleihungswert || null,
-        geminiResearch: r.geminiResearch || null,
-      });
-      toast.success('PDF erstellt');
-    } catch (e) {
-      console.error('PDF error:', e);
-      toast.error('PDF-Erstellung fehlgeschlagen');
-    }
-  }, [state.resultData, state.caseId]);
+  const handleOpenPdfPipeline = useCallback(() => {
+    setShowPdfPipeline(true);
+  }, []);
 
   const handleCompare = () => {
     if (completedCases.length >= 2) {
@@ -293,8 +268,32 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
             onPhotosChange={setValuationPhotos}
             documents={valuationDocuments}
             onDocumentsChange={setValuationDocuments}
-            onDownloadPdf={handleDownloadPdf}
+            onDownloadPdf={handleOpenPdfPipeline}
           />
+
+          {showPdfPipeline && (
+            <ValuationPdfPipeline
+              snapshot={r.snapshot || null}
+              valueBand={r.valueBand}
+              methods={r.methods || []}
+              financing={r.financing || []}
+              stressTests={r.stressTests || []}
+              lienProxy={r.lienProxy || null}
+              dataQuality={r.dataQuality || null}
+              compStats={r.compStats || null}
+              comps={r.comps || []}
+              location={r.location || null}
+              executiveSummary={r.executiveSummary || ''}
+              caseId={state.caseId || 'unknown'}
+              sourceMode={r.sourceMode || 'SSOT_FINAL'}
+              legalTitle={r.legalTitle || null}
+              beleihungswert={r.beleihungswert || null}
+              geminiResearch={r.geminiResearch || null}
+              photos={valuationPhotos}
+              documents={valuationDocuments}
+              onClose={() => setShowPdfPipeline(false)}
+            />
+          )}
         </div>
       );
     }

@@ -8,7 +8,7 @@
     "MOD-01": { "frozen": true, "frozen_at": "2026-03-05T10:00:00.000Z", "reason": "Full freeze — All modules locked" },
     "MOD-02": { "frozen": true, "frozen_at": "2026-03-05T10:00:00.000Z", "reason": "Full freeze — All modules locked" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-03-06T20:15:00.000Z", "reason": "Re-frozen after Datenraum UX fix: single-click=select, double-click=download, inline actions always visible, drop overlay scoped to content, column width 320px, tooltips for long filenames" },
-    "MOD-04": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for PDF-Gutachten Pipeline implementation" },
+    "MOD-04": { "frozen": true, "frozen_at": "2026-03-07T14:00:00.000Z", "reason": "Re-frozen after PDF-Pipeline V10.1: ValuationPdfPipeline (4-stage), dynamic TOC, AI narratives, photos, energy data, blob preview" },
     "MOD-05": { "frozen": true, "frozen_at": "2026-03-06T18:00:00.000Z", "reason": "Re-frozen after Deep Audit: PetsCaring error fallback added" },
     "MOD-06": { "frozen": true, "frozen_at": "2026-03-06T16:00:00.000Z", "reason": "Re-frozen after PDF-CI Phase 2: Exposé PDF button integrated in ExposeDetail via registry" },
     "MOD-07": { "frozen": true, "frozen_at": "2026-03-06T23:30:00.000Z", "reason": "Re-frozen after DMS SSOT unification: FinanceDocumentsManager migrated to delete_storage_file/delete_storage_folder RPCs" },
