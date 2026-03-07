@@ -302,7 +302,7 @@ serve(async (req) => {
       updated_at: new Date().toISOString(),
     };
 
-    if (extractedData.title && !offer) offerUpdates.title = extractedData.title;
+    if (extractedData.title) offerUpdates.title = extractedData.title;
     if (extractedData.address) offerUpdates.address = extractedData.address;
     if (extractedData.postal_code) offerUpdates.postal_code = extractedData.postal_code;
     if (extractedData.city) offerUpdates.city = extractedData.city;
@@ -312,6 +312,12 @@ serve(async (req) => {
     if (extractedData.units_count) offerUpdates.units_count = extractedData.units_count;
     if (extractedData.area_sqm) offerUpdates.area_sqm = extractedData.area_sqm;
     if (extractedData.year_built) offerUpdates.year_built = extractedData.year_built;
+    if (extractedData.notes) offerUpdates.notes = extractedData.notes;
+    if (extractedData.contact_broker?.company) offerUpdates.provider_name = extractedData.contact_broker.company;
+    if (extractedData.contact_broker?.name || extractedData.contact_broker?.phone) {
+      const parts = [extractedData.contact_broker.name, extractedData.contact_broker.phone].filter(Boolean);
+      offerUpdates.provider_contact = parts.join(' | ');
+    }
 
     await supabase
       .from('acq_offers')
