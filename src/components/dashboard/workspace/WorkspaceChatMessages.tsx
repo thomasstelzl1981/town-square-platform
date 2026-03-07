@@ -14,7 +14,6 @@ import type { ChatMessage } from '@/hooks/useArmstrongAdvisor';
 interface Props {
   messages: ChatMessage[];
   showOnboarding: boolean;
-  orbState: OrbState;
   orbStepLabel?: string;
   isLoading: boolean;
   isExecuting: boolean;
