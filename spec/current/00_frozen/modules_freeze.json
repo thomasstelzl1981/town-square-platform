@@ -4,7 +4,7 @@
   "description": "SSOT for module freeze states. Lovable and all AI assistants MUST check this file before modifying any module code. If a module is frozen, changes to its paths are NOT ALLOWED without explicit unfreeze.",
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
-    "MOD-00": { "frozen": true, "frozen_at": "2026-03-07T22:00:00.000Z", "reason": "Re-frozen after 3-section layout: Section 1 Widgets, Section 2 Armstrong Workspace, Section 3 Armstrong Datenraum (ArmstrongDataRoomSection.tsx)" },
+    "MOD-00": { "frozen": true, "frozen_at": "2026-03-07T23:45:00.000Z", "reason": "Re-frozen after Datenraum SSOT fix: duplicate armstrong_project roots cleaned (3→1), EntityStorageTree race condition fixed (isSuccess guard), template_id=MOD_00_ENTITY_ROOT tagged" },
     "MOD-01": { "frozen": true, "frozen_at": "2026-03-05T10:00:00.000Z", "reason": "Full freeze — All modules locked" },
     "MOD-02": { "frozen": true, "frozen_at": "2026-03-07T18:00:00.000Z", "reason": "Re-frozen after Storage Audit P3: Signature upload normalized to SSOT path {tenant_id}/MOD_02/signatures/{profile_id}/ with signed URL" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-03-06T20:15:00.000Z", "reason": "Re-frozen after Datenraum UX fix: single-click=select, double-click=download, inline actions always visible, drop overlay scoped to content, column width 320px, tooltips for long filenames" },
