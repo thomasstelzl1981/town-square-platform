@@ -29,7 +29,7 @@ interface Props {
 }
 
 export function WorkspaceChatMessages({
-  messages, showOnboarding, orbState, orbStepLabel,
+  messages, showOnboarding, orbStepLabel,
   isLoading, isExecuting, isSpeaking, currentModule,
   onActionSelect, onConfirm, onCancel, onSpeak, onSendEmail,
   onOnboardingChat, onOnboardingNewProject,
