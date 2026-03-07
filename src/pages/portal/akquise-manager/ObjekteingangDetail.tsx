@@ -138,6 +138,7 @@ export function ObjekteingangDetail() {
   const yearlyRent = deriveYearlyRent(offer, effectivePrice);
   const completenessIssues = getCompletenessIssues(offer);
   const hasCalcData = !!(offer.calc_bestand || offer.calc_aufteiler);
+  const resolvedAncillary = React.useMemo(() => calcAncillaryCosts(effectivePrice, offer.postal_code), [effectivePrice, offer.postal_code]);
 
   return (
     <PageShell>
