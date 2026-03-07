@@ -17014,6 +17014,7 @@ export type Database = {
           country: string
           created_at: string
           description: string | null
+          energy_class: string | null
           energy_source: string | null
           heating_type: string | null
           id: string
@@ -17077,6 +17078,7 @@ export type Database = {
           country?: string
           created_at?: string
           description?: string | null
+          energy_class?: string | null
           energy_source?: string | null
           heating_type?: string | null
           id?: string
@@ -17140,6 +17142,7 @@ export type Database = {
           country?: string
           created_at?: string
           description?: string | null
+          energy_class?: string | null
           energy_source?: string | null
           heating_type?: string | null
           id?: string
