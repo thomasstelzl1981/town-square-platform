@@ -293,8 +293,7 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
               documents={valuationDocuments}
               onClose={() => setShowPdfPipeline(false)}
             />
-          )
-          />
+          )}
         </div>
       );
     }
