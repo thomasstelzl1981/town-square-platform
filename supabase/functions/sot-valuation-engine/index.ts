@@ -529,6 +529,7 @@ function buildServerSSOTSnapshot(ssotData: any): Record<string, any> {
     year_built: p.year_built || null,
     condition: p.condition_grade || null,
     energy_class: p.energy_class || null,
+    energy_certificate_value: p.energy_certificate_value || null,
     heating_type: p.heating_type || null,
     energy_source: p.energy_source || null,
     ownership_share_percent: p.ownership_share_percent || null,
