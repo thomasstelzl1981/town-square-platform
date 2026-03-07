@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Copy, Info, Phone, Search, ShoppingCart, Trash2, Loader2, MapPin, CheckCircle2, ChevronDown, ArrowRightLeft, RefreshCw } from 'lucide-react';
+import { Copy, Info, Phone, Search, ShoppingCart, Trash2, Loader2, MapPin, CheckCircle2, ChevronDown, ArrowRightLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { PhoneAssistantConfig } from '@/hooks/usePhoneAssistant';
