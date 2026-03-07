@@ -84,9 +84,9 @@ Ausnahmen:
 | P0 | MOD_00 im storageManifest | ✅ Done |
 | P1 | useArmstrongDocUpload → SSOT | ✅ Done |
 | P2 | MOD-12 entity_sub_folders | ✅ Done |
-| P3 | Signatur-Upload normalisieren | ⬜ MOD-02 frozen |
+| P3 | Signatur-Upload normalisieren | ✅ Done |
 | P4 | Bucket-Konsolidierung | ⬜ Separater Sprint |
-| P5 | Armstrong Datenraum UI | ⬜ MOD-00 frozen |
+| P5 | Armstrong Datenraum UI | ✅ Done |
 
 ---
 
