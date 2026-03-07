@@ -21,6 +21,12 @@ export interface BestandFullParams {
   managementCostPercent: number;
   maintenancePercent: number;
   ancillaryCostPercent: number;
+  /** Renovation / modernization costs (default 0) */
+  renovationCosts?: number;
+  /** Construction ancillary % on renovation costs (default 15) */
+  constructionAncillaryPercent?: number;
+  /** Total area in sqm for €/m² display (default 0) */
+  areaSqm?: number;
 }
 
 /** Quick KPI parameter set (fewer inputs) */
