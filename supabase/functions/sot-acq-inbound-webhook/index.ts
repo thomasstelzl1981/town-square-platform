@@ -172,31 +172,16 @@ serve(async (req) => {
     // ========================================
     const attachmentsMeta: Array<{ filename: string; storage_path: string; mime_type: string }> = [];
 
-    if (payload.attachments?.length) {
-      for (const att of payload.attachments) {
-        try {
-          const bytes = Uint8Array.from(atob(att.content), c => c.charCodeAt(0));
-          const storagePath = `inbound/${payload.id}/${att.filename}`;
-
-          await supabase.storage
-            .from('acq-documents')
-            .upload(storagePath, bytes, {
-              contentType: att.content_type,
-            });
-
-          attachmentsMeta.push({
-            filename: att.filename,
-            storage_path: storagePath,
-            mime_type: att.content_type,
-          });
-        } catch (uploadError) {
-          console.error('Failed to upload attachment:', att.filename, uploadError);
-        }
-      }
-    }
+    // We'll store attachments after offer creation so we have tenant_id + mandate_id + offer_id
+    // Collect raw attachment data first
+    const rawAttachments = (payload.attachments || []).map(att => ({
+      filename: att.filename,
+      bytes: Uint8Array.from(atob(att.content), c => c.charCodeAt(0)),
+      content_type: att.content_type,
+    }));
 
     // ========================================
-    // Create inbound record
+    // Create inbound record (before attachments — we need inbound.id)
     // ========================================
     const { data: inbound, error: insertError } = await supabase
       .from('acq_inbound_messages')
@@ -209,7 +194,7 @@ serve(async (req) => {
         subject: payload.subject,
         body_text: payload.text,
         body_html: payload.html,
-        attachments: attachmentsMeta,
+        attachments: rawAttachments.map(a => ({ filename: a.filename, mime_type: a.content_type })),
         routing_method: routingMethod,
         routing_confidence: routingConfidence,
         needs_routing: needsRouting,
@@ -257,6 +242,8 @@ serve(async (req) => {
     // Auto-create acq_offers from routed inbound
     // ========================================
     let offerId: string | null = null;
+    const attachmentsMeta: Array<{ filename: string; storage_path: string; mime_type: string }> = [];
+
     if (mandateId && !needsRouting) {
       try {
         // Get tenant_id from the mandate
@@ -266,11 +253,13 @@ serve(async (req) => {
           .eq('id', mandateId)
           .single();
 
+        const tenantId = mandate?.tenant_id;
+
         const { data: offer, error: offerError } = await supabase
           .from('acq_offers')
           .insert([{
             mandate_id: mandateId,
-            tenant_id: mandate?.tenant_id || null,
+            tenant_id: tenantId || null,
             title: payload.subject || 'E-Mail-Eingang',
             source_type: 'inbound_email',
             source_inbound_id: inbound.id,
@@ -287,16 +276,33 @@ serve(async (req) => {
           offerId = offer.id;
           console.log('Auto-created offer from inbound:', offerId);
 
-          // Link attachments as offer documents
-          for (const att of attachmentsMeta) {
-            await supabase.from('acq_offer_documents').insert([{
-              offer_id: offerId,
-              tenant_id: mandate?.tenant_id || null,
-              file_name: att.filename,
-              storage_path: att.storage_path,
-              mime_type: att.mime_type,
-              document_type: 'expose',
-            }]);
+          // Upload attachments with unified path: {tenant_id}/{mandate_id}/{offer_id}/expose/{filename}
+          for (const att of rawAttachments) {
+            try {
+              const storagePath = `${tenantId}/${mandateId}/${offerId}/expose/${att.filename}`;
+
+              await supabase.storage
+                .from('acq-documents')
+                .upload(storagePath, att.bytes, { contentType: att.content_type });
+
+              attachmentsMeta.push({
+                filename: att.filename,
+                storage_path: storagePath,
+                mime_type: att.content_type,
+              });
+
+              // Link as offer document
+              await supabase.from('acq_offer_documents').insert([{
+                offer_id: offerId,
+                tenant_id: tenantId || null,
+                file_name: att.filename,
+                storage_path: storagePath,
+                mime_type: att.content_type,
+                document_type: 'expose',
+              }]);
+            } catch (uploadError) {
+              console.error('Failed to upload attachment:', att.filename, uploadError);
+            }
           }
 
           // Trigger AI extraction if PDF attachments exist
