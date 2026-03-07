@@ -121,7 +121,7 @@ export function ArmstrongWorkspace() {
 
       <WorkspaceChatMessages
         messages={advisor.messages} showOnboarding={showOnboarding}
-        orbState={orbState} orbStepLabel={orbStepLabel}
+        orbStepLabel={orbStepLabel}
         isLoading={advisor.isLoading} isExecuting={advisor.isExecuting}
         isSpeaking={voice.isSpeaking} currentModule={advisor.currentModule}
         onActionSelect={advisor.selectAction} onConfirm={advisor.confirmAction}
