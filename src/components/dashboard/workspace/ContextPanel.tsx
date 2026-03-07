@@ -9,6 +9,7 @@ import { useArmstrongProjects, type ArmstrongProject, type MemorySnippet, type P
 import { useAuth } from '@/contexts/AuthContext';
 import { EntityLinker } from '@/components/dashboard/workspace/EntityLinker';
 import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
