@@ -61,7 +61,6 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   const queryClient = useQueryClient();
   const { createDMS } = useRecordCardDMS();
   const universalUpload = useUniversalUpload();
-  const { moveFile, moveFolder, isMoving } = useStorageMove(tenantId, invalidateAll);
 
   // ── Root folder: deterministic via template_id, NOT oldest folder ────
   const { data: rootFolder } = useQuery({
