@@ -153,6 +153,7 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
           unitNumber={formData.unitNumber}
           heatingType={formData.heatingType}
           energySource={formData.energySource}
+          energyClass={formData.energyClass}
           energyCertType={formData.energyCertType}
           energyCertValue={formData.energyCertValue}
           energyCertValidUntil={formData.energyCertValidUntil}

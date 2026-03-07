@@ -189,8 +189,8 @@ export function EditableBuildingBlock({
           </div>
         </div>
 
-        {/* Energy Certificate — single row with 3 fields */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Energy Certificate — 4 fields */}
+        <div className="grid grid-cols-4 gap-3">
           <div className="space-y-1">
             <Label className="text-[11px] text-muted-foreground">Ausweis-Typ</Label>
             <Select value={energyCertType || ''} onValueChange={(v) => onFieldChange('energyCertType', v)}>
@@ -203,7 +203,14 @@ export function EditableBuildingBlock({
             <Input type="number" step="0.1" value={energyCertValue || ''} onChange={(e) => onFieldChange('energyCertValue', e.target.value ? parseFloat(e.target.value) : undefined)} className="h-7 text-xs" />
           </div>
           <div className="space-y-1">
-            <Label className="text-[11px] text-muted-foreground">Gültig bis</Label>
+            <Label className="text-[11px] text-muted-foreground">Energieklasse</Label>
+            <Select value={energyClass || ''} onValueChange={(v) => onFieldChange('energyClass', v)}>
+              <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+              <SelectContent>{ENERGY_CLASSES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Erstellt am</Label>
             <Input type="date" value={energyCertValidUntil || ''} onChange={(e) => onFieldChange('energyCertValidUntil', e.target.value)} className="h-7 text-xs" />
           </div>
         </div>
