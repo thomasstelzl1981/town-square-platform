@@ -102,7 +102,39 @@ export interface AufteilerFullParams {
   ancillaryCostPercent: number;
   interestRate: number;
   equityPercent: number;
+  /** @deprecated Use granular costs instead. Kept for backward compat. */
   projectCosts: number;
+  // ── Granular cost breakdown ──
+  renovationCosts?: number;
+  partitioningCosts?: number;
+  constructionAncillaryPercent?: number;
+  marketingCosts?: number;
+  projectManagementCosts?: number;
+  disagio?: number;
+  // ── Additional data ──
+  areaSqm?: number;
+  garageSaleProceeds?: number;
+}
+
+/** Financing breakdown for flip projects */
+export interface AufteilerFinancingBreakdown {
+  loanAmountAcquisition: number;
+  loanAmountConstruction: number;
+  interestAcquisition: number;
+  interestConstruction: number;
+  disagio: number;
+  rentalIncomeOffset: number;
+  totalFinancingCosts: number;
+}
+
+/** 3x3 alternatives matrix cell */
+export interface AlternativenMatrixCell {
+  constructionDelta: number;
+  salePriceDelta: number;
+  constructionLabel: string;
+  salePriceLabel: string;
+  profit: number;
+  margin: number;
 }
 
 /** Sensitivity row */
@@ -115,21 +147,37 @@ export interface AufteilerSensitivityRow {
 
 /** Full flip result */
 export interface AufteilerFullResult {
+  // ── Acquisition ──
   ancillaryCosts: number;
   totalAcquisitionCosts: number;
+  // ── Construction ──
+  totalConstructionCosts: number;
+  constructionAncillaryCosts: number;
+  // ── Developer tasks ──
+  totalDeveloperCosts: number;
+  // ── Financing ──
   loanAmount: number;
   equity: number;
   interestCosts: number;
   rentIncome: number;
   netCosts: number;
+  financingBreakdown: AufteilerFinancingBreakdown;
+  // ── Exit ──
   salesPriceGross: number;
   factor: number;
   salesCommissionAmount: number;
   salesPriceNet: number;
+  garageSaleProceeds: number;
+  totalRevenue: number;
+  // ── Result ──
+  totalInvestmentGross: number;
   profit: number;
   profitMargin: number;
   roiOnEquity: number;
+  costPerSqm: number;
+  // ── Sensitivity ──
   sensitivityData: AufteilerSensitivityRow[];
+  alternativenMatrix: AlternativenMatrixCell[];
 }
 
 /** Quick unit-based flip params */

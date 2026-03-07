@@ -16,6 +16,7 @@ import type {
   BestandFullParams, BestandFullResult, BestandYearlyData,
   BestandQuickParams, BestandQuickResult,
   AufteilerFullParams, AufteilerFullResult, AufteilerSensitivityRow,
+  AufteilerFinancingBreakdown, AlternativenMatrixCell,
   AufteilerQuickParams, AufteilerQuickResult,
   AufteilerProjectParams, AufteilerProjectResult,
   AncillaryCostBreakdown,
@@ -168,7 +169,7 @@ export function calcBestandQuick(params: BestandQuickParams): BestandQuickResult
 // ============================================================================
 
 /**
- * Full yield-based flip calculation with sensitivity analysis.
+ * Full yield-based flip calculation with financing breakdown and alternatives matrix.
  * Used by AufteilerCalculation.tsx
  */
 export function calcAufteilerFull(params: AufteilerFullParams): AufteilerFullResult {
@@ -176,32 +177,86 @@ export function calcAufteilerFull(params: AufteilerFullParams): AufteilerFullRes
     purchasePrice, yearlyRent, targetYield, salesCommission,
     holdingPeriodMonths, ancillaryCostPercent, interestRate,
     equityPercent, projectCosts,
+    renovationCosts = 0, partitioningCosts = 0,
+    constructionAncillaryPercent = 0, marketingCosts = 0,
+    projectManagementCosts = 0, disagio = 0,
+    areaSqm = 0, garageSaleProceeds = 0,
   } = params;
 
+  // ── 1. Acquisition costs ──
   const ancillaryCosts = purchasePrice * (ancillaryCostPercent / 100);
-  const totalAcquisitionCosts = purchasePrice + ancillaryCosts + projectCosts;
-  const loanAmount = totalAcquisitionCosts * (1 - equityPercent / 100);
-  const equity = totalAcquisitionCosts * (equityPercent / 100);
-  const interestCosts = loanAmount * (interestRate / 100) * (holdingPeriodMonths / 12);
-  const rentIncome = yearlyRent * (holdingPeriodMonths / 12);
-  const netCosts = totalAcquisitionCosts + interestCosts - rentIncome;
+  const totalAcquisitionCosts = purchasePrice + ancillaryCosts;
 
-  const salesPriceGross = yearlyRent / (targetYield / 100);
-  const factor = salesPriceGross / yearlyRent;
+  // ── 2. Construction / renovation costs ──
+  const granularConstruction = renovationCosts + partitioningCosts;
+  const effectiveConstruction = granularConstruction > 0 ? granularConstruction : projectCosts;
+  const constructionAncillaryCosts = effectiveConstruction * (constructionAncillaryPercent / 100);
+  const totalConstructionCosts = effectiveConstruction + constructionAncillaryCosts;
+
+  // ── 3. Developer tasks ──
+  const totalDeveloperCosts = projectManagementCosts + marketingCosts;
+
+  // ── 4. Financing ──
+  const totalCostBase = totalAcquisitionCosts + totalConstructionCosts + totalDeveloperCosts;
+  const loanAmount = totalCostBase * (1 - equityPercent / 100);
+  const equity = totalCostBase * (equityPercent / 100);
+
+  const holdingYears = holdingPeriodMonths / 12;
+  // Acquisition loan runs full holding period
+  const loanAmountAcquisition = totalAcquisitionCosts * (1 - equityPercent / 100);
+  const interestAcquisition = loanAmountAcquisition * (interestRate / 100) * holdingYears;
+  // Construction loan averages ~50% draw over the period (simplified)
+  const loanAmountConstruction = (totalConstructionCosts + totalDeveloperCosts) * (1 - equityPercent / 100);
+  const interestConstruction = loanAmountConstruction * (interestRate / 100) * holdingYears * 0.5;
+  const effectiveDisagio = disagio;
+  const rentalIncomeOffset = yearlyRent * holdingYears;
+  const totalFinancingCosts = interestAcquisition + interestConstruction + effectiveDisagio - rentalIncomeOffset;
+
+  const financingBreakdown: AufteilerFinancingBreakdown = {
+    loanAmountAcquisition, loanAmountConstruction,
+    interestAcquisition, interestConstruction,
+    disagio: effectiveDisagio, rentalIncomeOffset,
+    totalFinancingCosts,
+  };
+
+  const interestCosts = interestAcquisition + interestConstruction + effectiveDisagio;
+  const rentIncome = rentalIncomeOffset;
+  const netCosts = totalCostBase + interestCosts - rentIncome;
+  const totalInvestmentGross = totalCostBase + totalFinancingCosts;
+
+  // ── 5. Exit / Revenue ──
+  const salesPriceGross = targetYield > 0 && yearlyRent > 0 ? yearlyRent / (targetYield / 100) : 0;
+  const factor = yearlyRent > 0 ? salesPriceGross / yearlyRent : 0;
   const salesCommissionAmount = salesPriceGross * (salesCommission / 100);
   const salesPriceNet = salesPriceGross - salesCommissionAmount;
+  const totalRevenue = salesPriceNet + garageSaleProceeds + rentIncome;
 
-  const profit = salesPriceNet - netCosts;
-  const profitMargin = salesPriceNet > 0 ? (profit / salesPriceNet) * 100 : 0;
+  // ── 6. Result ──
+  const profit = totalRevenue - totalInvestmentGross;
+  const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
   const roiOnEquity = equity > 0 ? (profit / equity) * 100 : 0;
+  const costPerSqm = areaSqm > 0 ? totalInvestmentGross / areaSqm : 0;
 
+  // ── Sensitivity ──
   const sensitivityData = calcSensitivity(targetYield, yearlyRent, salesCommission, netCosts);
 
+  // ── Alternatives matrix (3x3: construction ±10% × sale price ±10%) ──
+  const alternativenMatrix = calcAlternativenMatrix(
+    totalConstructionCosts, salesPriceGross,
+    totalAcquisitionCosts, totalDeveloperCosts,
+    interestRate, equityPercent, holdingYears, disagio, yearlyRent,
+    salesCommission, garageSaleProceeds,
+  );
+
   return {
-    ancillaryCosts, totalAcquisitionCosts, loanAmount, equity,
-    interestCosts, rentIncome, netCosts,
+    ancillaryCosts, totalAcquisitionCosts,
+    totalConstructionCosts, constructionAncillaryCosts,
+    totalDeveloperCosts,
+    loanAmount, equity, interestCosts, rentIncome, netCosts, financingBreakdown,
     salesPriceGross, factor, salesCommissionAmount, salesPriceNet,
-    profit, profitMargin, roiOnEquity, sensitivityData,
+    garageSaleProceeds, totalRevenue,
+    totalInvestmentGross, profit, profitMargin, roiOnEquity, costPerSqm,
+    sensitivityData, alternativenMatrix,
   };
 }
 
@@ -259,38 +314,30 @@ export function calcAufteilerProject(params: AufteilerProjectParams): AufteilerP
     equityPercent, totalListPrice, totalYearlyRent, unitsCount,
   } = params;
 
-  const ancillaryCosts = purchasePrice * (ancillaryCostPercent / 100);
-  const totalAcquisitionCosts = purchasePrice + ancillaryCosts + renovationBudget;
+  // Delegate to calcAufteilerFull with mapped params
+  const fullResult = calcAufteilerFull({
+    purchasePrice, yearlyRent: totalYearlyRent, targetYield, salesCommission,
+    holdingPeriodMonths, ancillaryCostPercent, interestRate, equityPercent,
+    projectCosts: 0, renovationCosts: renovationBudget,
+  });
 
-  const loanAmount = totalAcquisitionCosts * (1 - equityPercent / 100);
-  const equity = totalAcquisitionCosts * (equityPercent / 100);
-  const interestCosts = loanAmount * (interestRate / 100) * (holdingPeriodMonths / 12);
-
-  const rentIncome = totalYearlyRent * (holdingPeriodMonths / 12);
-  const netCosts = totalAcquisitionCosts + interestCosts - rentIncome;
-
-  // Use list prices if available, otherwise derive from yield
-  const salesPriceGross = totalListPrice > 0
-    ? totalListPrice
-    : (totalYearlyRent > 0 ? totalYearlyRent / (targetYield / 100) : 0);
+  // Override salesPriceGross if totalListPrice is provided
+  const salesPriceGross = totalListPrice > 0 ? totalListPrice : fullResult.salesPriceGross;
   const salesCommissionAmount = salesPriceGross * (salesCommission / 100);
   const salesPriceNet = salesPriceGross - salesCommissionAmount;
-
-  const profit = salesPriceNet - netCosts;
-  const profitMargin = netCosts > 0 ? (profit / netCosts) * 100 : 0;
-  const roiOnEquity = equity > 0 ? (profit / equity) * 100 : 0;
+  const profit = salesPriceNet - fullResult.netCosts;
+  const profitMargin = fullResult.netCosts > 0 ? (profit / fullResult.netCosts) * 100 : 0;
+  const roiOnEquity = fullResult.equity > 0 ? (profit / fullResult.equity) * 100 : 0;
   const profitPerUnit = unitsCount > 0 ? profit / unitsCount : 0;
   const avgUnitPrice = unitsCount > 0 ? salesPriceGross / unitsCount : 0;
   const breakEvenUnits = avgUnitPrice > 0
-    ? Math.ceil(netCosts / (avgUnitPrice * (1 - salesCommission / 100)))
+    ? Math.ceil(fullResult.netCosts / (avgUnitPrice * (1 - salesCommission / 100)))
     : unitsCount;
   const factor = totalYearlyRent > 0 ? salesPriceGross / totalYearlyRent : 0;
-
-  const sensitivityData = calcSensitivity(targetYield, totalYearlyRent, salesCommission, netCosts);
+  const sensitivityData = calcSensitivity(targetYield, totalYearlyRent, salesCommission, fullResult.netCosts);
 
   return {
-    ancillaryCosts, totalAcquisitionCosts, loanAmount, equity,
-    interestCosts, rentIncome, netCosts,
+    ...fullResult,
     salesPriceGross, factor, salesCommissionAmount, salesPriceNet,
     profit, profitMargin, roiOnEquity, sensitivityData,
     profitPerUnit, breakEvenUnits,
@@ -364,4 +411,54 @@ function calcSensitivity(
     const prof = net - netCosts;
     return { yield: y, label: `${y.toFixed(1)}%`, salesPrice: price, profit: prof };
   });
+}
+
+/**
+ * 3×3 Alternatives Matrix: Construction costs ±10% × Sale price ±10%
+ */
+function calcAlternativenMatrix(
+  totalConstructionCosts: number,
+  baseSalePrice: number,
+  totalAcquisitionCosts: number,
+  totalDeveloperCosts: number,
+  interestRate: number,
+  equityPercent: number,
+  holdingYears: number,
+  disagio: number,
+  yearlyRent: number,
+  salesCommission: number,
+  garageSaleProceeds: number,
+): AlternativenMatrixCell[] {
+  const deltas = [-10, 0, 10];
+  const matrix: AlternativenMatrixCell[] = [];
+
+  for (const cDelta of deltas) {
+    for (const sDelta of deltas) {
+      const adjConstruction = totalConstructionCosts * (1 + cDelta / 100);
+      const adjSalePrice = baseSalePrice * (1 + sDelta / 100);
+
+      const totalCostBase = totalAcquisitionCosts + adjConstruction + totalDeveloperCosts;
+      const loan = totalCostBase * (1 - equityPercent / 100);
+      const interest = loan * (interestRate / 100) * holdingYears;
+      const rental = yearlyRent * holdingYears;
+      const totalInv = totalCostBase + interest + disagio - rental;
+
+      const commAmount = adjSalePrice * (salesCommission / 100);
+      const netSale = adjSalePrice - commAmount;
+      const totalRev = netSale + garageSaleProceeds + rental;
+      const profit = totalRev - totalInv;
+      const margin = totalRev > 0 ? (profit / totalRev) * 100 : 0;
+
+      matrix.push({
+        constructionDelta: cDelta,
+        salePriceDelta: sDelta,
+        constructionLabel: cDelta === 0 ? 'Plan' : `${cDelta > 0 ? '+' : ''}${cDelta}%`,
+        salePriceLabel: sDelta === 0 ? 'Plan' : `${sDelta > 0 ? '+' : ''}${sDelta}%`,
+        profit,
+        margin,
+      });
+    }
+  }
+
+  return matrix;
 }
