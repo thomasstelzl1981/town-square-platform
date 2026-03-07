@@ -351,6 +351,13 @@ export interface CanonicalPropertySnapshot {
   partitionDeclaration: boolean | null;
   providerName: string | null;
   providerContact: string | null;
+  /** V9.4: Erweiterte Gebäudedaten */
+  heatingType?: string | null;
+  energySource?: string | null;
+  coreRenovated?: boolean | null;
+  renovationYear?: number | null;
+  ownershipSharePercent?: number | null;
+  energyCertificateValue?: number | null;
 }
 
 // ============================================================================
