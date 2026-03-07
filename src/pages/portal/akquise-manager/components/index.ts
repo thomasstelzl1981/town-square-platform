@@ -16,6 +16,7 @@ export { ExposeDragDropUploader } from './ExposeDragDropUploader';
 // Calculation Components
 export { BestandCalculation } from './BestandCalculation';
 export { AufteilerCalculation } from './AufteilerCalculation';
+export { NumberedSectionCard, EditField, ComputedField, SubtotalRow, TotalBanner, ResultBanner, PercentField, fmtCur, fmtSqm } from './CalcShared';
 
 // Action Dialogs
 export { AbsageDialog } from './AbsageDialog';
