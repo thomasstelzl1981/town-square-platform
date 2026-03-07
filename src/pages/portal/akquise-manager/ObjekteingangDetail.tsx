@@ -208,7 +208,7 @@ export function ObjekteingangDetail() {
       {/* ═══════════════════ SEKTION 2: KALKULATION ═══════════════════ */}
       <div className="space-y-4">
         <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-1')}>Kalkulation</h2>
-        <QuickAnalysisBanner offer={offer} yearlyRent={yearlyRent} priceOverride={effectivePrice} originalPrice={offer.price_asking || 0} onPriceChange={setPriceOverride} />
+        <QuickAnalysisBanner offer={offer} yearlyRent={yearlyRent} priceOverride={effectivePrice} originalPrice={offer.price_asking || 0} onPriceChange={setPriceOverride} ancillaryCostPercent={resolvedAncillary.totalRate} />
         <Tabs defaultValue="bestand" className="w-full">
           <TabsList>
             <TabsTrigger value="bestand">🏠 Bestand (Hold)</TabsTrigger>
