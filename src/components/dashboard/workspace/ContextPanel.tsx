@@ -52,7 +52,9 @@ const SNIPPET_TYPE_LABELS: Record<string, string> = {
 
 export function ContextPanel({ activeProject }: ContextPanelProps) {
   const armstrongContext = useArmstrongContext();
+  const { activeTenantId } = useAuth();
   const { updateProject, activeProjects } = useArmstrongProjects();
+  const [showDataRoom, setShowDataRoom] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [newContent, setNewContent] = useState('');
   const [newType, setNewType] = useState<MemorySnippet['type']>('note');
