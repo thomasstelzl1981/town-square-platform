@@ -99,6 +99,7 @@ export function useRecordCardDMS() {
         await supabase
           .from('inbox_sort_rules')
           .insert({
+            tenant_id: tenantId,
             container_id: container.id,
             field: 'subject',
             operator: 'contains',

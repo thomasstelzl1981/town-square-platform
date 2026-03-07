@@ -70,9 +70,10 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   const universalUpload = useUniversalUpload();
 
   // ── Root folder ─────────────────────────────────────────────────────
-  const { data: rootFolder } = useQuery({
+  const { data: rootFolder, isSuccess: rootQueryResolved } = useQuery({
     queryKey: ['entity-storage-root', tenantId, entityType, entityId, moduleCode],
     queryFn: async () => {
+      // 1. Find by template_id (fastest, set by createDMS)
       const { data: rootByTemplate } = await supabase
         .from('storage_nodes')
         .select('id')
@@ -80,25 +81,13 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
         .eq('entity_type', entityType)
         .eq('entity_id', entityId)
         .eq('node_type', 'folder')
-        .eq('template_id', `${moduleCode}_ROOT`)
+        .eq('template_id', `${moduleCode}_ENTITY_ROOT`)
         .limit(1)
         .maybeSingle();
 
       if (rootByTemplate) return rootByTemplate;
 
-      const { data: rootByParent } = await supabase
-        .from('storage_nodes')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .eq('entity_type', entityType)
-        .eq('entity_id', entityId)
-        .eq('node_type', 'folder')
-        .is('parent_id', null)
-        .limit(1)
-        .maybeSingle();
-
-      if (rootByParent) return rootByParent;
-
+      // 2. Fallback: find oldest entity-scoped folder (covers legacy roots without template_id)
       const { data: rootByAge } = await supabase
         .from('storage_nodes')
         .select('id')
@@ -116,10 +105,12 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   });
 
   // ── Auto-Init: Create root node if none exists ─────────────────────
+  // CRITICAL: Only fire AFTER the root query has resolved (isSuccess=true)
+  // to avoid race condition where auto-init fires while query is still loading.
   const [autoInitDone, setAutoInitDone] = useState(false);
   useEffect(() => {
+    if (!rootQueryResolved) return; // Wait for query to finish
     if (rootFolder?.id || autoInitDone || createDMS.isPending) return;
-    // rootFolder query has resolved (not loading) but found nothing → create root
     setAutoInitDone(true);
     createDMS.mutateAsync({
       entityType,
@@ -131,7 +122,7 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
     }).catch((err) => {
       console.error('Auto-init root failed:', err);
     });
-  }, [rootFolder, autoInitDone, createDMS, entityType, entityId, tenantId, queryClient]);
+  }, [rootFolder, rootQueryResolved, autoInitDone, createDMS, entityType, entityId, tenantId, queryClient]);
 
   // All folder nodes
   const { data: allNodes = [] } = useQuery({
