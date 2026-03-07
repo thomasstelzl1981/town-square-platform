@@ -447,14 +447,14 @@ async function fetchAcqOfferData(sbAdmin: any, offerId: string, tenantId: string
   return data;
 }
 
-/** Property type mapping for expose data */
+/** Property type mapping — mirror of PROPERTY_TYPE_MAP in src/engines/akquiseCalc/spec.ts */
 const OFFER_TYPE_MAP: Record<string, string> = {
   'Mehrfamilienhaus': 'MFH', 'MFH': 'MFH', 'mfh': 'MFH',
-  'Wohnhaus': 'MFH', 'Wohn- und Geschaeftshaus': 'Mixed',
+  'Wohnhaus': 'MFH', 'Wohn- und Geschäftshaus': 'Mixed', 'Wohn- und Geschaeftshaus': 'Mixed',
   'Eigentumswohnung': 'ETW', 'ETW': 'ETW', 'etw': 'ETW', 'Wohnung': 'ETW',
   'Einfamilienhaus': 'EFH', 'EFH': 'EFH', 'efh': 'EFH',
-  'Doppelhaushaelfte': 'DHH', 'DHH': 'DHH', 'dhh': 'DHH', 'Reihenhaus': 'DHH',
-  'Gewerbe': 'Gewerbe', 'Buero': 'Gewerbe', 'Laden': 'Gewerbe',
+  'Doppelhaushälfte': 'DHH', 'Doppelhaushaelfte': 'DHH', 'DHH': 'DHH', 'dhh': 'DHH', 'Reihenhaus': 'DHH',
+  'Gewerbe': 'Gewerbe', 'Büro': 'Gewerbe', 'Buero': 'Gewerbe', 'Laden': 'Gewerbe',
   'Mixed': 'Mixed', 'mixed': 'Mixed', 'Gemischt': 'Mixed',
 };
 
@@ -804,7 +804,6 @@ Deno.serve(async (req) => {
               message: 'Keine Grundstücksfläche angegeben — wird per Heuristik geschätzt.',
               suggestedAction: 'Grundstücksfläche im Grundbuch-Block der Immobilienakte eintragen.',
             });
-          }
           }
 
           // V9.2: AI-based deeper validation if lovableApiKey available
@@ -1229,30 +1228,34 @@ Lat: ${geo.lat}, Lng: ${geo.lng}`,
 
             // V9.3: AI property assessment text
             try {
+              const _areaForAssessment = Number(snapshot.living_area_sqm) || 0;
+              const _rentForAssessment = Number(snapshot.net_cold_rent_monthly) || 0;
+              const _priceForAssessment = Number(snapshot.asking_price) || 0;
+              const _yearForAssessment = Number(snapshot.year_built) || 1980;
+              const _coreRen = !!snapshot.core_renovated;
+              const _renYear = Number(snapshot.renovation_year) || 0;
               locationAnalysis.property_assessment = await callAI(
                 lovableApiKey!, "google/gemini-2.5-flash",
                 `Du bist Immobiliensachverständiger und beschreibst Bestandsimmobilien für Kurzgutachten.
-
 Erstelle eine professionelle Objektbeschreibung mit:
 1. **Gebäudecharakteristik**: Typ, Baujahr, Bauweise, Geschossigkeit
 2. **Ausstattung & Zustand**: Bewertung des baulichen Zustands, Modernisierungsgrad
 3. **Nutzungspotenzial**: Aktuelle Nutzung, Vermietungssituation, Optimierungspotenzial
 4. **Stärken & Schwächen**: 3 Stärken, 3 Risiken/Schwächen des Objekts
-
 Sachlicher Gutachterstil. 200-300 Wörter.`,
                 `Objekt: ${snapshot.formatted_address || address}
-Typ: ${calcObjectType}
-Baujahr: ${sachYearBuilt}
-Fläche: ${livingArea}m²
+Typ: ${snapshot.object_type || 'MFH'}
+Baujahr: ${_yearForAssessment}
+Fläche: ${_areaForAssessment}m²
 Einheiten: ${snapshot.units_detail?.length || snapshot.units_count || 1}
 Zustand: ${snapshot.condition || 'nicht angegeben'}
 Energieklasse: ${snapshot.energy_class || 'nicht angegeben'}
-Kernsanierung: ${coreRenovated ? `Ja (${renovationYear})` : 'Nein'}
-Kaltmiete: ${netRent}€/Monat
+Kernsanierung: ${_coreRen ? `Ja (${_renYear})` : 'Nein'}
+Kaltmiete: ${_rentForAssessment}€/Monat
 Hausgeld: ${snapshot.hausgeld_monthly || 'n/a'}€/Monat
 Stellplätze: ${snapshot.parking_spots || 'n/a'}
 Vermietungsstatus: ${snapshot.rental_status || 'unbekannt'}
-Kaufpreis/Marktwert: ${askingPrice}€`,
+Kaufpreis/Marktwert: ${_priceForAssessment}€`,
               );
             } catch (_) { locationAnalysis.property_assessment = null; }
           }

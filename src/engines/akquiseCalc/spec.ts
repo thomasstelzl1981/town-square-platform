@@ -290,6 +290,24 @@ export const ANCILLARY_DEFAULTS = {
 } as const;
 
 // ============================================================================
+// PROPERTY TYPE MAPPING (shared SSOT for engine + edge function)
+// ============================================================================
+
+/** Canonical property type mapping from German expose labels to internal codes.
+ *  Mirror maintained in supabase/functions/sot-valuation-engine/index.ts (OFFER_TYPE_MAP).
+ *  Keep both in sync when adding new types.
+ */
+export const PROPERTY_TYPE_MAP: Record<string, string> = {
+  'Mehrfamilienhaus': 'MFH', 'MFH': 'MFH', 'mfh': 'MFH',
+  'Wohnhaus': 'MFH', 'Wohn- und Geschäftshaus': 'Mixed',
+  'Eigentumswohnung': 'ETW', 'ETW': 'ETW', 'etw': 'ETW', 'Wohnung': 'ETW',
+  'Einfamilienhaus': 'EFH', 'EFH': 'EFH', 'efh': 'EFH',
+  'Doppelhaushälfte': 'DHH', 'DHH': 'DHH', 'dhh': 'DHH', 'Reihenhaus': 'DHH',
+  'Gewerbe': 'Gewerbe', 'Büro': 'Gewerbe', 'Laden': 'Gewerbe',
+  'Mixed': 'Mixed', 'mixed': 'Mixed', 'Gemischt': 'Mixed',
+};
+
+// ============================================================================
 // DEFAULTS
 // ============================================================================
 

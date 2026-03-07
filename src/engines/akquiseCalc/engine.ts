@@ -21,7 +21,7 @@ import type {
   AufteilerProjectParams, AufteilerProjectResult,
   AncillaryCostBreakdown,
 } from './spec';
-import { GREST_BY_STATE, PLZ_TO_STATE, ANCILLARY_DEFAULTS } from './spec';
+import { GREST_BY_STATE, PLZ_TO_STATE, ANCILLARY_DEFAULTS, PROPERTY_TYPE_MAP } from './spec';
 
 // ============================================================================
 // BESTAND (HOLD)
@@ -467,16 +467,7 @@ function calcAlternativenMatrix(
 // ACQ-OFFER → VALUATION SNAPSHOT BUILDER
 // ============================================================================
 
-/** Property type mapping from extracted expose data to canonical types */
-const PROPERTY_TYPE_MAP: Record<string, string> = {
-  'Mehrfamilienhaus': 'MFH', 'MFH': 'MFH', 'mfh': 'MFH',
-  'Wohnhaus': 'MFH', 'Wohn- und Geschäftshaus': 'Mixed',
-  'Eigentumswohnung': 'ETW', 'ETW': 'ETW', 'etw': 'ETW', 'Wohnung': 'ETW',
-  'Einfamilienhaus': 'EFH', 'EFH': 'EFH', 'efh': 'EFH',
-  'Doppelhaushälfte': 'DHH', 'DHH': 'DHH', 'dhh': 'DHH', 'Reihenhaus': 'DHH',
-  'Gewerbe': 'Gewerbe', 'Büro': 'Gewerbe', 'Laden': 'Gewerbe',
-  'Mixed': 'Mixed', 'mixed': 'Mixed', 'Gemischt': 'Mixed',
-};
+// PROPERTY_TYPE_MAP imported from spec.ts (SSOT)
 
 /**
  * Build a CanonicalPropertySnapshot from an acq_offers row + extracted_data.
