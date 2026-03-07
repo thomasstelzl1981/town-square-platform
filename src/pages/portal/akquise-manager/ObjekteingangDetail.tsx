@@ -198,7 +198,7 @@ export function ObjekteingangDetail() {
   const [interesseOpen, setInteresseOpen] = React.useState(false);
   const [extractedOpen, setExtractedOpen] = React.useState(false);
   const [priceOverride, setPriceOverride] = React.useState<number | null>(null);
-  React.useEffect(() => { if (offer) setPriceOverride((offer as any).price_counter ?? offer.price_asking ?? null); }, [offer?.id]);
+  React.useEffect(() => { if (offer) setPriceOverride(offer.price_counter ?? offer.price_asking ?? null); }, [offer?.id]);
 
   if (isLoading) return <div className="p-6 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   if (!offer) return <PageShell><Card><CardContent className="p-12 text-center"><Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" /><h3 className="text-lg font-semibold">Objekt nicht gefunden</h3><Button className="mt-4" onClick={() => navigate('/portal/akquise-manager/objekteingang')}>Zurück zur Übersicht</Button></CardContent></Card></PageShell>;
