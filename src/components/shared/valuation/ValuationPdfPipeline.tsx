@@ -219,16 +219,16 @@ export function ValuationPdfPipeline({
       try {
         const pdfData: ValuationPdfData = {
           snapshot: snapshot || {} as CanonicalPropertySnapshot,
-          valueBand,
-          methods,
-          financing,
-          stressTests,
-          lienProxy,
-          dataQuality,
-          compStats,
-          comps,
-          location,
-          executiveSummary,
+          valueBand: valueBand ?? { p50: 0, p25: 0, p75: 0, confidence: 'low' as any, confidenceScore: 0, weightingTable: [], reasoning: '' },
+          methods: methods || [],
+          financing: financing || [],
+          stressTests: stressTests || [],
+          lienProxy: lienProxy || null,
+          dataQuality: dataQuality || null,
+          compStats: compStats || null,
+          comps: comps || [],
+          location: location || null,
+          executiveSummary: executiveSummary || '',
           caseId: caseId || 'unknown',
           generatedAt: new Date().toISOString(),
           sourceMode: sourceMode || 'SSOT_FINAL',
@@ -239,6 +239,8 @@ export function ValuationPdfPipeline({
           photos: photos || [],
         };
 
+        console.log('[PDF Pipeline] Starting render with data keys:', Object.keys(pdfData).filter(k => !!(pdfData as any)[k]).join(', '));
+        
         const { blob, pageCount: pages } = await generateValuationPdfBlob(pdfData);
         if (cancelled) return;
 
@@ -251,8 +253,10 @@ export function ValuationPdfPipeline({
         setStage('preview');
       } catch (e) {
         if (cancelled) return;
-        console.error('PDF render error:', e);
-        setError(e instanceof Error ? e.message : 'PDF-Erstellung fehlgeschlagen');
+        const errorMsg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+        const errorStack = e instanceof Error ? e.stack : '';
+        console.error('[PDF Pipeline] Render error:', errorMsg, '\nStack:', errorStack);
+        setError(`PDF-Fehler: ${errorMsg}`);
       }
     };
 
