@@ -116,7 +116,7 @@ const AssistantMessage: React.FC<AssistantMessageProps> = ({
       <div className="flex-1 min-w-0 space-y-2">
         {/* Main content with inline TTS button */}
         {message.content && (
-          <div className="group relative rounded-2xl px-3 py-2 text-sm text-foreground/90 max-w-[85%] armstrong-message-assistant">
+          <div className="group relative rounded-2xl px-4 py-2.5 text-base text-foreground/95 max-w-[85%] armstrong-message-assistant">
             {/* TTS button — appears on hover */}
             {onSpeak && (
               <button
