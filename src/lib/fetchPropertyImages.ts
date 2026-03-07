@@ -27,7 +27,7 @@ export async function fetchPropertyImages(
 
   if (propertyIds.length === 0) return imageMap;
 
-  // 1. Query document_links with documents join
+  // 1. Query document_links with documents join — HARDENED: only linked status
   const { data: imageLinks, error } = await supabase
     .from('document_links')
     .select(`
@@ -38,6 +38,7 @@ export async function fetchPropertyImages(
     `)
     .in('object_id', propertyIds)
     .eq('object_type', 'property')
+    .eq('link_status', 'linked')
     .order('is_title_image', { ascending: false })
     .order('display_order', { ascending: true });
 

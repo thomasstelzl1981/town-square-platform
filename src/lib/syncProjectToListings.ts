@@ -21,7 +21,7 @@ export async function syncProjectToListings(
   tenantId: string,
   projectName?: string,
 ): Promise<SyncResult> {
-  const result: SyncResult = { updated: 0, unchanged: 0, errors: [] };
+  const result: SyncResult = { updated: 0, unchanged: 0, imagesSynced: 0, errors: [] };
 
   // 1. Fetch all units that have a linked property
   const { data: units, error: unitsErr } = await supabase

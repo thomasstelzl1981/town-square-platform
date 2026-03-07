@@ -148,32 +148,25 @@ export function useExposeListing({
         .select('id', { count: 'exact', head: true })
         .eq('property_id', propertyId);
 
-      // Fallback hero image: check project-level document_links if no property images exist
+      // Hero image: SSOT = property-level document_links with link_status='linked'
+      // NO project-level fallback (removed to prevent drift)
       let heroImageUrl: string | null = DEMO_PROPERTY_IMAGE_MAP[propertyId] || null;
       if (!heroImageUrl) {
-        // Check if this property comes from a project and fetch project hero image
-        const { data: unitLink } = await supabase
-          .from('dev_project_units')
-          .select('project_id')
-          .eq('property_id', propertyId)
-          .maybeSingle();
+        const { data: heroLinks } = await supabase
+          .from('document_links')
+          .select('documents!inner (file_path, mime_type)')
+          .eq('object_type', 'property')
+          .eq('object_id', propertyId)
+          .eq('link_status', 'linked')
+          .order('is_title_image', { ascending: false })
+          .order('display_order', { ascending: true })
+          .limit(1);
 
-        if (unitLink?.project_id) {
-          const { data: projectImageLinks } = await supabase
-            .from('document_links')
-            .select('documents!inner (file_path, mime_type)')
-            .eq('object_type', 'project')
-            .eq('object_id', unitLink.project_id)
-            .order('is_title_image', { ascending: false })
-            .order('display_order', { ascending: true })
-            .limit(1);
-
-          if (projectImageLinks?.length) {
-            const doc = (projectImageLinks[0] as any).documents;
-            if (doc?.file_path && String(doc.mime_type || '').startsWith('image/')) {
-              const { getCachedSignedUrl } = await import('@/lib/imageCache');
-              heroImageUrl = await getCachedSignedUrl(doc.file_path);
-            }
+        if (heroLinks?.length) {
+          const doc = (heroLinks[0] as any).documents;
+          if (doc?.file_path && String(doc.mime_type || '').startsWith('image/')) {
+            const { getCachedSignedUrl } = await import('@/lib/imageCache');
+            heroImageUrl = await getCachedSignedUrl(doc.file_path);
           }
         }
       }
