@@ -73,19 +73,12 @@ export function ObjekteingangList() {
   const { data: allOffers = [], isLoading: loadingOffers } = useQuery({
     queryKey: ['acq-offers-inbox'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('active_tenant_id')
-        .eq('id', user.id)
-        .single();
-      if (!profile?.active_tenant_id) return [];
+      if (!activeTenantId) return [];
 
       const { data, error } = await supabase
         .from('acq_offers')
         .select('*, documents:acq_offer_documents(id, document_type, storage_path, file_name)')
-        .eq('tenant_id', profile.active_tenant_id)
+        .eq('tenant_id', activeTenantId)
         .order('created_at', { ascending: false })
         .limit(1000);
       if (error) throw error;

@@ -179,7 +179,7 @@ export function AnalysisTab({ mandateId, mandateCode }: AnalysisTabProps) {
 function OfferCard({ offer, onClick }: { offer: AcqOffer; onClick: () => void }) {
   const statusConfig = STATUS_CONFIG[offer.status] || STATUS_CONFIG.new;
   const hasCalc = offer.calc_bestand || offer.calc_aufteiler;
-  const hasValuation = offer.analysis_summary || offer.geomap_data; // SoT Valuation or legacy geomap
+  const hasValuation = !!offer.analysis_summary;
   const hasAI = offer.analysis_summary;
   
   return (
@@ -249,19 +249,12 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
     return <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
-  interface LocationResult {
-    avgRentPerSqm?: string | number;
-    avgPricePerSqm?: string | number;
-    vacancyRate?: string | number;
-    populationTrend?: string;
-    summary?: string;
-  }
   interface AiSummaryResult {
     summary?: string;
     risks?: string[];
     opportunities?: string[];
   }
-  const geo = offer.geomap_data as LocationResult | null; // legacy — SoT Valuation replaces this
+  // Legacy geomap_data removed — SoT Valuation Engine is the SSOT
   const ai = offer.analysis_summary as AiSummaryResult | null;
 
   return (
@@ -326,35 +319,7 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
         />
       </div>
 
-      {/* ── Standortdaten (legacy, wird durch SoT Valuation ersetzt) ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <MapPin className="h-4 w-4" />
-            Standortdaten
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {geo ? (
-            <div className="space-y-4">
-              <div className={DESIGN.KPI_GRID.FULL}>
-                <KPIBox label="Mietniveau" value={`${geo.avgRentPerSqm || 'N/A'} €/m²`} icon={Home} color="blue" />
-                <KPIBox label="Kaufpreisniveau" value={`${geo.avgPricePerSqm || 'N/A'} €/m²`} icon={Euro} color="green" />
-                <KPIBox label="Leerstandsquote" value={`${geo.vacancyRate || 'N/A'}%`} icon={AlertCircle} color="orange" />
-                <KPIBox label="Bevölkerungstrend" value={geo.populationTrend || 'N/A'} icon={TrendingUp} color="purple" />
-              </div>
-              {geo.summary && (
-                <div className="p-4 bg-muted/50 rounded-lg"><p className="text-sm">{geo.summary}</p></div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <MapPin className="h-10 w-10 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">Keine Standortdaten — SoT Bewertung starten.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Standortdaten via SoT Valuation Engine — legacy geomap_data entfernt */}
 
       {/* ── KI-Analyse Results (full-width) ── */}
       <Card>

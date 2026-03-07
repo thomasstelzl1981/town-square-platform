@@ -16,7 +16,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Loader2, Building2, X, ThumbsUp, MessageSquare, FileText, Upload, Check, ChevronDown, TrendingUp, Play, AlertTriangle, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAcqOffer, useUpdateOfferStatus, type AcqOfferStatus } from '@/hooks/useAcqOffers';
+import { useAcqOffer, useUpdateOfferStatus, type AcqOfferStatus, type AcqOffer } from '@/hooks/useAcqOffers';
 import { useAcqMandate } from '@/hooks/useAcqMandate';
 import { useValuationCase } from '@/hooks/useValuationCase';
 import { format } from 'date-fns';
@@ -67,7 +67,7 @@ function getCompletenessIssues(offer: { price_asking?: number | null; noi_indica
   return issues;
 }
 
-function QuickAnalysisBanner({ offer, yearlyRent, priceOverride, originalPrice, onPriceChange }: { offer: any; yearlyRent: number; priceOverride: number; originalPrice: number; onPriceChange: (p: number) => void }) {
+function QuickAnalysisBanner({ offer, yearlyRent, priceOverride, originalPrice, onPriceChange }: { offer: AcqOffer; yearlyRent: number; priceOverride: number; originalPrice: number; onPriceChange: (p: number) => void }) {
   const [inputValue, setInputValue] = React.useState(priceOverride.toString());
   const [isSaving, setIsSaving] = React.useState(false);
   const isModified = priceOverride !== originalPrice;
@@ -76,8 +76,8 @@ function QuickAnalysisBanner({ offer, yearlyRent, priceOverride, originalPrice, 
   const fmtInput = (v: string) => { const n = parseInt(v.replace(/\D/g, ''), 10); return isNaN(n) ? '' : n.toLocaleString('de-DE'); };
   const handleInput = (raw: string) => { const d = raw.replace(/\D/g, ''); setInputValue(d); const n = parseInt(d, 10); if (!isNaN(n) && n > 0) onPriceChange(n); };
   const handleSave = async () => { setIsSaving(true); const { error } = await supabase.from('acq_offers').update({ price_counter: priceOverride } as any).eq('id', offer.id); setIsSaving(false); error ? toast({ title: 'Fehler', variant: 'destructive' }) : toast({ title: 'Gespeichert', description: `Gegenvorschlag ${fmtCur(priceOverride)}` }); };
-  const bestand = calcBestandQuick({ purchasePrice: priceOverride, monthlyRent: yearlyRent / 12 });
-  const aufteiler = calcAufteilerFull({ purchasePrice: priceOverride, yearlyRent, targetYield: AUFTEILER_DEFAULTS.targetYield, salesCommission: AUFTEILER_DEFAULTS.salesCommission, holdingPeriodMonths: AUFTEILER_DEFAULTS.holdingPeriodMonths, ancillaryCostPercent: AUFTEILER_DEFAULTS.ancillaryCostPercent, interestRate: AUFTEILER_DEFAULTS.interestRate, equityPercent: AUFTEILER_DEFAULTS.equityPercent, projectCosts: 0 });
+  const bestand = React.useMemo(() => calcBestandQuick({ purchasePrice: priceOverride, monthlyRent: yearlyRent / 12 }), [priceOverride, yearlyRent]);
+  const aufteiler = React.useMemo(() => calcAufteilerFull({ purchasePrice: priceOverride, yearlyRent, targetYield: AUFTEILER_DEFAULTS.targetYield, salesCommission: AUFTEILER_DEFAULTS.salesCommission, holdingPeriodMonths: AUFTEILER_DEFAULTS.holdingPeriodMonths, ancillaryCostPercent: AUFTEILER_DEFAULTS.ancillaryCostPercent, interestRate: AUFTEILER_DEFAULTS.interestRate, equityPercent: AUFTEILER_DEFAULTS.equityPercent, projectCosts: 0 }), [priceOverride, yearlyRent]);
   return (
     <Card className={cn(DESIGN.CARD.BASE, DESIGN.INFO_BANNER.PREMIUM)}>
       <CardHeader className="pb-2 px-4 pt-3 flex flex-row items-center justify-between">
@@ -198,7 +198,7 @@ export function ObjekteingangDetail() {
   const [interesseOpen, setInteresseOpen] = React.useState(false);
   const [extractedOpen, setExtractedOpen] = React.useState(false);
   const [priceOverride, setPriceOverride] = React.useState<number | null>(null);
-  React.useEffect(() => { if (offer) setPriceOverride((offer as any).price_counter ?? offer.price_asking ?? null); }, [offer?.id]);
+  React.useEffect(() => { if (offer) setPriceOverride(offer.price_counter ?? offer.price_asking ?? null); }, [offer?.id]);
 
   if (isLoading) return <div className="p-6 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   if (!offer) return <PageShell><Card><CardContent className="p-12 text-center"><Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" /><h3 className="text-lg font-semibold">Objekt nicht gefunden</h3><Button className="mt-4" onClick={() => navigate('/portal/akquise-manager/objekteingang')}>Zurück zur Übersicht</Button></CardContent></Card></PageShell>;
@@ -208,7 +208,7 @@ export function ObjekteingangDetail() {
   const effectivePrice = priceOverride ?? offer.price_asking ?? 0;
   const yearlyRent = deriveYearlyRent(offer, effectivePrice);
   const completenessIssues = getCompletenessIssues(offer);
-  const hasCalcData = offer.calc_bestand || offer.calc_aufteiler || (offer.status !== 'new');
+  const hasCalcData = !!(offer.calc_bestand || offer.calc_aufteiler);
 
   return (
     <PageShell>

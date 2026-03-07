@@ -8,7 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { sanitizeFileName, buildStoragePath, UPLOAD_BUCKET } from '@/config/storageManifest';
 import { toast } from 'sonner';
-import { calcBestandQuick, calcAufteilerQuick } from '@/engines/akquiseCalc/engine';
+import { calcBestandFull, calcAufteilerFull } from '@/engines/akquiseCalc/engine';
+import { BESTAND_DEFAULTS, AUFTEILER_DEFAULTS } from '@/engines/akquiseCalc/spec';
+import type { BestandFullParams, AufteilerFullParams } from '@/engines/akquiseCalc/spec';
 
 // ============================================================================
 // TYPES
@@ -31,6 +33,7 @@ export interface AcqOffer {
   postal_code: string | null;
   city: string | null;
   price_asking: number | null;
+  price_counter: number | null;
   yield_indicated: number | null;
   noi_indicated: number | null;
   units_count: number | null;
@@ -392,8 +395,20 @@ export function useRunCalcBestand() {
 
       if (runError) throw runError;
 
-      // Calculate locally (using existing investment engine logic)
-      const result = calcBestandQuick(params as Partial<import('@/engines/akquiseCalc/spec').BestandQuickParams> as import('@/engines/akquiseCalc/spec').BestandQuickParams);
+      // Calculate locally using Full engine for complete 30-year projection
+      const fullParams: BestandFullParams = {
+        purchasePrice: (params as any).purchasePrice ?? 0,
+        monthlyRent: (params as any).monthlyRent ?? 0,
+        equityPercent: (params as any).equityPercent ?? BESTAND_DEFAULTS.equityPercent,
+        interestRate: (params as any).interestRate ?? BESTAND_DEFAULTS.interestRate,
+        repaymentRate: (params as any).repaymentRate ?? BESTAND_DEFAULTS.repaymentRate,
+        rentIncreaseRate: (params as any).rentIncreaseRate ?? BESTAND_DEFAULTS.rentIncreaseRate,
+        valueIncreaseRate: (params as any).valueIncreaseRate ?? BESTAND_DEFAULTS.valueIncreaseRate,
+        managementCostPercent: (params as any).managementCostPercent ?? BESTAND_DEFAULTS.managementCostPercent,
+        maintenancePercent: (params as any).maintenancePercent ?? BESTAND_DEFAULTS.maintenancePercent,
+        ancillaryCostPercent: (params as any).ancillaryCostPercent ?? BESTAND_DEFAULTS.ancillaryCostPercent,
+      };
+      const result = calcBestandFull(fullParams);
 
       // Update run with results
       const { error: updateError } = await supabase
@@ -445,7 +460,18 @@ export function useRunCalcAufteiler() {
 
       if (runError) throw runError;
 
-      const result = calcAufteilerQuick(params as Partial<import('@/engines/akquiseCalc/spec').AufteilerQuickParams> as import('@/engines/akquiseCalc/spec').AufteilerQuickParams);
+      const fullParams: AufteilerFullParams = {
+        purchasePrice: (params as any).purchasePrice ?? 0,
+        yearlyRent: (params as any).yearlyRent ?? 0,
+        targetYield: (params as any).targetYield ?? AUFTEILER_DEFAULTS.targetYield,
+        salesCommission: (params as any).salesCommission ?? AUFTEILER_DEFAULTS.salesCommission,
+        holdingPeriodMonths: (params as any).holdingPeriodMonths ?? AUFTEILER_DEFAULTS.holdingPeriodMonths,
+        ancillaryCostPercent: (params as any).ancillaryCostPercent ?? AUFTEILER_DEFAULTS.ancillaryCostPercent,
+        interestRate: (params as any).interestRate ?? AUFTEILER_DEFAULTS.interestRate,
+        equityPercent: (params as any).equityPercent ?? AUFTEILER_DEFAULTS.equityPercent,
+        projectCosts: (params as any).projectCosts ?? 0,
+      };
+      const result = calcAufteilerFull(fullParams);
 
       await supabase
         .from('acq_analysis_runs')

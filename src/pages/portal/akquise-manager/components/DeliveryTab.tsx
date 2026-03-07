@@ -270,7 +270,7 @@ export function DeliveryTab({ mandateId, mandateCode, clientName }: DeliveryTabP
 // Delivery Card for analyzed offers
 function DeliveryOfferCard({ offer, onPresent }: { offer: AcqOffer; onPresent: () => void }) {
   const hasCalc = offer.calc_bestand || offer.calc_aufteiler;
-  const hasValuation = offer.analysis_summary || offer.geomap_data; // SoT Valuation or legacy
+  const hasValuation = !!offer.analysis_summary;
   const hasAI = offer.analysis_summary;
   
   // Calculate a "readiness" score
