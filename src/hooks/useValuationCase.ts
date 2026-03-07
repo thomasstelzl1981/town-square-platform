@@ -355,16 +355,46 @@ export function useValuationCase() {
       const inputs = data?.inputs || {};
       const rawDq = inputs.snapshot?.data_quality ?? runSummary?.data_quality ?? null;
 
-      // Map snapshot with new extended fields
+      // Map snapshot: full snake_case → camelCase conversion
       const rawSnapshot = inputs.snapshot ?? null;
       const mappedSnapshot = rawSnapshot ? {
-        ...rawSnapshot,
+        sourceMode: rawSnapshot.source_mode ?? rawSnapshot.sourceMode ?? 'DRAFT_INTAKE',
+        address: rawSnapshot.address ?? null,
+        postalCode: rawSnapshot.postal_code ?? rawSnapshot.postalCode ?? null,
+        city: rawSnapshot.city ?? null,
+        lat: rawSnapshot.lat ?? null,
+        lng: rawSnapshot.lng ?? null,
+        objectType: rawSnapshot.object_type ?? rawSnapshot.objectType ?? null,
+        livingAreaSqm: rawSnapshot.living_area_sqm ?? rawSnapshot.livingAreaSqm ?? null,
+        plotAreaSqm: rawSnapshot.plot_area_sqm ?? rawSnapshot.plotAreaSqm ?? null,
+        usableAreaSqm: rawSnapshot.usable_area_sqm ?? rawSnapshot.usableAreaSqm ?? null,
+        commercialAreaSqm: rawSnapshot.commercial_area_sqm ?? rawSnapshot.commercialAreaSqm ?? null,
+        rooms: rawSnapshot.rooms ?? null,
+        units: rawSnapshot.units_count ?? rawSnapshot.unit_count_actual ?? rawSnapshot.units ?? null,
+        floors: rawSnapshot.floors ?? null,
+        parkingSpots: rawSnapshot.parking_spots ?? rawSnapshot.parkingSpots ?? null,
+        yearBuilt: rawSnapshot.year_built ?? rawSnapshot.yearBuilt ?? null,
+        condition: rawSnapshot.condition ?? null,
+        energyClass: rawSnapshot.energy_class ?? rawSnapshot.energyClass ?? null,
+        modernizations: rawSnapshot.modernizations ?? [],
+        askingPrice: rawSnapshot.asking_price ?? rawSnapshot.askingPrice ?? null,
+        netColdRentMonthly: rawSnapshot.net_cold_rent_monthly ?? rawSnapshot.netColdRentMonthly ?? null,
+        netColdRentPerSqm: rawSnapshot.net_cold_rent_per_sqm ?? rawSnapshot.netColdRentPerSqm ?? null,
+        hausgeldMonthly: rawSnapshot.hausgeld_monthly ?? rawSnapshot.hausgeldMonthly ?? null,
+        vacancyRate: rawSnapshot.vacancy_rate ?? rawSnapshot.vacancyRate ?? null,
+        rentalStatus: rawSnapshot.rental_status ?? rawSnapshot.rentalStatus ?? null,
+        purchasePrice: rawSnapshot.purchase_price ?? rawSnapshot.purchasePrice ?? null,
+        acquisitionCosts: rawSnapshot.acquisition_costs ?? rawSnapshot.acquisitionCosts ?? null,
+        // Extended fields (V9.4)
         heatingType: rawSnapshot.heating_type ?? rawSnapshot.heatingType ?? null,
         energySource: rawSnapshot.energy_source ?? rawSnapshot.energySource ?? null,
         coreRenovated: rawSnapshot.core_renovated ?? rawSnapshot.coreRenovated ?? null,
         renovationYear: rawSnapshot.renovation_year ?? rawSnapshot.renovationYear ?? null,
         ownershipSharePercent: rawSnapshot.ownership_share_percent ?? rawSnapshot.ownershipSharePercent ?? null,
         energyCertificateValue: rawSnapshot.energy_certificate_value ?? rawSnapshot.energyCertificateValue ?? null,
+        // Pass through legal_title and data_quality if present
+        legal_title: rawSnapshot.legal_title ?? null,
+        data_quality: rawSnapshot.data_quality ?? null,
       } : null;
 
       const mappedResult = {
