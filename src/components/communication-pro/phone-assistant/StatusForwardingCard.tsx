@@ -36,7 +36,6 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
   const [purchasing, setPurchasing] = useState(false);
   const [releasing, setReleasing] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([]);
   const [selectedNumber, setSelectedNumber] = useState<AvailableNumber | null>(null);
