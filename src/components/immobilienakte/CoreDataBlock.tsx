@@ -100,7 +100,7 @@ export function CoreDataBlock({
             </div>
             {energyCertificateValidUntil && (
               <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                <span>Gültig bis</span>
+                <span>Erstellt am</span>
                 <span>{energyCertificateValidUntil}</span>
               </div>
             )}
