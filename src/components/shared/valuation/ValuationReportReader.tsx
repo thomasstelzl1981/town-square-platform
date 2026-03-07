@@ -1,8 +1,10 @@
 /**
- * ValuationReportReader — Kurzgutachten Web-Reader V9.0
- * 11 inline sections matching the 12-page PDF structure.
+ * ValuationReportReader — Kurzgutachten Web-Reader V9.2
+ * Full inline sections matching the premium PDF structure.
  * Scrollable vertical layout — every section visible in sequence.
+ * Includes: Objektsteckbrief, Fotos, Grundrisse/Lagepläne, enhanced Maps.
  */
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,11 +13,14 @@ import {
   TrendingUp, Download, Shield, Banknote, BarChart3,
   Database, MapPin, Building2, FileText, AlertTriangle, CheckCircle2,
   Navigation, Clock, Compass, Star, Landmark, Ruler, Hammer,
-  ArrowUpDown, Scale, Search, Info
+  ArrowUpDown, Scale, Search, Info, Camera, FileImage, Satellite, Map
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import { ValuationLegalBlock } from './ValuationLegalBlock';
+import { ValuationPhotoGrid } from './ValuationPhotoGrid';
+import { ValuationDocumentGrid, type DocumentSlot } from './ValuationDocumentGrid';
+import { supabase } from '@/integrations/supabase/client';
 import type {
   ValueBand, ValuationMethodResult, FinancingScenario, StressTestResult,
   LienProxy, DebtServiceResult, DataQuality, CompStats, CompPosting,
