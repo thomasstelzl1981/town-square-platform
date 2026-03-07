@@ -346,6 +346,41 @@ export function ContextPanel({ activeProject }: ContextPanelProps) {
             </div>
           )}
 
+          {/* Armstrong Datenraum */}
+          {activeProject && activeTenantId && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <FolderOpen className="h-3 w-3 text-primary" />
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Datenraum</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0"
+                  onClick={() => setShowDataRoom(!showDataRoom)}
+                >
+                  {showDataRoom ? <X className="h-3 w-3" /> : <FolderOpen className="h-3 w-3" />}
+                </Button>
+              </div>
+
+              {showDataRoom ? (
+                <div className="rounded-md border border-border/30 overflow-hidden" style={{ height: '300px' }}>
+                  <EntityStorageTree
+                    tenantId={activeTenantId}
+                    entityType="armstrong_project"
+                    entityId={activeProject.id}
+                    moduleCode="MOD_00"
+                  />
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground px-2">
+                  Dateien dieses Projekts. Klicke auf den Ordner um den Datenraum zu öffnen.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Dashboard Fallback — when no project selected */}
           {!activeProject && !context?.entity_id && (
             <div className="space-y-4">

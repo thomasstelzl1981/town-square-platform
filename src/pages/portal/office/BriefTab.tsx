@@ -200,11 +200,13 @@ export function BriefTab() {
     const file = e.target.files?.[0]; if (!file || !profile?.id) return;
     setIsUploadingSignature(true);
     try {
-      const path = `signatures/${profile.id}/signature.${file.name.split('.').pop() || 'png'}`;
+      const ext = file.name.split('.').pop() || 'png';
+      const path = `${profile.active_tenant_id}/MOD_02/signatures/${profile.id}/signature.${ext}`;
       const { error: uploadError } = await supabase.storage.from('tenant-documents').upload(path, file, { upsert: true });
       if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from('tenant-documents').getPublicUrl(path);
-      const { error: updateError } = await supabase.from('profiles').update({ signature_url: urlData.publicUrl }).eq('id', profile.id);
+      const { data: signedData } = await supabase.storage.from('tenant-documents').createSignedUrl(path, 60 * 60 * 24 * 365);
+      const signatureUrl = signedData?.signedUrl || null;
+      const { error: updateError } = await supabase.from('profiles').update({ signature_url: signatureUrl }).eq('id', profile.id);
       if (updateError) throw updateError;
       queryClient.invalidateQueries({ queryKey: ['user-profile'] }); toast.success('Unterschrift hochgeladen');
     } catch (err: any) { toast.error('Upload fehlgeschlagen: ' + err.message); } finally { setIsUploadingSignature(false); e.target.value = ''; }

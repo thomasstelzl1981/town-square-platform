@@ -171,6 +171,18 @@ export const RECORD_CARD_TYPES: Record<string, RecordCardTypeConfig> = {
     keywordFields: ['name'],
     dmsFolders: [],
   },
+  armstrong_project: {
+    label: 'Armstrong Workspace',
+    moduleCode: 'MOD_00',
+    icon: Bot,
+    keywordFields: ['title'],
+    dmsFolders: [
+      '01_Uploads',
+      '02_Recherche',
+      '03_Exporte',
+      '04_Sonstiges',
+    ],
+  },
   acq_module: {
     label: 'Akquise-Datenraum',
     moduleCode: 'MOD_12',
