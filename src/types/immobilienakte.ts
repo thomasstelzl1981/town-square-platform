@@ -255,6 +255,7 @@ export interface UnitDossierData {
   unitNumber?: string;
   heatingType?: string;
   energySource?: string;
+  energyClass?: string;
   energyCertType?: string;
   energyCertValue?: number;
   energyCertValidUntil?: string;
