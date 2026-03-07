@@ -1,12 +1,14 @@
 /**
- * ContextPanel — Right column: Active entity, sources, memory (editable), tasks, entity linker
- * v2: Task list UI, EntityLinker, dashboard fallback content
+ * ContextPanel — Right column: Active entity, sources, memory (editable), tasks, entity linker, Datenraum
+ * v3: Added Armstrong Workspace Datenraum via EntityStorageTree
  */
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useArmstrongContext } from '@/hooks/useArmstrongContext';
 import { useArmstrongProjects, type ArmstrongProject, type MemorySnippet, type ProjectTask } from '@/hooks/useArmstrongProjects';
+import { useAuth } from '@/contexts/AuthContext';
 import { EntityLinker } from '@/components/dashboard/workspace/EntityLinker';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,7 +53,9 @@ const SNIPPET_TYPE_LABELS: Record<string, string> = {
 
 export function ContextPanel({ activeProject }: ContextPanelProps) {
   const armstrongContext = useArmstrongContext();
+  const { activeTenantId } = useAuth();
   const { updateProject, activeProjects } = useArmstrongProjects();
+  const [showDataRoom, setShowDataRoom] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [newContent, setNewContent] = useState('');
   const [newType, setNewType] = useState<MemorySnippet['type']>('note');
@@ -339,6 +343,41 @@ export function ContextPanel({ activeProject }: ContextPanelProps) {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Armstrong Datenraum */}
+          {activeProject && activeTenantId && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <FolderOpen className="h-3 w-3 text-primary" />
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Datenraum</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0"
+                  onClick={() => setShowDataRoom(!showDataRoom)}
+                >
+                  {showDataRoom ? <X className="h-3 w-3" /> : <FolderOpen className="h-3 w-3" />}
+                </Button>
+              </div>
+
+              {showDataRoom ? (
+                <div className="rounded-md border border-border/30 overflow-hidden" style={{ height: '300px' }}>
+                  <EntityStorageTree
+                    tenantId={activeTenantId}
+                    entityType="armstrong_project"
+                    entityId={activeProject.id}
+                    moduleCode="MOD_00"
+                  />
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground px-2">
+                  Dateien dieses Projekts. Klicke auf den Ordner um den Datenraum zu öffnen.
+                </p>
               )}
             </div>
           )}

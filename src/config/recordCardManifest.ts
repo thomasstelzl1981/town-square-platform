@@ -7,7 +7,7 @@
  * - Label
  */
 
-import { User, Shield, Car, Heart, CreditCard, Landmark, Sun, PawPrint, Zap, Home, Camera } from 'lucide-react';
+import { User, Shield, Car, Heart, CreditCard, Landmark, Sun, PawPrint, Zap, Home, Camera, Bot } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface RecordCardTypeConfig {
@@ -170,6 +170,18 @@ export const RECORD_CARD_TYPES: Record<string, RecordCardTypeConfig> = {
     icon: Camera,
     keywordFields: ['name'],
     dmsFolders: [],
+  },
+  armstrong_project: {
+    label: 'Armstrong Workspace',
+    moduleCode: 'MOD_00',
+    icon: Bot,
+    keywordFields: ['title'],
+    dmsFolders: [
+      '01_Uploads',
+      '02_Recherche',
+      '03_Exporte',
+      '04_Sonstiges',
+    ],
   },
   acq_module: {
     label: 'Akquise-Datenraum',
