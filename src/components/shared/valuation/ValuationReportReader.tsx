@@ -352,7 +352,7 @@ export function ValuationReportReader({
           ═══════════════════════════════════════════════════════════════ */}
       <Card>
         <CardContent className="p-6 space-y-4">
-          <SectionHeader icon={Building2} title="Objektdaten & Gebäudeangaben" subtitle="Stammdaten der Immobilie — fehlende Angaben mit „–" markiert" />
+          <SectionHeader icon={Building2} title="Objektdaten & Gebäudeangaben" subtitle={'Stammdaten der Immobilie \u2014 fehlende Angaben mit \u201E\u2013\u201C markiert'} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Lage & Identifikation */}
