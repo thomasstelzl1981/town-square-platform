@@ -185,9 +185,37 @@ function getMethodValue(methods: ValuationMethodResult[], key: string): number {
 export function ValuationReportReader({
   valueBand, methods, financing, stressTests, lienProxy, debtService,
   dataQuality, compStats, executiveSummary, sourceMode, legalTitle,
-  location, comps, beleihungswert, geminiResearch, snapshot, onDownloadPdf, className,
+  location, comps, beleihungswert, geminiResearch, snapshot,
+  propertyId, tenantId, photos, onPhotosChange, documents, onDocumentsChange,
+  onDownloadPdf, className,
 }: Props) {
-  if (!valueBand) return null;
+  // ─── Google Maps API Key for satellite/aerial imagery ───────────────
+  const [googleApiKey, setGoogleApiKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.functions.invoke('sot-google-maps-key').then(({ data }) => {
+      if (data?.key) setGoogleApiKey(data.key);
+    });
+  }, []);
+
+  // Build satellite URL if we have coordinates from location
+  const buildStaticMapUrl = useCallback((lat: number, lng: number, zoom: number, maptype: 'satellite' | 'roadmap' | 'hybrid' | 'terrain', size = '640x400') => {
+    if (!googleApiKey) return null;
+    return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${size}&maptype=${maptype}&key=${googleApiKey}`;
+  }, [googleApiKey]);
+
+  // Try to extract coordinates from existing map URLs
+  const extractCoords = useCallback((): { lat: number; lng: number } | null => {
+    const url = location?.microMapUrl || location?.macroMapUrl;
+    if (!url) return null;
+    const match = url.match(/center=([0-9.-]+),([0-9.-]+)/);
+    if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+    const markerMatch = url.match(/markers=[^|]*\|([0-9.-]+),([0-9.-]+)/);
+    if (markerMatch) return { lat: parseFloat(markerMatch[1]), lng: parseFloat(markerMatch[2]) };
+    return null;
+  }, [location?.microMapUrl, location?.macroMapUrl]);
+
+  const coords = extractCoords();
 
   const ertragParams = getMethodParams(methods, 'ertragswert');
   const sachwertParams = getMethodParams(methods, 'sachwert_proxy');
