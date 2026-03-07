@@ -4,14 +4,12 @@
  */
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ArmstrongOrb, type OrbState } from '@/components/chat/ArmstrongOrb';
 import { Button } from '@/components/ui/button';
 import { PanelLeftOpen, PanelRightOpen, VolumeX, Trash2 } from 'lucide-react';
 import type { ArmstrongProject } from '@/hooks/useArmstrongProjects';
 
 interface Props {
   activeProject: ArmstrongProject | null;
-  orbState: OrbState;
   hasMessages: boolean;
   showLeftPanel: boolean;
   showRightPanel: boolean;
@@ -23,7 +21,7 @@ interface Props {
 }
 
 export function WorkspaceChatHeader({
-  activeProject, orbState, hasMessages, showLeftPanel, showRightPanel,
+  activeProject, hasMessages, showLeftPanel, showRightPanel,
   isSpeaking, onToggleLeft, onToggleRight, onStopSpeaking, onClear,
 }: Props) {
   const isMobile = useIsMobile();
@@ -39,15 +37,14 @@ export function WorkspaceChatHeader({
         >
           <PanelLeftOpen className="h-4 w-4" />
         </Button>
-        <ArmstrongOrb state={orbState} size={24} />
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold tracking-wide truncate">
-            {activeProject ? activeProject.title : 'Armstrong'}
-          </h3>
-          {activeProject?.goal && (
-            <p className="text-[10px] text-muted-foreground truncate">{activeProject.goal}</p>
-          )}
-        </div>
+      </div>
+      <div className="flex-1 text-center min-w-0">
+        <h3 className="text-base font-semibold uppercase tracking-widest truncate">
+          {activeProject ? activeProject.title : 'ARMSTRONG'}
+        </h3>
+        {activeProject?.goal && (
+          <p className="text-[10px] text-muted-foreground truncate">{activeProject.goal}</p>
+        )}
       </div>
       <div className="flex items-center gap-1">
         {isSpeaking && (

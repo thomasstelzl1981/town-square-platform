@@ -28,7 +28,7 @@ import { toast } from '@/hooks/use-toast';
 import type { ChatMessage, SuggestedAction, DraftContent, ActionResult, BlockedInfo } from '@/hooks/useArmstrongAdvisor';
 import { SuggestedActions } from './SuggestedActions';
 import { ActionCard, type ProposedAction } from './ActionCard';
-import { ArmstrongOrb } from './ArmstrongOrb';
+
 
 interface MessageRendererProps {
   message: ChatMessage;
@@ -112,12 +112,11 @@ const AssistantMessage: React.FC<AssistantMessageProps> = ({
   onSendEmail,
 }) => {
   return (
-    <div className="flex gap-2">
-      <ArmstrongOrb state="idle" size={20} className="mt-1 shrink-0" />
+    <div className="flex">
       <div className="flex-1 min-w-0 space-y-2">
         {/* Main content with inline TTS button */}
         {message.content && (
-          <div className="group relative rounded-2xl px-3 py-2 text-sm max-w-[85%] armstrong-message-assistant">
+          <div className="group relative rounded-2xl px-3 py-2 text-sm text-foreground/90 max-w-[85%] armstrong-message-assistant">
             {/* TTS button — appears on hover */}
             {onSpeak && (
               <button

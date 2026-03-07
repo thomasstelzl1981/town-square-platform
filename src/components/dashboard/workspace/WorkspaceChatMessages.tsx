@@ -5,8 +5,8 @@
 import { useRef, useEffect } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageRenderer } from '@/components/chat/MessageRenderer';
-import { ArmstrongOrb, type OrbState } from '@/components/chat/ArmstrongOrb';
 import { ArmstrongChipBar } from '@/components/chat/ArmstrongChipBar';
+import { MessageSquare } from 'lucide-react';
 import { WorkspaceOnboarding } from './WorkspaceOnboarding';
 
 import type { ChatMessage } from '@/hooks/useArmstrongAdvisor';
@@ -14,7 +14,6 @@ import type { ChatMessage } from '@/hooks/useArmstrongAdvisor';
 interface Props {
   messages: ChatMessage[];
   showOnboarding: boolean;
-  orbState: OrbState;
   orbStepLabel?: string;
   isLoading: boolean;
   isExecuting: boolean;
@@ -30,7 +29,7 @@ interface Props {
 }
 
 export function WorkspaceChatMessages({
-  messages, showOnboarding, orbState, orbStepLabel,
+  messages, showOnboarding, orbStepLabel,
   isLoading, isExecuting, isSpeaking, currentModule,
   onActionSelect, onConfirm, onCancel, onSpeak, onSendEmail,
   onOnboardingChat, onOnboardingNewProject,
@@ -58,7 +57,7 @@ export function WorkspaceChatMessages({
 
           {!hasMessages && !showOnboarding && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <ArmstrongOrb state="idle" size={48} />
+              <MessageSquare className="h-10 w-10 text-muted-foreground/40" />
               <h3 className="mt-4 text-lg font-semibold">Wie kann ich helfen?</h3>
               <p className="text-sm text-muted-foreground mt-1 max-w-md">
                 Frag mich etwas, starte ein Projekt oder nutze / für Aktionen.
@@ -81,8 +80,13 @@ export function WorkspaceChatMessages({
           ))}
 
           {(isLoading || isExecuting) && (
-            <div className="flex items-center gap-3 py-2">
-              <ArmstrongOrb state={orbState} size={24} stepLabel={orbStepLabel} />
+            <div className="flex items-center gap-1.5 py-3 px-1">
+              <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:0ms]" />
+              <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]" />
+              <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]" />
+              {orbStepLabel && (
+                <span className="ml-2 text-xs text-muted-foreground animate-pulse">{orbStepLabel}</span>
+              )}
             </div>
           )}
 

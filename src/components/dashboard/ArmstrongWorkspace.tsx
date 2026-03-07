@@ -105,7 +105,7 @@ export function ArmstrongWorkspace() {
   const chatColumn = (
     <div className="flex flex-col h-full min-w-0">
       <WorkspaceChatHeader
-        activeProject={activeProject} orbState={orbState} hasMessages={hasMessages}
+        activeProject={activeProject} hasMessages={hasMessages}
         showLeftPanel={showLeftPanel} showRightPanel={showRightPanel}
         isSpeaking={voice.isSpeaking}
         onToggleLeft={() => isMobile ? setMobileLeftOpen(true) : setShowLeftPanel(!showLeftPanel)}
@@ -121,7 +121,7 @@ export function ArmstrongWorkspace() {
 
       <WorkspaceChatMessages
         messages={advisor.messages} showOnboarding={showOnboarding}
-        orbState={orbState} orbStepLabel={orbStepLabel}
+        orbStepLabel={orbStepLabel}
         isLoading={advisor.isLoading} isExecuting={advisor.isExecuting}
         isSpeaking={voice.isSpeaking} currentModule={advisor.currentModule}
         onActionSelect={advisor.selectAction} onConfirm={advisor.confirmAction}
