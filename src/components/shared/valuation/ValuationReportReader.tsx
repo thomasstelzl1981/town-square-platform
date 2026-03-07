@@ -451,33 +451,29 @@ export function ValuationReportReader({
       {/* ═══════════════════════════════════════════════════════════════
           SEKTION 1e — LUFTBILD & SATELLIT
           ═══════════════════════════════════════════════════════════════ */}
-      {(satelliteUrl || hybridUrl || terrainUrl) && (
+      {(location?.satelliteMapUrl || location?.hybridMapUrl || location?.terrainMapUrl || satelliteUrl) && (
         <Card>
           <CardContent className="p-6 space-y-5">
             <SectionHeader icon={Satellite} title="Luftbild & Geländeansicht" subtitle="Satellitenaufnahme und Geländerelief des Standorts" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {satelliteUrl && (
-                <div className="space-y-1.5">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Satellitenansicht (Nahaufnahme)</p>
-                  <div className="rounded-xl overflow-hidden border shadow-sm aspect-[16/10]">
-                    <img src={satelliteUrl} alt="Satellitenansicht" className="w-full h-full object-cover" loading="lazy" />
-                  </div>
+              <div className="space-y-1.5">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Satellitenansicht (Nahaufnahme)</p>
+                <div className="rounded-xl overflow-hidden border shadow-sm aspect-[16/10]">
+                  <img src={location?.satelliteMapUrl || satelliteUrl || ''} alt="Satellitenansicht" className="w-full h-full object-cover" loading="lazy" />
                 </div>
-              )}
-              {hybridUrl && (
-                <div className="space-y-1.5">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Hybridansicht (Karte + Satellitenbild)</p>
-                  <div className="rounded-xl overflow-hidden border shadow-sm aspect-[16/10]">
-                    <img src={hybridUrl} alt="Hybridansicht" className="w-full h-full object-cover" loading="lazy" />
-                  </div>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Hybridansicht (Karte + Satellitenbild)</p>
+                <div className="rounded-xl overflow-hidden border shadow-sm aspect-[16/10]">
+                  <img src={location?.hybridMapUrl || hybridUrl || ''} alt="Hybridansicht" className="w-full h-full object-cover" loading="lazy" />
                 </div>
-              )}
+              </div>
             </div>
-            {terrainUrl && (
+            {(location?.terrainMapUrl || terrainUrl) && (
               <div className="space-y-1.5">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Geländeansicht (Topografie)</p>
                 <div className="rounded-xl overflow-hidden border shadow-sm aspect-[21/9] max-h-[250px]">
-                  <img src={terrainUrl} alt="Geländeansicht" className="w-full h-full object-cover" loading="lazy" />
+                  <img src={location?.terrainMapUrl || terrainUrl || ''} alt="Geländeansicht" className="w-full h-full object-cover" loading="lazy" />
                 </div>
               </div>
             )}
