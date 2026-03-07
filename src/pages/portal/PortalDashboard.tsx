@@ -292,6 +292,15 @@ export default function PortalDashboard() {
           </Suspense>
         </div>
       </section>
+
+      {/* ===== Section 3: Armstrong Datenraum ===== */}
+      <section className="min-h-[calc(100dvh-4rem)] snap-start flex flex-col">
+        <div className="max-w-7xl mx-auto w-full px-2 py-3 md:p-6 lg:p-8 flex-1 flex flex-col">
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">Datenraum lädt…</div>}>
+            <ArmstrongDataRoomSection />
+          </Suspense>
+        </div>
+      </section>
     </div>
   );
 }
