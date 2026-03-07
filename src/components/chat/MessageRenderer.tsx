@@ -206,7 +206,7 @@ const DraftBox: React.FC<{ draft: DraftContent }> = ({ draft }) => {
       </div>
       <div className="p-3 text-sm">
         {draft.format === 'markdown' ? (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
+          <div className="prose prose-base dark:prose-invert max-w-none">
             <ReactMarkdown>{draft.content}</ReactMarkdown>
           </div>
         ) : draft.format === 'json' ? (
