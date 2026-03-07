@@ -450,11 +450,11 @@ async function fetchAcqOfferData(sbAdmin: any, offerId: string, tenantId: string
 /** Property type mapping for expose data */
 const OFFER_TYPE_MAP: Record<string, string> = {
   'Mehrfamilienhaus': 'MFH', 'MFH': 'MFH', 'mfh': 'MFH',
-  'Wohnhaus': 'MFH', 'Wohn- und Geschäftshaus': 'Mixed',
+  'Wohnhaus': 'MFH', 'Wohn- und Geschaeftshaus': 'Mixed',
   'Eigentumswohnung': 'ETW', 'ETW': 'ETW', 'etw': 'ETW', 'Wohnung': 'ETW',
   'Einfamilienhaus': 'EFH', 'EFH': 'EFH', 'efh': 'EFH',
-  'Doppelhaushälfte': 'DHH', 'DHH': 'DHH', 'dhh': 'DHH', 'Reihenhaus': 'DHH',
-  'Gewerbe': 'Gewerbe', 'Büro': 'Gewerbe', 'Laden': 'Gewerbe',
+  'Doppelhaushaelfte': 'DHH', 'DHH': 'DHH', 'dhh': 'DHH', 'Reihenhaus': 'DHH',
+  'Gewerbe': 'Gewerbe', 'Buero': 'Gewerbe', 'Laden': 'Gewerbe',
   'Mixed': 'Mixed', 'mixed': 'Mixed', 'Gemischt': 'Mixed',
 };
 
