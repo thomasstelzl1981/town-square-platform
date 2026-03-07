@@ -48,6 +48,8 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
+  const [valuationPhotos, setValuationPhotos] = useState<string[]>([]);
+  const [valuationDocuments, setValuationDocuments] = useState<DocumentSlot[]>([]);
   const queryClient = useQueryClient();
   const { state, isLoading, runPreflight, runValuation, fetchResult, reset } = useValuationCase();
 
