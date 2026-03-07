@@ -314,38 +314,30 @@ export function calcAufteilerProject(params: AufteilerProjectParams): AufteilerP
     equityPercent, totalListPrice, totalYearlyRent, unitsCount,
   } = params;
 
-  const ancillaryCosts = purchasePrice * (ancillaryCostPercent / 100);
-  const totalAcquisitionCosts = purchasePrice + ancillaryCosts + renovationBudget;
+  // Delegate to calcAufteilerFull with mapped params
+  const fullResult = calcAufteilerFull({
+    purchasePrice, yearlyRent: totalYearlyRent, targetYield, salesCommission,
+    holdingPeriodMonths, ancillaryCostPercent, interestRate, equityPercent,
+    projectCosts: 0, renovationCosts: renovationBudget,
+  });
 
-  const loanAmount = totalAcquisitionCosts * (1 - equityPercent / 100);
-  const equity = totalAcquisitionCosts * (equityPercent / 100);
-  const interestCosts = loanAmount * (interestRate / 100) * (holdingPeriodMonths / 12);
-
-  const rentIncome = totalYearlyRent * (holdingPeriodMonths / 12);
-  const netCosts = totalAcquisitionCosts + interestCosts - rentIncome;
-
-  // Use list prices if available, otherwise derive from yield
-  const salesPriceGross = totalListPrice > 0
-    ? totalListPrice
-    : (totalYearlyRent > 0 ? totalYearlyRent / (targetYield / 100) : 0);
+  // Override salesPriceGross if totalListPrice is provided
+  const salesPriceGross = totalListPrice > 0 ? totalListPrice : fullResult.salesPriceGross;
   const salesCommissionAmount = salesPriceGross * (salesCommission / 100);
   const salesPriceNet = salesPriceGross - salesCommissionAmount;
-
-  const profit = salesPriceNet - netCosts;
-  const profitMargin = netCosts > 0 ? (profit / netCosts) * 100 : 0;
-  const roiOnEquity = equity > 0 ? (profit / equity) * 100 : 0;
+  const profit = salesPriceNet - fullResult.netCosts;
+  const profitMargin = fullResult.netCosts > 0 ? (profit / fullResult.netCosts) * 100 : 0;
+  const roiOnEquity = fullResult.equity > 0 ? (profit / fullResult.equity) * 100 : 0;
   const profitPerUnit = unitsCount > 0 ? profit / unitsCount : 0;
   const avgUnitPrice = unitsCount > 0 ? salesPriceGross / unitsCount : 0;
   const breakEvenUnits = avgUnitPrice > 0
-    ? Math.ceil(netCosts / (avgUnitPrice * (1 - salesCommission / 100)))
+    ? Math.ceil(fullResult.netCosts / (avgUnitPrice * (1 - salesCommission / 100)))
     : unitsCount;
   const factor = totalYearlyRent > 0 ? salesPriceGross / totalYearlyRent : 0;
-
-  const sensitivityData = calcSensitivity(targetYield, totalYearlyRent, salesCommission, netCosts);
+  const sensitivityData = calcSensitivity(targetYield, totalYearlyRent, salesCommission, fullResult.netCosts);
 
   return {
-    ancillaryCosts, totalAcquisitionCosts, loanAmount, equity,
-    interestCosts, rentIncome, netCosts,
+    ...fullResult,
     salesPriceGross, factor, salesCommissionAmount, salesPriceNet,
     profit, profitMargin, roiOnEquity, sensitivityData,
     profitPerUnit, breakEvenUnits,
