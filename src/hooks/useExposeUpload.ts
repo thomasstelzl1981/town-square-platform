@@ -1,20 +1,18 @@
 /**
- * useExposeUpload — Reusable hook for uploading exposés to a specific mandate
+ * useExposeUpload — SSOT-compliant hook for uploading exposés to Objekteingang
  * 
- * Storage path convention: {tenant_id}/{mandate_id}/{offer_id}/expose/{fileName}
- * If no mandate: {tenant_id}/unassigned/{offer_id}/expose/{fileName}
+ * Uses UPLOAD_BUCKET ('tenant-documents') with buildStoragePath.
+ * Storage path: {tenant_id}/MOD_12/{offer_id}/expose/{fileName}
+ * Registers in: acq_offer_documents + documents + storage_nodes (via DMS)
  */
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { buildStoragePath, UPLOAD_BUCKET, sanitizeFileName } from '@/config/storageManifest';
 
 type UploadPhase = 'idle' | 'uploading' | 'extracting' | 'success' | 'error';
-
-function sanitizeFileName(name: string): string {
-  return `${Date.now()}_${name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-}
 
 export function useExposeUpload() {
   const { activeTenantId } = useAuth();
@@ -65,21 +63,20 @@ export function useExposeUpload() {
       if (offerError) throw offerError;
       setProgress(30);
 
-      // 2. Build unified storage path: {tenant_id}/{mandate_id}/{offer_id}/expose/{fileName}
-      const mandateFolder = mandateId || 'unassigned';
+      // 2. Build SSOT storage path: {tenant_id}/MOD_12/{offer_id}/{fileName}
       const safeName = sanitizeFileName(file.name);
-      storagePath = `${activeTenantId}/${mandateFolder}/${offer.id}/expose/${safeName}`;
+      storagePath = `${activeTenantId}/MOD_12/${offer.id}/${safeName}`;
 
       setProgress(40);
 
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('acq-documents')
+        .from(UPLOAD_BUCKET)
         .upload(storagePath, file);
 
       if (uploadError) throw uploadError;
       setProgress(55);
 
-      // 3. Link document
+      // 3. Link document in acq_offer_documents
       const { data: doc, error: docError } = await supabase.from('acq_offer_documents').insert({
         offer_id: offer.id,
         storage_path: uploadData.path,
@@ -91,9 +88,45 @@ export function useExposeUpload() {
       }).select('id').single();
 
       if (docError) throw docError;
+      setProgress(60);
+
+      // 4. Register in DMS (documents table)
+      const publicId = crypto.randomUUID().substring(0, 8).toUpperCase();
+      await (supabase as any).from('documents').insert({
+        tenant_id: activeTenantId,
+        name: file.name,
+        file_path: uploadData.path,
+        mime_type: file.type,
+        size_bytes: file.size,
+        public_id: publicId,
+        source: 'acq_upload',
+        extraction_status: 'pending',
+        doc_type: 'expose',
+      });
+
+      // 5. Register in storage_nodes
+      const { data: rootNode } = await supabase
+        .from('storage_nodes')
+        .select('id')
+        .eq('tenant_id', activeTenantId)
+        .eq('template_id', 'MOD_12_ROOT')
+        .maybeSingle();
+
+      if (rootNode?.id) {
+        await supabase.from('storage_nodes').insert({
+          tenant_id: activeTenantId,
+          parent_id: rootNode.id,
+          name: file.name,
+          node_type: 'file',
+          module_code: 'MOD_12',
+          storage_path: uploadData.path,
+          mime_type: file.type,
+        });
+      }
+
       setProgress(65);
 
-      // 4. Trigger AI extraction
+      // 6. Trigger AI extraction
       setPhase('extracting');
       setProgress(75);
 
@@ -123,10 +156,10 @@ export function useExposeUpload() {
       console.error('Upload error:', error);
       setPhase('error');
 
-      // Rollback: delete orphaned storage file if DB insert failed
+      // Rollback: delete orphaned storage file if upload succeeded but DB failed
       if (storagePath) {
         try {
-          await supabase.storage.from('acq-documents').remove([storagePath]);
+          await supabase.storage.from(UPLOAD_BUCKET).remove([storagePath]);
           console.log('Rollback: orphaned file removed from storage');
         } catch (rollbackErr) {
           console.warn('Rollback failed:', rollbackErr);
