@@ -30,7 +30,7 @@ export function MobileModuleMenu({ module, moduleBase, moduleCode }: MobileModul
   return (
     <div className="flex-1 overflow-y-auto px-4 pt-6 pb-4">
       {/* Module Title */}
-      <h1 className="text-lg font-semibold text-foreground tracking-wide uppercase mb-4 px-1">
+      <h1 className="text-xl font-semibold text-foreground tracking-wide uppercase mb-4 px-1">
         {displayName}
       </h1>
 
