@@ -392,7 +392,7 @@ export function useRunCalcBestand() {
       if (runError) throw runError;
 
       // Calculate locally (using existing investment engine logic)
-      const result = calcBestandQuick(params as any);
+      const result = calcBestandQuick(params as Partial<import('@/engines/akquiseCalc/spec').BestandQuickParams> as import('@/engines/akquiseCalc/spec').BestandQuickParams);
 
       // Update run with results
       const { error: updateError } = await supabase
