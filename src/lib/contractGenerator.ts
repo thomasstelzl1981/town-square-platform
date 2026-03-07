@@ -116,6 +116,26 @@ export async function storeServiceContract(params: {
     if (!docError && doc) {
       documentId = doc.id;
     }
+
+    // Register in storage_nodes for DMS visibility
+    const { data: rootNode } = await supabase
+      .from('storage_nodes')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .eq('template_id', 'MOD_03_ROOT')
+      .maybeSingle();
+
+    if (rootNode?.id) {
+      await supabase.from('storage_nodes').insert({
+        tenant_id: tenantId,
+        parent_id: rootNode.id,
+        name: `${contract.title} - ${new Date().toLocaleDateString('de-DE')}`,
+        node_type: 'file',
+        module_code: 'MOD_03',
+        storage_path: storagePath,
+        mime_type: 'text/plain',
+      });
+    }
   }
 
   // 2. Create user consent
