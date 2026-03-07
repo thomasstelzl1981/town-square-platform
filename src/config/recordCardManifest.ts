@@ -7,7 +7,7 @@
  * - Label
  */
 
-import { User, Shield, Car, Heart, CreditCard, Landmark, Sun, PawPrint, Zap, Home, Camera } from 'lucide-react';
+import { User, Shield, Car, Heart, CreditCard, Landmark, Sun, PawPrint, Zap, Home, Camera, Bot } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface RecordCardTypeConfig {
