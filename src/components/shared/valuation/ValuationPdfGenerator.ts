@@ -841,7 +841,9 @@ export async function generateValuationPdfBlob(data: ValuationPdfData): Promise<
     version: 'V10.1',
   });
 
-  const blob = doc.output('blob');
+  // jsPDF 4.x compatibility: enforce explicit PDF MIME via ArrayBuffer
+  const arrayBuffer = doc.output('arraybuffer');
+  const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
   return { blob, pageCount: doc.getNumberOfPages() };
 }
 
