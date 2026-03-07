@@ -36,6 +36,7 @@ const MeetingRecorderWidget = React.lazy(() => import('@/components/dashboard/Me
 const TLCWidget = React.lazy(() => import('@/components/dashboard/widgets/TLCWidget').then(m => ({ default: m.TLCWidget })));
 const NotesWidget = React.lazy(() => import('@/components/dashboard/widgets/NotesWidget').then(m => ({ default: m.NotesWidget })));
 const ArmstrongWorkspace = React.lazy(() => import('@/components/dashboard/ArmstrongWorkspace').then(m => ({ default: m.ArmstrongWorkspace })));
+const ArmstrongDataRoomSection = React.lazy(() => import('@/components/dashboard/ArmstrongDataRoomSection').then(m => ({ default: m.ArmstrongDataRoomSection })));
 import { Link } from 'react-router-dom';
 
 const ARMSTRONG_WIDGET_ID = 'system_armstrong';
