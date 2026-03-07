@@ -163,6 +163,7 @@ const CONDITION_LABELS: Record<string, string> = {
   poor: 'Schlecht', derelict: 'Abrissreif',
 };
 const conditionLabel = (c: string) => CONDITION_LABELS[c] || c;
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const RENTAL_STATUS_LABELS: Record<string, string> = {
   fully_rented: 'Voll vermietet', partially_rented: 'Teilweise vermietet',
