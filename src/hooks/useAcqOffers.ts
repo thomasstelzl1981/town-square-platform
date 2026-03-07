@@ -395,8 +395,20 @@ export function useRunCalcBestand() {
 
       if (runError) throw runError;
 
-      // Calculate locally (using existing investment engine logic)
-      const result = calcBestandQuick(params as Partial<import('@/engines/akquiseCalc/spec').BestandQuickParams> as import('@/engines/akquiseCalc/spec').BestandQuickParams);
+      // Calculate locally using Full engine for complete 30-year projection
+      const fullParams: BestandFullParams = {
+        purchasePrice: (params as any).purchasePrice ?? 0,
+        monthlyRent: (params as any).monthlyRent ?? 0,
+        equityPercent: (params as any).equityPercent ?? BESTAND_DEFAULTS.equityPercent,
+        interestRate: (params as any).interestRate ?? BESTAND_DEFAULTS.interestRate,
+        repaymentRate: (params as any).repaymentRate ?? BESTAND_DEFAULTS.repaymentRate,
+        rentIncreaseRate: (params as any).rentIncreaseRate ?? BESTAND_DEFAULTS.rentIncreaseRate,
+        valueIncreaseRate: (params as any).valueIncreaseRate ?? BESTAND_DEFAULTS.valueIncreaseRate,
+        managementCostPercent: (params as any).managementCostPercent ?? BESTAND_DEFAULTS.managementCostPercent,
+        maintenancePercent: (params as any).maintenancePercent ?? BESTAND_DEFAULTS.maintenancePercent,
+        ancillaryCostPercent: (params as any).ancillaryCostPercent ?? BESTAND_DEFAULTS.ancillaryCostPercent,
+      };
+      const result = calcBestandFull(fullParams);
 
       // Update run with results
       const { error: updateError } = await supabase
