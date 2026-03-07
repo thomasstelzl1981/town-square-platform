@@ -680,11 +680,10 @@ Deno.serve(async (req) => {
     if (!authHeader) return json({ error: "Missing authorization" }, 401);
 
     const sbUser = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsErr } = await sbUser.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) return json({ error: "Unauthorized" }, 401);
+    const { data: userData, error: userErr } = await sbUser.auth.getUser();
+    if (userErr || !userData?.user) return json({ error: "Unauthorized" }, 401);
 
-    const userId = claimsData.claims.sub as string;
+    const userId = userData.user.id;
     const { data: profile } = await sbUser.from("profiles").select("active_tenant_id").eq("id", userId).maybeSingle();
     if (!profile?.active_tenant_id) return json({ error: "No active tenant" }, 400);
     const tenantId = profile.active_tenant_id;
