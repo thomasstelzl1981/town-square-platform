@@ -37,6 +37,7 @@ import { ObjektKPIRow, ObjektBasisdaten, ObjektAnkaufskosten } from '@/component
 import { ValuationPipeline, ValuationReportReader } from '@/components/shared/valuation';
 
 import { Save, RotateCcw } from 'lucide-react';
+import { calcAncillaryCosts } from '@/engines/akquiseCalc/engine';
 
 const STATUS_OPTIONS: { value: AcqOfferStatus; label: string }[] = [
   { value: 'new', label: 'Eingegangen' }, { value: 'analyzing', label: 'In Analyse' },
