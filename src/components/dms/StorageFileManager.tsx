@@ -351,14 +351,22 @@ export function StorageFileManager({
           <SelectionActionBar
             item={selectedItem}
             onOpen={selectedItem.type === 'file' ? () => {
-              if (selectedItem.documentId) onDownload(selectedItem.documentId);
+              if (selectedItem.documentId) {
+                if (isPreviewableMime(selectedItem.mimeType)) {
+                  setPreviewItem(selectedItem);
+                } else {
+                  onDownload(selectedItem.documentId);
+                }
+              }
             } : undefined}
             onDownload={selectedItem.type === 'file' && selectedItem.documentId ? () => onDownload(selectedItem.documentId!) : undefined}
             onDelete={() => handleDelete(selectedItem)}
             onNewSubfolder={selectedItem.type === 'folder' && selectedItem.nodeId ? () => handleNewSubfolder(selectedItem.nodeId!) : undefined}
+            onMove={(onMoveFile || onMoveFolder) ? () => setShowMoveDialog(true) : undefined}
             onClear={() => setSelectedItem(null)}
             isDownloading={isDownloading}
             isDeleting={isDeleting}
+            isMoving={isMoving}
           />
         )}
 
