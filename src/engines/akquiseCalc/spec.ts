@@ -38,6 +38,8 @@ export interface BestandQuickParams {
 export interface BestandYearlyData {
   year: number;
   rent: number;
+  /** Net Operating Income (rent - management - maintenance) */
+  noi?: number;
   interest: number;
   repayment: number;
   remainingDebt: number;

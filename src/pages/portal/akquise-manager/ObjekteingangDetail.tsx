@@ -1,7 +1,8 @@
 /**
  * ObjekteingangDetail — Orchestrator (MOD-12)
  * R-23 Refactoring: 539 → ~200 lines
- * V6.1: Bewertungs-Step now wired to ValuationCase hook
+ * V7.0: Inline PDF-Viewer, Completeness Check, Valuation conditioned on calc status
+ *       Sprengnetter/GeoMap fully replaced by SoT Valuation Engine
  */
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -13,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Loader2, Building2, X, ThumbsUp, MessageSquare, FileText, Upload, Check, ChevronDown, TrendingUp, Play } from 'lucide-react';
+import { ArrowLeft, Loader2, Building2, X, ThumbsUp, MessageSquare, FileText, Upload, Check, ChevronDown, TrendingUp, Play, AlertTriangle, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAcqOffer, useUpdateOfferStatus, type AcqOfferStatus } from '@/hooks/useAcqOffers';
 import { useAcqMandate } from '@/hooks/useAcqMandate';
@@ -57,6 +58,15 @@ function deriveYearlyRent(offer: { noi_indicated?: number | null; price_asking?:
   return 0;
 }
 
+/** Check which mandatory fields are missing for calculation */
+function getCompletenessIssues(offer: { price_asking?: number | null; noi_indicated?: number | null; yield_indicated?: number | null; area_sqm?: number | null }) {
+  const issues: string[] = [];
+  if (!offer.price_asking) issues.push('Kaufpreis');
+  if (!offer.noi_indicated && !offer.yield_indicated) issues.push('Miete oder Rendite');
+  if (!offer.area_sqm) issues.push('Fläche (m²)');
+  return issues;
+}
+
 function QuickAnalysisBanner({ offer, yearlyRent, priceOverride, originalPrice, onPriceChange }: { offer: any; yearlyRent: number; priceOverride: number; originalPrice: number; onPriceChange: (p: number) => void }) {
   const [inputValue, setInputValue] = React.useState(priceOverride.toString());
   const [isSaving, setIsSaving] = React.useState(false);
@@ -89,6 +99,92 @@ function QuickAnalysisBanner({ offer, yearlyRent, priceOverride, originalPrice, 
   );
 }
 
+/** Inline PDF-Viewer for the first expose document */
+function ExposePdfViewer({ documents }: { documents?: Array<{ id: string; storage_path: string; file_name: string; document_type: string; mime_type: string | null }> }) {
+  const [signedUrl, setSignedUrl] = React.useState<string | null>(null);
+  const [isOpen, setIsOpen] = React.useState(true);
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  // Find the first PDF expose document
+  const exposeDoc = React.useMemo(() => {
+    if (!documents?.length) return null;
+    return documents.find(d => 
+      d.mime_type === 'application/pdf' || 
+      d.file_name.toLowerCase().endsWith('.pdf')
+    ) || null;
+  }, [documents]);
+
+  React.useEffect(() => {
+    if (!exposeDoc) return;
+    setIsLoading(true);
+    supabase.storage
+      .from('tenant-documents')
+      .createSignedUrl(exposeDoc.storage_path, 3600)
+      .then(({ data, error }) => {
+        if (data?.signedUrl) setSignedUrl(data.signedUrl);
+        setIsLoading(false);
+      });
+  }, [exposeDoc?.id]);
+
+  if (!exposeDoc) return null;
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card className={cn(DESIGN.CARD.BASE, 'border-primary/20')}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className={cn(DESIGN.CARD.SECTION_HEADER, 'cursor-pointer flex flex-row items-center justify-between')}>
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-primary" />
+              <CardTitle className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>Exposé-Ansicht</CardTitle>
+              <Badge variant="outline" className="text-[10px]">{exposeDoc.file_name}</Badge>
+            </div>
+            <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', isOpen && 'rotate-180')} />
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-96">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : signedUrl ? (
+              <iframe
+                src={signedUrl}
+                className="w-full h-[700px] rounded-b-lg border-0"
+                title={`Exposé: ${exposeDoc.file_name}`}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-48 text-muted-foreground">
+                <FileText className="h-8 w-8 mr-2" />
+                <span className="text-sm">PDF konnte nicht geladen werden</span>
+              </div>
+            )}
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
+  );
+}
+
+/** Completeness check banner */
+function CompletenessCheck({ issues }: { issues: string[] }) {
+  if (issues.length === 0) return null;
+  return (
+    <Card className="border-amber-500/30 bg-amber-500/5">
+      <CardContent className="flex items-start gap-3 py-3 px-4">
+        <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-amber-700">Fehlende Daten für Kalkulation</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Folgende Felder fehlen oder wurden nicht extrahiert: <strong>{issues.join(', ')}</strong>. 
+            Bitte manuell nachtragen oder Exposé erneut verarbeiten.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ObjekteingangDetail() {
   const { activeTenantId } = useAuth();
   const { offerId } = useParams();
@@ -111,6 +207,8 @@ export function ObjekteingangDetail() {
   const currentStepIdx = STATUS_TO_STEP[offer.status] ?? 0;
   const effectivePrice = priceOverride ?? offer.price_asking ?? 0;
   const yearlyRent = deriveYearlyRent(offer, effectivePrice);
+  const completenessIssues = getCompletenessIssues(offer);
+  const hasCalcData = offer.calc_bestand || offer.calc_aufteiler || (offer.status !== 'new');
 
   return (
     <PageShell>
@@ -141,6 +239,12 @@ export function ObjekteingangDetail() {
       <ObjektKPIRow effectivePrice={formatPrice(effectivePrice)} unitsCount={offer.units_count?.toString() || '–'} areaSqm={offer.area_sqm ? `${offer.area_sqm.toLocaleString('de-DE')} m²` : '–'} yieldFactor={offer.yield_indicated ? `${offer.yield_indicated.toFixed(1)}% · ${(100 / offer.yield_indicated).toFixed(1)}x` : '–'} />
       <ObjektBasisdaten offer={offer} yearlyRent={yearlyRent} formatPrice={formatPrice} />
 
+      {/* Inline PDF-Viewer */}
+      <ExposePdfViewer documents={offer.documents} />
+
+      {/* Completeness Check */}
+      <CompletenessCheck issues={completenessIssues} />
+
       <div className={DESIGN.FORM_GRID.FULL}>
         <div className="space-y-2"><h2 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>E-Mail / Quelle</h2><SourceEmailViewer sourceInboundId={offer.source_inbound_id} sourceType={offer.source_type} sourceUrl={offer.source_url} /></div>
         <div className="space-y-2">
@@ -156,17 +260,25 @@ export function ObjekteingangDetail() {
         </div>
       </div>
 
-      {/* SoT Bewertung */}
+      {/* SoT Bewertung — only enabled after calculation has been performed */}
       <div className="space-y-4">
         <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-1')}>SoT Bewertung</h2>
         {valuation.state.status !== 'running' && !valuation.state.resultData && (
-          <Card className="border-primary/20 bg-primary/5">
+          <Card className={cn("border-primary/20", hasCalcData ? "bg-primary/5" : "bg-muted/50")}>
             <CardContent className="flex items-center justify-between py-4">
               <div>
                 <p className="text-sm font-medium">KI-gestützte Objektbewertung</p>
-                <p className="text-xs text-muted-foreground">Exposé-basierte Bewertung mit Portal-Comps (20 Credits)</p>
+                <p className="text-xs text-muted-foreground">
+                  {hasCalcData 
+                    ? 'Exposé-basierte Bewertung mit Portal-Comps (20 Credits)' 
+                    : 'Erst Kalkulation durchführen, dann Bewertung starten'}
+                </p>
               </div>
-              <Button size="sm" onClick={() => valuation.runValuation({ offerId: offer.id, sourceContext: 'ACQUIARY_TOOLS' })} disabled={valuation.isLoading}>
+              <Button 
+                size="sm" 
+                onClick={() => valuation.runValuation({ offerId: offer.id, sourceContext: 'ACQUIARY_TOOLS' })} 
+                disabled={valuation.isLoading || !hasCalcData}
+              >
                 {valuation.isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
                 Bewertung starten
               </Button>

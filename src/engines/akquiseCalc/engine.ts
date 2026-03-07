@@ -64,6 +64,10 @@ export function calcBestandFull(params: BestandFullParams): BestandFullResult {
   for (let year = 1; year <= 30; year++) {
     const interest = currentDebt * (interestRate / 100);
     const repayment = Math.min(yearlyAnnuity - interest, currentDebt);
+    // Operating costs scale with current rent (management) and value (maintenance)
+    const mgmt = currentRent * ((managementCostPercent || 0) / 100);
+    const maint = currentValue * ((maintenancePercent || 0) / 100);
+    const noi = currentRent - mgmt - maint;
 
     totalInterest += interest;
     totalRepayment += repayment;
@@ -74,6 +78,7 @@ export function calcBestandFull(params: BestandFullParams): BestandFullResult {
     yearlyData.push({
       year,
       rent: currentRent,
+      noi,
       interest,
       repayment,
       remainingDebt: currentDebt,
