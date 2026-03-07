@@ -408,7 +408,7 @@ export function useValuationCase() {
         dataQuality: mapDataQuality(rawDq),
         compStats: mapCompStats(results.comp_stats),
         executiveSummary: runSummary?.executive_summary ?? null,
-        legalTitle: runSummary?.legal_title ?? inputs.snapshot?.legal_title ?? null,
+        legalTitle: runSummary?.legal_title ?? rawSnapshot?.legal_title ?? null,
         diffs: inputs.diffs ?? [],
         sourceMode: caseData.source_mode ?? 'DRAFT_INTAKE',
         // V9.0: Beleihungswert
