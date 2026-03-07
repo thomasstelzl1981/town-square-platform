@@ -17022,6 +17022,7 @@ export type Database = {
           is_demo: boolean
           is_public_listing: boolean
           land_register_court: string | null
+          land_register_of: string | null
           land_register_refs: Json | null
           land_register_sheet: string | null
           land_register_volume: string | null
@@ -17086,6 +17087,7 @@ export type Database = {
           is_demo?: boolean
           is_public_listing?: boolean
           land_register_court?: string | null
+          land_register_of?: string | null
           land_register_refs?: Json | null
           land_register_sheet?: string | null
           land_register_volume?: string | null
@@ -17150,6 +17152,7 @@ export type Database = {
           is_demo?: boolean
           is_public_listing?: boolean
           land_register_court?: string | null
+          land_register_of?: string | null
           land_register_refs?: Json | null
           land_register_sheet?: string | null
           land_register_volume?: string | null
