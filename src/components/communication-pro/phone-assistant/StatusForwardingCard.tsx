@@ -197,41 +197,12 @@ export function StatusForwardingCard({ config, onUpdate, onRefresh, brandKey }: 
             <Badge variant={s.variant} className="mt-1">{s.label}</Badge>
           </div>
 
-          {/* Tier indicator + Sync */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Tier:</span>
-              <Badge variant={config.tier === 'premium' ? 'default' : 'secondary'} className="text-xs">
-                {config.tier === 'premium' ? '⚡ Premium (ElevenLabs)' : '📞 Standard (Twilio)'}
-              </Badge>
-            </div>
-            {hasNumber && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs gap-1.5"
-                disabled={syncing}
-                onClick={async () => {
-                  setSyncing(true);
-                  try {
-                    const { data, error } = await supabase.functions.invoke('sot-phone-agent-sync', {
-                      body: { assistant_id: config.id },
-                    });
-                    if (error) throw error;
-                    if (data?.error) throw new Error(data.error);
-                    toast({ title: 'Agent synchronisiert ✓' });
-                    onRefresh?.();
-                  } catch (err: any) {
-                    toast({ title: 'Sync fehlgeschlagen', description: err.message, variant: 'destructive' });
-                  } finally {
-                    setSyncing(false);
-                  }
-                }}
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
-                Sync
-              </Button>
-            )}
+          {/* Tier indicator */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Tier:</span>
+            <Badge variant={config.tier === 'premium' ? 'default' : 'secondary'} className="text-xs">
+              {config.tier === 'premium' ? '⚡ Premium (ElevenLabs)' : '📞 Standard (Twilio)'}
+            </Badge>
           </div>
 
           {/* GSM forwarding codes – optional, collapsible */}
