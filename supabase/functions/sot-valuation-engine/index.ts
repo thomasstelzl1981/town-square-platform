@@ -932,13 +932,13 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
     // ACTION: run — Execute full 6-stage pipeline
     // ════════════════════════════════════════════
     if (action === "run") {
-      const { source_context, source_ref, property_id } = body;
+      const { source_context, source_ref, property_id, offer_id } = body;
       const tracker = new StageTracker();
       const sourceMode = property_id ? "SSOT_FINAL" : "DRAFT_INTAKE";
 
       // ─── Stage 0: Preflight + Credit Deduct ───
       tracker.start(0);
-      stageLog(0, `Source mode: ${sourceMode}`);
+      stageLog(0, `Source mode: ${sourceMode}, property_id=${property_id || 'none'}, offer_id=${offer_id || 'none'}`);
 
       const { data: deductData, error: deductErr } = await sbAdmin.rpc("rpc_credit_deduct", {
         p_tenant_id: tenantId, p_credits: CREDITS_REQUIRED, p_action_code: ACTION_CODE,
@@ -950,7 +950,7 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
         .from("valuation_cases")
         .insert({
           tenant_id: tenantId, source_context: source_context || "MOD_04",
-          source_ref: source_ref || null, source_mode: sourceMode,
+          source_ref: source_ref || offer_id || null, source_mode: sourceMode,
           property_id: property_id || null, status: "running",
           credits_charged: CREDITS_REQUIRED, stage_current: 0, created_by: userId,
         })
@@ -967,6 +967,15 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
         if (ssotData) {
           ssotSnapshot = buildServerSSOTSnapshot(ssotData);
           stageLog(0, `SSOT loaded: ${ssotData.units.length} units, ${ssotData.leases.length} leases`);
+        }
+      } else if (offer_id) {
+        // MOD-12: Build snapshot from acq_offers extracted data
+        const offerData = await fetchAcqOfferData(sbAdmin, offer_id, tenantId);
+        if (offerData) {
+          ssotSnapshot = buildSnapshotFromOffer(offerData);
+          stageLog(0, `Offer snapshot built: ${ssotSnapshot.address}, ${ssotSnapshot.city}, price=${ssotSnapshot.asking_price}, rent=${ssotSnapshot.net_cold_rent_monthly}`);
+        } else {
+          stageLog(0, `Offer ${offer_id} not found — proceeding with empty snapshot`);
         }
       }
       tracker.end(0);
