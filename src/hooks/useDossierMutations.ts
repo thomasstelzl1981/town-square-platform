@@ -50,6 +50,7 @@ export function useUpdateProperty() {
       if (data.energySource !== undefined) updateData.energy_source = data.energySource;
       if ((data as any).energyClass !== undefined) updateData.energy_class = (data as any).energyClass;
       if (data.landRegisterCourt !== undefined) updateData.land_register_court = data.landRegisterCourt;
+      if ((data as any).landRegisterOf !== undefined) updateData.land_register_of = (data as any).landRegisterOf;
       if (data.landRegisterSheet !== undefined) updateData.land_register_sheet = data.landRegisterSheet;
       if (data.landRegisterVolume !== undefined) updateData.land_register_volume = data.landRegisterVolume;
       if (data.parcelNumber !== undefined) updateData.parcel_number = data.parcelNumber;
