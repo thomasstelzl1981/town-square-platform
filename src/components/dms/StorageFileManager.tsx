@@ -15,7 +15,10 @@ import { BulkActionBar } from './BulkActionBar';
 import { SelectionActionBar } from './SelectionActionBar';
 import { NewFolderDialog } from './NewFolderDialog';
 import { MoveToFolderDialog } from './MoveToFolderDialog';
+import { RenameFolderDialog } from './RenameFolderDialog';
 import { FileDropZone } from './FileDropZone';
+import { DndStorageProvider } from './DndStorageProvider';
+import { isItemMutable } from './folderGuards';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -75,6 +78,8 @@ interface StorageFileManagerProps {
   onBulkDelete: (ids: Set<string>) => void;
   onMoveFile?: (documentId: string, targetFolderId: string) => Promise<boolean>;
   onMoveFolder?: (folderId: string, targetFolderId: string) => Promise<boolean>;
+  onRenameFolder?: (nodeId: string, newName: string) => Promise<void>;
+  onUploadToFolder?: (files: File[], targetFolderId: string) => void;
   isUploading?: boolean;
   isDownloading?: boolean;
   isDeleting?: boolean;
@@ -100,6 +105,8 @@ export function StorageFileManager({
   onBulkDelete,
   onMoveFile,
   onMoveFolder,
+  onRenameFolder,
+  onUploadToFolder,
   isUploading,
   isDownloading,
   isDeleting,
@@ -117,15 +124,16 @@ export function StorageFileManager({
   const [selectedItem, setSelectedItem] = useState<FileManagerItem | null>(null);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<FileManagerItem | null>(null);
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
   const [columnPath, setColumnPath] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Force list view on mobile
   const effectiveViewMode = isMobile ? 'list' : viewMode;
+  const hasMoveHandlers = !!(onMoveFile || onMoveFolder);
 
-  // Keyboard shortcuts — ARCH-DMS-02: MIME-dependent open
   useStorageKeyboard({
     selectedItem,
     onDelete: (item) => handleDelete(item),
@@ -142,7 +150,6 @@ export function StorageFileManager({
     containerRef,
   });
 
-  // Breadcrumb segments
   const breadcrumbSegments = useMemo(() => {
     if (!selectedNodeId) return [];
     const segments: { id: string; label: string }[] = [];
@@ -157,7 +164,6 @@ export function StorageFileManager({
     return segments;
   }, [selectedNodeId, nodes]);
 
-  // Build items for current folder
   const items = useMemo(() => {
     const childFolders = nodes
       .filter(n => n.parent_id === selectedNodeId)
@@ -172,6 +178,7 @@ export function StorageFileManager({
         childCount: nodes.filter(c => c.parent_id === n.id).length,
         moduleCode: n.module_code || undefined,
         templateId: n.template_id || undefined,
+        nodeType: n.node_type,
       }));
 
     const fileItems = documents.map((d): FileManagerItem => ({
@@ -213,7 +220,6 @@ export function StorageFileManager({
     [breadcrumbSegments],
   );
 
-  // Handlers
   const handleSortChange = (field: SortField, dir: SortDir) => {
     setSortField(field);
     setSortDir(dir);
@@ -243,6 +249,7 @@ export function StorageFileManager({
   }, [onSelectNode]);
 
   const handleDelete = (item: FileManagerItem) => {
+    if (item.type === 'folder' && !isItemMutable(item)) return;
     const name = item.name;
     if (!confirm(`"${name}" wirklich löschen?`)) return;
     if (item.type === 'folder' && item.nodeId) {
@@ -252,6 +259,19 @@ export function StorageFileManager({
     }
     setSelectedItem(null);
   };
+
+  const handleRenameClick = useCallback((item: FileManagerItem) => {
+    setRenameTarget(item);
+    setShowRenameDialog(true);
+  }, []);
+
+  const handleRenameConfirm = useCallback(async (newName: string) => {
+    if (!renameTarget?.nodeId || !onRenameFolder) return;
+    await onRenameFolder(renameTarget.nodeId, newName);
+    setShowRenameDialog(false);
+    setRenameTarget(null);
+    setSelectedItem(null);
+  }, [renameTarget, onRenameFolder]);
 
   const handleNewSubfolder = (parentNodeId: string) => {
     setNewFolderParentId(parentNodeId);
@@ -305,228 +325,249 @@ export function StorageFileManager({
     setSelectedItem(item);
   }, []);
 
+  const selectedItemMutable = selectedItem ? isItemMutable(selectedItem) : true;
+
+  // Dummy no-op move handlers for DndStorageProvider when no real handlers
+  const dndMoveFile = onMoveFile || (async () => false);
+  const dndMoveFolder = onMoveFolder || (async () => false);
+
+  const contentArea = (
+    <>
+      <div className="h-full">
+        {effectiveViewMode === 'list' && (
+          <ListView
+            items={items}
+            selectedIds={selectedIds}
+            sortField={sortField}
+            sortDir={sortDir}
+            onSortChange={handleSortChange}
+            onToggleSelect={handleToggleSelect}
+            onToggleSelectAll={handleToggleSelectAll}
+            onNavigateFolder={handleNavigateFolder}
+            onDownload={onDownload}
+            onPreview={setPreviewItem}
+            onDelete={handleDelete}
+            onNewSubfolder={handleNewSubfolder}
+            onRename={onRenameFolder ? handleRenameClick : undefined}
+            onUploadToFolder={onUploadToFolder}
+            onSelectedItemChange={handleSelectedItemChange}
+            activeItemId={selectedItem?.id}
+            isDownloading={isDownloading}
+            isDeleting={isDeleting}
+            enableDnd={hasMoveHandlers}
+          />
+        )}
+
+        {effectiveViewMode === 'columns' && (
+          <ColumnView
+            allNodes={nodes}
+            documents={allDocuments}
+            documentLinks={documentLinks}
+            columnPath={columnPath}
+            onNavigateColumn={handleColumnNavigate}
+            onSelectFile={setPreviewItem}
+            onDownload={onDownload}
+            onDelete={handleDelete}
+            onNewSubfolder={handleNewSubfolder}
+            onRename={onRenameFolder ? handleRenameClick : undefined}
+            onUploadToFolder={onUploadToFolder}
+            onSelectedItemChange={handleSelectedItemChange}
+            isDownloading={isDownloading}
+            isDeleting={isDeleting}
+            enableDnd={hasMoveHandlers}
+          />
+        )}
+
+        {effectiveViewMode === 'preview' && (
+          <PreviewView
+            items={items}
+            selectedItem={previewItem}
+            onSelectItem={setPreviewItem}
+            onDownload={onDownload}
+            onDelete={handleDelete}
+            onNavigateFolder={handleNavigateFolder}
+            isDownloading={isDownloading}
+          />
+        )}
+
+        {effectiveViewMode === 'multiselect' && (
+          <MultiSelectView
+            items={items}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
+            onToggleSelectAll={handleToggleSelectAll}
+            onNavigateFolder={handleNavigateFolder}
+          />
+        )}
+
+        {effectiveViewMode === 'navigator' && (
+          <PathNavigatorView
+            currentPath={currentPathStr}
+            items={items}
+            selectedIds={selectedIds}
+            sortField={sortField}
+            sortDir={sortDir}
+            onSortChange={handleSortChange}
+            onToggleSelect={handleToggleSelect}
+            onToggleSelectAll={handleToggleSelectAll}
+            onNavigateFolder={handleNavigateFolder}
+            onNavigatePath={handleNavigatePath}
+            onDownload={onDownload}
+            onPreview={setPreviewItem}
+            onDelete={handleDelete}
+            onNewSubfolder={handleNewSubfolder}
+            isDownloading={isDownloading}
+            isDeleting={isDeleting}
+          />
+        )}
+      </div>
+    </>
+  );
+
   return (
     <div
       ref={containerRef}
       tabIndex={0}
       className={`rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/60 dark:border-border/40 shadow-sm overflow-hidden flex flex-col relative outline-none ${isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-12rem)]'}`}
     >
-      {/* Hidden file input */}
       <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          multiple
-          accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.xls,.xlsx,.webp"
-          onChange={handleFileInputChange}
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        multiple
+        accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.xls,.xlsx,.webp"
+        onChange={handleFileInputChange}
+      />
+
+      <StorageToolbar
+        breadcrumbSegments={breadcrumbSegments}
+        viewMode={effectiveViewMode}
+        sortField={sortField}
+        sortDir={sortDir}
+        onNavigate={(nodeId) => { onSelectNode(nodeId); setSelectedIds(new Set()); setPreviewItem(null); setSelectedItem(null); }}
+        onViewModeChange={setViewMode}
+        onSortChange={handleSortChange}
+        onUploadClick={handleUploadClick}
+        onNewFolderClick={() => { setNewFolderParentId(selectedNodeId); setShowNewFolderDialog(true); }}
+        isUploading={isUploading}
+      />
+
+      {selectedIds.size > 0 && (
+        <BulkActionBar
+          count={selectedIds.size}
+          onDownload={handleBulkDownload}
+          onDelete={handleBulkDelete}
+          onClear={() => setSelectedIds(new Set())}
+          isDownloading={isDownloading}
         />
+      )}
 
-        {/* Toolbar */}
-        <StorageToolbar
-          breadcrumbSegments={breadcrumbSegments}
-          viewMode={effectiveViewMode}
-          sortField={sortField}
-          sortDir={sortDir}
-          onNavigate={(nodeId) => { onSelectNode(nodeId); setSelectedIds(new Set()); setPreviewItem(null); setSelectedItem(null); }}
-          onViewModeChange={setViewMode}
-          onSortChange={handleSortChange}
-          onUploadClick={handleUploadClick}
-          onNewFolderClick={() => { setNewFolderParentId(selectedNodeId); setShowNewFolderDialog(true); }}
-          isUploading={isUploading}
-        />
-
-        {/* Bulk action bar */}
-        {selectedIds.size > 0 && (
-          <BulkActionBar
-            count={selectedIds.size}
-            onDownload={handleBulkDownload}
-            onDelete={handleBulkDelete}
-            onClear={() => setSelectedIds(new Set())}
-            isDownloading={isDownloading}
-          />
-        )}
-
-        {/* Selection action bar — single item */}
-        {selectedItem && selectedIds.size === 0 && (
-          <SelectionActionBar
-            item={selectedItem}
-            onOpen={selectedItem.type === 'file' ? () => {
-              if (selectedItem.documentId) {
-                if (isPreviewableMime(selectedItem.mimeType)) {
-                  setPreviewItem(selectedItem);
-                } else {
-                  onDownload(selectedItem.documentId);
-                }
+      {selectedItem && selectedIds.size === 0 && (
+        <SelectionActionBar
+          item={selectedItem}
+          onOpen={selectedItem.type === 'file' ? () => {
+            if (selectedItem.documentId) {
+              if (isPreviewableMime(selectedItem.mimeType)) {
+                setPreviewItem(selectedItem);
+              } else {
+                onDownload(selectedItem.documentId);
               }
-            } : undefined}
-            onDownload={selectedItem.type === 'file' && selectedItem.documentId ? () => onDownload(selectedItem.documentId!) : undefined}
-            onDelete={() => handleDelete(selectedItem)}
-            onNewSubfolder={selectedItem.type === 'folder' && selectedItem.nodeId ? () => handleNewSubfolder(selectedItem.nodeId!) : undefined}
-            onMove={(onMoveFile || onMoveFolder) ? () => setShowMoveDialog(true) : undefined}
-            onClear={() => setSelectedItem(null)}
-            isDownloading={isDownloading}
-            isDeleting={isDeleting}
-            isMoving={isMoving}
-          />
-        )}
-
-        {/* Content — Drop zone scoped to content area only */}
-        <FileDropZone onDrop={onUploadFiles} disabled={isUploading} className="flex-1 min-h-0" targetFolderName={selectedNodeId ? (nodes.find(n => n.id === selectedNodeId)?.name || undefined) : undefined}>
-        <div className="h-full">
-          {effectiveViewMode === 'list' && (
-            <ListView
-              items={items}
-              selectedIds={selectedIds}
-              sortField={sortField}
-              sortDir={sortDir}
-              onSortChange={handleSortChange}
-              onToggleSelect={handleToggleSelect}
-              onToggleSelectAll={handleToggleSelectAll}
-              onNavigateFolder={handleNavigateFolder}
-              onDownload={onDownload}
-              onPreview={setPreviewItem}
-              onDelete={handleDelete}
-              onNewSubfolder={handleNewSubfolder}
-              onSelectedItemChange={handleSelectedItemChange}
-              activeItemId={selectedItem?.id}
-              isDownloading={isDownloading}
-              isDeleting={isDeleting}
-            />
-          )}
-
-          {effectiveViewMode === 'columns' && (
-            <ColumnView
-              allNodes={nodes}
-              documents={allDocuments}
-              documentLinks={documentLinks}
-              columnPath={columnPath}
-              onNavigateColumn={handleColumnNavigate}
-              onSelectFile={setPreviewItem}
-              onDownload={onDownload}
-              onDelete={handleDelete}
-              onNewSubfolder={handleNewSubfolder}
-              onSelectedItemChange={handleSelectedItemChange}
-              isDownloading={isDownloading}
-              isDeleting={isDeleting}
-            />
-          )}
-
-          {effectiveViewMode === 'preview' && (
-            <PreviewView
-              items={items}
-              selectedItem={previewItem}
-              onSelectItem={setPreviewItem}
-              onDownload={onDownload}
-              onDelete={handleDelete}
-              onNavigateFolder={handleNavigateFolder}
-              isDownloading={isDownloading}
-            />
-          )}
-
-          {effectiveViewMode === 'multiselect' && (
-            <MultiSelectView
-              items={items}
-              selectedIds={selectedIds}
-              onToggleSelect={handleToggleSelect}
-              onToggleSelectAll={handleToggleSelectAll}
-              onNavigateFolder={handleNavigateFolder}
-            />
-          )}
-
-          {effectiveViewMode === 'navigator' && (
-            <PathNavigatorView
-              currentPath={currentPathStr}
-              items={items}
-              selectedIds={selectedIds}
-              sortField={sortField}
-              sortDir={sortDir}
-              onSortChange={handleSortChange}
-              onToggleSelect={handleToggleSelect}
-              onToggleSelectAll={handleToggleSelectAll}
-              onNavigateFolder={handleNavigateFolder}
-              onNavigatePath={handleNavigatePath}
-              onDownload={onDownload}
-              onPreview={setPreviewItem}
-              onDelete={handleDelete}
-              onNewSubfolder={handleNewSubfolder}
-              isDownloading={isDownloading}
-              isDeleting={isDeleting}
-            />
-          )}
-        </div>
-        </FileDropZone>
-
-        {/* Status bar */}
-        <div className="px-4 py-2 border-t border-border/30 text-xs text-muted-foreground flex items-center gap-2">
-          <span>{items.length} Elemente</span>
-          <span>·</span>
-          <span>{formatFileSize(totalSize)}</span>
-        </div>
-
-        {/* Mobile FAB */}
-        {isMobile && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                className="absolute bottom-14 right-4 h-14 w-14 rounded-full shadow-lg z-10"
-              >
-                <Plus className="h-6 w-6" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" className="w-48">
-              <DropdownMenuItem onClick={handleUploadClick} disabled={isUploading}>
-                <Upload className="h-4 w-4 mr-2" />
-                Datei hochladen
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setNewFolderParentId(selectedNodeId); setShowNewFolderDialog(true); }}>
-                <FolderPlus className="h-4 w-4 mr-2" />
-                Neuer Ordner
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-
-        {/* New folder dialog */}
-        <NewFolderDialog
-          open={showNewFolderDialog}
-          onOpenChange={setShowNewFolderDialog}
-          onCreateFolder={(name) => {
-            onCreateFolder(name, newFolderParentId);
-            setShowNewFolderDialog(false);
-          }}
-          isCreating={isCreatingFolder}
-        />
-
-        {/* Move to folder dialog */}
-        <MoveToFolderDialog
-          open={showMoveDialog}
-          onOpenChange={setShowMoveDialog}
-          folders={nodes.filter(n => n.node_type === 'folder').map(n => ({
-            id: n.id,
-            parent_id: n.parent_id,
-            name: n.module_code && n.template_id?.endsWith('_ROOT') ? getModuleDisplayName(n.module_code) : n.name,
-            template_id: n.template_id,
-            module_code: n.module_code,
-          }))}
-          excludeIds={selectedItem?.type === 'folder' && selectedItem.nodeId ? new Set([selectedItem.nodeId]) : undefined}
-          currentFolderId={selectedNodeId}
-          itemName={selectedItem?.name}
+            }
+          } : undefined}
+          onDownload={selectedItem.type === 'file' && selectedItem.documentId ? () => onDownload(selectedItem.documentId!) : undefined}
+          onDelete={() => handleDelete(selectedItem)}
+          onNewSubfolder={selectedItem.type === 'folder' && selectedItem.nodeId ? () => handleNewSubfolder(selectedItem.nodeId!) : undefined}
+          onMove={(onMoveFile || onMoveFolder) ? () => setShowMoveDialog(true) : undefined}
+          onRename={onRenameFolder && selectedItem.type === 'folder' ? () => handleRenameClick(selectedItem) : undefined}
+          onClear={() => setSelectedItem(null)}
+          isDownloading={isDownloading}
+          isDeleting={isDeleting}
           isMoving={isMoving}
-          onConfirm={async (targetFolderId) => {
-            if (!selectedItem) return;
-            let success = false;
-            if (selectedItem.type === 'file' && selectedItem.documentId && onMoveFile) {
-              success = await onMoveFile(selectedItem.documentId, targetFolderId);
-            } else if (selectedItem.type === 'folder' && selectedItem.nodeId && onMoveFolder) {
-              success = await onMoveFolder(selectedItem.nodeId, targetFolderId);
-            }
-            if (success) {
-              setShowMoveDialog(false);
-              setSelectedItem(null);
-            }
-          }}
+          isMutable={selectedItemMutable}
         />
+      )}
+
+      <FileDropZone onDrop={onUploadFiles} disabled={isUploading} className="flex-1 min-h-0" targetFolderName={selectedNodeId ? (nodes.find(n => n.id === selectedNodeId)?.name || undefined) : undefined}>
+        {hasMoveHandlers ? (
+          <DndStorageProvider onMoveFile={dndMoveFile} onMoveFolder={dndMoveFolder}>
+            {contentArea}
+          </DndStorageProvider>
+        ) : (
+          contentArea
+        )}
+      </FileDropZone>
+
+      <div className="px-4 py-2 border-t border-border/30 text-xs text-muted-foreground flex items-center gap-2">
+        <span>{items.length} Elemente</span>
+        <span>·</span>
+        <span>{formatFileSize(totalSize)}</span>
       </div>
+
+      {isMobile && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon" className="absolute bottom-14 right-4 h-14 w-14 rounded-full shadow-lg z-10">
+              <Plus className="h-6 w-6" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top" className="w-48">
+            <DropdownMenuItem onClick={handleUploadClick} disabled={isUploading}>
+              <Upload className="h-4 w-4 mr-2" />
+              Datei hochladen
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { setNewFolderParentId(selectedNodeId); setShowNewFolderDialog(true); }}>
+              <FolderPlus className="h-4 w-4 mr-2" />
+              Neuer Ordner
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
+      <NewFolderDialog
+        open={showNewFolderDialog}
+        onOpenChange={setShowNewFolderDialog}
+        onCreateFolder={(name) => {
+          onCreateFolder(name, newFolderParentId);
+          setShowNewFolderDialog(false);
+        }}
+        isCreating={isCreatingFolder}
+      />
+
+      <MoveToFolderDialog
+        open={showMoveDialog}
+        onOpenChange={setShowMoveDialog}
+        folders={nodes.filter(n => n.node_type === 'folder').map(n => ({
+          id: n.id,
+          parent_id: n.parent_id,
+          name: n.module_code && n.template_id?.endsWith('_ROOT') ? getModuleDisplayName(n.module_code) : n.name,
+          template_id: n.template_id,
+          module_code: n.module_code,
+        }))}
+        excludeIds={selectedItem?.type === 'folder' && selectedItem.nodeId ? new Set([selectedItem.nodeId]) : undefined}
+        currentFolderId={selectedNodeId}
+        itemName={selectedItem?.name}
+        isMoving={isMoving}
+        onConfirm={async (targetFolderId) => {
+          if (!selectedItem) return;
+          let success = false;
+          if (selectedItem.type === 'file' && selectedItem.documentId && onMoveFile) {
+            success = await onMoveFile(selectedItem.documentId, targetFolderId);
+          } else if (selectedItem.type === 'folder' && selectedItem.nodeId && onMoveFolder) {
+            success = await onMoveFolder(selectedItem.nodeId, targetFolderId);
+          }
+          if (success) {
+            setShowMoveDialog(false);
+            setSelectedItem(null);
+          }
+        }}
+      />
+
+      <RenameFolderDialog
+        open={showRenameDialog}
+        onOpenChange={setShowRenameDialog}
+        currentName={renameTarget?.name || ''}
+        onRename={handleRenameConfirm}
+      />
+    </div>
   );
 }
