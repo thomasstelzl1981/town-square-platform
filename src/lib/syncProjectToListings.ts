@@ -7,10 +7,12 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { computeListingHash } from '@/lib/listingHash';
+import { syncProjectImagesToProperty } from '@/lib/syncProjectImagesToProperty';
 
 export interface SyncResult {
   updated: number;
   unchanged: number;
+  imagesSynced: number;
   errors: string[];
 }
 
