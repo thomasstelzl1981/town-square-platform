@@ -33,7 +33,7 @@ import { calcBestandQuick, calcAufteilerFull } from '@/engines/akquiseCalc/engin
 import { AUFTEILER_DEFAULTS } from '@/engines/akquiseCalc/spec';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { ObjektKPIRow, ObjektBasisdaten } from '@/components/akquise/objekteingang';
+import { ObjektKPIRow, ObjektBasisdaten, ObjektAnkaufskosten } from '@/components/akquise/objekteingang';
 import { ValuationPipeline, ValuationReportReader } from '@/components/shared/valuation';
 
 import { Save, RotateCcw } from 'lucide-react';
