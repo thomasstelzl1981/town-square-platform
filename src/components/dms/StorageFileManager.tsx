@@ -497,6 +497,36 @@ export function StorageFileManager({
           }}
           isCreating={isCreatingFolder}
         />
+
+        {/* Move to folder dialog */}
+        <MoveToFolderDialog
+          open={showMoveDialog}
+          onOpenChange={setShowMoveDialog}
+          folders={nodes.filter(n => n.node_type === 'folder').map(n => ({
+            id: n.id,
+            parent_id: n.parent_id,
+            name: n.module_code && n.template_id?.endsWith('_ROOT') ? getModuleDisplayName(n.module_code) : n.name,
+            template_id: n.template_id,
+            module_code: n.module_code,
+          }))}
+          excludeIds={selectedItem?.type === 'folder' && selectedItem.nodeId ? new Set([selectedItem.nodeId]) : undefined}
+          currentFolderId={selectedNodeId}
+          itemName={selectedItem?.name}
+          isMoving={isMoving}
+          onConfirm={async (targetFolderId) => {
+            if (!selectedItem) return;
+            let success = false;
+            if (selectedItem.type === 'file' && selectedItem.documentId && onMoveFile) {
+              success = await onMoveFile(selectedItem.documentId, targetFolderId);
+            } else if (selectedItem.type === 'folder' && selectedItem.nodeId && onMoveFolder) {
+              success = await onMoveFolder(selectedItem.nodeId, targetFolderId);
+            }
+            if (success) {
+              setShowMoveDialog(false);
+              setSelectedItem(null);
+            }
+          }}
+        />
       </div>
   );
 }
