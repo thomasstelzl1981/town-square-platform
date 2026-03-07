@@ -1,21 +1,28 @@
 /**
  * useArmstrongDocUpload — Upload + Parse documents for Armstrong chat context
  * 
- * Architecture (v2 — Storage-First):
- *   File → Storage upload → sot-document-parser (storagePath) → extracted_text → Armstrong advisor
+ * Architecture (v4 — SSOT-Compliant):
+ *   File → Storage upload (tenant-documents, MOD_00 path) → Register in documents + storage_nodes
+ *   → sot-document-parser (storagePath) → extracted_text → Armstrong advisor
  * 
- * v3: Expanded format support — accepts virtually all common file types up to 50MB.
+ * Files are now PERSISTED in the DMS (not deleted after parsing).
+ * Path: {tenant_id}/MOD_00/{project_id|general}/{timestamp}_{filename}
  */
 
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { buildStoragePath, UPLOAD_BUCKET } from '@/config/storageManifest';
 
 export interface DocumentContext {
   extracted_text: string;
   filename: string;
   content_type: string;
   confidence: number;
+  /** Storage path where the file is persisted */
+  storagePath?: string;
+  /** Document ID in the documents table */
+  documentId?: string;
   /** Auto-detected Magic Intake suggestion (if any) */
   suggestedIntake?: {
     action_code: string;
@@ -26,7 +33,7 @@ export interface DocumentContext {
 
 interface UseArmstrongDocUploadReturn {
   /** Upload and parse a file, returns extracted document context */
-  uploadAndParse: (file: File) => Promise<DocumentContext | null>;
+  uploadAndParse: (file: File, projectId?: string | null) => Promise<DocumentContext | null>;
   /** Currently attached document context (ready to send with next message) */
   documentContext: DocumentContext | null;
   /** Clear the attached document */
@@ -43,53 +50,29 @@ interface UseArmstrongDocUploadReturn {
 const SUPPORTED_TYPES = [
   // Documents
   'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-  'application/msword', // .doc
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
-  'application/vnd.ms-powerpoint', // .ppt
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.ms-powerpoint',
   'application/rtf',
-  'application/vnd.oasis.opendocument.text', // .odt
-  'application/vnd.oasis.opendocument.spreadsheet', // .ods
-  'application/vnd.oasis.opendocument.presentation', // .odp
-  
+  'application/vnd.oasis.opendocument.text',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'application/vnd.oasis.opendocument.presentation',
   // Spreadsheets
   'text/csv',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-  'application/vnd.ms-excel', // .xls
-  
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
   // Images
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-  'image/bmp',
-  'image/tiff',
-  'image/svg+xml',
-  
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp', 'image/tiff', 'image/svg+xml',
   // Text
-  'text/plain',
-  'text/markdown',
-  'text/html',
-  'text/xml',
-  'application/json',
-  'application/xml',
-  'text/yaml',
-  
-  // Audio (for transcription)
-  'audio/mpeg', // .mp3
-  'audio/wav',
-  'audio/x-wav',
-  'audio/mp4', // .m4a
-  'audio/ogg',
-  'audio/webm',
-  
-  // Archives (pass-through, no parsing)
-  'application/zip',
-  'application/x-rar-compressed',
-  'application/x-7z-compressed',
+  'text/plain', 'text/markdown', 'text/html', 'text/xml',
+  'application/json', 'application/xml', 'text/yaml',
+  // Audio
+  'audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/ogg', 'audio/webm',
+  // Archives
+  'application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed',
 ];
 
-// Fallback: allow by file extension if MIME type detection fails
 const SUPPORTED_EXTENSIONS = [
   '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.rtf', '.odt', '.ods', '.odp',
   '.csv', '.xlsx', '.xls',
@@ -100,7 +83,7 @@ const SUPPORTED_EXTENSIONS = [
   '.mp4', '.mov', '.avi', '.mkv',
 ];
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB — maximum allowed
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 // =============================================================================
 // DOCUMENT INTENT DETECTION — proactive Magic Intake suggestion
@@ -171,27 +154,18 @@ function detectDocumentIntent(
   extractedText: string
 ): DocumentContext['suggestedIntake'] | null {
   const textSample = extractedText.slice(0, 3000);
-
   for (const rule of INTAKE_RULES) {
     const fnMatch = rule.filenamePatterns.some(p => p.test(filename));
     const txtMatch = rule.textPatterns.filter(p => p.test(textSample)).length;
-
     if (fnMatch || txtMatch >= 2) {
-      return {
-        action_code: rule.action_code,
-        label: rule.label,
-        module: rule.module,
-      };
+      return { action_code: rule.action_code, label: rule.label, module: rule.module };
     }
   }
-
   return null;
 }
 
 function isFileSupported(file: File): boolean {
-  // Check MIME type
   if (SUPPORTED_TYPES.includes(file.type)) return true;
-  // Fallback: check extension
   const ext = '.' + file.name.split('.').pop()?.toLowerCase();
   return SUPPORTED_EXTENSIONS.includes(ext);
 }
@@ -203,19 +177,15 @@ export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
   const [parseError, setParseError] = useState<string | null>(null);
   const [attachedFile, setAttachedFile] = useState<{ name: string; size: number; type: string } | null>(null);
 
-  const uploadAndParse = useCallback(async (file: File): Promise<DocumentContext | null> => {
-    // Validate file type
+  const uploadAndParse = useCallback(async (file: File, projectId?: string | null): Promise<DocumentContext | null> => {
     if (!isFileSupported(file)) {
       setParseError(`Dateityp "${file.type || file.name.split('.').pop()}" wird nicht unterstützt.`);
       return null;
     }
-
-    // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       setParseError(`Datei ist zu groß (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum: 50 MB.`);
       return null;
     }
-
     if (!activeTenantId) {
       setParseError('Kein aktiver Tenant.');
       return null;
@@ -226,28 +196,76 @@ export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
     setAttachedFile({ name: file.name, size: file.size, type: file.type });
 
     try {
-      // ── Step 1: Upload to Storage ──────────────────────────────────────
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const storagePath = `${activeTenantId}/armstrong/${Date.now()}_${safeName}`;
+      // ── Step 1: Upload to Storage via SSOT path ──────────────────────
+      const entityId = projectId || 'general';
+      const storagePath = buildStoragePath(activeTenantId, 'MOD_00', entityId, file.name);
 
       const { error: uploadError } = await supabase.storage
-        .from('tenant-documents')
+        .from(UPLOAD_BUCKET)
         .upload(storagePath, file, { cacheControl: '3600', upsert: false });
 
-      if (uploadError) {
-        throw new Error(`Upload fehlgeschlagen: ${uploadError.message}`);
+      if (uploadError) throw new Error(`Upload fehlgeschlagen: ${uploadError.message}`);
+
+      if (import.meta.env.DEV) {
+        console.log(`[ArmstrongDocUpload] SSOT upload: ${storagePath} (${(file.size / 1024).toFixed(0)}KB)`);
       }
 
-      if (import.meta.env.DEV) { console.log(`[ArmstrongDocUpload] Uploaded to storage: ${storagePath} (${(file.size / 1024).toFixed(0)}KB)`); }
+      // ── Step 2: Register in documents table ──────────────────────────
+      const publicId = crypto.randomUUID().substring(0, 8).toUpperCase();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: docData, error: docError } = await (supabase as any)
+        .from('documents')
+        .insert({
+          tenant_id: activeTenantId,
+          name: file.name,
+          file_path: storagePath,
+          mime_type: file.type,
+          size_bytes: file.size,
+          public_id: publicId,
+          source: 'armstrong_workspace',
+          extraction_status: 'pending',
+          doc_type: null,
+        })
+        .select('id')
+        .single();
 
-      // ── Step 2: Call parser with storagePath ───────────────────────────
+      const documentId = docData?.id as string | undefined;
+      if (docError) {
+        console.error('[ArmstrongDocUpload] Document insert error:', docError);
+      }
+
+      // ── Step 3: Register in storage_nodes ─────────────────────────────
+      if (documentId) {
+        const { data: rootNode } = await supabase
+          .from('storage_nodes')
+          .select('id')
+          .eq('tenant_id', activeTenantId)
+          .eq('template_id', 'MOD_00_ROOT')
+          .maybeSingle();
+
+        const parentId = rootNode?.id || null;
+        if (parentId) {
+          await supabase.from('storage_nodes').insert({
+            tenant_id: activeTenantId,
+            parent_id: parentId,
+            name: file.name,
+            node_type: 'file',
+            module_code: 'MOD_00',
+            storage_path: storagePath,
+            mime_type: file.type,
+          });
+        }
+      }
+
+      // ── Step 4: Call parser with storagePath ──────────────────────────
       const { data, error } = await supabase.functions.invoke('sot-document-parser', {
         body: {
           storagePath,
-          bucket: 'tenant-documents',
+          bucket: UPLOAD_BUCKET,
           contentType: file.type,
           filename: file.name,
           tenantId: activeTenantId,
+          documentId,
           parseMode: 'general',
         },
       });
@@ -256,32 +274,31 @@ export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
       if (!data?.success) throw new Error(data?.error || 'Parsing fehlgeschlagen');
 
       const parsed = data.parsed;
-      
+
       // Build extracted text from parsed data
       let extractedText = '';
-      
       if (parsed.data?.raw_text) {
         extractedText = parsed.data.raw_text;
       } else {
         const parts: string[] = [];
-        
-        if (parsed.data?.detected_type) {
-          parts.push(`Dokumenttyp: ${parsed.data.detected_type}`);
-        }
-        
-        if (parsed.data?.properties?.length) {
-          parts.push(`\nImmobilien:\n${JSON.stringify(parsed.data.properties, null, 2)}`);
-        }
-        
-        if (parsed.data?.contacts?.length) {
-          parts.push(`\nKontakte:\n${JSON.stringify(parsed.data.contacts, null, 2)}`);
-        }
-        
-        if (parsed.data?.financing?.length) {
-          parts.push(`\nFinanzierung:\n${JSON.stringify(parsed.data.financing, null, 2)}`);
-        }
-        
+        if (parsed.data?.detected_type) parts.push(`Dokumenttyp: ${parsed.data.detected_type}`);
+        if (parsed.data?.properties?.length) parts.push(`\nImmobilien:\n${JSON.stringify(parsed.data.properties, null, 2)}`);
+        if (parsed.data?.contacts?.length) parts.push(`\nKontakte:\n${JSON.stringify(parsed.data.contacts, null, 2)}`);
+        if (parsed.data?.financing?.length) parts.push(`\nFinanzierung:\n${JSON.stringify(parsed.data.financing, null, 2)}`);
         extractedText = parts.join('\n') || JSON.stringify(parsed.data, null, 2);
+      }
+
+      // ── Step 5: Update document extraction status ─────────────────────
+      if (documentId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
+          .from('documents')
+          .update({
+            extraction_status: 'done',
+            ai_summary: parsed.data?.detected_type || null,
+            detected_type: parsed.data?.detected_type || null,
+          })
+          .eq('id', documentId);
       }
 
       // ── Detect document intent for proactive Magic Intake suggestion ──
@@ -292,18 +309,16 @@ export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
         filename: file.name,
         content_type: file.type,
         confidence: parsed.confidence || 0.5,
+        storagePath,
+        documentId,
         suggestedIntake,
       };
 
-      if (suggestedIntake) {
-        if (import.meta.env.DEV) { console.log(`[ArmstrongDocUpload] Detected intake: ${suggestedIntake.action_code} (${suggestedIntake.label})`); }
+      if (suggestedIntake && import.meta.env.DEV) {
+        console.log(`[ArmstrongDocUpload] Detected intake: ${suggestedIntake.action_code} (${suggestedIntake.label})`);
       }
 
       setDocumentContext(ctx);
-
-      // ── Step 3: Cleanup temp file from storage (fire-and-forget) ───────
-      supabase.storage.from('tenant-documents').remove([storagePath]).catch(() => {});
-
       return ctx;
     } catch (err) {
       console.error('[useArmstrongDocUpload] Error:', err);
