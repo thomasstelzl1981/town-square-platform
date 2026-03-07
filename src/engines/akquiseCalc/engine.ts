@@ -16,6 +16,7 @@ import type {
   BestandFullParams, BestandFullResult, BestandYearlyData,
   BestandQuickParams, BestandQuickResult,
   AufteilerFullParams, AufteilerFullResult, AufteilerSensitivityRow,
+  AufteilerFinancingBreakdown, AlternativenMatrixCell,
   AufteilerQuickParams, AufteilerQuickResult,
   AufteilerProjectParams, AufteilerProjectResult,
   AncillaryCostBreakdown,
