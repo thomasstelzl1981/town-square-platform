@@ -261,7 +261,7 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
     risks?: string[];
     opportunities?: string[];
   }
-  const geo = offer.geomap_data as LocationResult | null; // legacy column
+  const geo = offer.geomap_data as LocationResult | null; // legacy — SoT Valuation replaces this
   const ai = offer.analysis_summary as AiSummaryResult | null;
 
   return (
