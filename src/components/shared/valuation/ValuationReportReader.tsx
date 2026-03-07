@@ -223,6 +223,13 @@ export function ValuationReportReader({
   const ertragValue = getMethodValue(methods, 'ertragswert');
   const sachwertValue = getMethodValue(methods, 'sachwert_proxy');
 
+  if (!valueBand) return null;
+
+  // Build additional map URLs
+  const satelliteUrl = coords ? buildStaticMapUrl(coords.lat, coords.lng, 18, 'satellite') : null;
+  const hybridUrl = coords ? buildStaticMapUrl(coords.lat, coords.lng, 16, 'hybrid', '640x400') : null;
+  const terrainUrl = coords ? buildStaticMapUrl(coords.lat, coords.lng, 13, 'terrain', '640x400') : null;
+
   return (
     <div className={cn('space-y-5', className)}>
 
