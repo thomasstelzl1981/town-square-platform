@@ -293,7 +293,7 @@ function DeliveryOfferCard({ offer, onPresent }: { offer: AcqOffer; onPresent: (
           </div>
           <div className="flex gap-1 mt-1">
             {hasCalc && <Badge variant="outline" className="text-xs">Kalkulation</Badge>}
-            {hasGeo && <Badge variant="outline" className="text-xs">Standort</Badge>}
+            {hasValuation && <Badge variant="outline" className="text-xs">Bewertung</Badge>}
             {hasAI && <Badge variant="outline" className="text-xs">KI-Analyse</Badge>}
           </div>
         </div>

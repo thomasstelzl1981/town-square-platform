@@ -302,7 +302,11 @@ function calcSensitivity(
 ): AufteilerSensitivityRow[] {
   return [-0.5, 0, 0.5].map(delta => {
     const y = targetYield + delta;
-    const price = yearlyRent > 0 ? yearlyRent / (y / 100) : 0;
+    // Guard: if yield is 0 or negative, price would be Infinity/NaN
+    if (y <= 0 || yearlyRent <= 0) {
+      return { yield: y, label: `${y.toFixed(1)}%`, salesPrice: 0, profit: -netCosts };
+    }
+    const price = yearlyRent / (y / 100);
     const comm = price * (salesCommission / 100);
     const net = price - comm;
     const prof = net - netCosts;

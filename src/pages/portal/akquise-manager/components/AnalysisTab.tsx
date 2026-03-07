@@ -1,6 +1,6 @@
 /**
  * Analysis Tab — Bestand + Aufteiler nebeneinander, KI darunter
- * V3: GeoMap/Sprengnetter entfernt, SoT Valuation Engine wird in Phase 5 integriert
+ * V4: Sprengnetter/GeoMap fully replaced by SoT Valuation Engine (ENG-VALUATION)
  */
 import * as React from 'react';
 import { DesktopOnly } from '@/components/shared/DesktopOnly';

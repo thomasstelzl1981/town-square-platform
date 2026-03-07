@@ -41,6 +41,7 @@ export interface AcqOffer {
   extracted_data: unknown;
   extraction_confidence: number | null;
   analysis_summary: unknown;
+  /** @deprecated Legacy column — replaced by SoT Valuation Engine */
   geomap_data: unknown;
   calc_bestand: unknown;
   calc_aufteiler: unknown;
