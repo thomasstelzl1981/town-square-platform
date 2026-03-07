@@ -424,11 +424,20 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
   }, [newFolderParentId, resolveTargetFolderId, allNodes, rootFolder?.id, tenantId, entityType, entityId, moduleCode, invalidateAll]);
 
   // ── Keyboard shortcuts ───────────────────────────────────────────────
+  // ARCH-DMS-02: MIME-dependent open on keyboard
   useStorageKeyboard({
     selectedItem,
     onDelete: handleDelete,
     onOpen: (item) => {
-      if (item.type === 'file' && item.documentId) handleDownload(item.documentId);
+      if (item.type === 'file' && item.documentId) {
+        if (isPreviewableMime(item.mimeType)) {
+          // Preview — for EntityStorageTree, double-click preview is handled via ColumnView
+          // Keyboard Enter triggers download as fallback
+          handleDownload(item.documentId);
+        } else {
+          handleDownload(item.documentId);
+        }
+      }
     },
     onClearSelection: () => setSelectedItem(null),
     containerRef,
