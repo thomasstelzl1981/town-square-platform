@@ -353,10 +353,10 @@ export function useValuationCase() {
       const results = data?.results || {};
       const caseData = data?.case || {};
       const inputs = data?.inputs || {};
-      const rawDq = inputs.snapshot?.data_quality ?? runSummary?.data_quality ?? null;
+      const rawSnapshot = inputs.canonical_snapshot ?? inputs.snapshot ?? null;
+      const rawDq = rawSnapshot?.data_quality ?? inputs.data_quality ?? runSummary?.data_quality ?? null;
 
       // Map snapshot: full snake_case → camelCase conversion
-      const rawSnapshot = inputs.snapshot ?? null;
       const mappedSnapshot = rawSnapshot ? {
         sourceMode: rawSnapshot.source_mode ?? rawSnapshot.sourceMode ?? 'DRAFT_INTAKE',
         address: rawSnapshot.address ?? null,
@@ -408,7 +408,7 @@ export function useValuationCase() {
         dataQuality: mapDataQuality(rawDq),
         compStats: mapCompStats(results.comp_stats),
         executiveSummary: runSummary?.executive_summary ?? null,
-        legalTitle: runSummary?.legal_title ?? inputs.snapshot?.legal_title ?? null,
+        legalTitle: runSummary?.legal_title ?? rawSnapshot?.legal_title ?? null,
         diffs: inputs.diffs ?? [],
         sourceMode: caseData.source_mode ?? 'DRAFT_INTAKE',
         // V9.0: Beleihungswert
