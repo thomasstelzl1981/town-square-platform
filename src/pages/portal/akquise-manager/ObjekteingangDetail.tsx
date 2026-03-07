@@ -138,7 +138,14 @@ export function ObjekteingangDetail() {
   const yearlyRent = deriveYearlyRent(offer, effectivePrice);
   const completenessIssues = getCompletenessIssues(offer);
   const hasCalcData = !!(offer.calc_bestand || offer.calc_aufteiler);
-  const resolvedAncillary = React.useMemo(() => calcAncillaryCosts(effectivePrice, offer.postal_code), [effectivePrice, offer.postal_code]);
+  // Extract broker rate from Exposé data if available (e.g. extracted_data.broker_commission_percent)
+  const exposeBrokerRate = React.useMemo(() => {
+    const ed = offer.extracted_data as Record<string, any> | null;
+    if (!ed) return undefined;
+    const val = ed.broker_commission_percent ?? ed.maklercourtage ?? ed.broker_rate ?? ed.courtage;
+    return typeof val === 'number' && val > 0 ? val : undefined;
+  }, [offer.extracted_data]);
+  const resolvedAncillary = React.useMemo(() => calcAncillaryCosts(effectivePrice, offer.postal_code, exposeBrokerRate), [effectivePrice, offer.postal_code, exposeBrokerRate]);
 
   return (
     <PageShell>
