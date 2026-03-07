@@ -37,6 +37,7 @@ import { toast } from 'sonner';
 import type { RecordCardEntityType } from '@/config/recordCardManifest';
 import type { FileManagerItem } from '@/components/dms/views/ListView';
 import { downloadFromSignedUrl } from '@/lib/storage-url';
+import { isPreviewableMime } from '@/components/dms/storageHelpers';
 
 interface EntityStorageTreeProps {
   tenantId: string;
