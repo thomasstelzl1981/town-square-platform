@@ -36,6 +36,7 @@ export function useExposeUpload() {
       return;
     }
 
+    let storagePath = '';
     try {
       setPhase('uploading');
       setProgress(10);
