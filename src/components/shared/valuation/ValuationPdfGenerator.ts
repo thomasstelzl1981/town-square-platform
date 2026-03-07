@@ -150,6 +150,17 @@ function drawNarrativeSection(doc: any, y: number, title: string, text: string):
 // ═══════════════════════════════════════════════════════════════════════
 
 export async function generateValuationPdfBlob(data: ValuationPdfData): Promise<{ blob: Blob; pageCount: number }> {
+  // ─── Defensive: ensure valueBand is never null ───
+  const safeValueBand: ValuationPdfData['valueBand'] = data.valueBand ?? {
+    p50: 0, p25: 0, p75: 0,
+    confidence: 'low' as any,
+    confidenceScore: 0,
+    weightingTable: [],
+    reasoning: '',
+  };
+  // Patch data with safe valueBand
+  data = { ...data, valueBand: safeValueBand };
+
   const [jsPDF, mapImages, photoImages] = await Promise.all([
     getJsPDF(),
     prefetchMapImages(data.location),
@@ -159,19 +170,19 @@ export async function generateValuationPdfBlob(data: ValuationPdfData): Promise<
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   let y = 0;
 
-  const caseShort = data.caseId.slice(0, 8);
-  const dateStr = new Date(data.generatedAt).toLocaleDateString('de-DE');
-  const addressLine = [data.snapshot.address, data.snapshot.postalCode, data.snapshot.city].filter(Boolean).join(', ');
+  const caseShort = (data.caseId || 'unknown').slice(0, 8);
+  const dateStr = new Date(data.generatedAt || new Date().toISOString()).toLocaleDateString('de-DE');
+  const addressLine = [data.snapshot?.address, data.snapshot?.postalCode, data.snapshot?.city].filter(Boolean).join(', ');
   const objectSummary = [
-    data.snapshot.objectType?.toUpperCase(),
-    data.snapshot.yearBuilt ? `Baujahr ${data.snapshot.yearBuilt}` : null,
-    data.snapshot.livingAreaSqm ? `${NUM(data.snapshot.livingAreaSqm)} m²` : null,
-    data.snapshot.units ? `${data.snapshot.units} WE` : null,
+    data.snapshot?.objectType?.toUpperCase(),
+    data.snapshot?.yearBuilt ? `Baujahr ${data.snapshot.yearBuilt}` : null,
+    data.snapshot?.livingAreaSqm ? `${NUM(data.snapshot.livingAreaSqm)} m²` : null,
+    data.snapshot?.units ? `${data.snapshot.units} WE` : null,
   ].filter(Boolean).join(' · ');
 
-  const ertragMethod = data.methods.find(m => m.method === 'ertrag');
-  const sachwertMethod = data.methods.find(m => m.method === 'sachwert_proxy');
-  const compMethod = data.methods.find(m => m.method === 'comp_proxy');
+  const ertragMethod = data.methods?.find(m => m.method === 'ertrag');
+  const sachwertMethod = data.methods?.find(m => m.method === 'sachwert_proxy');
+  const compMethod = data.methods?.find(m => m.method === 'comp_proxy');
   const ertragParams = ertragMethod?.params ?? {};
   const sachwertParams = sachwertMethod?.params ?? {};
   const ertragValue = ertragMethod?.value ?? 0;
@@ -197,23 +208,28 @@ export async function generateValuationPdfBlob(data: ValuationPdfData): Promise<
   // PAGE 1: COVER
   // ═══════════════════════════════════════
 
-  y = drawPremiumCover(doc, {
-    documentType: 'KURZGUTACHTEN · VERKEHRSWERTERMITTLUNG',
-    title: 'Immobilienbewertung',
-    addressLine: addressLine || 'Immobilienbewertung',
-    objectSummary,
-    primaryKpi: { label: 'MARKTWERT (§194 BauGB)', value: EUR(data.valueBand.p50) },
-    secondaryKpi: data.beleihungswert ? {
-      label: 'BELEIHUNGSWERT (BelWertV)',
-      value: EUR(data.beleihungswert.beleihungswert),
-    } : undefined,
-    metaLines: [
-      `Stichtag: ${dateStr}  ·  Case ${caseShort}`,
-      data.sourceMode === 'SSOT_FINAL' ? 'Datenbasis: SSOT (Final) · Daten verifiziert' : 'Datenbasis: Exposé Draft',
-      `${BRAND.COMPANY_NAME} · ${BRAND.CONFIDENTIAL}`,
-    ],
-    heroImageBase64: mapImages.streetView,
-  });
+  try {
+    y = drawPremiumCover(doc, {
+      documentType: 'KURZGUTACHTEN · VERKEHRSWERTERMITTLUNG',
+      title: 'Immobilienbewertung',
+      addressLine: addressLine || 'Immobilienbewertung',
+      objectSummary,
+      primaryKpi: { label: 'MARKTWERT (§194 BauGB)', value: data.valueBand.p50 > 0 ? EUR(data.valueBand.p50) : '– €' },
+      secondaryKpi: data.beleihungswert ? {
+        label: 'BELEIHUNGSWERT (BelWertV)',
+        value: EUR(data.beleihungswert.beleihungswert),
+      } : undefined,
+      metaLines: [
+        `Stichtag: ${dateStr}  ·  Case ${caseShort}`,
+        data.sourceMode === 'SSOT_FINAL' ? 'Datenbasis: SSOT (Final) · Daten verifiziert' : 'Datenbasis: Exposé Draft',
+        `${BRAND.COMPANY_NAME} · ${BRAND.CONFIDENTIAL}`,
+      ],
+      heroImageBase64: mapImages.streetView,
+    });
+  } catch (coverErr) {
+    console.error('[PDF] Cover section error:', coverErr);
+    y = PAGE.MARGIN_TOP + 40;
+  }
 
   // Compact property facts on cover page
   const coverFacts: PropertyRow[] = [
@@ -723,23 +739,25 @@ export async function generateValuationPdfBlob(data: ValuationPdfData): Promise<
   y = drawTable(doc, y, { headers: resultHeaders, rows: resultRows, colWidths: colW, alignRight: [1, 2] });
 
   // Gewichtung
-  y += 4;
-  setFont(doc, { size: 10, style: 'bold' });
-  setColor(doc, COLOR.INK);
-  doc.text('Gewichtung', ML, y);
-  y += 5;
+  if (data.valueBand.weightingTable && data.valueBand.weightingTable.length > 0) {
+    y += 4;
+    setFont(doc, { size: 10, style: 'bold' });
+    setColor(doc, COLOR.INK);
+    doc.text('Gewichtung', ML, y);
+    y += 5;
 
-  const weightRows = data.valueBand.weightingTable.map(w => {
-    const label = w.method === 'ertrag' ? 'Ertragswert'
-      : w.method === 'sachwert_proxy' ? 'Sachwert'
-      : w.method === 'comp_proxy' ? 'Vergleichswert'
-      : w.method;
-    return [label, `${(w.weight * 100).toFixed(0)}%`, EUR(w.value)];
-  });
-  y = drawTable(doc, y, { headers: ['Methode', 'Gewicht', 'Gew. Wert'], rows: weightRows, colWidths: [60, 40, CW - 100], alignRight: [1, 2] });
+    const weightRows = data.valueBand.weightingTable.map(w => {
+      const label = w.method === 'ertrag' ? 'Ertragswert'
+        : w.method === 'sachwert_proxy' ? 'Sachwert'
+        : w.method === 'comp_proxy' ? 'Vergleichswert'
+        : w.method;
+      return [label, `${(w.weight * 100).toFixed(0)}%`, EUR(w.value)];
+    });
+    y = drawTable(doc, y, { headers: ['Methode', 'Gewicht', 'Gew. Wert'], rows: weightRows, colWidths: [60, 40, CW - 100], alignRight: [1, 2] });
+  }
 
   // Kennzahlen
-  if (data.snapshot.livingAreaSqm && data.valueBand.p50 > 0) {
+  if (data.snapshot?.livingAreaSqm && data.valueBand.p50 > 0) {
     y += 4;
     const pricePerSqm = data.valueBand.p50 / data.snapshot.livingAreaSqm;
     const kennRows: string[][] = [
@@ -758,9 +776,9 @@ export async function generateValuationPdfBlob(data: ValuationPdfData): Promise<
   y += 6;
   y = ensurePageBreak(doc, y, 50);
   y = drawResultBox(doc, y, {
-    primary: { label: 'MARKTWERT', value: EUR(data.valueBand.p50) },
+    primary: { label: 'MARKTWERT', value: data.valueBand.p50 > 0 ? EUR(data.valueBand.p50) : '– €' },
     secondary: hasBwt ? { label: 'BELEIHUNGSWERT', value: EUR(data.beleihungswert!.beleihungswert) } : undefined,
-    bandText: `${EUR(data.valueBand.p25)} – ${EUR(data.valueBand.p75)}`,
+    bandText: `${data.valueBand.p25 > 0 ? EUR(data.valueBand.p25) : '–'} – ${data.valueBand.p75 > 0 ? EUR(data.valueBand.p75) : '–'}`,
   });
 
   if (data.valueBand.reasoning) {

@@ -55,11 +55,17 @@ export function drawPremiumCover(doc: jsPDF, opts: PremiumCoverOptions): number 
     try {
       const fmt = opts.heroImageBase64.includes('image/png') ? 'PNG' : 'JPEG';
       doc.addImage(opts.heroImageBase64, fmt, 0, 0, PW, 82);
-      // Gradient overlay for text readability
-      setFill(doc, [0, 0, 0]);
-      doc.setGState(new (doc as any).GState({ opacity: 0.35 }));
-      doc.rect(0, 55, PW, 27, 'F');
-      doc.setGState(new (doc as any).GState({ opacity: 1 }));
+      // Gradient overlay for text readability — check GState exists (jsPDF 4.x compat)
+      if (typeof (doc as any).GState === 'function') {
+        setFill(doc, [0, 0, 0]);
+        doc.setGState(new (doc as any).GState({ opacity: 0.35 }));
+        doc.rect(0, 55, PW, 27, 'F');
+        doc.setGState(new (doc as any).GState({ opacity: 1 }));
+      } else {
+        // Fallback: semi-transparent overlay via lighter fill
+        setFill(doc, [60, 60, 60]);
+        doc.rect(0, 55, PW, 27, 'F');
+      }
     } catch {
       setFill(doc, COLOR.ACCENT);
       doc.rect(0, 0, PW, 4, 'F');
