@@ -794,7 +794,6 @@ Deno.serve(async (req) => {
               message: 'Kein Baujahr angegeben — Restnutzungsdauer wird mit Fallback 1980 berechnet.',
               suggestedAction: 'Baujahr in der Immobilienakte ergänzen.',
             });
-          }
 
           // Check: No plot area
           if (!p.plot_area_sqm) {
