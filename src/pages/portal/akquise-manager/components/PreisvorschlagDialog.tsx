@@ -60,6 +60,7 @@ export function PreisvorschlagDialog({
   const queryClient = useQueryClient();
   const { activeTenantId } = useAuth();
   const mailAccount = useUserMailAccount();
+  const { ensureOfferDataRoom } = useAcqOfferDataRoom();
   const [proposedPrice, setProposedPrice] = React.useState<string>(
     priceCounter ? priceCounter.toFixed(0) : currentPrice ? (currentPrice * 0.9).toFixed(0) : ''
   );
