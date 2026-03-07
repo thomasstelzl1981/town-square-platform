@@ -9,9 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, FolderOpen, ChevronDown
+  Inbox, Loader2, Search, Upload, FileText, Calculator, ArrowRight, FolderOpen
 } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { useAuth } from '@/contexts/AuthContext';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
