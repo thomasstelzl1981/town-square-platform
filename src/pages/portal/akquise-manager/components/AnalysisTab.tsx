@@ -1,6 +1,6 @@
 /**
  * Analysis Tab — Bestand + Aufteiler nebeneinander, KI darunter
- * V3: GeoMap/Sprengnetter entfernt, SoT Valuation Engine wird in Phase 5 integriert
+ * V4: Sprengnetter/GeoMap fully replaced by SoT Valuation Engine (ENG-VALUATION)
  */
 import * as React from 'react';
 import { DesktopOnly } from '@/components/shared/DesktopOnly';
@@ -179,7 +179,7 @@ export function AnalysisTab({ mandateId, mandateCode }: AnalysisTabProps) {
 function OfferCard({ offer, onClick }: { offer: AcqOffer; onClick: () => void }) {
   const statusConfig = STATUS_CONFIG[offer.status] || STATUS_CONFIG.new;
   const hasCalc = offer.calc_bestand || offer.calc_aufteiler;
-  const hasValuation = offer.geomap_data; // legacy column, will be replaced by valuation_data
+  const hasValuation = offer.analysis_summary || offer.geomap_data; // SoT Valuation or legacy geomap
   const hasAI = offer.analysis_summary;
   
   return (
@@ -261,7 +261,7 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
     risks?: string[];
     opportunities?: string[];
   }
-  const geo = offer.geomap_data as LocationResult | null; // legacy column
+  const geo = offer.geomap_data as LocationResult | null; // legacy — SoT Valuation replaces this
   const ai = offer.analysis_summary as AiSummaryResult | null;
 
   return (

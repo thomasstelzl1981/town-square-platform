@@ -270,11 +270,11 @@ export function DeliveryTab({ mandateId, mandateCode, clientName }: DeliveryTabP
 // Delivery Card for analyzed offers
 function DeliveryOfferCard({ offer, onPresent }: { offer: AcqOffer; onPresent: () => void }) {
   const hasCalc = offer.calc_bestand || offer.calc_aufteiler;
-  const hasGeo = offer.geomap_data; // legacy column
+  const hasValuation = offer.analysis_summary || offer.geomap_data; // SoT Valuation or legacy
   const hasAI = offer.analysis_summary;
   
   // Calculate a "readiness" score
-  const readinessScore = [hasCalc, hasGeo, hasAI].filter(Boolean).length;
+  const readinessScore = [hasCalc, hasValuation, hasAI].filter(Boolean).length;
   
   return (
     <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50">
@@ -293,7 +293,7 @@ function DeliveryOfferCard({ offer, onPresent }: { offer: AcqOffer; onPresent: (
           </div>
           <div className="flex gap-1 mt-1">
             {hasCalc && <Badge variant="outline" className="text-xs">Kalkulation</Badge>}
-            {hasGeo && <Badge variant="outline" className="text-xs">Standort</Badge>}
+            {hasValuation && <Badge variant="outline" className="text-xs">Bewertung</Badge>}
             {hasAI && <Badge variant="outline" className="text-xs">KI-Analyse</Badge>}
           </div>
         </div>

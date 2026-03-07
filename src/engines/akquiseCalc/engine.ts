@@ -32,6 +32,7 @@ export function calcBestandFull(params: BestandFullParams): BestandFullResult {
   const {
     purchasePrice, monthlyRent, equityPercent, interestRate, repaymentRate,
     rentIncreaseRate, valueIncreaseRate, ancillaryCostPercent,
+    maintenancePercent, managementCostPercent,
   } = params;
 
   const yearlyRent = monthlyRent * 12;
@@ -45,7 +46,12 @@ export function calcBestandFull(params: BestandFullParams): BestandFullResult {
   const monthlyRate = yearlyAnnuity / 12;
 
   const grossYield = purchasePrice > 0 ? (yearlyRent / purchasePrice) * 100 : 0;
+  // Heuristic: 80% of yearly rent as sustainable annuity at ~5% total rate (interest + repayment)
   const maxFinancing = (yearlyRent * 0.8 / 5) * 100;
+
+  // Maintenance & management costs (annual)
+  const yearlyMaintenance = purchasePrice * ((maintenancePercent || 0) / 100);
+  const yearlyManagement = yearlyRent * ((managementCostPercent || 0) / 100);
 
   // 30-year projection
   const yearlyData: BestandYearlyData[] = [];
@@ -58,6 +64,10 @@ export function calcBestandFull(params: BestandFullParams): BestandFullResult {
   for (let year = 1; year <= 30; year++) {
     const interest = currentDebt * (interestRate / 100);
     const repayment = Math.min(yearlyAnnuity - interest, currentDebt);
+    // Operating costs scale with current rent (management) and value (maintenance)
+    const mgmt = currentRent * ((managementCostPercent || 0) / 100);
+    const maint = currentValue * ((maintenancePercent || 0) / 100);
+    const noi = currentRent - mgmt - maint;
 
     totalInterest += interest;
     totalRepayment += repayment;
@@ -68,6 +78,7 @@ export function calcBestandFull(params: BestandFullParams): BestandFullResult {
     yearlyData.push({
       year,
       rent: currentRent,
+      noi,
       interest,
       repayment,
       remainingDebt: currentDebt,
@@ -296,7 +307,11 @@ function calcSensitivity(
 ): AufteilerSensitivityRow[] {
   return [-0.5, 0, 0.5].map(delta => {
     const y = targetYield + delta;
-    const price = yearlyRent > 0 ? yearlyRent / (y / 100) : 0;
+    // Guard: if yield is 0 or negative, price would be Infinity/NaN
+    if (y <= 0 || yearlyRent <= 0) {
+      return { yield: y, label: `${y.toFixed(1)}%`, salesPrice: 0, profit: -netCosts };
+    }
+    const price = yearlyRent / (y / 100);
     const comm = price * (salesCommission / 100);
     const net = price - comm;
     const prof = net - netCosts;

@@ -41,6 +41,7 @@ export interface AcqOffer {
   extracted_data: unknown;
   extraction_confidence: number | null;
   analysis_summary: unknown;
+  /** @deprecated Legacy column — replaced by SoT Valuation Engine */
   geomap_data: unknown;
   calc_bestand: unknown;
   calc_aufteiler: unknown;
@@ -392,7 +393,7 @@ export function useRunCalcBestand() {
       if (runError) throw runError;
 
       // Calculate locally (using existing investment engine logic)
-      const result = calcBestandQuick(params as any);
+      const result = calcBestandQuick(params as Partial<import('@/engines/akquiseCalc/spec').BestandQuickParams> as import('@/engines/akquiseCalc/spec').BestandQuickParams);
 
       // Update run with results
       const { error: updateError } = await supabase
@@ -444,7 +445,7 @@ export function useRunCalcAufteiler() {
 
       if (runError) throw runError;
 
-      const result = calcAufteilerQuick(params as any);
+      const result = calcAufteilerQuick(params as Partial<import('@/engines/akquiseCalc/spec').AufteilerQuickParams> as import('@/engines/akquiseCalc/spec').AufteilerQuickParams);
 
       await supabase
         .from('acq_analysis_runs')
