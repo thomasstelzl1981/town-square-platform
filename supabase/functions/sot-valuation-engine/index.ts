@@ -430,6 +430,105 @@ async function fetchSSOTPropertyData(sbAdmin: any, propertyId: string, tenantId:
   return { property: propRes.data, units: unitsRes.data || [], leases: leasesData, loans: loansRes.data || [] };
 }
 
+// ─── ACQ OFFER Data Fetch (MOD-12) ───
+
+async function fetchAcqOfferData(sbAdmin: any, offerId: string, tenantId: string) {
+  stageLog(0, `Fetching acq_offers data for offer ${offerId}`);
+  const { data, error } = await sbAdmin
+    .from("acq_offers")
+    .select("*")
+    .eq("id", offerId)
+    .eq("tenant_id", tenantId)
+    .single();
+  if (error || !data) {
+    stageLog(0, `Offer fetch failed: ${error?.message}`);
+    return null;
+  }
+  return data;
+}
+
+/** Property type mapping for expose data */
+const OFFER_TYPE_MAP: Record<string, string> = {
+  'Mehrfamilienhaus': 'MFH', 'MFH': 'MFH', 'mfh': 'MFH',
+  'Wohnhaus': 'MFH', 'Wohn- und Geschaeftshaus': 'Mixed',
+  'Eigentumswohnung': 'ETW', 'ETW': 'ETW', 'etw': 'ETW', 'Wohnung': 'ETW',
+  'Einfamilienhaus': 'EFH', 'EFH': 'EFH', 'efh': 'EFH',
+  'Doppelhaushaelfte': 'DHH', 'DHH': 'DHH', 'dhh': 'DHH', 'Reihenhaus': 'DHH',
+  'Gewerbe': 'Gewerbe', 'Buero': 'Gewerbe', 'Laden': 'Gewerbe',
+  'Mixed': 'Mixed', 'mixed': 'Mixed', 'Gemischt': 'Mixed',
+};
+
+function buildSnapshotFromOffer(offer: any): Record<string, any> {
+  const ed = (offer.extracted_data || {}) as Record<string, any>;
+  const effectivePrice = offer.price_counter ?? offer.price_asking ?? null;
+
+  let netColdRentMonthly: number | null = null;
+  if (offer.noi_indicated && offer.noi_indicated > 0) {
+    netColdRentMonthly = Math.round(offer.noi_indicated / 12);
+  } else if (effectivePrice && offer.yield_indicated && offer.yield_indicated > 0) {
+    netColdRentMonthly = Math.round((effectivePrice * (offer.yield_indicated / 100)) / 12);
+  } else if (ed.monthly_rent || ed.kaltmiete || ed.net_cold_rent) {
+    const rent = ed.monthly_rent ?? ed.kaltmiete ?? ed.net_cold_rent;
+    netColdRentMonthly = typeof rent === 'number' ? rent : null;
+  }
+
+  const rawType = ed.property_type ?? ed.objektart ?? ed.object_type ?? '';
+  const objectType = OFFER_TYPE_MAP[rawType] || rawType || 'MFH';
+  const yearBuilt = offer.year_built ?? ed.year_built ?? ed.baujahr ?? null;
+  const areaSqm = offer.area_sqm ?? ed.living_area_sqm ?? ed.wohnflaeche ?? null;
+  const unitsCount = offer.units_count ?? ed.units_count ?? ed.wohneinheiten ?? null;
+  const rentPerSqm = netColdRentMonthly && areaSqm && areaSqm > 0
+    ? Math.round((netColdRentMonthly / areaSqm) * 100) / 100
+    : null;
+
+  return {
+    source_mode: 'DRAFT_INTAKE',
+    address: offer.address || ed.address || ed.adresse || '',
+    city: offer.city || ed.city || ed.stadt || ed.ort || '',
+    postal_code: offer.postal_code || ed.postal_code || ed.plz || '',
+    object_type: objectType,
+    living_area_sqm: areaSqm,
+    plot_area_sqm: ed.plot_area_sqm ?? ed.grundstuecksflaeche ?? null,
+    rooms: ed.rooms ?? ed.zimmer ?? null,
+    units_count: unitsCount,
+    unit_count_actual: unitsCount,
+    year_built: yearBuilt,
+    condition: ed.condition ?? ed.zustand ?? null,
+    energy_class: ed.energy_class ?? ed.energieklasse ?? null,
+    energy_certificate_value: ed.energy_certificate_value ?? ed.energiekennwert ?? null,
+    heating_type: ed.heating_type ?? ed.heizungsart ?? null,
+    energy_source: ed.energy_source ?? ed.energietraeger ?? null,
+    ownership_share_percent: null,
+    asking_price: effectivePrice,
+    purchase_price: effectivePrice,
+    acquisition_costs: null,
+    net_cold_rent_monthly: netColdRentMonthly,
+    net_cold_rent_per_sqm: rentPerSqm,
+    hausgeld_monthly: ed.hausgeld ?? ed.hausgeld_monthly ?? null,
+    parking_spots: ed.parking_spaces ?? ed.stellplaetze ?? null,
+    lat: ed.latitude ?? ed.lat ?? null,
+    lng: ed.longitude ?? ed.lng ?? null,
+    rental_status: ed.vacancy_rate != null
+      ? (ed.vacancy_rate === 0 ? 'fully_rented' : 'partially_rented')
+      : (netColdRentMonthly ? 'unknown_rented' : null),
+    legal_title: null,
+    existing_loan: null,
+    mfh_multi_unit: objectType === 'MFH' && unitsCount != null && unitsCount > 1,
+    units_detail: [],
+    avg_unit_area: unitsCount && areaSqm && unitsCount > 1
+      ? Math.round(areaSqm / unitsCount)
+      : null,
+    core_renovated: ed.core_renovated ?? ed.kernsaniert ?? false,
+    renovation_year: ed.renovation_year ?? ed.sanierungsjahr ?? null,
+    construction_type: ed.construction_type ?? ed.bauweise ?? null,
+    floor_count: ed.floor_count ?? ed.geschosse ?? ed.etagen ?? null,
+    commercial_area_sqm: ed.commercial_area_sqm ?? ed.gewerbeflaeche ?? null,
+    vacancy_rate: ed.vacancy_rate ?? ed.leerstandsquote ?? null,
+    provider_name: offer.provider_name ?? null,
+    provider_contact: offer.provider_contact ?? null,
+  };
+}
+
 function buildServerSSOTSnapshot(ssotData: any): Record<string, any> {
   const p = ssotData.property;
   const units = ssotData.units || [];
@@ -581,11 +680,10 @@ Deno.serve(async (req) => {
     if (!authHeader) return json({ error: "Missing authorization" }, 401);
 
     const sbUser = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsErr } = await sbUser.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) return json({ error: "Unauthorized" }, 401);
+    const { data: userData, error: userErr } = await sbUser.auth.getUser();
+    if (userErr || !userData?.user) return json({ error: "Unauthorized" }, 401);
 
-    const userId = claimsData.claims.sub as string;
+    const userId = userData.user.id;
     const { data: profile } = await sbUser.from("profiles").select("active_tenant_id").eq("id", userId).maybeSingle();
     if (!profile?.active_tenant_id) return json({ error: "No active tenant" }, 400);
     const tenantId = profile.active_tenant_id;
@@ -598,7 +696,7 @@ Deno.serve(async (req) => {
     // ACTION: preflight
     // ════════════════════════════════════════════
     if (action === "preflight") {
-      const { property_id } = body;
+      const { property_id, offer_id } = body;
       const sourceMode = property_id ? "SSOT_FINAL" : "DRAFT_INTAKE";
 
       const { data: creditData } = await sbAdmin.rpc("rpc_credit_preflight", {
@@ -606,6 +704,7 @@ Deno.serve(async (req) => {
       });
 
       let ssotSummary: any = null;
+      let offerSummary: any = null;
       let warnings: any[] = [];
       let blockers: any[] = [];
 
@@ -706,6 +805,7 @@ Deno.serve(async (req) => {
               suggestedAction: 'Grundstücksfläche im Grundbuch-Block der Immobilienakte eintragen.',
             });
           }
+          }
 
           // V9.2: AI-based deeper validation if lovableApiKey available
           if (lovableApiKey && warnings.length > 0) {
@@ -773,6 +873,39 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
           }
         }
       }
+      // ─── Offer-based preflight (MOD-12 DRAFT_INTAKE) ───
+      if (!property_id && offer_id) {
+        const offerData = await fetchAcqOfferData(sbAdmin, offer_id, tenantId);
+        if (offerData) {
+          const snapshot = buildSnapshotFromOffer(offerData);
+          offerSummary = {
+            address: snapshot.address, city: snapshot.city,
+            type: snapshot.object_type,
+            units_count: snapshot.units_count,
+            area_sqm: snapshot.living_area_sqm,
+            price: snapshot.asking_price,
+            rent_monthly: snapshot.net_cold_rent_monthly,
+          };
+
+          if (!snapshot.address && !snapshot.city) {
+            blockers.push({ field: 'address', severity: 'blocker', message: 'Adresse oder Stadt fehlt im Exposé — keine Bewertung möglich.', suggestedAction: 'Adresse in den Objektdaten nachtragen.' });
+          }
+          if (!snapshot.asking_price && !snapshot.net_cold_rent_monthly) {
+            blockers.push({ field: 'pricing', severity: 'blocker', message: 'Kein Preis und keine Miete im Exposé — Bewertung nicht möglich.', suggestedAction: 'Kaufpreis oder Mietdaten nachtragen.' });
+          }
+          if (!snapshot.living_area_sqm) {
+            warnings.push({ field: 'area', severity: 'warning', message: 'Keine Fläche im Exposé — wird per Heuristik geschätzt.', suggestedAction: 'Wohnfläche nachtragen.' });
+          }
+          if (!snapshot.year_built) {
+            warnings.push({ field: 'year_built', severity: 'warning', message: 'Kein Baujahr im Exposé — Restnutzungsdauer mit Fallback 1980.', suggestedAction: 'Baujahr nachtragen.' });
+          }
+        } else {
+          blockers.push({ field: 'offer', severity: 'blocker', message: 'Objekt nicht gefunden.', suggestedAction: 'Prüfen Sie die Objekt-ID.' });
+        }
+      }
+
+      const summarySource = ssotSummary || offerSummary;
+      const summaryLabel = ssotSummary ? `SSOT: ${ssotSummary.address}, ${ssotSummary.city}` : offerSummary ? `Exposé: ${offerSummary.address}, ${offerSummary.city}` : null;
 
       return json({
         success: true,
@@ -780,14 +913,14 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
           creditsCost: CREDITS_REQUIRED,
           credits_available: creditData?.available_credits ?? 0,
           can_proceed: (creditData?.allowed ?? false) && blockers.length === 0,
-          sources: ssotSummary ? [{ name: `SSOT: ${ssotSummary.address}, ${ssotSummary.city}`, type: "ssot", pages: 0 }] : [],
+          sources: summaryLabel ? [{ name: summaryLabel, type: ssotSummary ? "ssot" : "expose", pages: 0 }] : [],
           totalEstimatedPages: 0,
           limitsOk: blockers.length === 0,
           googleApiAvailable: !!googleMapsKey,
           scraperAvailable: !!firecrawlKey,
           sourceMode,
           sourceModeLabel: sourceMode === "SSOT_FINAL" ? "Datenbasis: MOD-04 SSOT (Final)" : "Datenbasis: Exposé Draft (Intake)",
-          ssotSummary,
+          ssotSummary: summarySource,
           warnings,
           blockers,
         },
@@ -798,13 +931,13 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
     // ACTION: run — Execute full 6-stage pipeline
     // ════════════════════════════════════════════
     if (action === "run") {
-      const { source_context, source_ref, property_id } = body;
+      const { source_context, source_ref, property_id, offer_id } = body;
       const tracker = new StageTracker();
       const sourceMode = property_id ? "SSOT_FINAL" : "DRAFT_INTAKE";
 
       // ─── Stage 0: Preflight + Credit Deduct ───
       tracker.start(0);
-      stageLog(0, `Source mode: ${sourceMode}`);
+      stageLog(0, `Source mode: ${sourceMode}, property_id=${property_id || 'none'}, offer_id=${offer_id || 'none'}`);
 
       const { data: deductData, error: deductErr } = await sbAdmin.rpc("rpc_credit_deduct", {
         p_tenant_id: tenantId, p_credits: CREDITS_REQUIRED, p_action_code: ACTION_CODE,
@@ -816,7 +949,7 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
         .from("valuation_cases")
         .insert({
           tenant_id: tenantId, source_context: source_context || "MOD_04",
-          source_ref: source_ref || null, source_mode: sourceMode,
+          source_ref: source_ref || offer_id || null, source_mode: sourceMode,
           property_id: property_id || null, status: "running",
           credits_charged: CREDITS_REQUIRED, stage_current: 0, created_by: userId,
         })
@@ -833,6 +966,15 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
         if (ssotData) {
           ssotSnapshot = buildServerSSOTSnapshot(ssotData);
           stageLog(0, `SSOT loaded: ${ssotData.units.length} units, ${ssotData.leases.length} leases`);
+        }
+      } else if (offer_id) {
+        // MOD-12: Build snapshot from acq_offers extracted data
+        const offerData = await fetchAcqOfferData(sbAdmin, offer_id, tenantId);
+        if (offerData) {
+          ssotSnapshot = buildSnapshotFromOffer(offerData);
+          stageLog(0, `Offer snapshot built: ${ssotSnapshot.address}, ${ssotSnapshot.city}, price=${ssotSnapshot.asking_price}, rent=${ssotSnapshot.net_cold_rent_monthly}`);
+        } else {
+          stageLog(0, `Offer ${offer_id} not found — proceeding with empty snapshot`);
         }
       }
       tracker.end(0);
@@ -1032,7 +1174,7 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
                 for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
                 const contentType = resp.headers.get('content-type') || 'image/png';
                 return `data:${contentType};base64,${btoa(binary)}`;
-              } catch { return null; }
+              } catch (_e) { return null; }
             };
 
             const [microB64, macroB64, streetB64, satB64, hybridB64] = await Promise.all([

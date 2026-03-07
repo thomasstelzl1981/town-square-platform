@@ -148,6 +148,11 @@ export function ObjekteingangDetail() {
   const yearlyRent = deriveYearlyRent(offer, effectivePrice);
   const completenessIssues = getCompletenessIssues(offer);
   const hasCalcData = !!(offer.calc_bestand || offer.calc_aufteiler);
+  // Minimal data for valuation: address + (price or rent)
+  const hasMinimalValuationData = !!(
+    (offer.address || offer.city) && 
+    (effectivePrice > 0 || yearlyRent > 0)
+  );
 
   return (
     <PageShell>
@@ -215,20 +220,20 @@ export function ObjekteingangDetail() {
           <TabsContent value="bewertung">
             <div className="space-y-4 mt-4">
               {valuation.state.status !== 'running' && !valuation.state.resultData && (
-                <Card className={cn("border-primary/20", hasCalcData ? "bg-primary/5" : "bg-muted/50")}>
+                <Card className={cn("border-primary/20", hasMinimalValuationData ? "bg-primary/5" : "bg-muted/50")}>
                   <CardContent className="flex items-center justify-between py-4">
                     <div>
                       <p className="text-sm font-medium">KI-gestützte Objektbewertung</p>
                       <p className="text-xs text-muted-foreground">
-                        {hasCalcData 
-                          ? 'Exposé-basierte Bewertung mit Portal-Comps (20 Credits)' 
-                          : 'Erst Kalkulation durchführen, dann Bewertung starten'}
+                        {hasMinimalValuationData 
+                          ? 'Exposé-basierte Bewertung mit Portal-Comps und KI-Research (20 Credits)' 
+                          : 'Adresse und Preis/Miete erforderlich für die Bewertung'}
                       </p>
                     </div>
                     <Button 
                       size="sm" 
                       onClick={() => valuation.runValuation({ offerId: offer.id, sourceContext: 'ACQUIARY_TOOLS' })} 
-                      disabled={valuation.isLoading || !hasCalcData}
+                      disabled={valuation.isLoading || !hasMinimalValuationData}
                     >
                       {valuation.isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
                       Bewertung starten
