@@ -1,5 +1,5 @@
-import { useMemo, useState, useCallback, useRef } from 'react';
-import { Folder, ChevronRight, Download, Eye, Trash2, FolderPlus } from 'lucide-react';
+import { useMemo, useState, useCallback } from 'react';
+import { Folder, ChevronRight, Download, Eye, Trash2, FolderPlus, Pencil } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -8,11 +8,15 @@ import { DESIGN } from '@/config/designManifest';
 import { getModuleDisplayName } from '@/config/storageManifest';
 import { getFileIcon, isPreviewableMime } from '@/components/dms/storageHelpers';
 import { FileRowMenu } from '@/components/dms/FileRowMenu';
+import { FolderDropTarget } from '@/components/dms/FolderDropTarget';
+import { isItemMutable, isFolderMutable } from '@/components/dms/folderGuards';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import type { FileManagerItem } from './ListView';
+import type { DndDragData } from '@/components/dms/DndStorageProvider';
 
 interface ColumnViewProps {
-  allNodes: { id: string; parent_id: string | null; name: string; template_id: string | null; module_code: string | null; created_at: string }[];
+  allNodes: { id: string; parent_id: string | null; name: string; node_type: string; template_id: string | null; module_code: string | null; created_at: string }[];
   documents: { id: string; name: string; mime_type: string; size_bytes: number; created_at: string; public_id: string; file_path: string }[];
   documentLinks: { document_id: string; node_id: string | null }[];
   columnPath: string[];
@@ -21,9 +25,12 @@ interface ColumnViewProps {
   onDownload?: (documentId: string) => void;
   onDelete?: (item: FileManagerItem) => void;
   onNewSubfolder?: (parentNodeId: string) => void;
+  onRename?: (item: FileManagerItem) => void;
+  onUploadToFolder?: (files: File[], targetFolderId: string) => void;
   onSelectedItemChange?: (item: FileManagerItem | null) => void;
   isDownloading?: boolean;
   isDeleting?: boolean;
+  enableDnd?: boolean;
 }
 
 function getDisplayName(node: { name: string; module_code: string | null; template_id: string | null }) {
@@ -32,26 +39,213 @@ function getDisplayName(node: { name: string; module_code: string | null; templa
     : node.name;
 }
 
-type ColumnItem = { id: string; name: string; type: 'folder' | 'file'; mimeType?: string; nodeId?: string; documentId?: string; createdAt?: string; filePath?: string };
+type ColumnItem = {
+  id: string;
+  name: string;
+  type: 'folder' | 'file';
+  mimeType?: string;
+  nodeId?: string;
+  documentId?: string;
+  createdAt?: string;
+  filePath?: string;
+  templateId?: string | null;
+  nodeType?: string;
+};
+
+/** Single row inside a column — handles DnD + external drop */
+function ColumnItemRow({
+  item,
+  isHighlighted,
+  enableDnd,
+  onSelect,
+  onDoubleClickFile,
+  onDownload,
+  onDelete,
+  onNewSubfolder,
+  onRename,
+  onNavigateFolder,
+  onPreview,
+  onUploadToFolder,
+  isDownloading,
+  isDeleting,
+}: {
+  item: ColumnItem;
+  isHighlighted: boolean;
+  enableDnd: boolean;
+  onSelect: () => void;
+  onDoubleClickFile?: () => void;
+  onDownload?: (documentId: string) => void;
+  onDelete?: (item: FileManagerItem) => void;
+  onNewSubfolder?: (parentNodeId: string) => void;
+  onRename?: (item: FileManagerItem) => void;
+  onNavigateFolder?: (nodeId: string) => void;
+  onPreview?: (item: FileManagerItem) => void;
+  onUploadToFolder?: (files: File[], targetFolderId: string) => void;
+  isDownloading?: boolean;
+  isDeleting?: boolean;
+}) {
+  const Icon = item.type === 'folder' ? Folder : getFileIcon(item.mimeType);
+  const mutable = isItemMutable(item);
+
+  const toFileManagerItem = (): FileManagerItem => ({
+    id: item.id,
+    name: item.name,
+    type: item.type,
+    mimeType: item.mimeType,
+    createdAt: item.createdAt || '',
+    documentId: item.documentId,
+    filePath: item.filePath,
+    nodeId: item.nodeId,
+    templateId: item.templateId || undefined,
+    nodeType: item.nodeType,
+  });
+
+  const dragData: DndDragData = {
+    type: item.type,
+    name: item.name,
+    documentId: item.documentId,
+    nodeId: item.nodeId,
+    mimeType: item.mimeType,
+  };
+
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+    id: `drag-${item.nodeId || item.documentId || item.id}`,
+    data: dragData,
+    disabled: !enableDnd || (item.type === 'folder' && !mutable),
+  });
+
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: item.nodeId || item.id,
+    data: { type: 'folder' },
+    disabled: item.type !== 'folder',
+  });
+
+  const combinedRef = (el: HTMLDivElement | null) => {
+    setDragRef(el);
+    if (item.type === 'folder') setDropRef(el);
+  };
+
+  const rowEl = (
+    <div
+      ref={combinedRef}
+      {...(enableDnd ? { ...attributes, ...listeners } : {})}
+      className={cn(
+        'w-full flex items-center gap-2 text-sm transition-colors text-left group/row cursor-pointer',
+        DESIGN.STORAGE.ROW_PADDING,
+        DESIGN.STORAGE.ROW_BORDER,
+        isHighlighted
+          ? 'bg-primary/10 text-foreground ring-1 ring-inset ring-primary/30'
+          : 'hover:bg-muted/30',
+        isOver && !isHighlighted && 'ring-2 ring-primary bg-primary/10',
+        isDragging && 'opacity-40',
+      )}
+      onClick={onSelect}
+      onDoubleClick={item.type === 'file' ? onDoubleClickFile : undefined}
+    >
+      <Icon className={cn('h-5 w-5 shrink-0', isHighlighted ? 'text-primary' : 'text-muted-foreground')} />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="flex-1 truncate">{item.name}</span>
+        </TooltipTrigger>
+        {item.name.length > 28 && (
+          <TooltipContent side="top" className="max-w-xs break-all text-xs">
+            {item.name}
+          </TooltipContent>
+        )}
+      </Tooltip>
+      {item.type === 'folder' && !isHighlighted && (
+        <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+      )}
+
+      {/* File inline actions */}
+      {item.type === 'file' && (
+        <div className="shrink-0 flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+          {item.documentId && onDownload && (
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onDownload(item.documentId!)} disabled={isDownloading}>
+              <Download className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {onPreview && (
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onPreview(toFileManagerItem())}>
+              <Eye className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {onDelete && (
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDelete(toFileManagerItem())} disabled={isDeleting}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Folder inline actions — when selected */}
+      {item.type === 'folder' && isHighlighted && (
+        <div className="shrink-0 flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+          {item.nodeId && onNewSubfolder && (
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onNewSubfolder(item.nodeId!)}>
+              <FolderPlus className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {mutable && onRename && (
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onRename(toFileManagerItem())}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {mutable && onDelete && (
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDelete(toFileManagerItem())} disabled={isDeleting}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Folder context menu — when NOT highlighted */}
+      {item.type === 'folder' && !isHighlighted && (
+        <div className="shrink-0" onClick={e => e.stopPropagation()}>
+          <FileRowMenu
+            type="folder"
+            onOpen={item.nodeId ? () => onNavigateFolder?.(item.nodeId!) : undefined}
+            onNewSubfolder={item.nodeId ? () => onNewSubfolder?.(item.nodeId!) : undefined}
+            onRename={mutable && onRename ? () => onRename(toFileManagerItem()) : undefined}
+            onDelete={mutable && onDelete ? () => onDelete(toFileManagerItem()) : undefined}
+            isDeleting={isDeleting}
+          />
+        </div>
+      )}
+    </div>
+  );
+
+  // Wrap folder rows with FolderDropTarget for external drops
+  if (item.type === 'folder' && item.nodeId && onUploadToFolder) {
+    return (
+      <FolderDropTarget folderId={item.nodeId} onDropFiles={onUploadToFolder}>
+        {rowEl}
+      </FolderDropTarget>
+    );
+  }
+
+  return rowEl;
+}
 
 interface ColumnProps {
   items: ColumnItem[];
   selectedId?: string;
   selectedFileId?: string;
+  enableDnd: boolean;
   onSelect: (item: ColumnItem) => void;
   onDoubleClickFile?: (item: ColumnItem) => void;
   onDownload?: (documentId: string) => void;
   onDelete?: (item: FileManagerItem) => void;
   onNewSubfolder?: (parentNodeId: string) => void;
+  onRename?: (item: FileManagerItem) => void;
   onNavigateFolder?: (nodeId: string) => void;
   onPreview?: (item: FileManagerItem) => void;
+  onUploadToFolder?: (files: File[], targetFolderId: string) => void;
   isDownloading?: boolean;
   isDeleting?: boolean;
 }
 
-function Column({ items, selectedId, selectedFileId, onSelect, onDoubleClickFile, onDownload, onDelete, onNewSubfolder, onNavigateFolder, onPreview, isDownloading, isDeleting }: ColumnProps) {
-  const isMobile = useIsMobile();
-
+function Column({ items, selectedId, selectedFileId, enableDnd, onSelect, onDoubleClickFile, onDownload, onDelete, onNewSubfolder, onRename, onNavigateFolder, onPreview, onUploadToFolder, isDownloading, isDeleting }: ColumnProps) {
   return (
     <div className={cn(DESIGN.STORAGE.COLUMN_WIDTH, DESIGN.STORAGE.COLUMN_BORDER, 'h-full flex flex-col')}>
       <ScrollArea className="flex-1">
@@ -60,126 +254,25 @@ function Column({ items, selectedId, selectedFileId, onSelect, onDoubleClickFile
             const isFolderSelected = selectedId === item.id;
             const isFileSelected = item.type === 'file' && selectedFileId === item.id;
             const isHighlighted = isFolderSelected || isFileSelected;
-            const Icon = item.type === 'folder' ? Folder : getFileIcon(item.mimeType);
-
-            const toFileManagerItem = (): FileManagerItem => ({
-              id: item.id,
-              name: item.name,
-              type: item.type,
-              mimeType: item.mimeType,
-              createdAt: item.createdAt || '',
-              documentId: item.documentId,
-              filePath: item.filePath,
-              nodeId: item.nodeId,
-            });
 
             return (
-              <div
+              <ColumnItemRow
                 key={item.id}
-                className={cn(
-                  'w-full flex items-center gap-2 text-sm transition-colors text-left group/row cursor-pointer',
-                  DESIGN.STORAGE.ROW_PADDING,
-                  DESIGN.STORAGE.ROW_BORDER,
-                  isHighlighted
-                    ? 'bg-primary/10 text-foreground ring-1 ring-inset ring-primary/30'
-                    : 'hover:bg-muted/30',
-                )}
-                onClick={() => onSelect(item)}
-                onDoubleClick={item.type === 'file' ? () => onDoubleClickFile?.(item) : undefined}
-              >
-                <Icon className={cn('h-5 w-5 shrink-0', isHighlighted ? 'text-primary' : 'text-muted-foreground')} />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="flex-1 truncate">{item.name}</span>
-                  </TooltipTrigger>
-                  {item.name.length > 28 && (
-                    <TooltipContent side="top" className="max-w-xs break-all text-xs">
-                      {item.name}
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-                {item.type === 'folder' && !isHighlighted && (
-                  <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
-                )}
-
-                {/* Inline quick actions for files — always visible */}
-                {item.type === 'file' && (
-                  <div className="shrink-0 flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-                    {item.documentId && onDownload && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => onDownload(item.documentId!)}
-                        disabled={isDownloading}
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                    {onPreview && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => onPreview(toFileManagerItem())}
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                    {onDelete && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-destructive hover:text-destructive"
-                        onClick={() => onDelete(toFileManagerItem())}
-                        disabled={isDeleting}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {/* Folder inline actions — visible when selected */}
-                {item.type === 'folder' && isHighlighted && (
-                  <div className="shrink-0 flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-                    {item.nodeId && onNewSubfolder && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => onNewSubfolder(item.nodeId!)}
-                      >
-                        <FolderPlus className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                    {onDelete && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-destructive hover:text-destructive"
-                        onClick={() => onDelete(toFileManagerItem())}
-                        disabled={isDeleting}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {/* Folder context menu — secondary, when NOT highlighted */}
-                {item.type === 'folder' && !isHighlighted && (
-                  <div className="shrink-0" onClick={e => e.stopPropagation()}>
-                    <FileRowMenu
-                      type="folder"
-                      onOpen={item.nodeId ? () => onNavigateFolder?.(item.nodeId!) : undefined}
-                      onNewSubfolder={item.nodeId ? () => onNewSubfolder?.(item.nodeId!) : undefined}
-                      onDelete={onDelete ? () => onDelete(toFileManagerItem()) : undefined}
-                      isDeleting={isDeleting}
-                    />
-                  </div>
-                )}
-              </div>
+                item={item}
+                isHighlighted={isHighlighted}
+                enableDnd={enableDnd}
+                onSelect={() => onSelect(item)}
+                onDoubleClickFile={item.type === 'file' ? () => onDoubleClickFile?.(item) : undefined}
+                onDownload={onDownload}
+                onDelete={onDelete}
+                onNewSubfolder={onNewSubfolder}
+                onRename={onRename}
+                onNavigateFolder={onNavigateFolder}
+                onPreview={onPreview}
+                onUploadToFolder={onUploadToFolder}
+                isDownloading={isDownloading}
+                isDeleting={isDeleting}
+              />
             );
           })}
           {items.length === 0 && (
@@ -191,7 +284,23 @@ function Column({ items, selectedId, selectedFileId, onSelect, onDoubleClickFile
   );
 }
 
-export function ColumnView({ allNodes, documents, documentLinks, columnPath, onNavigateColumn, onSelectFile, onDownload, onDelete, onNewSubfolder, onSelectedItemChange, isDownloading, isDeleting }: ColumnViewProps) {
+export function ColumnView({
+  allNodes,
+  documents,
+  documentLinks,
+  columnPath,
+  onNavigateColumn,
+  onSelectFile,
+  onDownload,
+  onDelete,
+  onNewSubfolder,
+  onRename,
+  onUploadToFolder,
+  onSelectedItemChange,
+  isDownloading,
+  isDeleting,
+  enableDnd = false,
+}: ColumnViewProps) {
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
 
   const buildFileManagerItem = useCallback((item: ColumnItem): FileManagerItem => {
@@ -207,15 +316,10 @@ export function ColumnView({ allNodes, documents, documentLinks, columnPath, onN
     };
   }, [documents]);
 
-  /**
-   * ARCH-DMS-02: MIME-dependent primary action on double-click
-   * Preview for image/* and application/pdf, download for everything else.
-   */
   const handleDoubleClickFile = useCallback((item: ColumnItem) => {
     if (!item.documentId) return;
     const mime = item.mimeType ?? documents.find(d => d.id === item.id)?.mime_type;
     if (isPreviewableMime(mime)) {
-      // Trigger preview via onSelectFile (which sets previewItem in parent)
       const fmi = buildFileManagerItem(item);
       onSelectFile(fmi);
     } else if (onDownload) {
@@ -227,13 +331,14 @@ export function ColumnView({ allNodes, documents, documentLinks, columnPath, onN
     if (item.type === 'folder' && item.nodeId) {
       onNavigateColumn(item.nodeId, depth);
       setSelectedFileId(null);
-      // Report folder selection to parent
       const folderItem: FileManagerItem = {
         id: item.id,
         name: item.name,
         type: 'folder',
         createdAt: item.createdAt || '',
         nodeId: item.nodeId,
+        templateId: item.templateId || undefined,
+        nodeType: item.nodeType,
       };
       onSelectedItemChange?.(folderItem);
     } else {
@@ -259,6 +364,8 @@ export function ColumnView({ allNodes, documents, documentLinks, columnPath, onN
         type: 'folder' as const,
         nodeId: n.id,
         createdAt: n.created_at,
+        templateId: n.template_id,
+        nodeType: n.node_type,
       })),
     });
 
@@ -279,6 +386,8 @@ export function ColumnView({ allNodes, documents, documentLinks, columnPath, onN
           type: 'folder' as const,
           nodeId: n.id,
           createdAt: n.created_at,
+          templateId: n.template_id,
+          nodeType: n.node_type,
         })),
         ...nodeDocs.sort((a, b) => a.name.localeCompare(b.name)),
       ];
@@ -301,11 +410,14 @@ export function ColumnView({ allNodes, documents, documentLinks, columnPath, onN
           items={col.items}
           selectedId={col.selectedId}
           selectedFileId={selectedFileId ?? undefined}
+          enableDnd={enableDnd}
           onDownload={onDownload}
           onDelete={onDelete}
           onNewSubfolder={onNewSubfolder}
+          onRename={onRename}
           onNavigateFolder={(nodeId) => onNavigateColumn(nodeId, depth)}
           onPreview={onSelectFile}
+          onUploadToFolder={onUploadToFolder}
           isDownloading={isDownloading}
           isDeleting={isDeleting}
           onDoubleClickFile={handleDoubleClickFile}
