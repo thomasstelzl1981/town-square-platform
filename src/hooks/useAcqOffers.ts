@@ -444,7 +444,7 @@ export function useRunCalcAufteiler() {
 
       if (runError) throw runError;
 
-      const result = calcAufteilerQuick(params as any);
+      const result = calcAufteilerQuick(params as Partial<import('@/engines/akquiseCalc/spec').AufteilerQuickParams> as import('@/engines/akquiseCalc/spec').AufteilerQuickParams);
 
       await supabase
         .from('acq_analysis_runs')
