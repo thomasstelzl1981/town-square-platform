@@ -413,6 +413,79 @@ export function ValuationReportReader({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 1c — OBJEKTFOTOS (Upload Grid)
+          ═══════════════════════════════════════════════════════════════ */}
+      {propertyId && tenantId && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <SectionHeader icon={Camera} title="Objektfotos" subtitle="Fotos vom Objekt für das Gutachten (max. 8 Bilder)" />
+            <ValuationPhotoGrid
+              propertyId={propertyId}
+              tenantId={tenantId}
+              photos={photos || []}
+              onPhotosChange={onPhotosChange || (() => {})}
+              maxPhotos={8}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 1d — GRUNDRISSE, LAGEPLÄNE & UNTERLAGEN
+          ═══════════════════════════════════════════════════════════════ */}
+      {propertyId && tenantId && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <SectionHeader icon={FileImage} title="Grundrisse, Lagepläne & Unterlagen" subtitle="Pläne und Dokumente für das Gutachten (Bilder & PDFs)" />
+            <ValuationDocumentGrid
+              propertyId={propertyId}
+              tenantId={tenantId}
+              documents={documents || []}
+              onDocumentsChange={onDocumentsChange || (() => {})}
+              maxDocuments={8}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 1e — LUFTBILD & SATELLIT
+          ═══════════════════════════════════════════════════════════════ */}
+      {(satelliteUrl || hybridUrl || terrainUrl) && (
+        <Card>
+          <CardContent className="p-6 space-y-5">
+            <SectionHeader icon={Satellite} title="Luftbild & Geländeansicht" subtitle="Satellitenaufnahme und Geländerelief des Standorts" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {satelliteUrl && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Satellitenansicht (Nahaufnahme)</p>
+                  <div className="rounded-xl overflow-hidden border shadow-sm aspect-[16/10]">
+                    <img src={satelliteUrl} alt="Satellitenansicht" className="w-full h-full object-cover" loading="lazy" />
+                  </div>
+                </div>
+              )}
+              {hybridUrl && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Hybridansicht (Karte + Satellitenbild)</p>
+                  <div className="rounded-xl overflow-hidden border shadow-sm aspect-[16/10]">
+                    <img src={hybridUrl} alt="Hybridansicht" className="w-full h-full object-cover" loading="lazy" />
+                  </div>
+                </div>
+              )}
+            </div>
+            {terrainUrl && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Geländeansicht (Topografie)</p>
+                <div className="rounded-xl overflow-hidden border shadow-sm aspect-[21/9] max-h-[250px]">
+                  <img src={terrainUrl} alt="Geländeansicht" className="w-full h-full object-cover" loading="lazy" />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
           SEKTION 2 — GRUNDBUCH & EIGENTUM
           ═══════════════════════════════════════════════════════════════ */}
       {legalTitle && sourceMode === 'SSOT_FINAL' && (
