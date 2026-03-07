@@ -73,10 +73,13 @@ interface StorageFileManagerProps {
   onCreateFolder: (name: string, parentId: string | null) => void;
   onBulkDownload: (ids: Set<string>) => void;
   onBulkDelete: (ids: Set<string>) => void;
+  onMoveFile?: (documentId: string, targetFolderId: string) => Promise<boolean>;
+  onMoveFolder?: (folderId: string, targetFolderId: string) => Promise<boolean>;
   isUploading?: boolean;
   isDownloading?: boolean;
   isDeleting?: boolean;
   isCreatingFolder?: boolean;
+  isMoving?: boolean;
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string | null) => void;
 }
