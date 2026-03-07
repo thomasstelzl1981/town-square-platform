@@ -794,6 +794,7 @@ Deno.serve(async (req) => {
               message: 'Kein Baujahr angegeben — Restnutzungsdauer wird mit Fallback 1980 berechnet.',
               suggestedAction: 'Baujahr in der Immobilienakte ergänzen.',
             });
+          }
 
           // Check: No plot area
           if (!p.plot_area_sqm) {
@@ -803,7 +804,6 @@ Deno.serve(async (req) => {
               message: 'Keine Grundstücksfläche angegeben — wird per Heuristik geschätzt.',
               suggestedAction: 'Grundstücksfläche im Grundbuch-Block der Immobilienakte eintragen.',
             });
-          }
           }
 
           // V9.2: AI-based deeper validation if lovableApiKey available
