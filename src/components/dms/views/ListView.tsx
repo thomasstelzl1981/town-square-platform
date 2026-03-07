@@ -4,7 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FileRowMenu } from '@/components/dms/FileRowMenu';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { getFileIcon, formatFileSize, formatDate, formatType } from '@/components/dms/storageHelpers';
+import { getFileIcon, formatFileSize, formatDate, formatType, isPreviewableMime } from '@/components/dms/storageHelpers';
 import type { SortField, SortDir } from '@/components/dms/StorageToolbar';
 
 export interface FileManagerItem {
