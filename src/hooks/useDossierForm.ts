@@ -123,7 +123,7 @@ export function useDossierForm(initialData: UnitDossierData | null) {
     const unitFields = [
       'unitNumber', 'areaLivingSqm', 'areaUsableSqm', 'roomsCount', 'bathroomsCount',
       'floor', 'featuresTags', 'meaShare', 'hausgeldMonthlyEur', 'vacancyDays',
-      'energyCertValue', 'energyCertValidUntil'
+      'energyCertType', 'energyCertValue', 'energyCertValidUntil'
     ];
     
     const changes: Partial<UnitFormData> = {};
@@ -135,6 +135,7 @@ export function useDossierForm(initialData: UnitDossierData | null) {
         if (field === 'areaLivingSqm') changes.areaSqm = (mergedData as any).areaLivingSqm;
         else if (field === 'roomsCount') changes.rooms = (mergedData as any).roomsCount;
         else if (field === 'hausgeldMonthlyEur') changes.hausgeldMonthly = (mergedData as any).hausgeldMonthlyEur;
+        else if (field === 'energyCertType') changes.energyCertificateType = (mergedData as any).energyCertType;
         else if (field === 'energyCertValue') changes.energyCertificateValue = (mergedData as any).energyCertValue;
         else if (field === 'energyCertValidUntil') changes.energyCertificateValidUntil = (mergedData as any).energyCertValidUntil;
         else (changes as any)[field] = (mergedData as any)[field];
