@@ -98,10 +98,13 @@ export function StorageFileManager({
   onCreateFolder,
   onBulkDownload,
   onBulkDelete,
+  onMoveFile,
+  onMoveFolder,
   isUploading,
   isDownloading,
   isDeleting,
   isCreatingFolder,
+  isMoving,
   selectedNodeId,
   onSelectNode,
 }: StorageFileManagerProps) {
