@@ -109,7 +109,7 @@ export function MobileBottomBar({ onChatActivated }: MobileBottomBarProps) {
 
   return (
     <nav
-      className="sticky bottom-0 z-40 w-full bg-background/80 backdrop-blur-2xl border-t border-border/10"
+      className="sticky bottom-0 z-40 w-full bg-card/70 backdrop-blur-xl border-t border-border/20"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       {/* Attached files preview */}
