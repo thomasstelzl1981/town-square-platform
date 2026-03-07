@@ -64,7 +64,7 @@ function getCompletenessIssues(offer: { price_asking?: number | null; noi_indica
   return issues;
 }
 
-function QuickAnalysisBanner({ offer, yearlyRent, priceOverride, originalPrice, onPriceChange }: { offer: AcqOffer; yearlyRent: number; priceOverride: number; originalPrice: number; onPriceChange: (p: number) => void }) {
+function QuickAnalysisBanner({ offer, yearlyRent, priceOverride, originalPrice, onPriceChange, ancillaryCostPercent }: { offer: AcqOffer; yearlyRent: number; priceOverride: number; originalPrice: number; onPriceChange: (p: number) => void; ancillaryCostPercent: number }) {
   const [inputValue, setInputValue] = React.useState(priceOverride.toString());
   const [isSaving, setIsSaving] = React.useState(false);
   const isModified = priceOverride !== originalPrice;
@@ -74,7 +74,7 @@ function QuickAnalysisBanner({ offer, yearlyRent, priceOverride, originalPrice, 
   const handleInput = (raw: string) => { const d = raw.replace(/\D/g, ''); setInputValue(d); const n = parseInt(d, 10); if (!isNaN(n) && n > 0) onPriceChange(n); };
   const handleSave = async () => { setIsSaving(true); const { error } = await supabase.from('acq_offers').update({ price_counter: priceOverride } as any).eq('id', offer.id); setIsSaving(false); error ? toast({ title: 'Fehler', variant: 'destructive' }) : toast({ title: 'Gespeichert', description: `Gegenvorschlag ${fmtCur(priceOverride)}` }); };
   const bestand = React.useMemo(() => calcBestandQuick({ purchasePrice: priceOverride, monthlyRent: yearlyRent / 12 }), [priceOverride, yearlyRent]);
-  const aufteiler = React.useMemo(() => calcAufteilerFull({ purchasePrice: priceOverride, yearlyRent, targetYield: AUFTEILER_DEFAULTS.targetYield, salesCommission: AUFTEILER_DEFAULTS.salesCommission, holdingPeriodMonths: AUFTEILER_DEFAULTS.holdingPeriodMonths, ancillaryCostPercent: AUFTEILER_DEFAULTS.ancillaryCostPercent, interestRate: AUFTEILER_DEFAULTS.interestRate, equityPercent: AUFTEILER_DEFAULTS.equityPercent, projectCosts: 0 }), [priceOverride, yearlyRent]);
+  const aufteiler = React.useMemo(() => calcAufteilerFull({ purchasePrice: priceOverride, yearlyRent, targetYield: AUFTEILER_DEFAULTS.targetYield, salesCommission: AUFTEILER_DEFAULTS.salesCommission, holdingPeriodMonths: AUFTEILER_DEFAULTS.holdingPeriodMonths, ancillaryCostPercent, interestRate: AUFTEILER_DEFAULTS.interestRate, equityPercent: AUFTEILER_DEFAULTS.equityPercent, projectCosts: 0 }), [priceOverride, yearlyRent, ancillaryCostPercent]);
   return (
     <Card className={cn(DESIGN.CARD.BASE, DESIGN.INFO_BANNER.PREMIUM)}>
       <CardHeader className="pb-2 px-4 pt-3 flex flex-row items-center justify-between">
@@ -208,7 +208,7 @@ export function ObjekteingangDetail() {
       {/* ═══════════════════ SEKTION 2: KALKULATION ═══════════════════ */}
       <div className="space-y-4">
         <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-1')}>Kalkulation</h2>
-        <QuickAnalysisBanner offer={offer} yearlyRent={yearlyRent} priceOverride={effectivePrice} originalPrice={offer.price_asking || 0} onPriceChange={setPriceOverride} />
+        <QuickAnalysisBanner offer={offer} yearlyRent={yearlyRent} priceOverride={effectivePrice} originalPrice={offer.price_asking || 0} onPriceChange={setPriceOverride} ancillaryCostPercent={resolvedAncillary.totalRate} />
         <Tabs defaultValue="bestand" className="w-full">
           <TabsList>
             <TabsTrigger value="bestand">🏠 Bestand (Hold)</TabsTrigger>
