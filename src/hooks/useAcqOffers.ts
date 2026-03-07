@@ -8,7 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { sanitizeFileName, buildStoragePath, UPLOAD_BUCKET } from '@/config/storageManifest';
 import { toast } from 'sonner';
-import { calcBestandQuick, calcAufteilerQuick } from '@/engines/akquiseCalc/engine';
+import { calcBestandFull, calcAufteilerFull } from '@/engines/akquiseCalc/engine';
+import { BESTAND_DEFAULTS, AUFTEILER_DEFAULTS } from '@/engines/akquiseCalc/spec';
+import type { BestandFullParams, AufteilerFullParams } from '@/engines/akquiseCalc/spec';
 
 // ============================================================================
 // TYPES
