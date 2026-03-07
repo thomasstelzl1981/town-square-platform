@@ -268,7 +268,32 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
             onPhotosChange={setValuationPhotos}
             documents={valuationDocuments}
             onDocumentsChange={setValuationDocuments}
-            onDownloadPdf={handleDownloadPdf}
+            onDownloadPdf={handleOpenPdfPipeline}
+          />
+
+          {showPdfPipeline && (
+            <ValuationPdfPipeline
+              snapshot={r.snapshot || null}
+              valueBand={r.valueBand}
+              methods={r.methods || []}
+              financing={r.financing || []}
+              stressTests={r.stressTests || []}
+              lienProxy={r.lienProxy || null}
+              dataQuality={r.dataQuality || null}
+              compStats={r.compStats || null}
+              comps={r.comps || []}
+              location={r.location || null}
+              executiveSummary={r.executiveSummary || ''}
+              caseId={state.caseId || 'unknown'}
+              sourceMode={r.sourceMode || 'SSOT_FINAL'}
+              legalTitle={r.legalTitle || null}
+              beleihungswert={r.beleihungswert || null}
+              geminiResearch={r.geminiResearch || null}
+              photos={valuationPhotos}
+              documents={valuationDocuments}
+              onClose={() => setShowPdfPipeline(false)}
+            />
+          )
           />
         </div>
       );
