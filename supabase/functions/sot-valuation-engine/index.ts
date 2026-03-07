@@ -805,6 +805,7 @@ Deno.serve(async (req) => {
               suggestedAction: 'Grundstücksfläche im Grundbuch-Block der Immobilienakte eintragen.',
             });
           }
+          }
 
           // V9.2: AI-based deeper validation if lovableApiKey available
           if (lovableApiKey && warnings.length > 0) {
