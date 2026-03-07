@@ -45,6 +45,7 @@ interface EnrichedCase {
 
 export function PropertyValuationTab({ propertyId, tenantId }: Props) {
   const [showPipeline, setShowPipeline] = useState(false);
+  const [showPdfPipeline, setShowPdfPipeline] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
