@@ -1,13 +1,13 @@
 {
-  "version": "4.1",
-  "updated_at": "2026-03-05T23:30:00.000Z",
+  "version": "4.2",
+  "updated_at": "2026-03-07T20:00:00.000Z",
   "description": "SSOT for infrastructure freeze states. AI MUST check this file before modifying any file in the listed paths. If an area is frozen, changes are NOT ALLOWED without explicit unfreeze. NOTE: Zone 1 Desks are governed by zone1_desks_freeze.json (separate file).",
   "infrastructure": {
     "goldenpath": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/goldenpath/*", "reason": "Production freeze" },
     "manifests": { "frozen": true, "frozen_at": "2026-03-04T23:45:00.000Z", "path": "src/manifests/*", "reason": "Re-frozen after ARM.CHAT.GENERAL billing entry added" },
     "shared_investment": { "frozen": true, "frozen_at": "2026-03-02T12:00:00.000Z", "path": "src/components/investment/*", "reason": "Production freeze" },
     "shared_listings": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/components/listings/*", "reason": "Production freeze" },
-    "edge_functions": { "frozen": true, "frozen_at": "2026-03-07T01:00:00.000Z", "path": "supabase/functions/*", "reason": "Re-frozen after V9.3: Enhanced location analysis with 10 POI categories, satellite/hybrid/terrain maps, extended reachability (airport, Autobahn, hospital), rich AI narratives + property assessment" },
+    "edge_functions": { "frozen": true, "frozen_at": "2026-03-07T20:00:00.000Z", "path": "supabase/functions/*", "reason": "Re-frozen after SSOT Storage v2: sot-acq-offer-extract, sot-acq-inbound-webhook, sot-tenant-storage-reset all migrated from acq-documents to tenant-documents" },
     "validation": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/validation/*", "reason": "Production freeze" }
   }
 }

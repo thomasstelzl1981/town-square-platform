@@ -1,6 +1,6 @@
 {
-  "version": "9.0",
-  "updated_at": "2026-03-06T14:00:00.000Z",
+  "version": "10.0",
+  "updated_at": "2026-03-07T20:00:00.000Z",
   "description": "SSOT for module freeze states. Lovable and all AI assistants MUST check this file before modifying any module code. If a module is frozen, changes to its paths are NOT ALLOWED without explicit unfreeze.",
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
@@ -8,7 +8,7 @@
     "MOD-01": { "frozen": true, "frozen_at": "2026-03-05T10:00:00.000Z", "reason": "Full freeze — All modules locked" },
     "MOD-02": { "frozen": true, "frozen_at": "2026-03-07T18:00:00.000Z", "reason": "Re-frozen after Storage Audit P3: Signature upload normalized to SSOT path {tenant_id}/MOD_02/signatures/{profile_id}/ with signed URL" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-03-06T20:15:00.000Z", "reason": "Re-frozen after Datenraum UX fix: single-click=select, double-click=download, inline actions always visible, drop overlay scoped to content, column width 320px, tooltips for long filenames" },
-    "MOD-04": { "frozen": true, "frozen_at": "2026-03-07T14:00:00.000Z", "reason": "Re-frozen after PDF-Pipeline V10.1: ValuationPdfPipeline (4-stage), dynamic TOC, AI narratives, photos, energy data, blob preview" },
+    "MOD-04": { "frozen": true, "frozen_at": "2026-03-07T20:00:00.000Z", "reason": "Re-frozen after SSOT Storage v2: OfferComparisonPanel DMS registration (documents+storage_nodes) added, path normalized to MOD_04" },
     "MOD-05": { "frozen": true, "frozen_at": "2026-03-06T18:00:00.000Z", "reason": "Re-frozen after Deep Audit: PetsCaring error fallback added" },
     "MOD-06": { "frozen": true, "frozen_at": "2026-03-06T16:00:00.000Z", "reason": "Re-frozen after PDF-CI Phase 2: Exposé PDF button integrated in ExposeDetail via registry" },
     "MOD-07": { "frozen": true, "frozen_at": "2026-03-06T23:30:00.000Z", "reason": "Re-frozen after DMS SSOT unification: FinanceDocumentsManager migrated to delete_storage_file/delete_storage_folder RPCs" },
@@ -16,16 +16,16 @@
     "MOD-09": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-10": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-11": { "frozen": true, "frozen_at": "2026-03-05T21:00:00.000Z", "reason": "Re-frozen after R-1 refactoring: FMEinreichung.tsx split into 5 Cards + fmEinreichungTypes.ts + fmEinreichungHelpers.tsx" },
-    "MOD-12": { "frozen": true, "frozen_at": "2026-03-07T16:00:00.000Z", "reason": "Re-frozen after DMS SSOT migration: AcqDataRoom replaced with EntityStorageTree in ObjekteingangList + ObjekteingangDetail" },
+    "MOD-12": { "frozen": true, "frozen_at": "2026-03-07T20:00:00.000Z", "reason": "Re-frozen after SSOT Storage v2: acq-documents→tenant-documents, useExposeUpload+ExposeDragDropUploader+ObjekteingangList+AcqDataRoom all on UPLOAD_BUCKET with DMS registration" },
     "MOD-13": { "frozen": true, "frozen_at": "2026-03-06T22:00:00.000Z", "reason": "Re-frozen after ENG-VALUATION Gap #9: ProjectValuationSection added with Bewertung tab in ProjectDetailPage" },
     "MOD-14": { "frozen": true, "frozen_at": "2026-03-06T00:00:00.000Z", "reason": "Re-frozen after ElevenLabs voice selection + AgentSyncCard added to Zone 2 KiTelefonPage" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
-    "MOD-16": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
+    "MOD-16": { "frozen": true, "frozen_at": "2026-03-07T20:00:00.000Z", "reason": "Re-frozen after SSOT Storage v2: TestamentVorlageInline DMS registration added (documents+storage_nodes), path normalized to MOD_16" },
     "MOD-17": { "frozen": true, "frozen_at": "2026-03-06T14:00:00.000Z", "reason": "Re-frozen after PDF-CI SSOT: LogbookExport.tsx migrated to CI-A pdfCiKit" },
     "MOD-18": { "frozen": true, "frozen_at": "2026-03-06T16:00:00.000Z", "reason": "Re-frozen after PDF-CI Phase 2: PdfExportFooter replaced with template+consent gate, registry runtime active" },
     "MOD-19": { "frozen": true, "frozen_at": "2026-03-03T12:00:00.000Z", "reason": "Full freeze — PLC Audit wave" },
     "MOD-20": { "frozen": true, "frozen_at": "2026-03-05T10:00:00.000Z", "reason": "Full freeze — All modules locked" },
     "MOD-21": { "frozen": true, "frozen_at": "2026-03-02T11:00:00.000Z", "reason": "REMOVED — Module deactivated and all artifacts deleted" },
-    "MOD-22": { "frozen": true, "frozen_at": "2026-03-06T18:00:00.000Z", "reason": "Re-frozen after Deep Audit: PMKalender migrated from useBookings to useCasesForProvider (PLC)" }
+    "MOD-22": { "frozen": true, "frozen_at": "2026-03-07T20:00:00.000Z", "reason": "Re-frozen after SSOT Storage v2: pet-photos→tenant-documents, usePetDossier+PetsMeineTiere on UPLOAD_BUCKET with signed URLs, manifest entity_sub_folders added" }
   }
 }
