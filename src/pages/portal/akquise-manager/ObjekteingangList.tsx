@@ -47,6 +47,7 @@ const FILTER_CHIPS = [
 ];
 
 export function ObjekteingangList() {
+  const { activeTenantId } = useAuth();
   const navigate = useNavigate();
   const { data: mandates = [], isLoading: loadingMandates } = useAcqMandatesForManager();
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
