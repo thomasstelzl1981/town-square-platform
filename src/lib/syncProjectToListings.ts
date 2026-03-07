@@ -41,7 +41,7 @@ export async function syncProjectToListings(
   // 2. Fetch current properties
   const { data: properties } = await supabase
     .from('properties')
-    .select('id, purchase_price, total_area_sqm, annual_income')
+    .select('id, purchase_price, total_area_sqm, annual_income, description')
     .in('id', propertyIds);
 
   const propMap = new Map((properties ?? []).map(p => [p.id, p]));
@@ -55,7 +55,30 @@ export async function syncProjectToListings(
 
   const listingByProp = new Map((listings ?? []).map(l => [l.property_id, l]));
 
-  // 4. Compare & update each unit
+  // 3b. Fetch project description for content sync
+  const { data: project } = await supabase
+    .from('dev_projects')
+    .select('full_description')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  const projectDescription = project?.full_description || null;
+
+  // 4. IMAGE RESYNC PASS — propagate project images to all linked properties
+  for (const unit of units) {
+    const pid = unit.property_id!;
+    try {
+      const imgResult = await syncProjectImagesToProperty(tenantId, projectId, pid);
+      result.imagesSynced += imgResult.synced;
+      if (imgResult.errors.length > 0) {
+        result.errors.push(...imgResult.errors.map(e => `Bilder ${unit.unit_number}: ${e}`));
+      }
+    } catch (err: unknown) {
+      result.errors.push(`Bilder ${unit.unit_number}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  // 5. Compare & update each unit (structure + content)
   for (const unit of units) {
     const pid = unit.property_id!;
     const prop = propMap.get(pid);
@@ -84,6 +107,10 @@ export async function syncProjectToListings(
         propUpdates.annual_income = annualIncome;
       }
     }
+    // Content sync: project description → property description
+    if (projectDescription && projectDescription !== prop.description) {
+      propUpdates.description = projectDescription;
+    }
 
     // Determine what changed on listing level
     const listingUpdates: Record<string, unknown> = {};
@@ -94,6 +121,10 @@ export async function syncProjectToListings(
       }
       if (unit.list_price != null && unit.list_price !== listing.asking_price) {
         listingUpdates.asking_price = unit.list_price;
+      }
+      // Content sync: project description → listing description
+      if (projectDescription && projectDescription !== listing.description) {
+        listingUpdates.description = projectDescription;
       }
     }
 
@@ -133,7 +164,7 @@ export async function syncProjectToListings(
       const newHash = computeListingHash({
         title: (listingUpdates.title as string) ?? listing.title,
         asking_price: (listingUpdates.asking_price as number) ?? listing.asking_price,
-        description: listing.description,
+        description: (listingUpdates.description as string) ?? listing.description,
         commission_rate: listing.commission_rate,
         status: listing.status,
       });
