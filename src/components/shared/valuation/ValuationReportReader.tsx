@@ -20,6 +20,7 @@ import { DESIGN } from '@/config/designManifest';
 import { ValuationLegalBlock } from './ValuationLegalBlock';
 import { ValuationPhotoGrid } from './ValuationPhotoGrid';
 import { ValuationDocumentGrid, type DocumentSlot } from './ValuationDocumentGrid';
+import { ValuationIntroCard } from './ValuationIntroCard';
 import { supabase } from '@/integrations/supabase/client';
 import type {
   ValueBand, ValuationMethodResult, FinancingScenario, StressTestResult,
