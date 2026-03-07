@@ -179,7 +179,7 @@ export function AnalysisTab({ mandateId, mandateCode }: AnalysisTabProps) {
 function OfferCard({ offer, onClick }: { offer: AcqOffer; onClick: () => void }) {
   const statusConfig = STATUS_CONFIG[offer.status] || STATUS_CONFIG.new;
   const hasCalc = offer.calc_bestand || offer.calc_aufteiler;
-  const hasValuation = offer.analysis_summary || offer.geomap_data; // SoT Valuation or legacy geomap
+  const hasValuation = !!offer.analysis_summary;
   const hasAI = offer.analysis_summary;
   
   return (
