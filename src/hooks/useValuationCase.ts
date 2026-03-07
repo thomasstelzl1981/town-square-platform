@@ -449,10 +449,16 @@ export function useValuationCase() {
             microMapUrl: loc.maps?.micro ?? null,
             macroMapUrl: loc.maps?.macro ?? null,
             streetViewUrl: loc.maps?.street_view ?? null,
+            satelliteMapUrl: loc.maps?.satellite ?? null,
+            hybridMapUrl: loc.maps?.hybrid ?? null,
+            terrainMapUrl: loc.maps?.terrain ?? null,
             microMapBase64: loc.maps_base64?.micro ?? null,
             macroMapBase64: loc.maps_base64?.macro ?? null,
             streetViewBase64: loc.maps_base64?.street_view ?? null,
+            satelliteMapBase64: loc.maps_base64?.satellite ?? null,
+            hybridMapBase64: loc.maps_base64?.hybrid ?? null,
             narrative: loc.narrative ?? '',
+            propertyAssessment: loc.property_assessment ?? null,
             narrativeConfidence: 'medium' as const,
             // V9.1: MFH unit-aware fields
             unitsDetail: (loc.units_detail ?? []).map((u: any) => ({
