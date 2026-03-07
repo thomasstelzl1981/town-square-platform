@@ -32,11 +32,13 @@ interface BestandCalculationProps {
   };
   temporary?: boolean;
   hideQuickAnalysis?: boolean;
+  /** Override ancillary cost % from Ankaufskosten PLZ resolution */
+  ancillaryCostPercent?: number;
 }
 
 // Types now come from engine spec
 
-export function BestandCalculation({ offerId, initialData, temporary = false, hideQuickAnalysis = false }: BestandCalculationProps) {
+export function BestandCalculation({ offerId, initialData, temporary = false, hideQuickAnalysis = false, ancillaryCostPercent }: BestandCalculationProps) {
   const runCalc = useRunCalcBestand();
   const isMobile = useIsMobile();
   const [params, setParams] = React.useState<BestandFullParams>({
@@ -49,7 +51,7 @@ export function BestandCalculation({ offerId, initialData, temporary = false, hi
     valueIncreaseRate: 2.0,
     managementCostPercent: 25,
     maintenancePercent: 1.0,
-    ancillaryCostPercent: 10,
+    ancillaryCostPercent: ancillaryCostPercent ?? 10,
   });
 
   // Calculate everything via engine

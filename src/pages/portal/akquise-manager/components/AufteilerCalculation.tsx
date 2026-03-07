@@ -32,11 +32,13 @@ interface AufteilerCalculationProps {
     areaSqm?: number;
   };
   temporary?: boolean;
+  /** Override ancillary cost % from Ankaufskosten PLZ resolution */
+  ancillaryCostPercent?: number;
 }
 
 // Types now come from engine spec
 
-export function AufteilerCalculation({ offerId, initialData, temporary = false }: AufteilerCalculationProps) {
+export function AufteilerCalculation({ offerId, initialData, temporary = false, ancillaryCostPercent }: AufteilerCalculationProps) {
   const runCalc = useRunCalcAufteiler();
   const isMobile = useIsMobile();
   const [params, setParams] = React.useState<AufteilerFullParams>({
@@ -45,7 +47,7 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
     targetYield: 4.0,
     salesCommission: 8.0,
     holdingPeriodMonths: 24,
-    ancillaryCostPercent: 10,
+    ancillaryCostPercent: ancillaryCostPercent ?? 10,
     interestRate: 5.0,
     equityPercent: 30,
     projectCosts: 0,

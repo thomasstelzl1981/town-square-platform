@@ -37,6 +37,7 @@ import { ObjektKPIRow, ObjektBasisdaten, ObjektAnkaufskosten } from '@/component
 import { ValuationPipeline, ValuationReportReader } from '@/components/shared/valuation';
 
 import { Save, RotateCcw } from 'lucide-react';
+import { calcAncillaryCosts } from '@/engines/akquiseCalc/engine';
 
 const STATUS_OPTIONS: { value: AcqOfferStatus; label: string }[] = [
   { value: 'new', label: 'Eingegangen' }, { value: 'analyzing', label: 'In Analyse' },
@@ -137,6 +138,7 @@ export function ObjekteingangDetail() {
   const yearlyRent = deriveYearlyRent(offer, effectivePrice);
   const completenessIssues = getCompletenessIssues(offer);
   const hasCalcData = !!(offer.calc_bestand || offer.calc_aufteiler);
+  const resolvedAncillary = React.useMemo(() => calcAncillaryCosts(effectivePrice, offer.postal_code), [effectivePrice, offer.postal_code]);
 
   return (
     <PageShell>
@@ -195,8 +197,8 @@ export function ObjekteingangDetail() {
         <QuickAnalysisBanner offer={offer} yearlyRent={yearlyRent} priceOverride={effectivePrice} originalPrice={offer.price_asking || 0} onPriceChange={setPriceOverride} />
         <Tabs defaultValue="bestand" className="w-full">
           <TabsList><TabsTrigger value="bestand">🏠 Bestand (Hold)</TabsTrigger><TabsTrigger value="aufteiler">📊 Aufteiler (Flip)</TabsTrigger></TabsList>
-          <TabsContent value="bestand"><BestandCalculation offerId={offer.id} hideQuickAnalysis initialData={{ purchasePrice: effectivePrice, monthlyRent: yearlyRent / 12, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} /></TabsContent>
-          <TabsContent value="aufteiler"><AufteilerCalculation offerId={offer.id} initialData={{ purchasePrice: effectivePrice, yearlyRent, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} /></TabsContent>
+          <TabsContent value="bestand"><BestandCalculation offerId={offer.id} hideQuickAnalysis ancillaryCostPercent={resolvedAncillary.totalRate} initialData={{ purchasePrice: effectivePrice, monthlyRent: yearlyRent / 12, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} /></TabsContent>
+          <TabsContent value="aufteiler"><AufteilerCalculation offerId={offer.id} ancillaryCostPercent={resolvedAncillary.totalRate} initialData={{ purchasePrice: effectivePrice, yearlyRent, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} /></TabsContent>
         </Tabs>
       </div>
 
