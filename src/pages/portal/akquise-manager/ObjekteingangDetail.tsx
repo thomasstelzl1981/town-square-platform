@@ -64,7 +64,7 @@ function getCompletenessIssues(offer: { price_asking?: number | null; noi_indica
   return issues;
 }
 
-function QuickAnalysisBanner({ offer, yearlyRent, priceOverride, originalPrice, onPriceChange }: { offer: AcqOffer; yearlyRent: number; priceOverride: number; originalPrice: number; onPriceChange: (p: number) => void }) {
+function QuickAnalysisBanner({ offer, yearlyRent, priceOverride, originalPrice, onPriceChange, ancillaryCostPercent }: { offer: AcqOffer; yearlyRent: number; priceOverride: number; originalPrice: number; onPriceChange: (p: number) => void; ancillaryCostPercent: number }) {
   const [inputValue, setInputValue] = React.useState(priceOverride.toString());
   const [isSaving, setIsSaving] = React.useState(false);
   const isModified = priceOverride !== originalPrice;
