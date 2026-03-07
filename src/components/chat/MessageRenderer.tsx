@@ -133,7 +133,7 @@ const AssistantMessage: React.FC<AssistantMessageProps> = ({
                 <Volume2 className="h-2.5 w-2.5" />
               </button>
             )}
-            <div className="prose prose-sm dark:prose-invert max-w-none">
+            <div className="prose prose-base dark:prose-invert max-w-none">
               <ReactMarkdown>{message.content}</ReactMarkdown>
             </div>
           </div>
