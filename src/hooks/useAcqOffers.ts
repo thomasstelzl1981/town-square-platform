@@ -460,7 +460,18 @@ export function useRunCalcAufteiler() {
 
       if (runError) throw runError;
 
-      const result = calcAufteilerQuick(params as Partial<import('@/engines/akquiseCalc/spec').AufteilerQuickParams> as import('@/engines/akquiseCalc/spec').AufteilerQuickParams);
+      const fullParams: AufteilerFullParams = {
+        purchasePrice: (params as any).purchasePrice ?? 0,
+        yearlyRent: (params as any).yearlyRent ?? 0,
+        targetYield: (params as any).targetYield ?? AUFTEILER_DEFAULTS.targetYield,
+        salesCommission: (params as any).salesCommission ?? AUFTEILER_DEFAULTS.salesCommission,
+        holdingPeriodMonths: (params as any).holdingPeriodMonths ?? AUFTEILER_DEFAULTS.holdingPeriodMonths,
+        ancillaryCostPercent: (params as any).ancillaryCostPercent ?? AUFTEILER_DEFAULTS.ancillaryCostPercent,
+        interestRate: (params as any).interestRate ?? AUFTEILER_DEFAULTS.interestRate,
+        equityPercent: (params as any).equityPercent ?? AUFTEILER_DEFAULTS.equityPercent,
+        projectCosts: (params as any).projectCosts ?? 0,
+      };
+      const result = calcAufteilerFull(fullParams);
 
       await supabase
         .from('acq_analysis_runs')

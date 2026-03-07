@@ -16,7 +16,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Loader2, Building2, X, ThumbsUp, MessageSquare, FileText, Upload, Check, ChevronDown, TrendingUp, Play, AlertTriangle, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAcqOffer, useUpdateOfferStatus, type AcqOfferStatus } from '@/hooks/useAcqOffers';
+import { useAcqOffer, useUpdateOfferStatus, type AcqOfferStatus, type AcqOffer } from '@/hooks/useAcqOffers';
 import { useAcqMandate } from '@/hooks/useAcqMandate';
 import { useValuationCase } from '@/hooks/useValuationCase';
 import { format } from 'date-fns';
