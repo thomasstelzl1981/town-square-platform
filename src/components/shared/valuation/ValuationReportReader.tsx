@@ -20,6 +20,7 @@ import { DESIGN } from '@/config/designManifest';
 import { ValuationLegalBlock } from './ValuationLegalBlock';
 import { ValuationPhotoGrid } from './ValuationPhotoGrid';
 import { ValuationDocumentGrid, type DocumentSlot } from './ValuationDocumentGrid';
+import { ValuationIntroCard } from './ValuationIntroCard';
 import { supabase } from '@/integrations/supabase/client';
 import type {
   ValueBand, ValuationMethodResult, FinancingScenario, StressTestResult,
@@ -346,6 +347,16 @@ export function ValuationReportReader({
           </div>
         </CardContent>
       </Card>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 1a — KI-EINLEITUNG & METHODIK
+          ═══════════════════════════════════════════════════════════════ */}
+      <ValuationIntroCard
+        snapshot={snapshot as Record<string, any> | null}
+        valueBand={valueBand as Record<string, any> | null}
+        methods={methods}
+        beleihungswert={beleihungswert as Record<string, any> | null}
+      />
 
       {/* ═══════════════════════════════════════════════════════════════
           SEKTION 1b — OBJEKTSTECKBRIEF (alle Felder immer sichtbar)

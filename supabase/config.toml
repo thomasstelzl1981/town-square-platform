@@ -310,3 +310,6 @@ verify_jwt = false
 
 [functions.sot-valuation-engine]
 verify_jwt = false
+
+[functions.sot-valuation-intro]
+verify_jwt = false
