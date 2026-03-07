@@ -349,6 +349,16 @@ export function ValuationReportReader({
       </Card>
 
       {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 1a — KI-EINLEITUNG & METHODIK
+          ═══════════════════════════════════════════════════════════════ */}
+      <ValuationIntroCard
+        snapshot={snapshot as Record<string, any> | null}
+        valueBand={valueBand as Record<string, any> | null}
+        methods={methods}
+        beleihungswert={beleihungswert as Record<string, any> | null}
+      />
+
+      {/* ═══════════════════════════════════════════════════════════════
           SEKTION 1b — OBJEKTSTECKBRIEF (alle Felder immer sichtbar)
           ═══════════════════════════════════════════════════════════════ */}
       <Card>
