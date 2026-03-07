@@ -197,8 +197,8 @@ export function ObjekteingangDetail() {
         <QuickAnalysisBanner offer={offer} yearlyRent={yearlyRent} priceOverride={effectivePrice} originalPrice={offer.price_asking || 0} onPriceChange={setPriceOverride} />
         <Tabs defaultValue="bestand" className="w-full">
           <TabsList><TabsTrigger value="bestand">🏠 Bestand (Hold)</TabsTrigger><TabsTrigger value="aufteiler">📊 Aufteiler (Flip)</TabsTrigger></TabsList>
-          <TabsContent value="bestand"><BestandCalculation offerId={offer.id} hideQuickAnalysis initialData={{ purchasePrice: effectivePrice, monthlyRent: yearlyRent / 12, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} /></TabsContent>
-          <TabsContent value="aufteiler"><AufteilerCalculation offerId={offer.id} initialData={{ purchasePrice: effectivePrice, yearlyRent, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} /></TabsContent>
+          <TabsContent value="bestand"><BestandCalculation offerId={offer.id} hideQuickAnalysis ancillaryCostPercent={resolvedAncillary.totalRate} initialData={{ purchasePrice: effectivePrice, monthlyRent: yearlyRent / 12, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} /></TabsContent>
+          <TabsContent value="aufteiler"><AufteilerCalculation offerId={offer.id} ancillaryCostPercent={resolvedAncillary.totalRate} initialData={{ purchasePrice: effectivePrice, yearlyRent, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} /></TabsContent>
         </Tabs>
       </div>
 
