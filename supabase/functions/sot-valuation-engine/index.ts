@@ -874,6 +874,39 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
           }
         }
       }
+      // ─── Offer-based preflight (MOD-12 DRAFT_INTAKE) ───
+      if (!property_id && offer_id) {
+        const offerData = await fetchAcqOfferData(sbAdmin, offer_id, tenantId);
+        if (offerData) {
+          const snapshot = buildSnapshotFromOffer(offerData);
+          offerSummary = {
+            address: snapshot.address, city: snapshot.city,
+            type: snapshot.object_type,
+            units_count: snapshot.units_count,
+            area_sqm: snapshot.living_area_sqm,
+            price: snapshot.asking_price,
+            rent_monthly: snapshot.net_cold_rent_monthly,
+          };
+
+          if (!snapshot.address && !snapshot.city) {
+            blockers.push({ field: 'address', severity: 'blocker', message: 'Adresse oder Stadt fehlt im Exposé — keine Bewertung möglich.', suggestedAction: 'Adresse in den Objektdaten nachtragen.' });
+          }
+          if (!snapshot.asking_price && !snapshot.net_cold_rent_monthly) {
+            blockers.push({ field: 'pricing', severity: 'blocker', message: 'Kein Preis und keine Miete im Exposé — Bewertung nicht möglich.', suggestedAction: 'Kaufpreis oder Mietdaten nachtragen.' });
+          }
+          if (!snapshot.living_area_sqm) {
+            warnings.push({ field: 'area', severity: 'warning', message: 'Keine Fläche im Exposé — wird per Heuristik geschätzt.', suggestedAction: 'Wohnfläche nachtragen.' });
+          }
+          if (!snapshot.year_built) {
+            warnings.push({ field: 'year_built', severity: 'warning', message: 'Kein Baujahr im Exposé — Restnutzungsdauer mit Fallback 1980.', suggestedAction: 'Baujahr nachtragen.' });
+          }
+        } else {
+          blockers.push({ field: 'offer', severity: 'blocker', message: 'Objekt nicht gefunden.', suggestedAction: 'Prüfen Sie die Objekt-ID.' });
+        }
+      }
+
+      const summarySource = ssotSummary || offerSummary;
+      const summaryLabel = ssotSummary ? `SSOT: ${ssotSummary.address}, ${ssotSummary.city}` : offerSummary ? `Exposé: ${offerSummary.address}, ${offerSummary.city}` : null;
 
       return json({
         success: true,
@@ -881,14 +914,14 @@ Gibt es weitere logische Widersprüche oder Auffälligkeiten?`,
           creditsCost: CREDITS_REQUIRED,
           credits_available: creditData?.available_credits ?? 0,
           can_proceed: (creditData?.allowed ?? false) && blockers.length === 0,
-          sources: ssotSummary ? [{ name: `SSOT: ${ssotSummary.address}, ${ssotSummary.city}`, type: "ssot", pages: 0 }] : [],
+          sources: summaryLabel ? [{ name: summaryLabel, type: ssotSummary ? "ssot" : "expose", pages: 0 }] : [],
           totalEstimatedPages: 0,
           limitsOk: blockers.length === 0,
           googleApiAvailable: !!googleMapsKey,
           scraperAvailable: !!firecrawlKey,
           sourceMode,
           sourceModeLabel: sourceMode === "SSOT_FINAL" ? "Datenbasis: MOD-04 SSOT (Final)" : "Datenbasis: Exposé Draft (Intake)",
-          ssotSummary,
+          ssotSummary: summarySource,
           warnings,
           blockers,
         },
