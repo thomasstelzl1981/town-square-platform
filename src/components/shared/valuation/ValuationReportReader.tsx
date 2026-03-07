@@ -394,12 +394,15 @@ export function ValuationReportReader({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1 p-4 rounded-xl border bg-muted/10">
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium mb-2">Zustand & Energie</p>
-              <DataRow label="Zustand" value={snapshot?.condition ? conditionLabel(snapshot.condition) : '–'} />
-              <DataRow label="Heizungsart" value={snapshot?.heatingType || '–'} />
-              <DataRow label="Energieträger" value={snapshot?.energySource || '–'} />
+              <DataRow label="Zustand" value={
+                snapshot?.coreRenovated === true
+                  ? (snapshot?.renovationYear ? `Kernsaniert (${snapshot.renovationYear})` : 'Kernsaniert')
+                  : snapshot?.condition ? conditionLabel(snapshot.condition) : '–'
+              } />
+              <DataRow label="Heizungsart" value={snapshot?.heatingType ? capitalize(snapshot.heatingType) : '–'} />
+              <DataRow label="Energieträger" value={snapshot?.energySource ? capitalize(snapshot.energySource) : '–'} />
               <DataRow label="Energieklasse" value={snapshot?.energyClass || '–'} />
               <DataRow label="Energiekennwert" value={snapshot?.energyCertificateValue != null ? `${fmtNum(snapshot.energyCertificateValue, 1)} kWh/(m²·a)` : '–'} />
-              <DataRow label="Kernsaniert" value={snapshot?.coreRenovated === true ? (snapshot?.renovationYear ? `Ja (${snapshot.renovationYear})` : 'Ja') : snapshot?.coreRenovated === false ? 'Nein' : '–'} />
               {snapshot?.modernizations && snapshot.modernizations.length > 0 && (
                 <div className="pt-1">
                   <p className="text-xs text-muted-foreground mb-1">Modernisierungen:</p>
