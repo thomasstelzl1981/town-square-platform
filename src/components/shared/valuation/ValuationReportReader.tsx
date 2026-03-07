@@ -418,8 +418,6 @@ export function ValuationReportReader({
               <DataRow label="Miete / m²" value={snapshot?.netColdRentPerSqm != null ? fmtEur2(snapshot.netColdRentPerSqm) : '–'} />
               <DataRow label="Hausgeld (mtl.)" value={snapshot?.hausgeldMonthly != null ? fmtEur(snapshot.hausgeldMonthly) : '–'} />
               <DataRow label="Kaufpreis" value={snapshot?.purchasePrice != null ? fmtEur(snapshot.purchasePrice) : '–'} />
-              <DataRow label="Angebotspreis" value={snapshot?.askingPrice != null ? fmtEur(snapshot.askingPrice) : '–'} />
-              <DataRow label="Nebenkosten" value={snapshot?.acquisitionCosts != null ? fmtEur(snapshot.acquisitionCosts) : '–'} />
               <DataRow label="Eigentumsanteil" value={snapshot?.ownershipSharePercent != null ? `${snapshot.ownershipSharePercent}%` : '–'} />
               <DataRow label="Leerstandsquote" value={snapshot?.vacancyRate != null ? fmtPct(snapshot.vacancyRate) : '–'} />
             </div>

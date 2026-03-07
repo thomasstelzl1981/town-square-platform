@@ -408,7 +408,24 @@ export function useValuationCase() {
         dataQuality: mapDataQuality(rawDq),
         compStats: mapCompStats(results.comp_stats),
         executiveSummary: runSummary?.executive_summary ?? null,
-        legalTitle: runSummary?.legal_title ?? rawSnapshot?.legal_title ?? null,
+        legalTitle: (() => {
+          const lt = runSummary?.legal_title ?? rawSnapshot?.legal_title;
+          if (!lt) return null;
+          return {
+            landRegisterCourt: lt.land_register_court ?? lt.landRegisterCourt ?? null,
+            landRegisterSheet: lt.land_register_sheet ?? lt.landRegisterSheet ?? null,
+            landRegisterVolume: lt.land_register_volume ?? lt.landRegisterVolume ?? null,
+            parcelNumber: lt.parcel_number ?? lt.parcelNumber ?? null,
+            ownershipSharePercent: lt.ownership_share_percent ?? lt.ownershipSharePercent ?? null,
+            wegFlag: lt.weg_flag ?? lt.wegFlag ?? false,
+            teNumber: lt.te_number ?? lt.teNumber ?? null,
+            unitOwnershipNr: lt.unit_ownership_nr ?? lt.unitOwnershipNr ?? null,
+            meaShare: lt.mea_share ?? lt.meaShare ?? null,
+            landRegisterExtractAvailable: lt.land_register_extract_available ?? lt.landRegisterExtractAvailable ?? false,
+            partitionDeclarationAvailable: lt.partition_declaration_available ?? lt.partitionDeclarationAvailable ?? false,
+            encumbrancesNote: lt.encumbrances_note ?? lt.encumbrancesNote ?? '',
+          };
+        })(),
         diffs: inputs.diffs ?? [],
         sourceMode: caseData.source_mode ?? 'DRAFT_INTAKE',
         // V9.0: Beleihungswert
