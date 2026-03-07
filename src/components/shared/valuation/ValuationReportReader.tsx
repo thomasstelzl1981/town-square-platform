@@ -1,8 +1,10 @@
 /**
- * ValuationReportReader — Kurzgutachten Web-Reader V9.0
- * 11 inline sections matching the 12-page PDF structure.
+ * ValuationReportReader — Kurzgutachten Web-Reader V9.2
+ * Full inline sections matching the premium PDF structure.
  * Scrollable vertical layout — every section visible in sequence.
+ * Includes: Objektsteckbrief, Fotos, Grundrisse/Lagepläne, enhanced Maps.
  */
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,11 +13,14 @@ import {
   TrendingUp, Download, Shield, Banknote, BarChart3,
   Database, MapPin, Building2, FileText, AlertTriangle, CheckCircle2,
   Navigation, Clock, Compass, Star, Landmark, Ruler, Hammer,
-  ArrowUpDown, Scale, Search, Info
+  ArrowUpDown, Scale, Search, Info, Camera, FileImage, Satellite, Map
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import { ValuationLegalBlock } from './ValuationLegalBlock';
+import { ValuationPhotoGrid } from './ValuationPhotoGrid';
+import { ValuationDocumentGrid, type DocumentSlot } from './ValuationDocumentGrid';
+import { supabase } from '@/integrations/supabase/client';
 import type {
   ValueBand, ValuationMethodResult, FinancingScenario, StressTestResult,
   LienProxy, DebtServiceResult, DataQuality, CompStats, CompPosting,
@@ -43,6 +48,13 @@ interface Props {
   beleihungswert?: BeleihungswertResult | null;
   geminiResearch?: GeminiResearchResult | null;
   snapshot?: Partial<CanonicalPropertySnapshot> | null;
+  /** Photo & document management */
+  propertyId?: string;
+  tenantId?: string;
+  photos?: string[];
+  onPhotosChange?: (photos: string[]) => void;
+  documents?: DocumentSlot[];
+  onDocumentsChange?: (docs: DocumentSlot[]) => void;
   onDownloadPdf?: () => void;
   className?: string;
 }
@@ -173,15 +185,50 @@ function getMethodValue(methods: ValuationMethodResult[], key: string): number {
 export function ValuationReportReader({
   valueBand, methods, financing, stressTests, lienProxy, debtService,
   dataQuality, compStats, executiveSummary, sourceMode, legalTitle,
-  location, comps, beleihungswert, geminiResearch, snapshot, onDownloadPdf, className,
+  location, comps, beleihungswert, geminiResearch, snapshot,
+  propertyId, tenantId, photos, onPhotosChange, documents, onDocumentsChange,
+  onDownloadPdf, className,
 }: Props) {
-  if (!valueBand) return null;
+  // ─── Google Maps API Key for satellite/aerial imagery ───────────────
+  const [googleApiKey, setGoogleApiKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.functions.invoke('sot-google-maps-key').then(({ data }) => {
+      if (data?.key) setGoogleApiKey(data.key);
+    });
+  }, []);
+
+  // Build satellite URL if we have coordinates from location
+  const buildStaticMapUrl = useCallback((lat: number, lng: number, zoom: number, maptype: 'satellite' | 'roadmap' | 'hybrid' | 'terrain', size = '640x400') => {
+    if (!googleApiKey) return null;
+    return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${size}&maptype=${maptype}&key=${googleApiKey}`;
+  }, [googleApiKey]);
+
+  // Try to extract coordinates from existing map URLs
+  const extractCoords = useCallback((): { lat: number; lng: number } | null => {
+    const url = location?.microMapUrl || location?.macroMapUrl;
+    if (!url) return null;
+    const match = url.match(/center=([0-9.-]+),([0-9.-]+)/);
+    if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+    const markerMatch = url.match(/markers=[^|]*\|([0-9.-]+),([0-9.-]+)/);
+    if (markerMatch) return { lat: parseFloat(markerMatch[1]), lng: parseFloat(markerMatch[2]) };
+    return null;
+  }, [location?.microMapUrl, location?.macroMapUrl]);
+
+  const coords = extractCoords();
 
   const ertragParams = getMethodParams(methods, 'ertragswert');
   const sachwertParams = getMethodParams(methods, 'sachwert_proxy');
   const compValue = getMethodValue(methods, 'comp_proxy');
   const ertragValue = getMethodValue(methods, 'ertragswert');
   const sachwertValue = getMethodValue(methods, 'sachwert_proxy');
+
+  if (!valueBand) return null;
+
+  // Build additional map URLs
+  const satelliteUrl = coords ? buildStaticMapUrl(coords.lat, coords.lng, 18, 'satellite') : null;
+  const hybridUrl = coords ? buildStaticMapUrl(coords.lat, coords.lng, 16, 'hybrid', '640x400') : null;
+  const terrainUrl = coords ? buildStaticMapUrl(coords.lat, coords.lng, 13, 'terrain', '640x400') : null;
 
   return (
     <div className={cn('space-y-5', className)}>
@@ -361,6 +408,79 @@ export function ValuationReportReader({
                 {snapshot.vacancyRate != null && <DataRow label="Leerstandsquote" value={fmtPct(snapshot.vacancyRate)} />}
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 1c — OBJEKTFOTOS (Upload Grid)
+          ═══════════════════════════════════════════════════════════════ */}
+      {propertyId && tenantId && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <SectionHeader icon={Camera} title="Objektfotos" subtitle="Fotos vom Objekt für das Gutachten (max. 8 Bilder)" />
+            <ValuationPhotoGrid
+              propertyId={propertyId}
+              tenantId={tenantId}
+              photos={photos || []}
+              onPhotosChange={onPhotosChange || (() => {})}
+              maxPhotos={8}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 1d — GRUNDRISSE, LAGEPLÄNE & UNTERLAGEN
+          ═══════════════════════════════════════════════════════════════ */}
+      {propertyId && tenantId && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <SectionHeader icon={FileImage} title="Grundrisse, Lagepläne & Unterlagen" subtitle="Pläne und Dokumente für das Gutachten (Bilder & PDFs)" />
+            <ValuationDocumentGrid
+              propertyId={propertyId}
+              tenantId={tenantId}
+              documents={documents || []}
+              onDocumentsChange={onDocumentsChange || (() => {})}
+              maxDocuments={8}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SEKTION 1e — LUFTBILD & SATELLIT
+          ═══════════════════════════════════════════════════════════════ */}
+      {(satelliteUrl || hybridUrl || terrainUrl) && (
+        <Card>
+          <CardContent className="p-6 space-y-5">
+            <SectionHeader icon={Satellite} title="Luftbild & Geländeansicht" subtitle="Satellitenaufnahme und Geländerelief des Standorts" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {satelliteUrl && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Satellitenansicht (Nahaufnahme)</p>
+                  <div className="rounded-xl overflow-hidden border shadow-sm aspect-[16/10]">
+                    <img src={satelliteUrl} alt="Satellitenansicht" className="w-full h-full object-cover" loading="lazy" />
+                  </div>
+                </div>
+              )}
+              {hybridUrl && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Hybridansicht (Karte + Satellitenbild)</p>
+                  <div className="rounded-xl overflow-hidden border shadow-sm aspect-[16/10]">
+                    <img src={hybridUrl} alt="Hybridansicht" className="w-full h-full object-cover" loading="lazy" />
+                  </div>
+                </div>
+              )}
+            </div>
+            {terrainUrl && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Geländeansicht (Topografie)</p>
+                <div className="rounded-xl overflow-hidden border shadow-sm aspect-[21/9] max-h-[250px]">
+                  <img src={terrainUrl} alt="Geländeansicht" className="w-full h-full object-cover" loading="lazy" />
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

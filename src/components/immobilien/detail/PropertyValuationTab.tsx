@@ -1,9 +1,10 @@
 /**
  * PropertyValuationTab — Bewertung tab extracted from PropertyDetailPage
  * R-15 sub-component
- * V8.0: Phase 1 — Valuation Archive: Version numbers, confidence bands, delta trend, Quick-Compare
+ * V9.2: Phase 1 — Photo/Document uploads + enhanced Maps
  */
 import { useState, useCallback, useMemo } from 'react';
+import type { DocumentSlot } from '@/components/shared/valuation/ValuationDocumentGrid';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -47,6 +48,8 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
+  const [valuationPhotos, setValuationPhotos] = useState<string[]>([]);
+  const [valuationDocuments, setValuationDocuments] = useState<DocumentSlot[]>([]);
   const queryClient = useQueryClient();
   const { state, isLoading, runPreflight, runValuation, fetchResult, reset } = useValuationCase();
 
@@ -284,6 +287,12 @@ export function PropertyValuationTab({ propertyId, tenantId }: Props) {
             beleihungswert={r.beleihungswert || null}
             geminiResearch={r.geminiResearch || null}
             snapshot={r.snapshot || null}
+            propertyId={propertyId}
+            tenantId={tenantId}
+            photos={valuationPhotos}
+            onPhotosChange={setValuationPhotos}
+            documents={valuationDocuments}
+            onDocumentsChange={setValuationDocuments}
             onDownloadPdf={handleDownloadPdf}
           />
         </div>
