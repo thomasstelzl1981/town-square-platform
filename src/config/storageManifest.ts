@@ -81,6 +81,16 @@ export interface ModuleStorageConfig {
 // ── Manifest ─────────────────────────────────────────────────────────────────
 
 export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
+  MOD_00: {
+    module_code: 'MOD_00',
+    root_name: 'Armstrong Workspace',
+    root_template_id: 'MOD_00_ROOT',
+    display_order: 0,
+    entity_sub_folders: [],
+    required_docs: [],
+    entity_fk_column: null,
+    entity_table: 'armstrong_projects',
+  },
   MOD_01: {
     module_code: 'MOD_01',
     root_name: 'Stammdaten',
@@ -221,10 +231,15 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
     root_name: 'Akquise-Manager',
     root_template_id: 'MOD_12_ROOT',
     display_order: 12,
-    entity_sub_folders: [],
+    entity_sub_folders: [
+      '01_Expose',
+      '02_Recherche',
+      '03_Korrespondenz',
+      '04_Sonstiges',
+    ],
     required_docs: [],
     entity_fk_column: null,
-    entity_table: null,
+    entity_table: 'acq_mandates',
   },
   MOD_13: {
     module_code: 'MOD_13',
