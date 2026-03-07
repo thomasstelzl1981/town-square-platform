@@ -95,3 +95,4 @@ Ausnahmen:
 | Version | Datum | Änderung |
 |---------|-------|----------|
 | 1.0.0 | 2026-03-07 | Initial Audit: P0+P1+P2 implementiert |
+| 1.1.0 | 2026-03-07 | P3 (Signatur SSOT) + P5 (Armstrong Datenraum UI) implementiert |
