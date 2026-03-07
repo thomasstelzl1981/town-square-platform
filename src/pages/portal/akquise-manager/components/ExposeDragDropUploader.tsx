@@ -102,7 +102,7 @@ export function ExposeDragDropUploader() {
       const { data: offer, error: offerError } = await supabase
         .from('acq_offers')
         .insert({
-          source_type: 'manual_upload' as any,
+          source_type: 'upload' as any,
           status: 'new' as any,
           title: file.name.replace(/\.[^/.]+$/, ''),
           received_at: new Date().toISOString(),

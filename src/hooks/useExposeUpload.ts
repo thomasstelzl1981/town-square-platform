@@ -46,7 +46,7 @@ export function useExposeUpload() {
 
       // 1. Create acq_offer FIRST to get offer_id for the storage path
       const insertData: Record<string, unknown> = {
-        source_type: 'manual_upload',
+        source_type: 'upload',
         status: 'new',
         title: file.name.replace(/\.[^/.]+$/, ''),
         received_at: new Date().toISOString(),
