@@ -486,38 +486,46 @@ export function ValuationReportReader({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
-          SEKTION 2 — GRUNDBUCH & EIGENTUM
+          SEKTION 2 — GRUNDBUCH & EIGENTUM (immer sichtbar)
           ═══════════════════════════════════════════════════════════════ */}
-      {legalTitle && sourceMode === 'SSOT_FINAL' && (
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <SectionHeader icon={Landmark} number={2} title="Grundbuch & Eigentum" subtitle="Grundbuchdaten, Eigentumsverhältnisse" />
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-              {legalTitle.landRegisterCourt && <DataRow label="Amtsgericht" value={legalTitle.landRegisterCourt} />}
-              {legalTitle.landRegisterSheet && <DataRow label="Grundbuchblatt" value={legalTitle.landRegisterSheet} />}
-              {legalTitle.landRegisterVolume && <DataRow label="Band" value={legalTitle.landRegisterVolume} />}
-              {legalTitle.parcelNumber && <DataRow label="Flurstück" value={legalTitle.parcelNumber} />}
-              {legalTitle.ownershipSharePercent != null && <DataRow label="Eigentumsanteil" value={`${legalTitle.ownershipSharePercent}%`} />}
-              {legalTitle.wegFlag && <DataRow label="WEG" value={`Ja${legalTitle.teNumber ? ` (TE: ${legalTitle.teNumber})` : ''}`} />}
-              {legalTitle.meaShare != null && <DataRow label="MEA" value={legalTitle.meaShare.toString()} />}
-            </div>
-            <div className="flex gap-2 flex-wrap pt-2">
-              <Badge variant={legalTitle.landRegisterExtractAvailable ? 'secondary' : 'outline'} className="text-[10px]">
-                {legalTitle.landRegisterExtractAvailable ? '✓' : '✗'} Grundbuchauszug
-              </Badge>
-              <Badge variant={legalTitle.partitionDeclarationAvailable ? 'secondary' : 'outline'} className="text-[10px]">
-                {legalTitle.partitionDeclarationAvailable ? '✓' : '✗'} Teilungserklärung
-              </Badge>
-            </div>
-            {legalTitle.encumbrancesNote && (
-              <div className="flex items-start gap-2 p-2.5 rounded-lg bg-yellow-500/10 text-yellow-700 text-[10px]">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                <span>{legalTitle.encumbrancesNote}</span>
-              </div>
+      <Card>
+        <CardContent className="p-6 space-y-4">
+          <SectionHeader icon={Landmark} number={2} title="Grundbuch & Eigentum" subtitle="Grundbuchdaten, Eigentumsverhältnisse" />
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+            <DataRow label="Amtsgericht" value={legalTitle?.landRegisterCourt || '\u2013'} />
+            <DataRow label="Grundbuchblatt" value={legalTitle?.landRegisterSheet || '\u2013'} />
+            <DataRow label="Band" value={legalTitle?.landRegisterVolume || '\u2013'} />
+            <DataRow label="Flurstück" value={legalTitle?.parcelNumber || '\u2013'} />
+            <DataRow label="Eigentumsanteil" value={legalTitle?.ownershipSharePercent != null ? `${legalTitle.ownershipSharePercent}%` : '\u2013'} />
+            <DataRow label="MEA" value={legalTitle?.meaShare != null ? legalTitle.meaShare.toString() : '\u2013'} />
+            {legalTitle?.wegFlag && (
+              <DataRow label="WEG" value={`Ja${legalTitle.teNumber ? ` (TE: ${legalTitle.teNumber})` : ''}`} />
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+          <div className="flex gap-2 flex-wrap pt-2">
+            <Badge variant={legalTitle?.landRegisterExtractAvailable ? 'secondary' : 'outline'} className="text-[10px]">
+              {legalTitle?.landRegisterExtractAvailable ? '\u2713' : '\u2717'} Grundbuchauszug
+            </Badge>
+            {legalTitle?.wegFlag && (
+              <Badge variant={legalTitle?.partitionDeclarationAvailable ? 'secondary' : 'outline'} className="text-[10px]">
+                {legalTitle?.partitionDeclarationAvailable ? '\u2713' : '\u2717'} Teilungserklärung
+              </Badge>
+            )}
+          </div>
+          {legalTitle?.encumbrancesNote && (
+            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-yellow-500/10 text-yellow-700 text-[10px]">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>{legalTitle.encumbrancesNote}</span>
+            </div>
+          )}
+          {!legalTitle && (
+            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/30 text-muted-foreground text-[10px]">
+              <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>Fehlende Grundbuchangaben können in der Immobilienakte ergänzt werden.</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ═══════════════════════════════════════════════════════════════
           SEKTION 3 — STANDORTANALYSE (Maps, POIs, Erreichbarkeit)
