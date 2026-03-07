@@ -14,6 +14,7 @@ import { PathNavigatorView } from './views/PathNavigatorView';
 import { BulkActionBar } from './BulkActionBar';
 import { SelectionActionBar } from './SelectionActionBar';
 import { NewFolderDialog } from './NewFolderDialog';
+import { MoveToFolderDialog } from './MoveToFolderDialog';
 import { FileDropZone } from './FileDropZone';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getModuleDisplayName } from '@/config/storageManifest';
+import { isPreviewableMime } from '@/components/dms/storageHelpers';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useStorageKeyboard } from '@/hooks/useStorageKeyboard';
 
