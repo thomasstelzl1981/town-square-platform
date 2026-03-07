@@ -42,12 +42,12 @@ export function useExposeUpload() {
       setProgress(10);
 
       // 1. Upload to storage (using central buildStoragePath + sanitizeFileName)
-      const filePath = buildStoragePath(activeTenantId!, 'MOD_12', mandateId || undefined, file.name);
+      storagePath = buildStoragePath(activeTenantId!, 'MOD_12', mandateId || undefined, file.name);
       setProgress(20);
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('acq-documents')
-        .upload(filePath, file);
+        .upload(storagePath, file);
 
       if (uploadError) throw uploadError;
       setProgress(40);
